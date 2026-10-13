@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 import {
   validTravellerMark, validTravellerFrame, parseClient, relaySupportsTravellers, isRegionRoom, travHubGate, travRoomGate,
   TRAV_KEYS, TRAV_MODES, TRAV_SEND_MIN_MS, TRAV_KEEPALIVE_MS, TRAV_STALE_MS, TRAV_HUB_MIN_MS, TRAV_ROOM_HZ_MAX, TRAV_WELCOME_MAX,
-  TRAVELLER_RELAY_MIN, RELAY_VERSION, chatRegionRoom, CHAT_WORLD_ROOM, DROP_STRIKES_MAX,
+  TRAVELLER_RELAY_MIN, RELAY_VERSION, chatRegionRoom, CHAT_WORLD_ROOM, DROP_STRIKES_MAX, WORLD_PIXEL_BOUND,
 } from '../src/net/wire.js';
 import { fakeRoom } from './fakeRoom.mjs';
 import { fakeSocketClass } from './fakeSocket.mjs';
@@ -45,7 +45,7 @@ test('TV3 wire: a mark is seven keys and no eighth, each in its range - refused 
   assert.deepEqual(validTravellerMark({ ...MARK, tv: undefined }), { ...MARK, tv: 0 });
   assert.deepEqual(TRAV_MODES, ['foot', 'horse', 'cart', 'ship']);
   for (const [why, p] of [
-    ['an eighth key', { ...MARK, name: 'Lord Nobody' }], ['off the map east', { ...MARK, px: 1000 }], ['off the map south', { ...MARK, py: 500 }],
+    ['an eighth key', { ...MARK, name: 'Lord Nobody' }], ['off the world east', { ...MARK, px: WORLD_PIXEL_BOUND }], ['off the world north', { ...MARK, py: -WORLD_PIXEL_BOUND }],   // PIN MOVED (TV-BEYOND): off the MAP is the land past the Bay
     ['a byte past 255', { ...MARK, fx: 256 }], ['a negative', { ...MARK, fy: -1 }], ['a fraction', { ...MARK, h: 1.5 }],
     ['a fifth way', { ...MARK, m: 4 }], ['a journey that is not 0 or 1', { ...MARK, tv: 2 }], ['a string number', { ...MARK, px: '207' }],
     ['an array', [1, 2, 3]], ['nothing', null],
@@ -464,17 +464,17 @@ test('TV3 host wiring: the book hoisted above its readers, filled by the Region 
   assert.match(w, /link\.onTravellerRoom = \(list\) => \{ travellerBook\.reset\(list, Date\.now\(\)\); travellerSent\.last = null; travellerSent\.at = 0; \};/);
   assert.match(w, /link\.onTravellerLeft = \(id\) => travellerBook\.drop\(id\);/);
   // AUDIT TV C5: offline (another tab has the seat), nobody is seen travelling
-  assert.match(w, /for \(const link of chatLinks\?\.values\?\.\(\) \?\? \[\]\) link\.supersede\(\);\n\s*travellerBook\.clear\(\); travellerSent\.last = null;/);
+  assert.match(w, /for \(const link of chatLinks\?\.values\?\.\(\) \?\? \[\]\) link\.supersede\(\);\n(?:\s*\/\/[^\n]*\n)*\s*try \{ arenaOnline\?\.leaveAll\(\); \}[^\n]*\n\s*travellerBook\.clear\(\); travellerSent\.last = null;/);
   assert.match(w, /chatRegionFrame\(performance\.now\(\)\);[^\n]*\n\s*travellerFrame\(performance\.now\(\)\);/, 'after the region link has moved');
   assert.match(w, /if \(link\.room !== travellerSent\.room\) \{ travellerSent\.room = link\.room; travellerSent\.last = null; travellerSent\.at = 0;/, 'a new room holds nothing of mine');
   assert.match(w, /const outdoors = \(modes\?\.mode \?\? 'exterior'\) === 'exterior' && walkMode && playerSpawned && \(playerEntity\.health \?\? 0\) > 0;/, 'nothing from indoors');
-  assert.match(w, /const shown = outdoors && isEnhanced\(\) && getPref\('showToTravellers'\) !== false && link\.room === chatRegionRoom\(_questRegionIndex\(\)\)( && !concealBits\(playerEntity\))?;/, 'AUDIT TV C4: never into the region just left');
+  assert.match(w, /const shown = outdoors && isEnhanced\(\) && getPref\('showToTravellers'\) !== false && channelOf\(link\.room\) === chatRegionRoom\(_questRegionIndex\(\)\)( && !concealBits\(playerEntity\))?;/, 'AUDIT TV C4: never into the region just left (PIN MOVED, SCALE5c part two: the region\'s channel, on whichever of its shards)');
   assert.match(w, /travellerDue\(travellerSent, \{ now, mark, alone: link\.othersHere === 0, shown \}\)/);
   assert.match(w, /if \(near\.has\(t\.id\) \|\| Math\.max\(Math\.abs\(t\.p\.px - me\.x\), Math\.abs\(t\.p\.py - me\.y\)\) <= TV_BODY_RANGE\) continue;/, 'inside the pose range a traveller is their body - marked as a player drawn here (OVERWORLD NAMES), never twice');
   assert.match(w, /const kind = social\?\.isPartyPeer\(t\.id\) \? 'party' : 'traveller';/, 'AUDIT TV C3: the peer\'s id asked of the party\'s seats; AUDIT NAMES N1-10: as play\'s names ask it');
-  assert.match(w, /marks\.push\(\{ key: `trav:\$\{t\.id\}`, at: tvSceneKept\(t, w\.x, w\.z, 2, ship\), label: t\.name, kind: `\$\{kind\}\$\{ship \? ' ship' : ''\}\$\{t\.p\.tv \? ' journey' : ''\}`, edge: true, badge: tvBadgeOf\(t\) \}\);/);   // OWS1: at sea, a ship
-  assert.match(w, /return \[x, ringHeight\(byte\) \+ state\.pixelTranslation\(px\.x, px\.y\)\[1\] \+ lift, z\];/, 'past the grid, the far ring\'s own height');
-  assert.match(rd('src/ui/heldMap.js'), /travellers: this\._trav\.map\(\(t\) => \(\{ x: t\.x, y: t\.y, name: t\.name, color: TRAVELLER_MARK_CSS, journey: t\.journey, ship: t\.ship \}\)\),/);   // OWS1
+  assert.match(w, /marks\.push\(\{ key: `trav:\$\{t\.id\}`, at: tvSceneKept\(t, w\.x, w\.z, 2, ship\), label: t\.name, kind: `\$\{kind\}\$\{ship \? ' ship' : ''\}\$\{t\.p\.tv \? ' journey' : ''\}`, edge: true, badge: tvBadgeOf\(t\),\n\s*kin: travellerKin\(\{ friend: !!social\?\.isFriendPeer\(t\.id\), gt: t\.gt \}, myGt\), lv: t\.lv \?\? null \}\);/);   // OWS1: at sea, a ship; PIN MOVED (FIELD BUGS 2026-10-04e OW-KIN / OW-WHO): and their kin and Renown
+  assert.match(w, /return \[x, ringHeight\(byte, !!landform, fade\) \+ state\.pixelTranslation\(px\.x, px\.y\)\[1\] \+ lift, z\];/, 'past the grid, the far ring\'s own height (LANDFORM1: with the lift the row puts on the streamed ground; AUDIT LANDFORMS II I1: faded beside the sea)');   // PIN MOVED (AUDIT LANDFORMS II I1)
+  assert.match(rd('src/ui/heldMap.js'), /travellers: this\._trav\.filter\(\(t\) => playerShown\(t\)\)\.map\(\(t\) => \(\{ x: t\.x, y: t\.y, name: t\.name, color: TV_KIN_COLORS\[t\.kin\] \?\? TRAVELLER_MARK_CSS, journey: t\.journey, ship: t\.ship \}\)\),/);   // OWS1; PIN MOVED (FIELD BUGS 2026-10-04e OW-WHO / OW-KIN): the players' filters, and a friend's and a guild-mate's colour
   // the relay: one arm, the region's channel alone, the attachment, the room's budget, the welcome
   const idx = rd('server/src/index.js');
   assert.match(idx, /if \(m\.t === 'trav'\) \{/);
@@ -492,7 +492,9 @@ test('AUDIT DEEP2 C4/C5 by source: a Region link that moves empties the book (th
 
 test('AUDIT DEEP2 C by source: a welcome never hands a joiner a socket already closing (ONE-SEAT R4\'s rule, as the other tabs are counted)', () => {
   const srv = readFileSync(new URL('../server/src/index.js', import.meta.url), 'utf8');
-  assert.match(srv, /for \(const \[other, b\] of this\._all\(\)\) if \(other !== ws && b\.id && !this\._dead\.has\(other\) && !this\._gone\.has\(other\)\) others\.push\(b\);/);
+  // PIN MOVED (SCALE5a): the hello's others are listed by a method of its own (`_othersOf` - `_message` runs interpreted), and the rule is its
+  assert.match(srv, /for \(const \[other, b\] of this\._all\(\)\) if \(other !== ws && b\.id && !this\._dead\.has\(other\) && !this\._gone\.has\(other\)\) out\.push\(b\);/);
+  assert.match(srv, /const others = this\._othersOf\(ws\);/);
 });
 
 test('OVERWORLD NAMES wire, book and host: a traveller frame keeps the Renown and the guild\'s tag the relay stamps (a bad one refused as nothing); the book keeps the whole badge; every player drawn here is marked with it, the veiled never, and the names over the heads stand down under the view', () => {
@@ -506,7 +508,7 @@ test('OVERWORLD NAMES wire, book and host: a traveller frame keeps the Renown an
   assert.deepEqual([t.title, t.glyphs, t.lv, t.gt], ['founder', ['dev'], 12, 'HND']);
   const w = readFileSync(new URL('../src/scenes/world.js', import.meta.url), 'utf8');
   assert.match(w, /for \(const d of online\?\.drawable\?\.\(\) \?\? \[\]\) \{\n\s*if \(!d\?\.shown \|\| _hiddenPeers\.has\(d\.id\) \|\| _veils\.has\(d\.id\)\) continue;/, 'the concealed and the veiled are never marked');
-  assert.match(w, /marks\.push\(\{ key: `peer:\$\{d\.id\}`, at: \[f\[0\], f\[1\] \+ h, f\[2\]\], label: d\.name \?\? '', kind: `\$\{party \? 'party' : 'traveller'\}\$\{isShipMark\(t\?\.p\) \? ' ship' : ''\}\$\{t\?\.p\.tv \? ' journey' : ''\}`, edge: party \|\| !!t, badge: tvBadgeOf\(d\) \}\);/);   // OWS1: at sea, a ship
+  assert.match(w, /marks\.push\(\{ key: `peer:\$\{d\.id\}`, at: \[f\[0\], f\[1\] \+ h, f\[2\]\], label: d\.name \?\? '', kind: `\$\{party \? 'party' : 'traveller'\}\$\{isShipMark\(t\?\.p\) \? ' ship' : ''\}\$\{t\?\.p\.tv \? ' journey' : ''\}`, edge: party \|\| !!t, badge: tvBadgeOf\(d\),\n\s*kin: travellerKin\(\{ friend: !!social\?\.isFriendPeer\(d\.id\), gt: d\.gt \}, myGt\), lv: d\.lv \?\? null \}\);/);   // OWS1: at sea, a ship; PIN MOVED (OW-KIN / OW-WHO)
   assert.match(w, /const tvBadgeOf = \(p\) => \(\{ title: p\.title \?\? null, glyphs: Array\.isArray\(p\.glyphs\) \? p\.glyphs : \[\], lv: p\.lv \?\? null, gt: p\.gt \?\? null, rb: p\.rb \?\? null \}\);/);   // AUDIT-SEATS (PIN MOVED): and a Season's banner ribbon
   assert.match(w, /const namesOff = covered \|\| !!travelView\?\.active;/);
   assert.match(w, /remotePlayers\.nameFrame\(\{\n\s*proj, view, eye, toScene: onlineToScene, covered: namesOff,/);
@@ -538,6 +540,6 @@ test('AUDIT NAMES: the badge reaches the readout through the view\'s own drawHud
   assert.match(w, /const party = !!social\?\.isPartyPeer\(d\.id\), t = sharing\.get\(d\.id\);\n\s*if \(!party && !t && Math\.hypot\(f\[0\] - player\.pos\[0\], f\[2\] - player\.pos\[2\]\) > NAME_RANGE\) continue;/);
   assert.match(w, /for \(const t of book\) \{\n\s*if \(near\.has\(t\.id\)/, 'the region\'s loop reads the same book');
   // N2-3: the switch's gate reads my concealment - the clear goes the frame it takes
-  assert.match(w, /const shown = outdoors && isEnhanced\(\) && getPref\('showToTravellers'\) !== false && link\.room === chatRegionRoom\(_questRegionIndex\(\)\) && !concealBits\(playerEntity\);/);
+  assert.match(w, /const shown = outdoors && isEnhanced\(\) && getPref\('showToTravellers'\) !== false && channelOf\(link\.room\) === chatRegionRoom\(_questRegionIndex\(\)\) && !concealBits\(playerEntity\);/);
   assert.equal(travellerDue({ last: { px: 1, py: 1, m: 0, tv: 0 }, at: 0 }, { now: 1, mark: null, alone: false, shown: false }), 'clear', 'concealed: the mark the relay holds is taken out');
 });

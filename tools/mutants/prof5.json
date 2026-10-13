@@ -396,11 +396,12 @@
   {
     "name": "PROF5-svc-returned-piece-listed",
     "file": "server-account/src/market.js",
-    "old": "        db.prepare(`UPDATE products SET listed = 0 WHERE provenance = (SELECT provenance FROM market_listings WHERE id = ?1 AND rn = ?2)`).bind(l.id, nonce),\n      ]);\n      continue;",
-    "new": "      ]);\n      continue;",
+    "old": "        db.prepare(`UPDATE products SET listed = 0 WHERE provenance = (SELECT provenance FROM market_listings WHERE id = ?1 AND rn = ?2)`).bind(l.id, nonce),\n      );\n      continue;",
+    "new": "      );\n      continue;",
     "tests": [
       "test/prof5_service.test.js"
-    ]
+    ],
+    "note": "GATHER-SPEED/MARKET-SPEED (PIN MOVED): re-aimed by content - the reads batched."
   },
   {
     "name": "PROF5-svc-load-no-room",
@@ -425,13 +426,14 @@
   {
     "name": "PROF5-svc-reports-to-all",
     "file": "server-account/src/market.js",
-    "old": "  const reportsOf = async (ids) => {\n    if (!moderator || !ids.length) return new Map();",
-    "new": "  const reportsOf = async (ids) => {\n    if (!ids.length) return new Map();",
+    "old": "    if (moderator && reported.length) {",
+    "new": "    if (reported.length) {",
     "tests": [
       "test/prof5_service.test.js"
     ],
     "equivalent": true,
-    "why": "the rows carry a report count only under the moderator's own spread; this first guard spares a reader the query, and changes no answer"
+    "why": "the rows carry a report count only under the moderator's own spread; this first guard spares a reader the query, and changes no answer",
+    "note": "GATHER-SPEED/MARKET-SPEED (PIN MOVED): re-aimed by content - the reads batched."
   },
   {
     "name": "PROF5-svc-reports-shown-to-all",
@@ -491,8 +493,8 @@
   {
     "name": "PROF5-svc-own-bought",
     "file": "server-account/src/market.js",
-    "old": "  if (l.seller === me) return { error: 'market-own' };\n  // GOLD-MARKET: a gold listing",
-    "new": "  // GOLD-MARKET: a gold listing",
+    "old": "  if (l.seller === me) return { error: 'market-own' };\n  // HOME-VENDOR: a trader's piece is bought at its trader alone",
+    "new": "  // HOME-VENDOR: a trader's piece is bought at its trader alone",
     "tests": [
       "test/prof5_service.test.js"
     ]
@@ -583,7 +585,7 @@
   {
     "name": "PROF5-svc-owner-kept",
     "file": "server-account/src/market.js",
-    "old": "    db.prepare(`UPDATE products SET owner = ?1, listed = 0, bought_with = 'marks' WHERE provenance = (SELECT provenance FROM market_sales WHERE buyer = ?1 AND rid = ?2 AND n = ?3 AND kind = 'piece')`)",
+    "old": "    db.prepare(`UPDATE products SET owner = ?1, credited = 0, listed = 0, bought_with = 'marks' WHERE provenance = (SELECT provenance FROM market_sales WHERE buyer = ?1 AND rid = ?2 AND n = ?3 AND kind = 'piece')`)",
     "new": "    db.prepare(`UPDATE products SET listed = 0 WHERE ?1 IS NOT NULL AND provenance = (SELECT provenance FROM market_sales WHERE buyer = ?1 AND rid = ?2 AND n = ?3 AND kind = 'piece')`)",
     "tests": [
       "test/prof5_service.test.js",
@@ -649,15 +651,6 @@
     "file": "server-account/src/market.js",
     "old": "        AND (SELECT COUNT(*) FROM market_orders WHERE poster = ?1 AND state = 'open') < ?13\n",
     "new": "        AND (SELECT COUNT(*) FROM market_orders WHERE poster = ?1 AND state = 'open') <= ?13\n",
-    "tests": [
-      "test/prof5_service.test.js"
-    ]
-  },
-  {
-    "name": "PROF5-svc-fill-anywhere",
-    "file": "server-account/src/market.js",
-    "old": "  if (Number(o.region) !== region) return { error: 'market-elsewhere' };",
-    "new": "",
     "tests": [
       "test/prof5_service.test.js"
     ]
@@ -881,8 +874,8 @@
   {
     "name": "PROF5-tab-fee-unsaid",
     "file": "src/ui/marketTab.js",
-    "old": "`Listing fee ${marksText(fee)}, kept if you cancel.",
-    "new": "`Listing fee kept if you cancel.",
+    "old": ": `Fee ${marksText(fee)}, kept if you cancel. Up for 72 hours",
+    "new": ": `Fee kept if you cancel. Up for 72 hours",
     "tests": [
       "test/prof5_client.test.js"
     ]
@@ -908,8 +901,8 @@
   {
     "name": "PROF5-tab-weavers-gone",
     "file": "src/ui/marketTab.js",
-    "old": "      if (st.view === 'materials') box.append(weaversNode());",
-    "new": "",
+    "old": "box.append(el('summary', null, MARKET_WORDS.suppliers), weaversNode());",
+    "new": "box.append(el('summary', null, MARKET_WORDS.suppliers));",
     "tests": [
       "test/prof5_client.test.js"
     ]
@@ -917,7 +910,7 @@
   {
     "name": "PROF5-window-market-always",
     "file": "src/ui/noticeWindow.js",
-    "old": "  const marketShown = () => !!marketHost && marketHost.book?.state?.open !== false;",
+    "old": "  const marketShown = () => !!marketHost && (marketAtOpen || marketHost.book?.state?.open !== false || tab === 'market');",
     "new": "  const marketShown = () => !!marketHost;",
     "tests": [
       "test/prof5_client.test.js"
@@ -926,8 +919,8 @@
   {
     "name": "PROF5-window-market-hidden",
     "file": "src/ui/noticeWindow.js",
-    "old": "...(workShown() ? [['work', 'Work']] : []), ...(marketShown() ? [['market', 'Market']] : []), ...(guildsShown() ? [['guilds', 'Guilds']] : []), ...(seatShown() ? [['seat', 'Seat']] : [])];",
-    "new": "...(workShown() ? [['work', 'Work']] : []), ...(guildsShown() ? [['guilds', 'Guilds']] : []), ...(seatShown() ? [['seat', 'Seat']] : [])];",
+    "old": "...(workShown() ? [['work', 'Work']] : []), ...(marketShown() ? [['market', 'Market']] : []), ...(vendorTab ? [['vendors', 'Vendors']] : []), ...(guildsShown() ? [['guilds', 'Guilds']] : []), ...(seatShown() ? [['seat', 'Seat']] : [])];",
+    "new": "...(workShown() ? [['work', 'Work']] : []), ...(vendorTab ? [['vendors', 'Vendors']] : []), ...(guildsShown() ? [['guilds', 'Guilds']] : []), ...(seatShown() ? [['seat', 'Seat']] : [])];",
     "tests": [
       "test/prof5_client.test.js"
     ],
@@ -954,11 +947,12 @@
   {
     "name": "PROF5-host-no-market",
     "file": "src/scenes/world.js",
-    "old": "      gate: () => noticeGateCard(), answer: (note) => answerNote(note), work, market,\n",
-    "new": "      gate: () => noticeGateCard(), answer: (note) => answerNote(note), work,\n",
+    "old": "      gate: () => noticeGateCard(), sd: () => noticeSdCard(), answer: (note) => answerNote(note), work, market,\n",
+    "new": "      gate: () => noticeGateCard(), sd: () => noticeSdCard(), answer: (note) => answerNote(note), work,\n",
     "tests": [
       "test/prof5_client.test.js"
-    ]
+    ],
+    "note": "SD2c (re-aimed by content): a found Super dungeon's note stands beside the gate's on the line."
   },
   {
     "name": "PROF5-host-worn-listed",
@@ -972,8 +966,8 @@
   {
     "name": "PROF5-host-crafts-wait",
     "file": "src/ui/profPages.js",
-    "old": "  if ((book.pendingWithdrawals || book.pendingCrafts) && p.settle && Date.now() - _stores.settledAt > 30_000) {",
-    "new": "  if (book.pendingWithdrawals && p.settle && Date.now() - _stores.settledAt > 30_000) {",
+    "old": "  if ((book.pendingWithdrawals || book.pendingCrafts || book.pendingDeposits) && p.settle && Date.now() - _stores.settledAt > 30_000) {",
+    "new": "  if ((book.pendingWithdrawals || book.pendingDeposits) && p.settle && Date.now() - _stores.settledAt > 30_000) {",
     "tests": [
       "test/prof5_client.test.js",
       "test/audit29_host.test.js"

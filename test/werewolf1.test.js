@@ -167,7 +167,7 @@ test('WEREWOLF1 (AUDIT C2) a robe with no MODL: Clothing::load reads MODL as opt
   assert.equal(robe?.model, '', 'kept, with no ground mesh');
   assert.equal(robe.parts.length, 5);
   assert.deepEqual(extractArmRecords(fx.esm).clothes.map((c) => c.id), clothingRecords(fx.esm).map((c) => c.id), 'the derived set reads the same');
-  assert.equal(ARM_RECORDS_VERSION, 3, 'a set extracted before is refused and extracted again');
+  assert.ok(ARM_RECORDS_VERSION > 2, 'a set extracted before is refused and extracted again');   // PIN MOVED (MW-SPELLFX1): C2 moved the version to 3 and the magic effects on to 4 - the law is C2's, past 2
   const res = await buildFpArm({ race: 'fprace', werewolf: true, deps: fx.deps });
   assert.equal(res.ok, true, `${res.stage}: ${res.error}`);
   assert.equal(res.third?.ok, true);
@@ -389,9 +389,9 @@ test('WEREWOLF1 a peer: the pose\'s `wb` 1 builds the wolf (holding nothing), ke
 
 test('WEREWOLF1 the host: a werewolf on foot goes to the bodies (so its wolf builds while the rider layer\'s lycanthrope stands for it); the rider layer DEFERS it and settles it after the bodies have stood (AUDIT E4: a skip read before them was the last frame\'s answer); a mounted beast and the wereboar stay the rider layer\'s (mutants: the settle dropped; the wolf kept out of the bodies; the boar deferred)', () => {
   const w = rd('src/scenes/world.js');
-  assert.match(w, /peerRiders\.sync\(seen, onlineToScene, \{ eye: peerEye, right: peerRight, dt, defer: \(d\) => peerIsWolf\(d\.shown\), conceal: veilOf(?:, grow: tvGrow)? \}\);/);   // INVIS-NET (the merge): the drawn, not the whole list; PIN MOVED (OW-PEERS, FIELD BUGS 2026-10-01 #11): and the Overworld's grow
-  assert.match(w, /const afoot = seen\.filter\(\(d\) => !peerRiders\.isRiding\(d\.id\) && !d\.shown\?\.wb \|\| \(peerIsWolf\(d\.shown\) && !d\.shown\.rd\)\);/);
-  const order = ['peerRiders.sync(seen', 'peerBodies.sync(afoot', 'peerRiders.settle((id) => peerBodies.wolfStands(id));', 'remotePlayers.sync(drawable'].map((t) => w.indexOf(t));
+  assert.match(w, /peerRiders\.sync\(seen, onlineToScene, \{ eye: peerEye, right: peerRight, dt, defer: \(d\) => peerIsWolf\(d\.shown\),(?: yields: peerRidesIn3d,)? conceal: veilOf(?:, grow: tvGrow)? \}\);/);   // PIN MOVED, COATS3D: a rider on the 3D horse yielded to the bodies   // INVIS-NET (the merge): the drawn, not the whole list; PIN MOVED (OW-PEERS, FIELD BUGS 2026-10-01 #11): and the Overworld's grow
+  assert.match(w, /const afoot = seen\.filter\(\(d\) => \(peerRidesIn3d\(d\) \|\| !peerRiders\.isRiding\(d\.id\)\) && !d\.shown\?\.wb \|\| \(peerIsWolf\(d\.shown\) && !d\.shown\.rd\)\);/);   // PIN MOVED, AUDIT COATS3D A3: a rider on the 3D horse the bodies' whether or not its sprite stood in last frame
+  const order = ['peerRiders.sync(seen', 'peerBodies.sync(afoot', 'peerRiders.settle((id) => peerBodies.wolfStands(id), (id) => peerBodies.has(id));', 'remotePlayers.sync(visiblePeers'].map((t) => w.indexOf(t));   // PIN MOVED, AUDIT COATS3D A3: and the riders it yielded
   assert.ok(order.every((i, k) => i > 0 && (k === 0 || i > order[k - 1])), `riders, bodies, the settle, then whatever reads the riders (${order})`);
   // the rider layer's own doors
   const riders = createPeerRiders({ renderer: {}, urlFor: () => null, decode: async () => null, art: null });

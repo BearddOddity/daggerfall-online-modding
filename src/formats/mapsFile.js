@@ -158,7 +158,8 @@ export const CLIMATE_BASE_TYPES = Object.freeze({
 });
 
 // ClimateTextureSet nature archives.
-const NATURE = Object.freeze({
+/** The climates' nature sets - their summer archives (DECOR-OUTDOOR: a yard's trees and plants are its climate's). */
+export const CLIMATE_NATURE = Object.freeze({
   RainForest: 500, SubTropical: 501, Swamp: 502, Desert: 503,
   TemperateWoodland: 504, WoodlandHills: 506, HauntedWoodlands: 508,
   Mountains: 510,
@@ -213,7 +214,7 @@ export function getWorldClimateSettings(worldClimate) {
     case CLIMATES.Ocean:
       s.climateType = CLIMATE_BASE_TYPES.Swamp;
       s.groundArchive = 402;
-      s.natureArchive = NATURE.TemperateWoodland;
+      s.natureArchive = CLIMATE_NATURE.TemperateWoodland;
       s.skyBase = 24;
       s.people = FACTION_RACES.Breton;
       break;
@@ -221,63 +222,63 @@ export function getWorldClimateSettings(worldClimate) {
     case CLIMATES.Desert2:
       s.climateType = CLIMATE_BASE_TYPES.Desert;
       s.groundArchive = 2;
-      s.natureArchive = NATURE.Desert;
+      s.natureArchive = CLIMATE_NATURE.Desert;
       s.skyBase = 8;
       s.people = FACTION_RACES.Redguard;
       break;
     case CLIMATES.Mountain:
       s.climateType = CLIMATE_BASE_TYPES.Mountain;
       s.groundArchive = 102;
-      s.natureArchive = NATURE.Mountains;
+      s.natureArchive = CLIMATE_NATURE.Mountains;
       s.skyBase = 0;
       s.people = FACTION_RACES.Nord;
       break;
     case CLIMATES.Rainforest:
       s.climateType = CLIMATE_BASE_TYPES.Swamp;
       s.groundArchive = 402;
-      s.natureArchive = NATURE.RainForest;
+      s.natureArchive = CLIMATE_NATURE.RainForest;
       s.skyBase = 24;
       s.people = FACTION_RACES.Redguard;
       break;
     case CLIMATES.Swamp:
       s.climateType = CLIMATE_BASE_TYPES.Swamp;
       s.groundArchive = 402;
-      s.natureArchive = NATURE.Swamp;
+      s.natureArchive = CLIMATE_NATURE.Swamp;
       s.skyBase = 24;
       s.people = FACTION_RACES.Breton;
       break;
     case CLIMATES.Subtropical:
       s.climateType = CLIMATE_BASE_TYPES.Desert;
       s.groundArchive = 2;
-      s.natureArchive = NATURE.SubTropical;
+      s.natureArchive = CLIMATE_NATURE.SubTropical;
       s.skyBase = 24;
       s.people = FACTION_RACES.Breton;
       break;
     case CLIMATES.MountainWoods:
       s.climateType = CLIMATE_BASE_TYPES.Temperate;
       s.groundArchive = 102;
-      s.natureArchive = NATURE.WoodlandHills;
+      s.natureArchive = CLIMATE_NATURE.WoodlandHills;
       s.skyBase = 16;
       s.people = FACTION_RACES.Breton;
       break;
     case CLIMATES.Woodlands:
       s.climateType = CLIMATE_BASE_TYPES.Temperate;
       s.groundArchive = 302;
-      s.natureArchive = NATURE.TemperateWoodland;
+      s.natureArchive = CLIMATE_NATURE.TemperateWoodland;
       s.skyBase = 16;
       s.people = FACTION_RACES.Breton;
       break;
     case CLIMATES.HauntedWoodlands:
       s.climateType = CLIMATE_BASE_TYPES.Temperate;
       s.groundArchive = 302;
-      s.natureArchive = NATURE.HauntedWoodlands;
+      s.natureArchive = CLIMATE_NATURE.HauntedWoodlands;
       s.skyBase = 16;
       s.people = FACTION_RACES.Breton;
       break;
     default:
       s.climateType = CLIMATE_BASE_TYPES.Temperate;
       s.groundArchive = 302;
-      s.natureArchive = NATURE.TemperateWoodland;
+      s.natureArchive = CLIMATE_NATURE.TemperateWoodland;
       s.skyBase = 16;
       s.people = FACTION_RACES.Breton;
       break;
@@ -421,6 +422,7 @@ export class MapsFile {
 
     dfLocation.regionIndex = region;
     dfLocation.locationIndex = location;
+    worldDataDoor()?.editLocation?.(dfLocation, this);   // ARENA1: the port's own edits (world/arenaCity.js - Daggerfall's cell 4,3), on every layout's read
     return dfLocation;
   }
 
@@ -435,6 +437,8 @@ export class MapsFile {
 
   /** Block name for exterior block at x,y. */
   getRmbBlockName(dfLocation, x, y) {
+    // WD3: the town whose blocks are read next - a town a save keeps in another layout is read in it (systems/layoutPins.js)
+    if (Number.isInteger(dfLocation.regionIndex) && Number.isInteger(dfLocation.locationIndex)) worldDataDoor()?.noteReadingLocation?.(dfLocation.regionIndex, dfLocation.locationIndex);
     const index = y * dfLocation.exterior.exteriorData.width + x;
     return dfLocation.exterior.exteriorData.blockNames[index];
   }
@@ -635,10 +639,39 @@ export class MapsFile {
     return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(0, true);
   }
 
+  /**
+   * WD3: the location as MAPS.BSA holds it - past the world-data door (no replacement served), with its indices set
+   * as getLocation sets them. What a mod's `location-<r>-<i>.json` edit is taken against (formats/worldDataPack.js).
+   * @returns {object|null}
+   */
+  readClassicLocation(region, location) {
+    if (!this.loadRegion(region)) return null;
+    const dfLocation = this._readClassicLocation(region, location);
+    if (!dfLocation) return null;
+    dfLocation.regionIndex = region;
+    dfLocation.locationIndex = location;
+    return dfLocation;
+  }
+
+  /**
+   * AUDIT LANDFORMS III B1: whether the world-data door serves this location in place of MAPS.BSA's own row (a town
+   * pack's) - the answer the door cached when getLocation asked, so a caller that needs every client's same row
+   * (world/landforms.js's sites) re-reads the classic one only where it differs.
+   * @returns {boolean}
+   */
+  locationReplaced(region, location) {
+    return !!worldDataDoor()?.getDFLocationReplacementData(region, location, this);
+  }
+
   _readLocation(region, location) {
-    // Check for replacement location data and use it if found (MapsFile.cs:998-1000 - RR3b: the world-data door)
-    const replacement = worldDataDoor()?.getDFLocationReplacementData(region, location);
+    // Check for replacement location data and use it if found (MapsFile.cs:998-1000 - RR3b: the world-data door);
+    // WD3: the reader is handed over, so a mod's edit can be laid on this location as the BSA holds it
+    const replacement = worldDataDoor()?.getDFLocationReplacementData(region, location, this);
     if (replacement) return replacement;
+    return this._readClassicLocation(region, location);
+  }
+
+  _readClassicLocation(region, location) {
     try {
       const rec = this._regions[region];
       const dfLocation = {

@@ -41,6 +41,7 @@ import { guildActorOf } from './guilds.js';
 import { marksOpenFor, balanceOf, guildBalanceOf } from './marks.js';
 import { profOpenFor, spendStatements, spendableSql, storeOf } from './professions.js';
 import { CHAR_ID_RE } from './service.js';
+import { realmHoldOf, craftHoldOf } from './realm.js';   // CRAFT-HOLD: a commission filled hands a crafted piece to another player
 import { MARKS_MAX, utcDay } from '../../src/net/marksLaw.js';
 import { STORES_MAX } from '../../src/net/professionLaw.js';
 import { material, regionOk } from '../../src/net/nodeLaw.js';
@@ -164,26 +165,39 @@ function commissionReturn(db, id, nowS) {
 
 /** THE GUILD WRITS PAST THEIR DAYS, closed, and every closed writ's escrow home - anyone's Work read runs it; at most
  *  WRIT_SETTLE_MAX a read, one batch each; a treasury the cap cannot take waits. */
-async function closeGuildWrits({ db, nowS }) {
+export async function closeGuildWrits(ctx) {
+  const { db, nowS } = ctx;
   const { results: due = [] } = await db.prepare(`SELECT id FROM guild_writs WHERE (state = 'open' AND expires_at <= ?1)
       OR (state != 'open' AND returned = 0 AND (escrow = 0 OR COALESCE((SELECT balance FROM guild_marks WHERE guild_id = guild_writs.guild_id), 0) + escrow <= ?2))
     ORDER BY expires_at LIMIT ${WRIT_SETTLE_MAX}`).bind(nowS, MARKS_MAX).all();
+  let moved = 0;
   for (const w of due) {
-    await db.batch([
+    if (ctx.budget && !ctx.budget()) break;   // AUDIT SCALE A2: the clock's firing keeps under D1's statements an invocation
+    const out = await db.batch([
       db.prepare(`UPDATE guild_writs SET state = 'expired', closed_at = ?2 WHERE id = ?1 AND state = 'open' AND expires_at <= ?2`).bind(w.id, nowS),
       ...guildWritReturn(db, w.id, nowS),
     ]);
+    if (out.some((r) => Number(r?.meta?.changes ?? 0) > 0)) moved++;
   }
+  // SCALE4b: the service's clock asks again while a full page closed. AUDIT SCALE A2: the writs MOVED - closed or
+  // returned - never the ones picked, so a page that changed nothing is not asked again
+  return moved;
 }
 /** An account's own commissions settled: those past their days closed - those it posted and (AUDIT 31 L1) those naming
  *  it, so a crafter's Yours never shows one open that cannot be filled - those whose crafter is gone declined, and the
  *  escrow of each closed one it posted (not filled) back, under the Marks cap. */
 async function settleCommissions({ db, nowS }, me) {
-  await db.batch([
-    db.prepare(`UPDATE commissions SET state = 'expired', closed_at = ?2 WHERE (poster = ?1 OR crafter = ?1) AND state = 'open' AND expires_at <= ?2`)
-      .bind(me, nowS),
-    db.prepare(`UPDATE commissions SET state = 'declined', closed_at = ?2 WHERE poster = ?1 AND state = 'open' AND crafter IS NULL`).bind(me, nowS),
-  ]);
+  // SCALE4b (2026-10-08): ASKED BEFORE IT IS WRITTEN - both updates went on every Work read, nearly always changing
+  // nothing; one read says whether either has a row to move, and only then do the same two go (market.js settle's law)
+  const due = await db.prepare(`SELECT EXISTS (SELECT 1 FROM commissions WHERE (poster = ?1 OR crafter = ?1) AND state = 'open' AND expires_at <= ?2)
+      OR EXISTS (SELECT 1 FROM commissions WHERE poster = ?1 AND state = 'open' AND crafter IS NULL) AS due`).bind(me, nowS).first();
+  if (Number(due?.due)) {
+    await db.batch([
+      db.prepare(`UPDATE commissions SET state = 'expired', closed_at = ?2 WHERE (poster = ?1 OR crafter = ?1) AND state = 'open' AND expires_at <= ?2`)
+        .bind(me, nowS),
+      db.prepare(`UPDATE commissions SET state = 'declined', closed_at = ?2 WHERE poster = ?1 AND state = 'open' AND crafter IS NULL`).bind(me, nowS),
+    ]);
+  }
   const { results: back = [] } = await db.prepare(`SELECT id FROM commissions WHERE poster = ?1 AND state IN ('withdrawn', 'declined', 'expired') AND returned = 0
       AND COALESCE((SELECT balance FROM marks WHERE account = ?1), 0) + pay <= ?2
     ORDER BY closed_at LIMIT ${WRIT_SETTLE_MAX}`).bind(me, MARKS_MAX).all();
@@ -398,6 +412,10 @@ export async function supplyGuildWrit(ctx, player, env, { character, region, wri
   if (Number(w.region) !== region) return { error: 'writ-elsewhere' };
   if (units > Number(w.left_units)) return { error: 'writ-short' };
   if (!(await deliverMay(db, me, w.guild_id))) return { error: 'writ-own-guild' };
+  // AUDIT CRAFT-HOLD (the exploit audit): a held character's Stores fill no guild's writ - its units handed to another
+  // player's guild for Drakes, as a listing and a buy order (INT3) already refuse
+  const frozen = await realmHoldOf(db, me, character);
+  if (frozen) return frozen;
   const total = units * Number(w.pay);
   // SEAT2b: what of the delivery is bought (spent first) - a seat writ's influence counts its own and its bought apart
   const boughtSpent = w.seat != null ? Math.min(units, Math.max(0, Number((await storeOf(db, me, character, w.material)).bought ?? 0))) : 0;
@@ -644,6 +662,10 @@ export async function fulfilCommission(ctx, player, env, { character, region, co
   const p = await db.prepare('SELECT * FROM products WHERE provenance = ?1').bind(provenance).first();
   if (!p) return { error: 'market-no-record' };   // AUDIT 31 H1: no record at all - never "another owner's"
   if (p.owner !== me) return { error: 'market-not-yours' };
+  // CRAFT-HOLD (the exploit audit): a commission filled hands the piece to its poster, as a sale does - and it asked no
+  // hold at all: a held character (INT3) filled for Drakes what it could neither list nor auction
+  const held = (await realmHoldOf(db, me, character)) ?? (await craftHoldOf(db, me, provenance));
+  if (held) return held;
   if (!commissionFilledBy({ recipe: c.recipe, quality: c.quality == null ? null : Number(c.quality) }, { recipe: p.recipe, quality: Number(p.quality) })) {
     return { error: 'commission-piece' };
   }
@@ -668,7 +690,7 @@ export async function fulfilCommission(ctx, player, env, { character, region, co
         AND COALESCE((SELECT balance FROM marks WHERE account = ?2), 0) + ?10 <= ?11`)
       .bind(id, me, nowS, provenance, character, tax, rid, nonce, region, pay, MARKS_MAX),
     // the piece the poster's, on its way to them at once (a delivery, PROF5's)
-    db.prepare(`UPDATE products SET owner = (SELECT poster FROM commissions WHERE id = ?1 AND fn = ?2), listed = 0, bought_with = 'marks'
+    db.prepare(`UPDATE products SET credited = 0, owner = (SELECT poster FROM commissions WHERE id = ?1 AND fn = ?2), listed = 0, bought_with = 'marks'
       WHERE provenance = (SELECT provenance FROM commissions WHERE id = ?1 AND fn = ?2)`).bind(id, nonce),   // GOLD-MARKET: bought with Drakes
     db.prepare(`INSERT OR IGNORE INTO market_deliveries (id, player, char_id, provenance, wear, why, from_region, arrives_at, at)
       SELECT id, poster, poster_char, provenance, ?3, 'bought', region, ?4, ?4 FROM commissions WHERE id = ?1 AND fn = ?2`).bind(id, nonce, WEAR_WHOLE, nowS),
@@ -796,6 +818,9 @@ async function moveGuildStores(ctx, player, env, { character, material: key, uni
   const g = a.me.guild_id;
   // AUDIT 31 R1: any member takes back their own deposit; the rest is an Officer's or the Guildmaster's
   if (kind === 'withdraw' && !guildTakeMay(rank, units, await ownDeposit(db, g, key, me, character))) return { error: 'guild-stores-mine' };
+  // AUDIT CRAFT-HOLD (the exploit audit): nor go into its guild's Stores - where an Officer, another of the account's
+  // characters among them, takes them out as bought units its own
+  if (kind === 'deposit') { const held = await realmHoldOf(db, me, character); if (held) return held; }
   if (await acting(ctx, player)) return { error: 'writ-rate' };
   const who = displayName(player);
   const nonce = mintId(rand);

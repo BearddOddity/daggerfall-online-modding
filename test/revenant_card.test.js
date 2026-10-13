@@ -257,8 +257,8 @@ test('REVENANT-PAGE: the living strongest first - name, rank, kind and trait, wh
     assert.equal(P.revenantPageShown(player('char-none')), false, 'off and none: no page on the rail');
   } finally { P._setRevenantPageIconForTests(null); delete globalThis.document; }
   const m = read('src/ui/enhancedMenu.js');
-  assert.match(m, /\.\.\.\(revenantPageShown\(playerEntity\) \? REVENANT_PAGE_SECTIONS : \[\]\)/, 'on the Stats rail');
-  assert.match(m, /revenants: \(d\) => drawRevenantsPage\(d, render, \{ \.\.\.profKit, player: playerEntity, kindName: enemyDisplayName \}\)/);
+  assert.match(m, /\.\.\.\(revenantPageShown\(playerEntity\) \? REVENANT_PAGE_SECTIONS : \[\]\)/, 'on the Holdings rail');   // PIN MOVED (HOLDINGS): off the Stats rail onto the Holdings tab's (test/holdings.test.js)
+  assert.match(m, /revenants: \(d\) => drawRevenantsPage\(d, render, \{ \.\.\.kit, player: playerEntity, kindName: enemyDisplayName \}\)/);   // PIN MOVED (HOLDINGS): the Holdings page's kit
 });
 
 test('REVENANT-HARM: a death no blow names goes to the foe whose harm last reached me - a spell, a lingering round, a blow (its poison\'s ticks after); a killing blow outranks the mark; a mark past its time names nobody (mutants: no mark read; the mark outranking the blow; no time limit)', async () => {
@@ -274,7 +274,7 @@ test('REVENANT-HARM: a death no blow names goes to the foe whose harm last reach
   assert.equal(N.livingRevenants().length, 1); assert.equal(mage.revenant?.id, N.livingRevenants()[0].id, 'the caster');
   assert.equal(N.livingRevenants()[0].gender, 'female', 'its record off the pool');
   // a blow outranks the mark
-  me.health = 100;
+  me.health = 99;   // PIN MOVED (FULL-GUARD, FIELD BUGS 2026-10-11b): a foe's blow from full health leaves me at 1 - a point short of full, it kills
   H.markPlayerHarm(mage);
   setStruck(brute, me, 500); hurtPlayer(me, 500);
   await tick();
@@ -298,7 +298,9 @@ test('REVENANT-DUNGEON, REVENANT-WIRE, the single-location host: a special foe o
   assert.match(d, /const _flee = f\.fleeing \|\| \(!f\._fleeRolled && revenantFleeHealth\(f\.entity\)\) \? revenantFleeStep\(f, _pf, \{ mayRun: !onlineRoom\(\) \|\| !_roomFoe, onMe: /, 'the one flee law - mine alone, never a room\'s shared foe');
   assert.match(d, /if \(_flee === 'escape'\) \{ escapeDungeonFoe\(f\); continue; \}/);
   assert.match(d, /if \(_flee === 'start' \|\| _flee === 'run'\) _tgt = null;/, 'running, it aims at nothing; its walk below');
-  assert.match(d, /function escapeDungeonFoe\(f(?:, \{ slip = false \} = \{\})?\) \{\s*\n\s*questPoolOps\.removeFoe\(f\);/);
+  // PIN MOVED (RVN3: the unbroken's escape - the same door, its own words)
+  // PIN MOVED (RVN7d: its band scatters first - bible/12-Enhanced-AI/Feud-Arc.md 17, 18.4)
+  assert.match(d, /function escapeDungeonFoe\(f(?:, \{ slip = false(?:, unbroken = false)? \} = \{\})?\) \{\s*\n(?:\s*scatterDungeonBand\(f\);[^\n]*\n)?\s*questPoolOps\.removeFoe\(f\);/);
   assert.match(d, /if \(foe\.entity\?\.revenant\) \{ const nr = revenantSlain\(playerEntity, foe\.entity\);/);
   // the wire
   const base = { i: 1, t: 7, x: 0, f: [0, 0, 0], y: 0 };
@@ -309,8 +311,8 @@ test('REVENANT-DUNGEON, REVENANT-WIRE, the single-location host: a special foe o
   assert.equal(validFoeRecord({ ...base, nm: 7 }), null);
   const x = read('src/scenes/exteriorFoes.js');
   assert.match(x, /\.\.\.\(!onWatch && typeof f\.entity\?\.revenant\?\.name === 'string' && f\.entity\.revenant\.name \? \{ nm: /, 'the owner sends it');
-  assert.match(x, /\$\{r\.z \?\? 0\},\$\{r\.nm \?\? ''\}(?:,\$\{r\.yd \?\? 0\},\$\{r\.ex \?\? 0\},\$\{r\.sp \?\? 0\})?`;/, 'a changed name is sent again (REVENANT-FATE: and a kneel, a burning or an oath begun)');
-  assert.match(x, /if \(typeof r\.nm === 'string' && r\.nm && f\.entity\.revenant\?\.name !== r\.nm\) f\.entity\.revenant = \{ id: null, name: r\.nm, rank: 0 \};/, 'the puppet called so');
+  assert.match(x, /\$\{r\.z \?\? 0\},\$\{r\.nm \?\? ''\}(?:,\$\{r\.yd \?\? 0\},\$\{r\.ex \?\? 0\},\$\{r\.sp \?\? 0\})?(?:,\$\{r\.ad \?\? 0\},\$\{r\.wq \?\? -1\},\$\{r\.p2 \?\? 0\},\$\{r\.rt \?\? -1\}(?:,\$\{r\.rb \?\? 0\})?)?(?:\$\{r\.wk !== undefined[^\n]*blowWireKey\(r\)[^\n]*\})?`;/, 'a changed name is sent again (REVENANT-FATE: and a kneel, a burning or an oath begun; PIN MOVED - TELL8: and a wind-up)');   // PIN MOVED (FEUD WIRE: and its blows, `rb`)
+  assert.match(x, /if \(typeof r\.nm === 'string' && r\.nm && f\.entity\.revenant\?\.name !== r\.nm\) \{? ?f\.entity\.revenant = \{ id: null, name: r\.nm, rank: 0 \};/, 'the puppet called so');   // PIN MOVED (RVN13: and its wire's own stood again)
   // the single-location host
   const e = read('src/scenes/exterior.js');
   assert.match(e, /revenantPresence\(exteriorFoes\.foes, \{ now \}\);\s*\n\s*revenantSay\(takeRevenantNotice\(playerEntity\), \(l\) => townTalk\.say\(l\)\);/);

@@ -18,7 +18,7 @@ import { riteLocalOf } from '../src/net/gateRite.js';
 import { RITE_TENT_R, RITE_BRAZIER_R, RITE_FIRE_R } from '../src/world/riteModel.js';
 import { wodPiecewise, WOD_SITE_OBJECT_RADIUS_M } from '../src/world/roadClearance.js';
 import { PIXEL_M, gateSpotLocal, GATE_SPOT_SPREAD_M } from '../src/net/gateLaw.js';
-import { PLINTH_R } from '../src/world/gateModel.js';
+import { GATE_HALF_W } from '../src/world/gateModel.js';
 import { GATE_LANDING_M } from '../src/world/gateArena.js';
 import { CAGE_R, BROKER_BOX_HX, BROKER_BOX_HZ } from '../src/scenes/sigilBrokerPool.js';   // BROKER-CAGE: she stands caged at the faithful's circle
 import { LocationSession, pickLocations } from '../src/world/wodLocationLoader.js';
@@ -33,7 +33,7 @@ const site = (day, px, py, x, z) => ({ day, px, py, spot: [x, z] });
 
 test('GATE-CLEAR: the clearing holds the gate and its way home (BROKER-CAGE: the Broker\'s cage the circle\'s), and is a gate site\'s pixel and spot', () => {
   assert.equal(GATE_CLEAR_M, 24);
-  assert.ok(GATE_CLEAR_M >= PLINTH_R * 2, 'twice the plinth at least');
+  assert.ok(GATE_CLEAR_M >= GATE_HALF_W * 2, 'GATE-FBX: twice the stone\'s reach at least, its spines\' points and all');
   assert.ok(GATE_CLEAR_M > GATE_LANDING_M + 8, 'the way home lands on open ground');
   assert.ok(RITE_CLEAR_M > CAGE_R + Math.hypot(BROKER_BOX_HX, BROKER_BOX_HZ) + 4, 'BROKER-CAGE: the Broker\'s cage stands in the circle\'s clearing, clear of any rock');
   const c = gateClearFor(site(538, 412, 207, 300.5, 511.25));
@@ -248,11 +248,12 @@ test('GATE-CLEAR over the shipped lists: a gate\'s spot DOES land in the mod\'s 
 test('GATE-CLEAR by source: the build reads the clearing once and asks it at the pick, of each piece and flat before it stands, and remembers what it cost; the sweep runs between builds; the clearing is the omen\'s own roll, online alone', () => {
   const w = rd('src/scenes/world.js');
   assert.equal(w.match(/_gateClearNow\(\)/g)?.length, 3, 'read by the build, by the sweep and by the hub\'s word of the site (DISCORD-GATES) - nowhere else');
-  assert.match(w, /const gateClear = _gateClearNow\(\);\n\s*const gateLedger = \{ refused: false, reach: \[\] \};[^\n]*\n\s*const gateSite = gateSiteTest\(gateClear, px, py, gateLedger\);\n\s*if \(wod && await wodOpened\) \{/, 'read once, before the pick');
+  assert.match(w, /const gateClear = _gateClearNow\(\);\n\s*const gateLedger = \{ refused: false, reach: \[\] \};[^\n]*\n\s*const gateSite = gateSiteTest\(gateClear, px, py, gateLedger\);\n\s*if \(wod && onTheBay\(px, py\) && await wodOpened\) \{/, 'read once, before the pick');   // PIN MOVED (AUDIT CAPTAIN'S SEA G8): the pick the Bay's alone
   assert.match(w, /\}, wodPathsPoint, \(name, prefab, rect\) => wodSiteClear\(terrainGen\.roads\(\), px, py, name, prefab, rect\) && gateSite\(name, prefab, rect\)\);/, 'the road asked first, then the gate');
   assert.match(w, /\{ _wodOffRoad\+\+; continue; \}\n(?:\s*\/\/[^\n]*\n)*\s*if \(boxNearGate\(gateClear, px, py, box\[0\], box\[2\], box\[3\], box\[5\]\)\) \{ gateLedger\.refused = true; _wodOffGate\+\+; continue; \}\n\s*gateLedger\.reach\.push\(box\[0\], box\[2\], box\[3\], box\[5\], 0\);\n\s*unionBox\(box\);/,
     'a piece whose mesh box reaches the clearing is refused before it joins the bounds, the batch or the collider - and what stands is kept');
-  assert.match(w, /for \(const f of place\.flats\) \{\n[^\n]*_wodOffRoad\+\+; continue; \}[^\n]*\n\s*if \(pointNearGate\(gateClear, px, py, f\.base\[0\], f\.base\[2\], WOD_FLAT_GATE_CLEAR_M\)\) \{ gateLedger\.refused = true; _wodOffGate\+\+; continue; \}[^\n]*\n\s*gateLedger\.reach\.push\(f\.base\[0\], f\.base\[2\], f\.base\[0\], f\.base\[2\], WOD_FLAT_GATE_CLEAR_M\);\n\s*if \(f\.scale\.x === 1/,
+  // PIN MOVED (VERGE1, 2026-10-07): the clear roadsides' ask may stand between the road's and the gate's - a road refusal too
+  assert.match(w, /for \(const f of place\.flats\) \{\n[^\n]*_wodOffRoad\+\+; continue; \}[^\n]*\n(?:\s*\/\/[^\n]*\n|\s*if \(vergeNet && [^\n]*\{ _wodOffRoad\+\+; continue; \}\n)*\s*if \(pointNearGate\(gateClear, px, py, f\.base\[0\], f\.base\[2\], WOD_FLAT_GATE_CLEAR_M\)\) \{ gateLedger\.refused = true; _wodOffGate\+\+; continue; \}[^\n]*\n\s*gateLedger\.reach\.push\(f\.base\[0\], f\.base\[2\], f\.base\[0\], f\.base\[2\], WOD_FLAT_GATE_CLEAR_M\);\n\s*if \(f\.scale\.x === 1/,
     'a flat too, before it is added');
   assert.match(w, /gateClearKey: gateClear\?\.key \?\? null,[^\n]*\n\s*gateRefused: gateLedger\.refused,[^\n]*\n\s*wodReach: gateLedger\.reach\.length \? Float32Array\.from\(gateLedger\.reach\) : null,/);
   assert.match(w, /built\.set\(key, \{[\s\S]{0,9000}\n\s*for \(const pile of wodKept\.piles \?\? \[\]\) standWodPile\(key, wodLife, pile\);[^\n]*\n\s*gateClearSweep\.published\(key, gateClear\?\.key\);/, 'asked as it publishes');

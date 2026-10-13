@@ -182,7 +182,7 @@
   {
     "name": "PROF3-law-lines-any-item",
     "file": "src/net/recipeLaw.js",
-    "old": "  if (!item || typeof item.provenance !== 'string' || !PROVENANCE_RE.test(item.provenance)) return [];",
+    "old": "  if (!item || typeof item.provenance !== 'string' || !PROVENANCE_RE.test(item.provenance)) return Number.isInteger(item?.quality) && item.quality > 1 && item.quality < MASTERWORK ? [QUALITY_NAMES[item.quality]] : [];",
     "new": "  if (!item) return [];",
     "tests": [
       "test/prof3_law.test.js"
@@ -222,7 +222,7 @@
   {
     "name": "PROF3-record-kit-quality",
     "file": "src/net/productRecord.js",
-    "old": "(!takesQuality(r) ? c.q !== -1 : c.q < 0 || c.q > MASTERWORK)",
+    "old": "(!rollsQuality(r) ? c.q !== -1 : (c.q < 0 || c.q > MASTERWORK) && !(r.kind === 'kit' && c.q === -1))",
     "new": "(c.q < -1 || c.q > MASTERWORK)",
     "tests": [
       "test/prof3_law.test.js"
@@ -434,9 +434,9 @@
   },
   {
     "name": "PROF3-kit-least-worn",
-    "file": "src/systems/smithItems.js",
-    "old": "worn(b) - worn(a) || conditionShare(a) - conditionShare(b));",
-    "new": "worn(b) - worn(a) || conditionShare(b) - conditionShare(a));",
+    "file": "src/systems/itemTemplates.js",
+    "old": "wornFirst(b) - wornFirst(a) || conditionShare(a) - conditionShare(b);",
+    "new": "wornFirst(b) - wornFirst(a) || conditionShare(b) - conditionShare(a);",
     "tests": [
       "test/prof3_client.test.js"
     ]
@@ -444,7 +444,7 @@
   {
     "name": "PROF3-kit-unclamped",
     "file": "src/systems/smithItems.js",
-    "old": "  it.currentCondition = Math.min(kitCeiling(it), it.currentCondition + Math.ceil(it.maxCondition * (kit.fieldKit === true ? FIELD_KIT_REPAIR : KIT_REPAIR)));   // KIT-CEILING: never past three quarters",
+    "old": "  it.currentCondition = Math.min(kitCeiling(it, kit), it.currentCondition + Math.ceil(it.maxCondition * (kit.fieldKit === true ? FIELD_KIT_REPAIR : KIT_REPAIR)));",
     "new": "  it.currentCondition = it.currentCondition + Math.ceil(it.maxCondition * (kit.fieldKit === true ? FIELD_KIT_REPAIR : KIT_REPAIR));",
     "tests": [
       "test/prof3_client.test.js"
@@ -471,7 +471,7 @@
   {
     "name": "PROF3-name-no-mark",
     "file": "src/systems/itemInfo.js",
-    "old": "  if ((item?.quality === 4 || item?.marked === true) && typeof item.maker === 'string' && item.maker && makerName(item.maker) === item.maker\n    && typeof item.provenance === 'string' && PROVENANCE_RE.test(item.provenance)) return",
+    "old": "  if ((item?.quality === 4 || item?.marked === true) && typeof item.maker === 'string' && item.maker && makerMark(item.maker) === item.maker\n    && typeof item.provenance === 'string' && PROVENANCE_RE.test(item.provenance)) return",
     "new": "  if (false) return",
     "tests": [
       "test/prof3_client.test.js"

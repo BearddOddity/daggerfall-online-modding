@@ -43,6 +43,7 @@
 // stop - so the swap takes the same snapshot-and-bill the window
 // takes, around the one equip it makes.
 import { isPotion, isDrug, isLightSource, useItem, USE_PENDING } from './useItem.js';   // ...and the ladder's own stand-ins for a host that handed no hook
+import { walletContents, walletLines, refreshWalletSilver } from './walletItem.js';   // WALLET1: the wallet pressed says what it holds
 import { equipItem, equipTableOf, EQUIP_SLOTS, isBrokenItem, isForbiddenEquip, isEquipped, unequipSlot, oneEquipAct,
   getItemHands, ITEM_HANDS, getEquipSlot,   // UI2: the equip table's own answer - which pieces a slot of the body takes
   equipDelaySnapshot, billEquipDelayOnClose, ITEM_BROKEN_TEXT_ID, FORBIDDEN_EQUIPMENT_TEXT_ID } from './equip.js';
@@ -50,10 +51,13 @@ import { isShieldTemplate } from './armorMaterials.js';
 import { itemLongName, conditionPercentage } from './itemInfo.js';
 import { isEnchanted } from './inventory.js';   // UI2: an enchanted piece shows its wear (its powers spend its condition - the pack's rule)
 import { shownSpellName } from './loot.js';   // L10N3e: a slotted spell's name as the book shows it - the stored name stays the canonical one
+import { isAmmunition } from './itemTemplates.js';   // THUNDERLOCK-ART: a stack of shot shows its count, never a wear bar (the pack's rule)
 
 import { expandRowValues } from './quest/questMacros.js';   // MACROS1: a used item's record through its own context (%map)
 import { racialSuppressInventory, LYCANTHROPY_SPELL_TAG } from './lycanthropy.js';   // DISC10-E L3: the pack's refusal, at the two doors that reach into it; HB-LYCFREE: the curse's free spell
+import { BOOK_TEMPLATE } from './books.js';   // AUDIT CARDS-5 C3: a book keyed by its text
 import { hotbarInForce } from './uiSkin.js';   // AUDIT CONTRIB H1: the diamond put away while the hotbar is
+import { noteFirstUse } from './tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 /** The slots a player fills. The two consumables are what the diamond's
  *  top and bottom cells show; `swap` is the second weapon the off-hand
  *  cell offers when the off hand is empty. */
@@ -145,7 +149,10 @@ function computeKey(item) {
   const affixes = Array.isArray(item.affixes) && item.affixes.length ? JSON.stringify(item.affixes) : '';
   return [item.group ?? '', item.templateIndex ?? '', item.material ?? '', item.potionRecipeKey ?? '',
     item.legendary ?? '', ench, custom, affixes, item.aetheric ?? ''].join('|')   // SET6: an Aetheric piece's record, as a Legendary's
-    + (item.potent ? `|p${item.potent}` : '');   // AUDIT PROF12 A2: a Potent potion's share (set at the mint - the cache holds), so a slot and its count keep Potent and plain apart; AUDIT PROF-541 Q1: only when set, so a save's plain keys still resolve
+    + (item.gilded ? `|g${item.gilded}` : '')   // GILDED1: a Gilded piece's record - only when set, so a save's keys still resolve
+    + (item.potent ? `|p${item.potent}` : '')   // AUDIT PROF12 A2: a Potent potion's share (set at the mint - the cache holds), so a slot and its count keep Potent and plain apart; AUDIT PROF-541 Q1: only when set, so a save's plain keys still resolve
+    + (typeof item.card === 'string' ? `|c${item.card}` : '')
+    + (item.templateIndex === BOOK_TEMPLATE && item.message != null ? `|m${item.message}` : '');   // AUDIT CARDS-5 C3: a book's own text (books.js `message = id`) - two titles are two books on the bar   // AUDIT CARDS-5 C3: a card's own card - a Rat and a Lamia are two kinds (only when set, so every other key stands)
 }
 
 /** What a consumable slot takes: a potion or a drug - the two arms of
@@ -196,13 +203,15 @@ const packOf = (entity) => (Array.isArray(entity?.items) ? entity.items : []);
  *  the kind (what a use consumes) and the count of every one. Null
  *  when the slot is unassigned; a GHOST (item null, count 0) when the
  *  kind is assigned and the pack holds none. */
+/** AUDIT REST-PARTY B7: a record that carries charges (a condition with a maximum) and has none left. */
+const spentCharges = (it) => (it.maxCondition ?? 0) > 0 && (it.currentCondition ?? 0) <= 0;
 export function resolveConsumable(entity, slot) {
   const e = state[slot];
   if (!e) return null;
   let item = null; let count = 0;
   for (const it of packOf(entity)) {
     if (quickslotKey(it) !== e.key) continue;
-    if (!item) item = it;
+    if (!item || (spentCharges(item) && !spentCharges(it))) item = it;   // AUDIT REST-PARTY B7: a charged kind (a Campfire, a Bedroll) answers with one that has charges left - an empty Campfire stays in the pack by design, and pressed first it was the one handed to the ground and refused
     count += Math.max(0, it.stackCount ?? 1);
   }
   // AUDIT CONTRIB H2: the LIT one of the kind first - using a light is lighting that record, and pressing the kind
@@ -321,7 +330,7 @@ export function emptySlotLine({ weapon = null, sheathed = false, readyKey = null
   return weapon && sheathed && readyKey ? `${QUICKSLOT_TEXT.emptySlot} ${QUICKSLOT_TEXT.readyWeapon(readyKey)}` : QUICKSLOT_TEXT.emptySlot;
 }
 
-export function useQuickslot(slot, opts = {}) { return (_performed = useQuickslotNow(slot, opts)); }   // AUDIT CONTRIB H3: what the press did, for the hotbar's flash
+export function useQuickslot(slot, opts = {}) { noteFirstUse('quickslots'); return (_performed = useQuickslotNow(slot, opts)); }   // TUT1: the first slot pressed   // AUDIT CONTRIB H3: what the press did, for the hotbar's flash
 function useQuickslotNow(slot, { entity = null, items = null, hooks = {}, say = null } = {}) {
   if (!CONSUMABLE_SLOTS.includes(slot)) throw new Error(`quickslots: ${slot} is not a consumable slot`);
   // DISC10-E L3: a quickslot USE is the inventory window's Use arm
@@ -364,7 +373,19 @@ function useQuickslotNow(slot, { entity = null, items = null, hooks = {}, say = 
     if (hooks.placeCamp(res.item ?? r.item, pack) === false) return { kind: 'refused', name: r.name, result: res };
     return { kind: 'used', name: r.name, result: res };
   }
-  if ((res?.kind === 'book' || res?.kind === 'spellbook' || res?.kind === 'pitchCamp' || res?.kind === 'placeFire') && USE_PENDING[res.kind]) {
+  if (res?.kind === 'openPortal' && typeof hooks.openPortal === 'function') {   // PORTAL1: the host's travel map, or its refusal in words
+    if (hooks.openPortal(res.item ?? r.item, pack) === false) return { kind: 'refused', name: r.name, result: res };
+    return { kind: 'used', name: r.name, result: res };
+  }
+  // WALLET1: the wallet says what it holds on the HUD's line - a slot has no window to open its sheet in; AUDIT 625 W5:
+  // and asks the account's silver afresh for the next press, as the classic box asks it for the next look (a line
+  // cannot be redrawn) - it never asked, so a book no other door had asked left every press without a figure
+  if (res?.kind === 'wallet') {
+    say?.(walletLines(walletContents(pack, entity)).slice(1).join(' · '));
+    refreshWalletSilver();
+    return { kind: 'used', name: r.name, result: res };
+  }
+  if ((res?.kind === 'book' || res?.kind === 'spellbook' || res?.kind === 'pitchCamp' || res?.kind === 'placeFire' || res?.kind === 'openPortal') && USE_PENDING[res.kind]) {
     say?.(USE_PENDING[res.kind]);
     return { kind: 'refused', name: r.name, result: res };
   }
@@ -903,6 +924,7 @@ export function restoreQuickslotSaveData(data) {
       if (e.type === 'spell' && Number.isFinite(e.index)) hotbar[i] = { type: 'spell', index: e.index, name: e.name, ...iconOf(e) };   // UI2: and its icon
       else if (e.type === 'item' && typeof e.key === 'string' && HOTBAR_KINDS.includes(e.kind)) {
         hotbar[i] = { type: 'item', kind: e.kind, key: e.key, name: e.name };
+        if (OLD_BOOK_KEY.test(e.key)) _oldBookKeys = true;
       }
     });
   }
@@ -1029,7 +1051,7 @@ export function setHotbarSlot(i, entry) {
 }
 
 export function clearHotbarSlot(i) { assertHot(i); if (hotbar[i]) { hotbar[i] = null; hotbarRev++; } }
-export function clearHotbar() { hotbar.fill(null); hotbarRev++; }
+export function clearHotbar() { hotbar.fill(null); hotbarRev++; _oldBookKeys = false; }
 
 /** Two slots trade places - the drag from one filled slot onto another. */
 export function swapHotbarSlots(a, b) {
@@ -1057,7 +1079,23 @@ export const firstFreeHotbarSlot = (size = HOTBAR_SIZE) => { const i = hotbar.fi
  *  in hand (an equipped weapon, the lit light). A SPELL slot carries the
  *  live record and `active` when it is the readied one. `ghost` is a
  *  kind the pack or the book no longer holds. */
+/** AUDIT CARDS-5 C3: A BOOK SLOTTED BEFORE ITS KEY CARRIED ITS TEXT (`|m`): a save's bare book key, found again by the
+ *  title it was slotted under - once, the first pack it can be read against (a title not carried stays a ghost). */
+const OLD_BOOK_KEY = new RegExp(`^[^|]*\\|${BOOK_TEMPLATE}\\|{7}$`);
+let _oldBookKeys = false;
+function rekeyOldBooks(entity) {
+  const pack = packOf(entity);
+  if (!pack.length) return;
+  _oldBookKeys = false;
+  for (const e of hotbar) {
+    if (e?.type !== 'item' || !OLD_BOOK_KEY.test(e.key)) continue;
+    const it = pack.find((x) => x?.templateIndex === BOOK_TEMPLATE && itemLongName(x) === e.name && quickslotKey({ ...x, message: undefined }) === e.key);
+    if (it) { e.key = quickslotKey(it); hotbarRev++; }
+  }
+}
+
 export function hotbarView(entity, { readiedIndex = null, size = HOTBAR_CAPACITY } = {}) {
+  if (_oldBookKeys) rekeyOldBooks(entity);
   const pack = packOf(entity);
   const book = bookOf(entity);
   const lit = entity?.lightSource ?? null;
@@ -1084,7 +1122,8 @@ export function hotbarView(entity, { readiedIndex = null, size = HOTBAR_CAPACITY
       const spell = book.find((sp) => sp?.index === e.index) ?? null;
       return { slot: i, type: 'spell', name: shownSpellName(spell) || shownSpellName(e), index: e.index, spell,   // L10N3e: drawn, so as shown
         element: spell?.element ?? null, rangeType: spell?.rangeType ?? null,
-        icon: iconOf(spell).icon ?? e.icon ?? null,   // UI2: the book's icon, else the one it was slotted with
+        icon: spell?.noIcon ? null : iconOf(spell).icon ?? e.icon ?? null,   // UI2: the book's icon, else the one it was slotted with (NO-ICON: none)
+        noIcon: !!spell?.noIcon,
         ghost: !spell, active: readiedIndex != null && readiedIndex === e.index };
     }
     const b = byKey.get(e.key);
@@ -1103,9 +1142,11 @@ export function hotbarView(entity, { readiedIndex = null, size = HOTBAR_CAPACITY
 
 /** UI2: which slots show their piece's wear - the kinds that wear in use (a weapon, a shield, a light), and of the worn
  *  pieces what the pack's tile shows a bar on (armour, and anything enchanted: its powers spend its condition). Never
- *  a gem, a book or a potion - a bar on everything is the noise the bar exists to cut. */
-const showsWear = (kind, item) => kind === 'weapon' || kind === 'shield' || kind === 'light'
-  || item.group === 'Armor' || isEnchanted(item);   // AUDIT UI B6: anything enchanted - the Sanguine Rose spends its condition as a ring does (the pack's wearPct)
+ *  a gem, a book or a potion - a bar on everything is the noise the bar exists to cut. THUNDERLOCK-ART: and never
+ *  ammunition, the pack's own word (ui/enhancedInventory.js wearPct: "an arrow is spent, not worn") - a stack of arrows
+ *  or pellets slotted as a weapon drew a bar under its count, the two on top of each other. */
+const showsWear = (kind, item) => !isAmmunition(item) && (kind === 'weapon' || kind === 'shield' || kind === 'light'
+  || item.group === 'Armor' || isEnchanted(item));   // AUDIT UI B6: anything enchanted - the Sanguine Rose spends its condition as a ring does (the pack's wearPct)
 
 /** Point one of the diamond's own slots at `entry` for the length of
  *  `fn`, then put it back - the whole of how the hotbar reaches the
@@ -1149,6 +1190,7 @@ export function hotbarReady(entity, i) {
  */
 export function hotbarPress(i, { entity = null, doors = {}, say = null } = {}) {
   assertHot(i);
+  if (_oldBookKeys) rekeyOldBooks(entity);
   const e = hotbar[i];
   if (!e) { say?.(HOTBAR_TEXT.emptySlot); return { kind: 'empty' }; }
   // AUDIT CONTRIB H3: each arm answers what its PERFORMER did, not that the door was reached - the doors answer

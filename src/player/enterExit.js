@@ -76,15 +76,58 @@ function closest(points, p) {
   return best;
 }
 
+/** FIELD BUGS 2026-10-04d VOID-ENTRY: `points` nearest `p` first, in `closest`'s own measure - so the first is its pick
+ *  (the sort is stable, and a tie keeps the array's order as its strict `<` does). */
+function byDistance(points, p) {
+  return points.map((point) => {
+    const dx = point.pos[0] - p[0];
+    const dy = point.pos[1] - p[1];
+    const dz = point.pos[2] - p[2];
+    return { point, d: dx * dx + dy * dy + dz * dz };
+  }).sort((a, b) => a.d - b.d).map((e) => e.point);
+}
+
+/** FIELD BUGS 2026-10-04d VOID-ENTRY: what DaggerfallUI.AddHUDText says when TransitionInterior cannot lay a building
+ *  out (PlayerEnterExit.cs:723-729, "use that old chestnut") - Internal_Strings `thisHouseHasNothingOfValue`
+ *  (Internal_Strings_en.asset m_Id 8). The port says it for a room that stands nowhere it could be landed in, too. */
+export const NOTHING_OF_VALUE_TEXT = 'This house has nothing of value.';
+/** FIELD BUGS 2026-10-04d VOID-ENTRY: the failsafe's own line (the port's - DFU has no failsafe): a body that fell
+ *  below everything a building stands on is stood again at the door it came in by. */
+export const INTERIOR_VOID_TEXT = 'There was no floor beneath you. You are back at the door.';
+/** FIELD BUGS 2026-10-04d VOID-ENTRY: how far under the lowest triangle a building has a body may be before it is in
+ *  the void - nothing can stand it there, and a room's collider has no ground of its own to catch it. */
+export const INTERIOR_VOID_DROP = 10;
+
 /**
  * Verbatim TransitionInterior landing: exterior door world pos ->
  * closest enter marker -> closest interior door + normal * 0.75, with
  * the marker + up * 1.08 fallback.
+ *
+ * FIELD BUGS 2026-10-04d VOID-ENTRY ("Entering a house sent me to the
+ * void", Warvale): `standsAt(p)` - is there a floor under p (the host
+ * asks standsOnFloor over the room's collider). Beautiful Villages and
+ * Beautiful Cities keep a copy of the building's own EXTERIOR model -
+ * sometimes another building's - inside the room, and its door faces
+ * OUT, as every exterior door does. Where it is the interior door
+ * nearest the enter marker, DFU's landing stands 0.75 outside the room
+ * over nothing (SetStanding's ray finds no floor, PlayerEnterExit.cs
+ * :1240-1254, and the room has no ground): 146 of the 10,309 entries of
+ * both packs (Warvale's GENRAS00 #1, #2 and #7), 16 of Daggerfall's own
+ * 11,452 (floorless halves of rooms in ten blocks no location places -
+ * ALCHAS00/01/03 and their kin, AUDIT FB1007b T1; FIELD BUGS 2026-10-07b
+ * TOWER-FLOORS stood two more on their floors - interiorLayout.js
+ * FLOOR_MODEL_TYPE). Handed `standsAt`, each of DFU's two arms takes only a spot it
+ * stands: the doors in FindClosestInteriorDoor's order (nearest the
+ * check first), then the markers in FindClosestEnterMarker's (nearest
+ * the exterior door first) - every landing DFU makes on a floor is
+ * DFU's, one over nothing goes to the nearest that is not, and none
+ * answers null (the room is refused). Without it, verbatim.
  * @param {Array<[x,y,z]>} enterMarkers interior-space positions
  * @param {Array} interiorDoors staticDoors of the interior layout
+ * @param {((p:[number,number,number]) => boolean)|null} standsAt
  * @returns {[x,y,z]|null}
  */
-export function interiorLanding(exteriorDoorPos, enterMarkers, interiorDoors) {
+export function interiorLanding(exteriorDoorPos, enterMarkers, interiorDoors, standsAt = null) {
   let check = exteriorDoorPos;
   const markers = enterMarkers.map((m) => ({ pos: m }));
   const marker = closest(markers, check);
@@ -93,6 +136,17 @@ export function interiorLanding(exteriorDoorPos, enterMarkers, interiorDoors) {
     pos: doorWorldPosition(d),
     normal: doorWorldNormal(d),
   }));
+  if (standsAt) {
+    for (const d of byDistance(doors, check)) {
+      const at = [d.pos[0] + d.normal[0] * ENTER_DOOR_OFFSET, d.pos[1] + d.normal[1] * ENTER_DOOR_OFFSET, d.pos[2] + d.normal[2] * ENTER_DOOR_OFFSET];
+      if (standsAt(at)) return at;
+    }
+    for (const m of byDistance(markers, exteriorDoorPos)) {
+      const at = [m.pos[0], m.pos[1] + MARKER_UP_OFFSET, m.pos[2]];
+      if (standsAt(at)) return at;
+    }
+    return null;
+  }
   const door = closest(doors, check);
   if (door) {
     return [
@@ -307,14 +361,7 @@ export function floorLanding(collider, pos, maxDist = 10, extraHeight = 0) {
   // radius), take the HIGHEST floor any sample hits (the tile the
   // feet actually rest on), so a marker over a seam still lands. This
   // is the CharacterController's footprint sweep, not a point probe.
-  const R = 0.18;                                  // ~half capsule radius
-  const offs = [[0, 0], [R, 0], [-R, 0], [0, R], [0, -R]];
-  let bestFloorY = -Infinity;
-  for (const [ox, oz] of offs) {
-    const origin = [pos[0] + ox, pos[1] + 0.2, pos[2] + oz];
-    const d = collider.raycast(origin, [0, -1, 0], maxDist + 0.2);
-    if (Number.isFinite(d)) bestFloorY = Math.max(bestFloorY, origin[1] - d);
-  }
+  const bestFloorY = footprintFloorY(collider, pos, maxDist);
   if (bestFloorY === -Infinity) {
     // TSR4c (Mac: "Now I spawn in mid air after hitting ride out"):
     // THE RAY ONLY SEES MESHES. The exterior collider carries the
@@ -331,4 +378,78 @@ export function floorLanding(collider, pos, maxDist = 10, extraHeight = 0) {
     return pos;                                    // truly nothing below: leave to gravity
   }
   return [pos[0], bestFloorY, pos[2]];
+}
+
+/**
+ * UNSTUCK-OUT (FIELD BUGS 2026-10-08, SaberGGaming: "Invisible walls around mountains often gets you stuck ... unstuck
+ * didn't work"; Sahh: "I got stuck inside a mountain during fast travel"): THE NEAREST OPEN GROUND. World of
+ * Daggerfall's mountain rocks are meshes scaled by hundreds, reaching past their pixel, and the collider holds both
+ * faces of a skin while the renderer culls the back ones - so from inside a rock its walls are invisible and hold the
+ * body in. Here: the terrain's own floor (`heightAt`) at the point and then on rings out from it, the first spot where
+ * no static solid holds the body's feet or head (`insideSolid`, the collider's parity law - a rock open beneath holds
+ * what stands under its crown) and its torso's sphere touches no mesh - and, where the host asks, `dry(floor)` (the
+ * sea's floor is no ground to stand a body on). The feet of that spot, or null (nothing built there - `heightAt`
+ * answers no floor - or no open ground within the last ring). Pure over the collider's queries.
+ */
+export const OPEN_GROUND_RINGS = Object.freeze([0, 4, 8, 16, 32, 64, 128, 256]);
+/** UNSTUCK-OUT: the spacing of the spots on a ring (metres along it), and the body's points asked of the solids. */
+export const OPEN_GROUND_STEP = 8;
+export function openGroundNear(collider, x, z, { rings = OPEN_GROUND_RINGS, step = OPEN_GROUND_STEP, dry = null } = {}) {
+  for (const r of rings) {
+    const n = r === 0 ? 1 : Math.max(8, Math.round((2 * Math.PI * r) / step));
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * 2 * Math.PI;
+      const px = x + r * Math.cos(a), pz = z + r * Math.sin(a);
+      const h = collider.heightAt?.(px, pz);
+      if (!Number.isFinite(h) || (dry && !dry(h))) continue;
+      if (heldInSolid(collider, [px, h, pz])) continue;
+      if (collider.sphereOverlaps([px, h + CAPSULE_HEIGHT / 2, pz], CAPSULE_RADIUS)) continue;
+      return [px, h, pz];
+    }
+  }
+  return null;
+}
+/** UNSTUCK-OUT: whether a body standing with its feet at `feet` is held by a static solid (its feet or its head). */
+export function heldInSolid(collider, feet) {
+  return collider.insideSolid([feet[0], feet[1] + CAPSULE_RADIUS, feet[2]]) || collider.insideSolid([feet[0], feet[1] + CAPSULE_HEIGHT - CAPSULE_RADIUS, feet[2]]);
+}
+
+/** floorLanding's footprint sweep: the highest floor its five rays (the centre and a ring at ~half the capsule's
+ *  radius, each from 0.2 above `pos`) meet within `maxDist`, or -Infinity. */
+function footprintFloorY(collider, pos, maxDist) {
+  const R = 0.18;                                  // ~half capsule radius
+  const offs = [[0, 0], [R, 0], [-R, 0], [0, R], [0, -R]];
+  let bestFloorY = -Infinity;
+  for (const [ox, oz] of offs) {
+    const origin = [pos[0] + ox, pos[1] + 0.2, pos[2] + oz];
+    const d = collider.raycast(origin, [0, -1, 0], maxDist + 0.2);
+    if (Number.isFinite(d)) bestFloorY = Math.max(bestFloorY, origin[1] - d);
+  }
+  return bestFloorY;
+}
+
+/** FIELD BUGS 2026-10-04d VOID-ENTRY: whether floorLanding STANDS a body at `pos` - its footprint meets a floor, or
+ *  the collider's ground is under it - rather than handing it to gravity. A building's collider has no ground
+ *  (heightAt -Infinity), so over nothing this is false, and the body would fall for good. */
+export function standsOnFloor(collider, pos, maxDist = 10) {
+  return footprintFloorY(collider, pos, maxDist) > -Infinity || Number.isFinite(collider.heightAt?.(pos[0], pos[2]));
+}
+
+/** FIELD BUGS 2026-10-04d VOID-ENTRY: THE FAILSAFE's record for a room just entered - `at`, where the door stood the
+ *  player (the floored landing), and `belowY`, INTERIOR_VOID_DROP under the lowest triangle the room's collider holds;
+ *  null for a collider that holds none. The host keeps it on the context, so it lives and dies with the room. */
+export function interiorVoidRescue(collider, at) {
+  const box = collider.bounds();
+  return box ? { at, belowY: box.min[1] - INTERIOR_VOID_DROP } : null;
+}
+
+/** FIELD BUGS 2026-10-04d VOID-ENTRY: THE FAILSAFE. A body below `rescue.belowY` is under everything the building
+ *  stands on - nothing can catch it there, and it falls for good, in the black, every door and light out of reach
+ *  ("Complete darkness and possibly stuck"): a floorless half of a room walked off (in blocks of Daggerfall's own),
+ *  a save or a Recall anchor made in the void (RestorePosition lands it there raw). It stands again where the door
+ *  landed it - the spawn clears the fall a load carried in - and the answer is whether it did. */
+export function standFromVoid(rescue, player) {
+  if (!rescue || !(player.pos[1] < rescue.belowY)) return false;
+  player.spawn(rescue.at[0], rescue.at[1], rescue.at[2]);
+  return true;
 }

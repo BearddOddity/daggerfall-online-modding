@@ -219,10 +219,10 @@ with them; E4 took gold-as-a-bag-stack (`systems/inventory.js:"E4 (2026-09-02) R
 E7 took `GetValue`'s empty-string arm (`systems/talkMacros.js:"ordering: the scan"`);
 E5 took the docked bar's occlusion (`ui/hudLarge.js:"THE DOCKED BAR SHRINKS"`); and E1
 narrowed while E3 closed the two console verbs
-(`ui/exteriorAutomapWindow.js:"HotkeySequence.ToString"` - the site id the flag list was
+(`ui/exteriorAutomapWindow.js:"rect and was being"` - the site id the flag list was
 measured on; the closure narrates at `:100` today) by building the
 console host they were waiting on. The SHIP LANDING then took a seventh
-(`scenes/world.js:"cross-context flow"`, the two ship pixels): the owner supplied the
+(`scenes/world.js:"A10 - THE EXTERIOR"`, the two ship pixels): the owner supplied the
 real MAPS.BSA, the pixels turned out to carry the two "Your Ship"
 locations rather than open sea, and the boarding became an ordinary
 location arrival. **ROAD-F then took three more**: GS1 closed the
@@ -245,7 +245,10 @@ residence plates all read the machine instead of saying they cannot -
 and TP2 NARROWED the flag beside it, that host's Recall, to the one
 cross-LOCATION jump a route with no streamer cannot make (set-anchor,
 the same-interior move and the whole cross-context arm INSIDE the
-loaded pixel all ship). That leaves **8** open flags as
+loaded pixel all ship). ARENA2 (2026-10-02) added one by name: the `?exterior` host runs no
+bout driver (`scenes/exterior.js`, the Arena's bouts are the world
+host's); ARENA-FIX (2026-10-02) wired that host's driver and closed it. AUDIT TELL (2026-10-04) added one by name: the
+dungeon stream carries none of the street record's `z`, `nm`, `yd`, `ex` or `sp` (`scenes/dungeonContext.js`). LEGACY1 (2026-10-05) added one by name: the fixed city keeps DFU's death - no streamer to birth an heir into (`scenes/world.js`, Legacy-Arc.md section 3). CARDS2 (2026-10-07) added one by name: the card table's one nameable model id, the tavern blocks' other tables waiting on the census (`world/cardTables.js`, Tavern-Cards.md section 11); AUDIT CARDS (2026-10-07) one more: the sprite lane standing at its seat (`player/seatPose.js`, Tavern-Cards.md section 12, CARDS2c). TAVERN-TABLE (2026-10-08) retired CARDS2's: the card table is a prop of its own (Tavern-Cards.md section 28). RW1 (2026-10-09) added one by name: which interior texels are glass, read off 0xff in a building interior's own records (`world/interiorGlass.js`, Real-Windows.md). GLASS-ALL (2026-10-11) retired it: a real ARENA2 read, the rule rewritten off it (Real-Windows.md GLASS-ALL). MERCHANT-YARDS (2026-10-10) added one by name: the `?exterior` bench stands no Stable and no Wagon Yard (`scenes/merchantYardsHost.js`, Merchant-Yards.md). WARDEN1 (2026-10-10) added one by name: the `?exterior` bench runs no town watch (`scenes/wagonWardenHost.js`, Wagon-Warden.md). SHIPYARDS (2026-10-11) added one by name: the `?exterior` bench stands no port (`scenes/portHost.js`, Shipyards.md). AUDIT WAGONS3 (2026-10-10) stood WAGONS3's four own limits at their lines - the Small Cart's driver in the saddle (`world/wagonModels.js`), Eye Of The Beholder's driver standing (`player/mwView.js`), a peer's pair drawn whole for want of a count and the harness's ends on a picture (`scenes/horseCartPool.js`), Wagons.md section WAGONS3. That leaves **18** open flags as
 of this wave - the count `node tools/regenOpenFlags.mjs --check`
 answers, and the only count this page may state - each with its
 blocker named at the site: no asset in the repo (the PlayerTorch

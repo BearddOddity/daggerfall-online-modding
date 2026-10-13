@@ -35,6 +35,7 @@ import { DIR_DELTA } from '../src/world/roadNetwork.js';
 import { worldCoordToMapPixel } from '../src/formats/mapsFile.js';
 import { TRAVEL_VIEW_TEXT, travelTripLine, travelWalkRate, TV_MOVE_ACTIONS } from '../src/scenes/travelView.js';
 import { createLoadGovernor, unbuiltAround } from '../src/systems/travelGovernor.js';
+import { foePaced } from '../src/systems/travelThreat.js';   // RATE-LAW: ENEMY-PACE's fixed floor, which the governor calls
 import { travelPathUsesRoads, TRAVEL_PATH_TEXT, setTravelPathMode } from '../src/systems/travelPathMode.js';
 import { timeScale, setTimeScale, resetTimeScale, MAX_TIME_SCALE } from '../src/systems/timeScale.js';
 
@@ -45,12 +46,12 @@ const FIRST_PERSON = 'GeneralOptions.FirstPersonTravel';
 /** Run `fn` on a page whose URL is `search` (the read paths read globalThis.location.search; node has none). */
 const onPage = (search, fn) => { const had = globalThis.location; globalThis.location = { search }; try { return fn(); } finally { if (had === undefined) delete globalThis.location; else globalThis.location = had; } };
 
-test('TO-ROADS THE SWITCH: the port\'s own key beside First-Person Travel - OFF (First-Person Travel stays the mod\'s straight journey), a toggle, its own words, on the tile right after the switch it serves; the vendored modsettings.json does not carry it; online it is the player\'s own, as every key of the mod\'s is', () => {
+test('TO-ROADS THE SWITCH: the port\'s own key beside First-Person Travel - OFF (First-Person Travel stays the mod\'s straight journey), a toggle, its own words, on the tile right after the switch it serves; the vendored modsettings.json does not carry it; online it is the player\'s own (the room owns only the mod\'s switch and its two journey dials - TRAVEL-ONLINE)', () => {
   const def = MOD_SETTINGS['travel-options'].keys[KEY];
   assert.ok(def, 'declared on Travel Options\' pane');
   assert.equal(def.default, false, 'OFF - First-Person Travel keeps "the original travel option" (Mac, OW-TOGGLE)');
   assert.equal(typeof def.default, 'boolean', 'a toggle');
-  assert.match(def.description, /^With First Person Travel on, a journey picked on the travel map follows the roads and tracks as the Overworld’s journeys do - planned round the mountains, and refused where no way by land reaches - and is walked in first person, the Overworld view not raised\./);
+  assert.match(def.description, /^With First Person Travel on, a journey picked on the travel map follows the roads and tracks as the Overworld’s journeys do - planned by land, and refused where no way by land reaches - and is walked in first person, the Overworld view not raised\./);
   assert.match(def.description, / Off, it walks straight to its destination, as Travel Options does\./);
   assert.match(def.description, / Takes effect at once\. /, 'read live, as First-Person Travel is (AUDIT OW5 T1) - the tile\'s "when the world next loads" is the mod\'s other keys\'');
   assert.match(def.description, /\(This port’s own switch - the mod has none\.\)$/);
@@ -61,8 +62,8 @@ test('TO-ROADS THE SWITCH: the port\'s own key beside First-Person Travel - OFF 
   assert.ok(modDials('travel-options').includes(KEY), 'reachable: a dial the drawer draws (TORCH-BIND\'s lesson)');
   _resetModSettings();
   assert.equal(modSetting(TRAVEL_OPTIONS_VENDOR, KEY), false, 'the shipped store: off');
-  assert.ok(ONLINE_PLAYERS_OWN_MODS.includes('travel-options'), 'online: Travel Options is "my own journey" (MODS-ONLINE-2)');
-  assert.equal(onlineForcedModSetting('travel-options', KEY, '?online=1'), undefined, 'the room forces nothing');
+  assert.ok(!ONLINE_PLAYERS_OWN_MODS.includes('travel-options'), 'TRAVEL-ONLINE: the room owns three of Travel Options\' keys');
+  assert.equal(onlineForcedModSetting('travel-options', KEY, '?online=1'), undefined, 'and not this one: the room forces nothing here');
   onPage('?online=1', () => {
     setModSetting(TRAVEL_OPTIONS_VENDOR, KEY, true);
     assert.equal(modSetting(TRAVEL_OPTIONS_VENDOR, KEY), true, 'online, the player\'s own answer');
@@ -100,12 +101,13 @@ const ON_TRAVEL = grab(/buildTravelMapWindow\(\{ onTravel: (\(pick, opts, comput
 const ON_COORDS = grab(/\n\s*onTravelToCoords: (\(pick, opts\) => \{ [^\n]*? \}),/, 'the map\'s onTravelToCoords');
 const HOST = [
   lineSource('const TV_SEA_EPS_M = '), lineSource('const tvQuiet = '), lineSource('const tvTrip = '), lineSource('const tvWater = '),
-  lineSource('let _tvRouteGround = null;'), lineSource('let _tvRocksFrom = null, _tvRocksRoads = null, _tvRocks = null;'), fnSource('tvWodRocks'), lineSource('const tvRouteGround = '), lineSource('const tvLegMid = '), lineSource('const tvSeaAsk = '),
+  lineSource('let _tvRouteGround = null;'), lineSource('let _tvRocksFrom = null, _tvRocksRoads = null, _tvRocks = null;'), lineSource('let _tvRocksMask = null;'), fnSource('tvWodRocks'),
+  lineSource('const tvWildFree = '), lineSource('let _tvGroundWild = false;'), constBlock('tvRouteGround'), lineSource('const tvLegMid = '), lineSource('const tvSeaAsk = '),   // WILD1: the ground's open zone (none here: wildMapMask null) - its block, re-read as the zone comes or goes
   lineSource('const _tvTownRects = new Map();'), fnSource('tvTownRects'), fnSource('tvRingAt'),   // OW-WOD-PATH, OW-TOWN-RING: the host's own (no World of Daggerfall list here; no location on the way)
   constBlock('travelViewAllowed'),
   fnSource('tvOwnsJourneys'), fnSource('tvRoutesJourneys'), fnSource('tvMapForcesRoads'), fnSource('travelViewResume'), fnSource('beginAcceleratedTravel'),
   fnSource('travelViewRouteTo'), fnSource('tvFreePull'), fnSource('tvJoinedLegs'), fnSource('travelViewWalkTo'), fnSource('tvJourneyUp'),
-  fnSource('tvMooredDry'), fnSource('tvSeaNoWay'), fnSource('travelViewCanGo'),
+  fnSource('tvMooredDry'), fnSource('tvSeaNoWay'), lineSource('const climbingNow = '), fnSource('travelViewCanGo'),   // AUDIT FB1007b C2: no journey from a wall
   `const onLower = ${ON_LOWER};`, `const onTravel = ${ON_TRAVEL};`, `const onTravelToCoords = ${ON_COORDS};`,
   'return { tvOwnsJourneys, tvRoutesJourneys, travelViewResume, beginAcceleratedTravel, tvJourneyUp, onLower, onTravel, onTravelToCoords, tvTrip };',
 ].join('\n');
@@ -188,6 +190,9 @@ function host({ firstPerson = false, roads = false, enhanced = true } = {}) {
     dungeonApproach: refuse('dungeonApproach'), lastLegStart: refuse('lastLegStart'), pixelBox: refuse('pixelBox'),
     gamePaused: () => false, duelEnemyNear: () => false, areEnemiesNearby: () => false, exteriorFoePool: () => [],
     partyTravel: { propose: () => false }, hudFade: { clearFade() {} }, fastTravelTo: (p) => h.fast.push(p.name),
+    TEST_GODMODE: false, staffPowers: () => ({ god: false }), teleportTo: refuse('teleportTo'),   // TESTBUILD: the shipped build's god mode is off
+    wildMapMask: () => null, wildInside: () => false,   // WILD1: no open zone on this map
+    wagonRiders: null,   // WAGONS2: seated in no one's wagon - the Overworld's own refusal of a rider stands unasked
   };
   Object.assign(h, new Function(...Object.keys(env), HOST)(...Object.values(env)));
   Object.assign(h, { to, ui, view });
@@ -232,7 +237,7 @@ test('TO-ROADS REPRODUCED, then fixed (the host\'s own code over the real planne
 
 /** world.js's governor, mounted from its own source (test/ow_toggle.test.js's way): `let tvHeld` through travelViewGovern. */
 function mountGovernor(env) {
-  const from = WORLD.indexOf('  let tvHeld = null;');
+  const from = WORLD.indexOf('  let tvHeld = null;');   // RATE-LAW: ENEMY-PACE's stepper rate is gone - its floor is travelThreat.js foePaced
   const fn = WORLD.indexOf('  function travelViewGovern(dt) {', from);
   const end = WORLD.indexOf('\n  }\n', fn) + 4;
   assert.ok(from >= 0 && fn > from && end > fn, 'the governor\'s source');
@@ -268,7 +273,8 @@ test('TO-ROADS, the journey\'s life (the host\'s own code): a foe stops it as th
     resetTimeScale();
     setTimeScale(20);   // the journey's own ask, set by the mod's panel
     const g = mountGovernor({
-      travelControlUI: { isShowing: true, timeAcceleration: 20, accelerationLimit: () => 100 },
+      travelControlUI: { isShowing: true },   // RATE-LAW: no spinner, no limit - the journey's ask is travelAsked below
+      foePaced, travellerOnRoad: () => false,
       travelOptions: { state: { autopilot: {} } },
       travelWalkRate, TV_MOVE_ACTIONS,
       travelView: { active: false, state: 'off' },   // the view left down
@@ -289,17 +295,17 @@ test('TO-ROADS, the journey\'s life (the host\'s own code): a foe stops it as th
   _resetModSettings();
 });
 
-test('TO-ROADS, the route\'s REFUSAL is the answer (the host\'s own code): a place no way by land reaches is refused in the Overworld\'s words, the ship\'s passage asked first - never the straight walk into the sea, never DFU\'s fast travel; a spot among the peaks refused and said ONCE; a spot on open ground routed as the Overworld routes it', () => {
+test('TO-ROADS, the route\'s REFUSAL is the answer (the host\'s own code): a place no way by land reaches is refused in the Overworld\'s words, the ship\'s passage asked first - never the straight walk into the sea, never DFU\'s fast travel; a spot on the water refused and said ONCE; a spot on open ground routed as the Overworld routes it; MOUNTAINS WALKABLE (the owner, the Wrothgarian zone\'s merge): a spot on a Mountain pixel walked as open ground is, nothing said (it was refused in OW-MOUNTAINS\' words)', () => {
   const h = host({ firstPerson: true, roads: true });
   h.onTravel(pick(530, 250), WALKED, { minutes: 300 });
   assert.deepEqual(h.offered, ['Isle'], 'a boat would make it: the map\'s ship passage is offered first (SHIP-SAIL - its own law refuses here)');
   assert.deepEqual(h.said, [TRAVEL_VIEW_TEXT.noWay], '"There is no way there by land."');
   assert.deepEqual([h.to.isTravelActive, h.to.route, h.to.destinationName], [false, null, null], 'no journey begun - never the mod\'s straight walk out into the water');
   assert.deepEqual(h.fast, [], 'and never DFU\'s fast travel - a paid teleport past the route\'s own law (AUDIT OW3 J2)');
-  // a coordinate pick among the peaks
+  // a coordinate pick on the water (MOUNTAINS WALKABLE: the peaks' refusal this pick was is gone - the sea's stands)
   h.said.length = 0;
-  h.onTravelToCoords(pick(PEAK.x, PEAK.y), WALKED);
-  assert.deepEqual([h.said, h.talk], [[TRAVEL_VIEW_TEXT.mountains], []], 'OW-MOUNTAINS\' words, said once - never "You cannot travel there now." beside them');
+  h.onTravelToCoords(pick(528, 250), WALKED);
+  assert.deepEqual([h.said, h.talk], [[TRAVEL_VIEW_TEXT.water], []], 'AUDIT OW3 J7\'s words, said once - never "You cannot travel there now." beside them');
   assert.equal(h.to.isTravelActive, false);
   // a coordinate pick on open ground: the Overworld's spot journey
   h.said.length = 0;
@@ -309,6 +315,14 @@ test('TO-ROADS, the route\'s REFUSAL is the answer (the host\'s own code): a pla
   assert.deepEqual([h.to.destinationName, h.ui.destinationName], [null, TRAVEL_VIEW_TEXT.spot], 'a spot is no named journey, as the mod\'s own coordinate journey is not');
   h.tvJourneyUp();
   assert.deepEqual([h.said, h.talk, h.fast, h.view.state], [[], [], [], 'off'], 'nothing refused, and the view not raised');
+  // MOUNTAINS WALKABLE (the owner, the Wrothgarian zone's merge): a coordinate pick on the Mountain pixel is walked as open
+  // ground is - the host's own ground (tvRouteGround over the map's climate) refuses no step and names no peak
+  const m = host({ firstPerson: true, roads: true });
+  m.onTravelToCoords(pick(PEAK.x, PEAK.y), WALKED);
+  assert.deepEqual([m.said, m.talk, m.fast], [[], [], []], 'nothing refused, nothing said - never "The mountains cannot be crossed on foot."');
+  assert.equal(m.to.isTravelActive, true, 'the journey begun');
+  assert.deepEqual(m.to.route.point.pixel, PEAK, 'to the spot on the peak');
+  assert.deepEqual(xy(m.to.route.legs.at(-1)), PEAK, 'its last leg the peak\'s own pixel');
   _resetModSettings();
 });
 

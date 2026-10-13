@@ -68,9 +68,13 @@
 import { MEMBERSHIP_STATUS, isMainQuestName } from './quest/questLists.js';
 import { TaskType } from './quest/task.js';
 import { getInnerSymbolName } from './quest/symbol.js';
+import { sharedActionMatches, takeLocalActions } from './quest/shareActions.js';
 import { GUILDS, hasJoined } from './guilds.js';
 import { QUEST_FRAME_MAX } from '../net/wire.js';
 import { BUILD_TAG } from '../buildTag.js';   // SHARE-MEND: the sender's build rides the envelope, so a refusal can name a skew
+import { relayQuestOnline, relayQuestMovedLayout } from './quest/questRepair.js';   // AUDIT SD III (D5): a shared copy laid on this page's world sizes
+import { isOnlinePage } from './onlineLane.js';
+import { isShelved } from './quest/quest.js';   // QUEST-SHELF: a copy set aside
 
 /** The relay's own frame cap for a quest-share envelope (net/wire.js's
  *  QUEST_FRAME_MAX - its own oversized-frame arm, the same scale
@@ -215,6 +219,8 @@ export function canReceiveSharedQuest(machine, questLists, questName, { membersh
   // AUDIT DROPS A1: the main quest is refused on RECEIPT as well as on send - the sender's own gate is the sender's
   // client, and a hand-built envelope is not bound by it.
   if (isMainQuestName(questName)) return { ok: false, reason: 'mainQuest' };
+  // QUEST-SHELF (2026-10-08): a copy I set aside takes no partner's share or step - reclaimed, it is as I left it
+  if (isShelved(machine.sharedCandidateNamed?.(questName))) return { ok: false, reason: 'shelved' };
   if (machine.hasActiveQuestNamed(questName)) {
     // QUEST1 LIVE SYNC: a resync of a quest ALREADY kept in sync with the
     // party (shared out earlier, or received before) updates the existing
@@ -263,10 +269,19 @@ export function receiveSharedQuest(machine, questLists, questName, data, ctx = {
   if (why) return { ok: false, reason: 'mismatch' };
   // SHARE-MEND: the markers travel slim - made whole AFTER the shape check (AUDIT D3): it holds every resource's symbol
   // to a string, and a forged Place's number there threw out of the receipt instead of being refused in words
-  const safe = takeLocalItems(local, fullShareMarkers(data));
+  const safe = takeLocalItems(local, takeLocalActions(local, fullShareMarkers(data)));
+  // AUDIT SD III (D5): online, the copy's dungeons laid on the world's own sizes, as a load lays a saved quest's
+  // (questRepair.js relayQuestOnline) - an older page's copy was laid whole, and pointed into blocks this build has not
+  // MEDIUM-DISTINCT's audit: and a copy whose medium dungeon the older page laid with one block twice, laid on this
+  // page's (questRepair.js relayQuestMovedLayout - the load's own pass runs only at a load)
+  const relay = (q) => {
+    const online = ctx.online ?? isOnlinePage();
+    if (online) relayQuestOnline(q, { carriesQuestItem: ctx.carriesQuestItem ?? null });
+    relayQuestMovedLayout(q, machine, { carriesQuestItem: ctx.carriesQuestItem ?? null }, online);
+  };
   if (check.resync) {
     const quest = machine.updateSharedQuest(questName, safe);
-    if (quest) return { ok: true, quest, resync: true };
+    if (quest) { relay(quest); return { ok: true, quest, resync: true }; }
     // AUDIT SHARE-MEND D4: a copy that still stands was not GONE - the restore choked on the partner's (machine.js
     // logs why), most often another build of the game, and the receiver was told they no longer had it
     const still = machine.sharedCandidateNamed?.(questName) ?? null;
@@ -280,6 +295,7 @@ export function receiveSharedQuest(machine, questLists, questName, data, ctx = {
   if (safe.questComplete === true || shareEnvelopeEnding(safe)) return { ok: false, reason: 'finished' };
   const quest = machine.receiveSharedQuest(safe);
   if (!quest) return { ok: false, reason: 'restore' };   // SHARE-MEND: the restore choked (machine.js logs why) - not a forged envelope
+  relay(quest);
   if (check.meta?.quest?.oneTime) questLists.markOneTimeAccepted(questName);
   return { ok: true, quest };
 }
@@ -320,7 +336,7 @@ export function shapeMismatch(local, data) {
     taskNames.add(name);
     const acts = Array.isArray(t.actions) ? t.actions : null;
     if (!acts || acts.length !== r.actions.length) return 'actions';
-    for (let j = 0; j < acts.length; j++) if (!acts[j] || acts[j].type !== r.actions[j].type) return 'action';
+    for (let j = 0; j < acts.length; j++) if (!sharedActionMatches(r.actions[j], acts[j])) return 'action';
   }
   const res = Array.isArray(data.resources) ? data.resources : null;
   if (!res) return 'resources';
@@ -399,6 +415,7 @@ export const RECEIVER_REFUSAL_TEXT = Object.freeze({
   tooLarge: 'were sent a quest too large to read.',
   mainQuest: 'cannot be given the main quest.',
   restore: 'could not rebuild it in your world.',
+  shelved: 'have abandoned it - reclaim it from your journal to take it up again.',   // QUEST-SHELF's audit: a deliberate share is answered
 });
 
 /** SHARE-MEND: the refusals that say the two copies disagree - most often two BUILDS of the game: before SHARE-COPY

@@ -31,7 +31,7 @@ import {
 import {
   readTravelOptionsSettings, createTravelOptions, travelSpeedMultiplier, avoidEncounterChance,
   locationTypeString, locationTypeName, locationRectsOf, locBorderCornerRects, circumnavigateTarget,
-  START_ACCEL_VALUES, IGNORE_ENCOUNTERS_SECONDS, AVOID_ENCOUNTER_OFFSET, CLIMATE_OCEAN,
+  ROAD_LEG_KINDS, IGNORE_ENCOUNTERS_SECONDS, AVOID_ENCOUNTER_OFFSET, CLIMATE_OCEAN,
   TRAVEL_OPTIONS_VENDOR,
 } from '../src/systems/travelOptions.js';
 import { MOD_ACTIONS } from '../src/systems/inputActions.js';   // KB1: the follow key's six are the carry's now
@@ -64,18 +64,22 @@ import {
   locationInfoRows, teleportCost, TELEPORT_RANK_FREE, TELEPORT_COST_PER_RANK,
   drawRegionPageWithPaths,
 } from '../src/ui/travelMapOptions.js';
-import { TravelControlUI, CONTROL_RECTS, fasterAcceleration, slowerAcceleration, MESSAGE_SECONDS, _setTravelControlArtForTests } from '../src/ui/travelControlUI.js';
+import { TravelControlUI, CONTROL_RECTS, MESSAGE_SECONDS, _setTravelControlArtForTests } from '../src/ui/travelControlUI.js';
 import { TravelJunctionMap, JUNCTION_TEX_W, JUNCTION_TEX_H, filterModeName } from '../src/ui/travelJunctionMap.js';
 import { etaText, distanceText } from '../src/ui/enhancedTravelControl.js';
 import { POPUP_RECTS } from '../src/ui/travelPopUp.js';   // AUDIT-TO1 D3/D4: the camp-out and inns rects the wheel pins hover
 // AUDIT-TO1 part 2: the pins for the sweep's confirmed findings
 import { TravelPopUpWindow, isPlayerControlledTravel, enforceShipRestriction as enforceShipRestrictionPure, shipTravelRefusal as shipTravelRefusalPure } from '../src/ui/travelPopUp.js';
 import { travelMapMarkedMapId, setTravelMapMarkedMapId, resetTravelMapState } from '../src/systems/travelMapState.js';
-import { timeScale, setTimeScale, resetTimeScale, accelLimitOf, halfAccelLimitOf, MAX_TIME_SCALE } from '../src/systems/timeScale.js';
+import { timeScale, setTimeScale, resetTimeScale, MAX_TIME_SCALE, TRAVEL_ROAD_RATE, TRAVEL_OPEN_RATE, travelRateOf } from '../src/systems/timeScale.js';
 import { FIXED_DT, MAX_FRAME_DT } from '../src/player/motor.js';
 import { MOD_SETTINGS, colorKeyRgba, colorKeyHex, isColorKey, modSetting, _resetModSettings } from '../src/systems/modSettings.js';
 import { LOCATION_TYPES } from '../src/formats/mapsFile.js';
 import { mapPixelToWorldCoords } from '../src/world/streamingWorld.js';
+import { setPaceGround, setTravelPace, _resetTravelPace } from '../src/systems/travelPace.js';   // PACE-DIALS: the road's x100 is the player's dial
+/** PACE-DIALS (2026-10-06): x100 is chosen, on a road - the dial set there as the panels set it (the default is x60, and
+ *  leaving a road takes it back to x60: test/pacedials.test.js). These pins hold the LANES' law at the dial's top. */
+const dialAtTop = () => { _resetTravelPace(); setPaceGround(true); setTravelPace('speed', 100); };
 
 const root = new URL('..', import.meta.url);
 const read = (rel) => readFileSync(new URL(rel, root), 'utf8');
@@ -83,7 +87,10 @@ const VENDOR = 'vendor/travel-options/';
 
 // ─── the vendored record ──────────────────────────────────────────────
 
-test('TO1: the settings are the mod\'s own modsettings.json, key for key, type for type', () => {
+/** RATE-LAW: the mod's TimeAcceleration section, which the port no longer declares. */
+const RATE_LAW_RETIRED = Object.freeze(['TimeAcceleration.DefaultStartingAcceleration', 'TimeAcceleration.AlwaysUseStartingAcceleration', 'TimeAcceleration.AccelerationLimit']);
+
+test('TO1: the settings are the mod\'s own modsettings.json, key for key, type for type (RATE-LAW: less its TimeAcceleration section)', () => {
   const shipped = JSON.parse(read(`${VENDOR}modsettings.json`));
   const ours = MOD_SETTINGS[TRAVEL_OPTIONS_VENDOR].keys;
   assert.equal(MOD_SETTINGS[TRAVEL_OPTIONS_VENDOR].author, 'Hazelnut');
@@ -98,6 +105,10 @@ test('TO1: the settings are the mod\'s own modsettings.json, key for key, type f
       const key = `${section.Name}.${k.Name}`;
       shippedNames.add(key);
       const def = ours[key];
+      // RATE-LAW (2026-10-04, Mac: "Remove travel options dials"): THE ONE SECTION THE PORT LEAVES OUT, named so a second
+      // cannot go quietly - the spinner's starting value, its always-start switch and its limit (systems/timeScale.js
+      // travelRateOf: a journey runs at its ground's rate)
+      if (RATE_LAW_RETIRED.includes(key)) { assert.equal(def, undefined, `${key} is retired, never declared`); continue; }
       assert.ok(def, `${key} is declared`);
       assert.equal(def.description, k.Description, `${key}'s description is the mod's own`);
       const kind = k.$type.split('.').pop();
@@ -145,7 +156,7 @@ test('TO1: the settings are the mod\'s own modsettings.json, key for key, type f
   // cannot ride in unnoticed
   // PIN MOVED (OW-TOGGLE): and its first-person switch (test/ow_toggle.test.js)
   // PIN MOVED (TO-ROADS): and that switch's roads (test/fb0929d_toroads.test.js)
-  assert.equal(Object.keys(ours).length, n + 4, 'and the port declares them all, plus Enabled, its own AvoidObstacles, FirstPersonTravel and FirstPersonTravelFollowsRoads');
+  assert.equal(Object.keys(ours).length, n - RATE_LAW_RETIRED.length + 4, 'and the port declares them all but the retired three, plus Enabled, its own AvoidObstacles, FirstPersonTravel and FirstPersonTravelFollowsRoads');
   assert.deepEqual(Object.keys(ours).filter((k) => !shippedNames.has(k)).sort(), ['Enabled', 'GeneralOptions.AvoidObstacles', 'GeneralOptions.FirstPersonTravel', 'GeneralOptions.FirstPersonTravelFollowsRoads'],
     'the port\'s four keys, and nothing else');
   // the five unnamed spacer sections carry no keys and are not declared
@@ -214,9 +225,7 @@ test('TO1: LoadSettings - the speed penalty is a multiplier, the fatigue floor i
     'CautiousTravel.FatigueMinimumValue': 5,
     'StopAtInnsTravel.PlayerControlledInnsTravel': false,
     'ShipTravel.OnlyFromPorts': true, 'ShipTravel.OnlyToPorts': false,
-    'TimeAcceleration.DefaultStartingAcceleration': 4, 'TimeAcceleration.AlwaysUseStartingAcceleration': false,
-    'TimeAcceleration.AccelerationLimit': 60,
-    'Teleportation.EnablePaidTeleportation': false,
+    'Teleportation.EnablePaidTeleportation': false,   // RATE-LAW: the three TimeAcceleration keys are never asked for (the reader below asserts every key it is asked is here)
     'RoadsIntegration.Enable': true, 'RoadsIntegration.VariableSizeDots': true,
     'RoadsIntegration.FollowPathsKey': 1, 'RoadsIntegration.FollowPathsCustomKeyBind': '',
     'RoadsIntegration.EnableWaterways': true, 'RoadsIntegration.EnableStreamsToggle': true,
@@ -245,8 +254,8 @@ test('TO1: LoadSettings - the speed penalty is a multiplier, the fatigue floor i
   assert.equal(travelSpeedMultiplier(false, s), 1);
   assert.equal(s.cautiousFatigueMin, 6, ':214 - the setting PLUS ONE');
   assert.equal(s.cautiousHealthMinPc, 5, '...and the health percentage is not');
-  assert.equal(s.defaultStartingAccel, START_ACCEL_VALUES[4], ':221 - the CHOICE indexes the eleven values');
-  assert.equal(s.defaultStartingAccel, 10);
+  assert.deepEqual([s.defaultStartingAccel, s.alwaysUseStartingAccel, s.accelerationLimit], [undefined, undefined, undefined],
+    'RATE-LAW: :221-223 are not read - the journey\'s ground sets its rate');
   assert.equal(s.locationPause, LOC_PAUSE_NEAR);
   assert.equal(s.avoidObstacles, true, 'TRAVEL-NAV1: the port\'s steering switch rides the same bag');
   assert.equal(readTravelOptionsSettings(reader({ 'GeneralOptions.AvoidObstacles': false })).avoidObstacles, false, '...and off is off');
@@ -285,7 +294,7 @@ test('TO1: the shipped defaults reach the game through the store', async () => {
   assert.equal(isPlayerControlledTravel(s, { speedCautious: true, sleepModeInn: true, travelShip: true }), false,
     'a ship is still DFU\'s own passage, never a walk');
   assert.equal(s.shipTravelPortsOnly, true);
-  assert.equal(s.accelerationLimit, 60);
+  assert.equal(s.accelerationLimit, undefined, 'RATE-LAW: no limit dial');
   assert.equal(s.locationPause, LOC_PAUSE_OFF);
   assert.equal(modSetting(TRAVEL_OPTIONS_VENDOR, 'Enabled'), true);
   assert.equal(colorKeyHex(colorKeyRgba('D77727FF')), '#d77727ff', 'the mod\'s own preset spelling reads too');
@@ -725,7 +734,8 @@ test('TO1: the junction mini-map - twenty pixels square, the player at herePt, t
 
 // ─── the control panel ────────────────────────────────────────────────
 
-test('TO1: TravelControlUI - the rects are the mod\'s, the limits round down to fives, and the spinner steps by one then five', () => {
+test('TO1: TravelControlUI - the rects are the mod\'s; RATE-LAW: no spinner - the rate a journey runs at is its ground\'s, x100 on a road or a track and x60 off it (mutants: the rates swapped or moved)', () => {
+  dialAtTop();
   assert.deepEqual(CONTROL_RECTS.panel, [0, 0, 320, 27]);
   assert.deepEqual(CONTROL_RECTS.dest, [5, 14, 152, 7]);
   assert.deepEqual(CONTROL_RECTS.timeAccel, [163, 4]);
@@ -733,38 +743,25 @@ test('TO1: TravelControlUI - the rects are the mod\'s, the limits round down to 
   assert.deepEqual(CONTROL_RECTS.camp, [230, 3, 45, 21]);
   assert.deepEqual(CONTROL_RECTS.exit, [279, 3, 38, 21]);
   assert.equal(MESSAGE_SECONDS, 3);
-  // :76-79 - (limit / 5) * 5 and (limit / 10) * 5
-  assert.deepEqual([accelLimitOf(60), halfAccelLimitOf(60)], [60, 30]);
-  assert.deepEqual([accelLimitOf(55), halfAccelLimitOf(55)], [55, 25]);
-  assert.deepEqual([accelLimitOf(100), halfAccelLimitOf(100)], [100, 50]);
-  assert.deepEqual([accelLimitOf(58), halfAccelLimitOf(58)], [55, 25],
-    'the rounding is DOWN to a multiple of five, and the half is the same rounding of half the number - never half the rounded one');
-  assert.deepEqual([accelLimitOf(37), halfAccelLimitOf(37)], [35, 15]);
-  // :222-236
-  assert.equal(fasterAcceleration(1, 60), 2, 'below five, by one');
-  assert.equal(fasterAcceleration(4, 60), 5);
-  assert.equal(fasterAcceleration(5, 60), 10, 'at five and above, by five');
-  assert.equal(fasterAcceleration(58, 60), 60, '...and never past the limit');
-  assert.equal(slowerAcceleration(10), 5);
-  assert.equal(slowerAcceleration(5), 4, 'at five and below, by one');
-  assert.equal(slowerAcceleration(1), 1, 'and never under one');
+  // RATE-LAW (Mac: "Roads now travel at x100 and non roads at x60")
+  assert.deepEqual([TRAVEL_ROAD_RATE, TRAVEL_OPEN_RATE, MAX_TIME_SCALE], [100, 60, 100]);
+  assert.deepEqual([travelRateOf(true), travelRateOf(false)], [100, 60]);
+  assert.deepEqual([...ROAD_LEG_KINDS], ['road', 'track'], 'a road or a track: travelRoute.js roadShare\'s own pair');
 });
 
-test('TO1: the panel shows, clamps, steps, messages and closes - and CAMP and EXIT are two different doors', () => {
+test('TO1: the panel shows, says the rate, messages and closes - and CAMP and EXIT are two different doors', () => {
   const seen = [];
   const ui = new TravelControlUI({
-    defaultStartingAccel: 40, accelerationLimit: 60,
-    onClose: () => seen.push('close'), onCancel: () => seen.push('cancel'),
-    onTimeAccelerationChanged: (n) => seen.push(`accel:${n}`), onOpenMap: () => seen.push('map'),
+    onClose: () => seen.push('close'), onCancel: () => seen.push('cancel'), onOpenMap: () => seen.push('map'),
   });
-  ui.halfLimit = true;
   ui.show();
-  assert.equal(ui.timeAcceleration, 30, ':186-193 - OnPush clamps into the limit in force');
   assert.equal(ui.isShowing, true);
-  ui.faster();
-  assert.equal(ui.timeAcceleration, 30, 'already at the half limit');
-  ui.slower();
-  assert.deepEqual(seen.filter((x) => x.startsWith('accel')), ['accel:30', 'accel:25']);
+  // RATE-LAW: the panel SAYS the rate the journey's ground runs at - it never sets one
+  ui.setRate(TRAVEL_ROAD_RATE, true);
+  assert.deepEqual([ui.timeAcceleration, ui.onRoad], [100, true]);
+  ui.setRate(TRAVEL_OPEN_RATE, false);
+  assert.deepEqual([ui.timeAcceleration, ui.onRoad], [60, false]);
+  assert.deepEqual([typeof ui.faster, typeof ui.slower, typeof ui.accelerationLimit], ['undefined', 'undefined', 'undefined'], 'no spinner, no limit');
   ui.setDestinationName('Daggerfall');
   assert.equal(ui.destinationName, 'Daggerfall');
   ui.showMessage('hello');
@@ -781,7 +778,7 @@ test('TO1: the panel shows, clamps, steps, messages and closes - and CAMP and EX
   assert.deepEqual(seen.filter((x) => x === 'close' || x === 'cancel'), ['close', 'cancel', 'close'],
     'CancelWindow raises BOTH, as DFU\'s CancelWindow calls CloseWindow underneath');
   // the three buttons, by rect
-  _setTravelControlArtForTests({ strip: null, spinner: null });
+  _setTravelControlArtForTests({ strip: null });
   ui.show();
   assert.equal(ui.click(190, 10), true); assert.equal(seen.at(-1), 'map');
   ui.show();
@@ -840,7 +837,7 @@ function rig(over = {}) {
     fatigue: 64 * 50, disease: 0, location: null, now: 0,
   };
   const said = [], boxed = [], scales = [];
-  const ui = new TravelControlUI({ defaultStartingAccel: 10, accelerationLimit: 60 });
+  const ui = new TravelControlUI({});
   const settings = readTravelOptionsSettings((vendor, key) => {
     if (vendor === 'roads-hazelnut') return key === 'Enabled' ? true : false;
     return modSetting(vendor, key);
@@ -884,8 +881,10 @@ test('TO1: BeginTravel arms the journey, sets the scale and shows the panel; the
   assert.equal(to.destinationName, 'Daggerfall');
   assert.equal(ui.destinationName, 'Daggerfall');
   assert.equal(ui.isShowing, true, ':533 - the panel is pushed');
-  assert.equal(ui.halfLimit, false, ':464 - a named destination runs at the full limit');
-  assert.deepEqual(scales, [10], ':524-526 - SetTimeScale(the panel\'s acceleration)');
+  // RATE-LAW: :524-526's SetTimeScale asks the GROUND's rate - a straight walk to a place, the open ground's x60 (the host
+  // says what the traveller stands on, `deps.onRoad`; this rig stands nowhere near a road)
+  assert.deepEqual(scales, [60], ':524-526 - SetTimeScale(the ground\'s rate)');
+  assert.deepEqual([ui.timeAcceleration, ui.onRoad], [60, false], 'the panel says it');
   assert.equal(to.isTravelActive, true);
   assert.equal(to.isPathFollowing, false, 'a named destination is not a followed path');
 
@@ -978,7 +977,7 @@ test('TO1: another window stops the journey, and the game being paused stops eve
 
 test('AUDIT OW4 J7: a new disease stops the journey THROUGH THE PANEL (its Camp - the destination kept for the map\'s Resume) and shows the health status; a bare interrupt left the panel up over no autopilot - the journey read "active", no Resume was offered and the Overworld never rose again until Camp', () => {
   const hold = {}, shown = [];
-  const ui = new TravelControlUI({ defaultStartingAccel: 10, accelerationLimit: 60, onClose: () => hold.to.interruptTravel() });   // the world host's own: Camp is InterruptTravel
+  const ui = new TravelControlUI({ onClose: () => hold.to.interruptTravel() });   // the world host's own: Camp is InterruptTravel
   const { to, state } = rig({ deps: { ui, showHealthStatus: () => shown.push('status') } });
   hold.to = to;
   to.beginTravel({ pixel: { x: 900, y: 250 }, name: 'Nowhere' }, false);
@@ -1002,7 +1001,7 @@ test('AUDIT OW4 J7: a new disease stops the journey THROUGH THE PANEL (its Camp 
 test('AUDIT OW5b E1: THE ENEMIES STOP ASKED BY THE ENCOUNTER THAT MEETS THE TRAVELLER (Mac: "Need to get pullout of fast travel little sooner for encounters. U run thru them") - the sweep\'s own arm, the moment the host asks: no journey walking, nothing; reckless, stopped through the panel with the box; cautious, the roll - lost, stopped; won, the journey goes on and the grace passes the next one by until it lapses', () => {
   const walking = (over = {}) => {
     const hold = {};
-    const ui = new TravelControlUI({ defaultStartingAccel: 10, accelerationLimit: 60, onClose: () => hold.to.interruptTravel() });   // the world host's own: Camp is InterruptTravel
+    const ui = new TravelControlUI({ onClose: () => hold.to.interruptTravel() });   // the world host's own: Camp is InterruptTravel
     const r = rig({ ...over, deps: { ui, ...over.deps } });
     hold.to = r.to;
     return { ...r, ui };
@@ -1059,6 +1058,7 @@ test('AUDIT OW5b E1: THE ENEMIES STOP ASKED BY THE ENCOUNTER THAT MEETS THE TRAV
 });
 
 test('TO1: the follow key - a road under the feet and a facing that matches begins a leg; nothing under the feet says so', () => {
+  dialAtTop();
   const { to, ui, net, state, said } = rig();
   const at = (x, y) => x + y * 1000;
   net.roads[at(500, 250)] = E | W;
@@ -1067,7 +1067,7 @@ test('TO1: the follow key - a road under the feet and a facing that matches begi
   assert.equal(to.followPath(), true);
   assert.equal(ui.isShowing, true);
   assert.equal(ui.destinationName, TRAVEL_OPTIONS_TEXT.MsgFollowRoad);
-  assert.equal(ui.halfLimit, true, ':705 - a followed path runs at HALF the acceleration limit');
+  assert.deepEqual([ui.timeAcceleration, ui.onRoad], [100, true], 'RATE-LAW: a followed road runs at the road\'s x100 (:705\'s half limit went with the spinner)');
   assert.equal(to.road, true);
   assert.equal(to.destinationName, null, ':641 - a followed path has no named destination');
   assert.equal(to.isPathFollowing, true);
@@ -1079,6 +1079,7 @@ test('TO1: the follow key - a road under the feet and a facing that matches begi
   assert.equal(b.to.followPath(), true);
   assert.equal(b.ui.destinationName, TRAVEL_OPTIONS_TEXT.MsgFollowTrack);
   assert.equal(b.to.road, false);
+  assert.deepEqual([b.ui.timeAcceleration, b.ui.onRoad], [100, true], 'RATE-LAW: a track is a road to the rate - x100 (its walk is still the cautious multiplier)');
 
   // FACING THE WAY YOU CAME still follows (:646-656), and it is a
   // SECOND question: the pixel carries ONE edge, east, and the player
@@ -1251,7 +1252,7 @@ test('TO1: the wiring - one construction, the fork on the popup\'s word, the pan
   assert.match(w, /\n  travelOptions = travelOptionsOn \? createTravelOptions\(\{/, 'BOOT-TDZ: ASSIGNED where the mod is built - the binding is declared above the stream that reads it');
   assert.match(w, /let travelOptions = null;/, 'BOOT-TDZ: and declared there, null');
   // the fork
-  assert.match(w, /if \(opts\?\.playerControlled && beginAcceleratedTravel\(pick, opts, \{ estimateMinutes: computed\?\.minutes \?\? null \}\)\) return;[^\n]*\n(?:\s*\/\/[^\n]*\n)*(?:\s*if \(opts\?\.playerControlled && tvRoutesJourneys\(\)\) return;\n)?\s*fastTravelTo\(pick, opts, computed\);/,   // PIN MOVED (TO-ROADS): a routed trip's refusal (the Overworld's, or a first-person route's)
+  assert.match(w, /if \(opts\?\.playerControlled && beginAcceleratedTravel\(pick, opts, \{ estimateMinutes: computed\?\.minutes \?\? null \}\)\) return;[^\n]*\n(?:\s*\/\/[^\n]*\n)*(?:\s*if \(opts\?\.playerControlled && tvRoutesJourneys\(\)\) return;\n)?\s*if \(isOnlinePage\(\) && !opts\?\.travelShip\) \{ townTalk\.say\(ONLINE_LAND_TRAVEL_REFUSAL\); hudFade\.clearFade\(\); \} else fastTravelTo\(pick, opts, computed\);/,   // PIN MOVED (TO-ROADS): a routed trip's refusal (the Overworld's, or a first-person route's); PIN MOVED (AUDIT TRAVEL-ONLINE T7): online a trip over land never reaches it
     'the walked trip is tried first (with the popup\'s estimate riding along - AUDIT-TO1 L5) and fast travel is the fallback (AUDIT OW3 J2: never for a walk the Overworld refused)');
   // TO-ONLINE (2026-09-19, Mac: "travel options uses instant travel for the
   // online mod, which shouldn't be the case"): the journey RUNS online. The
@@ -1337,10 +1338,10 @@ test('TO1: the map and the popup carry the mod\'s own additions', () => {
   assert.match(p, /return \(settings\.cautiousTravel \|\| !speedCautious\) && \(settings\.stopAtInnsTravel \|\| !sleepModeInn\) && !travelShip;/);
   assert.match(p, /isPlayerControlledTravel\(\) \{\s*\n\s*return isPlayerControlledTravel\(this\._to\?\.settings, this\);/, 'the method is the pure law over its own three toggles');
   const ov = read('src/ui/heldMap.js');
-  assert.match(ov, /playerControlled: isPlayerControlledTravel\(st\.to\?\.settings, st\.opts\),/, 'and the DEFAULT skin commits the same word - the mod was unreachable from it before');
+  assert.match(ov, /playerControlled: st\.it \? false : isPlayerControlledTravel\(st\.to\?\.settings, st\.opts\),/, 'and the DEFAULT skin commits the same word - the mod was unreachable from it before');   // IT1 (PIN MOVED): a driver's trip is never walked
   assert.match(ov, /enforceShipRestriction\(st\.to\.settings, st\.opts, this\._shipCtx\(\)\)/, 'OnPush\'s guard on the default skin');
   assert.match(ov, /const refusal = shipTravelRefusal\(\{ settings, \.\.\.this\._shipCtx\(\) \}\);/, 'and the ship click\'s');
-  assert.match(p, /if \(this\.coordsOnly \|\| this\.isPlayerControlledTravel\(\)\) \{/, 'the fork is in CallFastTravelGoldCheck, where the mod puts it');
+  assert.match(p, /if \(!this\.itKind && \(this\.coordsOnly \|\| this\.isPlayerControlledTravel\(\)\)\) \{/, 'the fork is in CallFastTravelGoldCheck, where the mod puts it');   // IT1 (PIN MOVED): Immersive Travel's popups have no walked arm
   assert.match(p, /playerControlled: true,/);
   assert.match(p, /_scaleTripCost\(c0\)/);
   assert.match(p, /shipTravelRefusal\(\) \{/);
@@ -1694,7 +1695,7 @@ test('AUDIT-TO1 G1/G2/G3/I2/I3/I4/I6/J1/K2/H1/H2: the host seams the sweep found
   assert.match(w, /return loc\?\.name \? discoveredBuildings\(`\$\{summary\.regionIndex\}:\$\{loc\.name\}`\) : \[\];/);
   assert.match(w, /discoveryLocationId: \(\) => `\$\{_questLoc\(\)\?\.regionIndex \?\? -1\}:\$\{_questLoc\(\)\?\.name \?\? ''\}`,/, 'the writer\'s own key shape');
   // J1: the two switches have readers
-  assert.match(w, /\} else if \(precipShown && precip\) \{[\s\S]{0,2500}?if \(!_travelWeatherOff(?: && !_dwPrecipOff)?\) \{\s*\n\s*precip\.draw\(precipShown, proj, view/, 'the rain (the branch literal is W1/WX2/WEATHER2d\'s; the switch wraps the draw; DW-D: and the sea\'s own stand-down beside it)');
+  assert.match(w, /\} else if \(precipShown && precip\) \{[\s\S]{0,2500}?if \((?:\(!_travelWeatherOff \|\| tvf\)|!_travelWeatherOff)(?: && !_dwPrecipOff)?\) \{\s*\n\s*precip\.draw\(precipShown, proj, view/, 'the rain (the branch literal is W1/WX2/WEATHER2d\'s; the switch wraps the draw; DW-D: and the sea\'s own stand-down beside it)');
   assert.match(w, /const _step = _travelSoundsOff (?:\|\| _csaFootstepsOff )?\? null : footsteps\.update\(player\.pos, \{/, 'the classic stride: the component does not RUN (the one-gate line is BA1/IF1\'s literal; CSA-D\'s helm disables it too)');
   assert.match(w, /paused: _overlayHeld \|\| _seasonHeld \|\| _travelSoundsOff(?: \|\| _csaFootstepsOff)?, entity: playerEntity,/, 'the mod\'s stride (DECK-FIELD: and the helm\'s footsteps-off - test/deckfield.test.js)');
   assert.match(w, /ridingVolumeScale: \(\) => \(_travelSoundsOff \? 0 : 1\),/, 'the riding loop');
@@ -1722,7 +1723,7 @@ test('AUDIT-TO1 G1/G2/G3/I2/I3/I4/I6/J1/K2/H1/H2: the host seams the sweep found
   assert.match(m, /this\.popUp\.enforceShipRestriction\(\);/, 'OnPush\'s guard has a caller');
   assert.equal((m.match(/this\.popUp\.enforceShipRestriction\(\);/g) || []).length, 2, 'at both construction sites');
   // I5: the popup's I, and the box drawn above it
-  assert.match(read('src/ui/travelPopUp.js'), /if \(key === 'KeyI' && !this\.coordsOnly\) \{ this\.deps\.displayLocationInfo\?\.\(\); return; \}/);
+  assert.match(read('src/ui/travelPopUp.js'), /if \(key === 'KeyI' && !this\.coordsOnly && this\._to\) \{ this\.deps\.displayLocationInfo\?\.\(\); return; \}/);   // AUDIT IT1 C5 (PIN MOVED): TravelOptionsPopUp's Update alone polls I
   assert.match(m, /displayLocationInfo: \(\) => this\._displayLocationInfo\(\),/);
   assert.match(m, /this\.popUp\.draw\(renderer, canvas, font\);\s*\n[\s\S]{0,300}?if \(this\.infoBox\) \{\s*\n\s*this\._box = layoutMessageBox\(font, this\.infoBox\.rows, \[\]\);/);
   // C3: the fee on the default skin
@@ -1826,7 +1827,7 @@ test('BOOT-TDZ: every Travel Options binding the STREAM reads is declared above 
 // exhaustion". Three defects, and none of them is the mod's model being
 // wrong - the port does run the mod's continuous accelerated journey, as
 // its own readme describes it, and never teleports on that path.
-test('TO-FIELD: the accelerated journey waits for the ground; TO-FIELD3 took the needs and the hunting roll back off the mod\'s clock (mutants: travel-drive-ungated)', () => {
+test('TO-FIELD: the accelerated journey waits for the ground; TO-FIELD3 took the needs back off the mod\'s clock (mutants: travel-drive-ungated)', () => {
   const w = read('src/scenes/world.js');
 
   // 1. THE WALK WAITS. The journey drives the motor at up to sixty times
@@ -1871,41 +1872,27 @@ test('TO-FIELD: the accelerated journey waits for the ground; TO-FIELD3 took the
   // own fatigue surcharge off a 60x ride. Mac removed it: "journeys no
   // longer sit as resting (needs charge normally again, health ticks
   // back)". `resting` is not a fatigue knob - it is the needs' one word
-  // for "sat still" - and it was holding four laws, not one: the two
-  // fatigue drains it was aimed at, the bare-skin block's naked-cold
-  // and sunburn ticks and the byFire exposure damage (the health), and
-  // - never counted by the change that set it - SURV6's hunting roll,
-  // which refuses outright on `resting` (hunting.js:120).
+  // for "sat still" - and it was holding more laws than one: the two
+  // fatigue drains it was aimed at, and the bare-skin block's naked-cold
+  // and sunburn ticks and the byFire exposure damage (the health).
   assert.match(w, /survivalEnv: \(\) => \(_mode\(\) === 'dungeon' \? \(playerEntity\.isResting \? modes\?\.dungeonCtx\?\.survivalEnvNow\?\.\(\) \?\? null : null\) : survivalEnvNow\(\)\),/,
     'the journey feeds the needs the world it is actually in');
   assert.doesNotMatch(w, /resting: true \}\n?\s*: survivalEnvNow/, 'and no travel arm sits the traveller down');
   assert.doesNotMatch(w, /worldTimeScale\(\) > 1 \? \{ \.\.\.survivalEnvNow\(\)/, 'the mod\'s clock does not reach the needs at all');
-  // the four laws that flag was holding, each still keyed on `resting`
+  // the laws that flag was holding, each still keyed on `resting`
   // in the leaf - which is WHY one flag could never have been the right
   // shape for a fatigue surcharge
   const n = read('src/systems/survival/needs.js');
   // (SURV-TIERS: through the tier's one stamina door, `tire`)
   assert.match(n, /if \(hungerAfter === 'starving' && !resting\) tire\(DRAIN\.starving, 'hunger'\);/, 'the starving drain');
-  assert.match(n, /if \(sleepNow === 'exhausted' && !resting\) tire\(DRAIN\.exhausted, 'sleep'\);/, 'the exhausted drain');
+  assert.match(n, /if \(sleepNow === 'exhausted' && !resting && !wakingHeld\(s, now\)\) tire\(DRAIN\.exhausted, 'sleep'\);/, 'the exhausted drain (REST6: held while the Waking Salts last - AUDIT REST II H15: asked, not optional)');
   assert.match(n, /if \(!env\.insideBuilding && !vampire && !ctx\.beastForm && !sleeping && !resting\) \{/, 'the bare-skin health ticks');
-  assert.match(read('src/systems/survival/hunting.js'), /if \(!climate \|\| !outdoors \|\| (?:afloat \|\| )?inLocationRect \|\| night \|\| enemiesNear \|\| resting\) return null;/,
-    'and the hunting roll, which is the one the flag took without saying so');
 
   // 3. THE FOLLOW KEY IS NAMED WHERE THE TRIP IS BOUGHT. The mod does not
   // route along roads to a destination - road following is a mode the
   // player starts with a key, and the port had to move that key off the
   // mod's own F (this skin spends F on the social card), so the only
   // place it was named was the help inside a running journey.
-  // TO-FIELD3: and SURV6's roll is NOT held with them any more - Mac:
-  // "hunting rolls fire during travel again". The consequence is real
-  // and is the point: the roll fires once a game minute, a journey
-  // spends those at up to a hundred times real time, and every event
-  // opens a box the mod answers with interruptTravel() - so a long
-  // wilderness ride will be interrupted, often. The wilderness is alive
-  // while you cross it; the survival mod's own switch is the way out.
-  assert.match(w, /if \(_mode\(\) === 'exterior'\) hunting\.tick\(\);/,
-    'the wilderness rolls at the traveller whatever pace they are moving at');
-  assert.doesNotMatch(w, /worldTimeScale\(\) <= 1\) hunting\.tick\(\)/, 'no clock gate survives on the roll');
 
   const m = read('src/ui/heldMap.js');
   assert.match(m, /const _fk = this\._to\?\.followKeyText\?\.\(\);/, 'KB1: the registry\'s FollowPaths, as Controls binds it');

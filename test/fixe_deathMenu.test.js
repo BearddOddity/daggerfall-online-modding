@@ -124,20 +124,39 @@ test('FIX-E: F11 reaches the world host’s quickload from UNDER the death scree
   // D-ONLINE1 (2026-09-17): the arm grew a respawn door for an online death - F11 on the death screen respawns
   // where it used to quickload - and kept its place above the rung; test/donline1_respawn.test.js holds the door.
   // AUDIT RETRO1 C1: and Shift-F11 - the retro toggle's chord on F11's key - is not a load
-  const arm = w.indexOf("if (townTalk.overlayActive && !isTextEntryTarget(e.target) && (modes?.mode ?? 'exterior') === 'exterior' && codeMeans(bindings(), e.code, 'QuickLoad') && !retroToggleKey(e, keys)) {");   // UXB1-S: its key, shared or not
+  const arm = w.indexOf("if (townTalk.overlayActive && townTalk.overlay?.loadsUnder === true && !isTextEntryTarget(e.target) && (modes?.mode ?? 'exterior') === 'exterior' && codeMeans(bindings(), e.code, 'QuickLoad') && !retroToggleKey(e, keys)) {");   // UXB1-S: its key, shared or not
   // AUDIT DISC28 UI-7: the arm's one-press-one-load repeat guard stands at its head now - the window 900 -> 1100
   assert.ok(w.slice(arm, arm + 1100).includes('else hudCtx.quickLoad();'), 'and quickload is still what F11 does when the death was not online');
   const gate = w.indexOf('if (townTalk.keydown(e, keys)) return;');   // KB1: the rung hands its mode keys the held Set
   assert.ok(arm > 0 && gate > arm, 'the arm stands above the townTalk rung');
-  // the same law routeKey has carried for the dungeon and interior hosts
-  assert.match(read('src/ui/input.js'), /if \(actionsOf\(e, keys\)\.includes\('QuickLoad'\) && !retroToggleKey\(e, keys\)\) \{ ctx\.quickLoad\?\.\(setPlayerPos\); return true; \}/);
+  // the same law routeKey has carried for the dungeon and interior hosts - DUPE-LOAD (PIN MOVED): from under the death
+  // screen alone, as this arm
+  assert.match(read('src/ui/input.js'), /if \(ctx\.overlayWindow\?\.\(\)\?\.loadsUnder === true && actionsOf\(e, keys\)\.includes\('QuickLoad'\) && !retroToggleKey\(e, keys\)\) \{ ctx\.quickLoad\?\.\(setPlayerPos\); return true; \}/);
+});
+
+test('DEATH-LOAD (issue #642): F11 off a street death closes the death screen the load lands under, before its first await', () => {
+  // The arm above reaches worldQuickLoad from under the screen, and the load restored the save - but nothing took
+  // the street's screen down (only the dungeon's load and a building's forced exit drop theirs), so "YOU DIED"
+  // stood over the loaded game: Enter then ended the run, and the classic screen's timer ended it unasked.
+  const w = read('src/scenes/world.js');
+  const fn = w.indexOf('async function worldQuickLoad(');
+  const restored = w.indexOf("if (!extras) { townTalk.say('Save version mismatch.'); return; }", fn);
+  const nextAwait = w.indexOf('await ', restored);
+  assert.ok(fn > 0 && restored > fn && nextAwait > restored, 'worldQuickLoad and its restore are where this pin reads them');
+  const landing = w.slice(restored, nextAwait);
+  assert.match(landing, /\n\s*closeDeathScreen\(\);/, 'the restored save closes whichever death screen is up, before the load awaits anything');
+  assert.match(landing, /\n\s*_deathWasOnline = null;/, 'and the death it closed is forgotten, as every respawn forgets it');
+  assert.match(w, /function closeDeathScreen\(\) \{\n\s*const ov = townTalk\.overlay;\n\s*if \(ov instanceof DeathScreen\) \{ ov\.restoreView\(\); townTalk\.closeOverlay\(ov\); \}/,
+    'closeDeathScreen still takes the street\'s screen down and hands the fall\'s pitch back');
 });
 
 test('FIX-E: the interior slot releases what it overwrites, and the fixed city offers no F11 it cannot honour', () => {
   assert.match(read('src/scenes/worldModes.js'), /if \(!\(interiorOverlay instanceof DeathScreen\)\) \{[\s\S]{0,600}?interiorOverlay\?\.dispose\?\.\(\);\s*\n\s*interiorOverlay = new DeathScreen\(/, 'dispose before the overwrite, as dungeonContext has always done');
   assert.match(read('src/scenes/exterior.js'), /new DeathScreen\(\{[^\n]*hint: 'ENTER end', online: false \}\)/, 'no save path, no F11 hint - and no online respawn, so no loss shown (AUDIT 28 B5)');
-  assert.match(read('src/scenes/world.js'), /new DeathScreen\(\{ eyeHeight: player\.eye\[1\] - player\.pos\[1\], capsuleHeight: player\.height, onReset: \(\) => \(_deathWasOnline \? respawnOnlinePlayer\(\) : endRunToTitleMenu\(renderer\)\) \}\)/, 'the world keeps the full hint - its F11 is real now (D-ONLINE1: and its reset respawns when the death was online)');
+  assert.match(read('src/scenes/world.js'), /new DeathScreen\(\{ eyeHeight: player\.eye\[1\] - player\.pos\[1\], capsuleHeight: player\.height, onReset: \(\) => \(legacyDeathReset\(\) \|\| \(_deathWasOnline \? respawnOnlinePlayer\(\) : endRunToTitleMenu\(renderer\)\)\), rises: \(\) => legacyHost\?\.willRise\(\) \?\? false \}\)/, 'the world keeps the full hint - its F11 is real now (D-ONLINE1: and its reset respawns when the death was online)');   // PIN MOVED (BAL4): the Legacy rise told
   const ds = read('src/ui/deathScreen.js');
   assert.match(ds, /hint = 'ENTER end   F11 load'/, 'the default hint is the full one');
-  assert.match(ds, /const hint = this\.online \? t\('death\.risingIn', 'RISING IN \{n\}   ENTER now', \{ n: this\.respawnIn \}\) : hintText\(this\.hint\);[^\n]*\n\s*drawText\(renderer, font, hint,/, 'and the screen draws the hint it was given (AUDIT CONTRIB A5: online, the hold\'s count in its place)');
+  // PIN MOVED (BAL4, bible/05-Combat/Balance-Arc.md section 6): offline, a Legacy rise's hint says Enter raises (riseHint);
+  // L10N4: the hold's count and the hint said in the player's language (the hint kept English, shown through hintText)
+  assert.match(ds, /const hint = this\.online \? (?:\(this\.wild \? t\('death\.risingInWild', 'RISING IN \{n\}', \{ n: this\.respawnIn \}\) : )?t\('death\.risingIn', 'RISING IN \{n\}   ENTER now', \{ n: this\.respawnIn \}\)\)? : hintText\(this\.rises \? riseHint\(this\.hint\) : this\.hint\);[^\n]*\n\s*drawText\(renderer, font, hint,/, 'and the screen draws the hint it was given (AUDIT CONTRIB A5: online, the hold\'s count in its place)');
 });

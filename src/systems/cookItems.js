@@ -33,7 +33,7 @@
 // earns nothing - the service never sees it.
 // ═══════════════════════════════════════════════════════════════════
 import {
-  recipeById, dishOf, dishMinutes, DISHES, DISH_TEMPLATES, DISH_ICON, HAND_CHEF, HAND_PROVISIONER, PROVENANCE_RE, makerName, dishSpell,
+  recipeById, dishOf, dishMinutes, DISHES, DISH_TEMPLATES, DISH_ICON, HAND_CHEF, HAND_PROVISIONER, PROVENANCE_RE, makerMark, dishSpell,
 } from '../net/recipeLaw.js';
 import { setItemFields, mintCondition, registerItemUseHandler } from './itemTemplates.js';
 import { eatFood } from './survival/items.js';
@@ -62,7 +62,7 @@ export function mintDish({ recipe, maker = null, hand = null }, provenance) {
   item.name = dishOf(r.id)?.name ?? item.name;
   item.recipe = r.id;
   item.provenance = provenance;
-  const mark = makerName(maker);
+  const mark = makerMark(maker);   // TEXT-F1
   if (mark) item.maker = mark;
   if (hand === HAND_PROVISIONER) item.noRot = true;   // 3.3: a Provisioner's dish never spoils
   if (hand === HAND_CHEF && dishOf(r.id)?.effect.party === true) item.chef = true;   // 3.3: a Chef's feast lasts half again
@@ -153,7 +153,7 @@ function dishEntry(a, name) {
 }
 /** AUDIT PROF-541 K3/K4: WHAT A FEAST'S GIFT DOES (world.js online.onCast, before the cast lands): a spell that is no
  *  party dish's passes untouched (true); a feast from a STRANGER is dropped (false - a feast is the party's at the table,
- *  and a stranger's landed beside my party's own, its rounds added to it: effects.js like-kind stacking); a party mate's
+ *  and a stranger's landed beside my party's own, merged into it: effects.js like-kind incumbency); a party mate's
  *  renews mine (renewDish, its rounds the cast's own at `level`) - dropped when mine has as many left. */
 export function takeFeastGift(entity, spell, level, mate) {
   if (!isPartyDishSpell(spell?.name)) return true;

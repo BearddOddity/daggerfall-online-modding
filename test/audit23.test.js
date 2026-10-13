@@ -156,7 +156,7 @@ test('AUDIT 23: both dungeon-mounting hosts pass the spawn applier; the snapshot
     assert.ok(call, `${name} passes the spawn applier as routeKey's third argument`);
   }
   const dc = readFileSync(join(root, 'src/scenes/dungeonContext.js'), 'utf8');
-  assert.ok(/droppedLoot: droppedLoot\._piles\.map/.test(dc), 'collectWorld carries the piles');
+  assert.ok(/droppedLoot: droppedLoot\._piles\.filter\(\(p\) => !p\.unsaved\)\.map/.test(dc), 'collectWorld carries the piles');   // PIN MOVED (STUCK-ARROWS): every pile but a LoadID-0 one (a stuck shaft)
   assert.ok(/droppedLoot\.restorePiles\(w\.droppedLoot\)/.test(dc), 'applyWorld restores them');
   // save-load-11: the action-object record is ActionSystem's law (and
   // pinned by RUNNING it in action.test.js); the host must route

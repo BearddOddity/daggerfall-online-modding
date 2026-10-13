@@ -191,14 +191,17 @@ test('MW-BRIG2: through the binder - a skinned-from-body part is drawn skinned, 
   assert.ok(lone.notes.some((s) => /no body part to skin it from/.test(s)), lone.notes.join('; '));
 });
 
-test('MW-BRIG2: the item - the Steel Brigandine Jerkin, one piece worn as a cuirass, skinned from chest, groin, thighs and knees', () => {
+test('MW-BRIG2: the item - the Steel Brigandine Jerkin (since MW-BRIG4 every brigandine metal\'s), one piece worn as a cuirass, skinned from chest, groin, thighs and knees', () => {
   assert.equal(RRI_TEMPLATES.find((t) => t.index === RRI_JERKIN_TEMPLATE)?.name, 'Jerkin');
   assert.equal(rriVariantWord(STEEL_JERKIN), 'Brigandine ');
+  // MW-BRIG4: every metal the jerkin is a brigandine in wears it (test/mwbrig4.test.js); the leather and fur jerkins
+  // keep their retail cuirass
   for (const [name, m] of Object.entries(ARMOR_MATERIAL)) {
-    if (m === ARMOR_MATERIAL.Steel) continue;
+    if (m >= ARMOR_MATERIAL.Iron) { assert.equal(ownArmorModelFor({ templateIndex: RRI_JERKIN_TEMPLATE, material: m })?.id, `daggerfall_brigandine_${name.toLowerCase()}`); continue; }
     assert.equal(ownArmorModelFor({ templateIndex: RRI_JERKIN_TEMPLATE, material: m }), null, `${name} jerkin keeps its retail cuirass`);
   }
-  assert.equal(ownArmorModelFor({ templateIndex: 102, material: ARMOR_MATERIAL.Steel }), null, 'the classic Steel Cuirass is untouched');
+  // MW-STEEL1: the classic Steel Cuirass wears Mac's steel plate now (mwsteel1.test.js) - its own model, never the brigandine
+  assert.equal(ownArmorModelFor({ templateIndex: 102, material: ARMOR_MATERIAL.Steel })?.id, 'daggerfall_steel_cuirass', 'the classic Steel Cuirass is the steel plate\'s, not the brigandine\'s');
   const worn = composeWornArmor({ pieces: [STEEL_JERKIN], armors: [], bodyPool: [] });
   assert.deepEqual(worn.notes, []);
   assert.deepEqual(worn.adds.map((a) => [a.partName, a.bones.join(), a.model, [...a.skinFrom].join()]), [['cuirass', 'chest', 'brigandine_steel.nif', 'chest,groin,upperleg,knee']]);
@@ -209,11 +212,15 @@ test('MW-BRIG2: the item - the Steel Brigandine Jerkin, one piece worn as a cuir
     assert.equal(ownMwDataPath(`../assets/mw/${path}`), path);
   }
   assert.ok(itemMapCoverage().some((c) => c.kind === 'own' && c.own === 'ownArmorModels' && c.material === 'Steel'));
-  // The build loads the body under it - shadowed or not - and hands it to the binder with the part.
+  // The build loads the body under it - shadowed or not - and hands it to the binder with the part, through
+  // ownBodyPaths and ownBodyPart (MW-STEEL4: the third person's alone - no model skinned from the body reaches the first).
   const fp = sourceText('src/combat/fpArm.js');
-  assert.match(fp, /const bodyUnder = \(add\) => \(add\.skinFrom \?\? \[\]\)\.flatMap\(\(slot\) => rows\n/);
+  assert.match(fp, /  return \(add\.skinFrom \?\? \[\]\)\.flatMap\(\(slot\) => rows\n/);
+  assert.match(fp, /const bodyUnder = \(add\) => ownBodyPaths\(add, rows\);/);
   assert.match(fp, /\.\.\.worn\.adds\.flatMap\(bodyUnder\)\.map\(\(b\) => b\.path\),   \/\/ MW-BRIG2/);
-  assert.match(fp, /\.\.\.\(row\.skinFrom \? \{ skinFrom: bodyUnder\(row\)/);
+  assert.match(fp, /\.\.\.ownBodyPart\(row, rows, find\) \}\);/);
+  // PIN MOVED (MWNPC3): the body's bytes are the archive's one copy (nifBytes), where each build sliced its own
+  assert.match(fp, /if \(!add\.skinFrom\) return \{\};\n  return \{\n    skinFrom: ownBodyPaths\(add, rows\)\.map\(\(b\) => \(\{ slot: b\.slot, bytes: nifBytes\(find\(b\.path\), b\.path\) \}\)\)\.filter\(\(b\) => b\.bytes\),/);
 });
 
 test('MW-BRIG2: the shipped files are re-made from the committed sources, byte for byte, and read back', () => {

@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
 import { standService, T0, sessionStorageOf } from './accountDb.mjs';
 import { accountProf, SESSION_KEY, accountRefusalText } from '../src/net/accountClient.js';
 import { createProfBook } from '../src/net/profBook.js';
-import { xpForRank, PROF_XP_MAX, COOK_FIRE } from '../src/net/professionLaw.js';
+import { xpForRank, PROF_XP_MAX, COOK_FIRE, trackOf } from '../src/net/professionLaw.js';
 import { recipeById, DISH_LEVEL, PAN_ACT, panWindow, dishOf, HAND_CHEF, dishSpell } from '../src/net/recipeLaw.js';
 import { validCastData } from '../src/net/wire.js';
 import { allyCastFrame, allyCastSpell } from '../src/systems/allyCast.js';
@@ -33,7 +33,10 @@ import { useItem } from '../src/systems/useItem.js';
 import { isFood, foodOf, FOOD, TEMPLATE, rotFoodDay } from '../src/systems/survival/food.js';
 import { SURVIVAL_TEMPLATES } from '../src/systems/survival/items.js';
 import { survivalOf } from '../src/systems/survival/needs.js';
-import { placeCampItem, CAMP_KIND } from '../src/systems/survival/camp.js';
+import { spendCampNight, fieldCookKeeps, CAMP_KIND } from '../src/systems/survival/camp.js';
+import { createCamps } from '../src/scenes/camps.js';
+import { setSharedClock } from '../src/systems/worldTick.js';
+import { CAMPFIRE_USES } from '../src/systems/survival/items.js';
 import { createSurvivalItem } from '../src/systems/survival/items.js';
 import { fatigueLossMultiplierFor } from '../src/scenes/shared.js';
 import { ITEM_FIELDS } from '../src/systems/itemFields.js';
@@ -73,7 +76,15 @@ function pageOf(draw0 = drawStoresPage) {
   return {
     draw, text: () => root.textContent, buttons: () => [...root.querySelectorAll('button')], root: () => root,
     button: (label) => [...root.querySelectorAll('button')].find((b) => b.textContent === label) ?? null,
-    dish: (prefix) => [...root.querySelectorAll('button')].find((b) => b.className.includes('prof-recipe') && b.textContent.startsWith(prefix)) ?? null,
+    // PIN MOVED (CRAFT2): the fire lists each dish once, the herb's way chosen in its box - "Hunter's Stew (northern" picks
+    // the dish (where it is not picked, and nothing holds the page) and answers the box's way ("northern Root Bulb")
+    dish: (prefix) => {
+      const [name, way] = prefix.replace(/\)$/, '').split(' (');
+      const row = [...root.querySelectorAll('button')].find((b) => b.className.includes('prof-recipe') && b.textContent.startsWith(name)) ?? null;
+      if (!row || !way) return row;
+      if (!row.className.includes(' on') && !row.disabled) row.onclick();
+      return [...root.querySelectorAll('button')].find((b) => b.parentNode?.className?.includes('prof-made') && b.textContent.startsWith(way)) ?? null;
+    },
     done() { root?.remove?.(); },
   };
 }
@@ -105,7 +116,8 @@ test('PROF9 DONE WHEN: a Hunter\'s Stew cooked with a clean pan at a fire from t
   const mac = await s.registered('Mac');
   const give = (m, qty) => raw.prepare(`INSERT INTO prof_stores (player, char_id, material, origin, qty) VALUES (?, ?, ?, 'own', ?)
     ON CONFLICT (player, char_id, material, origin) DO UPDATE SET qty = excluded.qty`).run(mac.id, mac.character, m, qty);
-  const track = (xp, spec50 = null, spec100 = null) => raw.prepare(`INSERT INTO prof_tracks (player, char_id, profession, xp, spec50, spec100, updated_at) VALUES (?, ?, 'cooking', ?, ?, ?, ?)
+  // PIN MOVED (CRAFT3): a dish's track is its craft's - seeded after the migrations, so under Provisioning's id
+  const track = (xp, spec50 = null, spec100 = null) => raw.prepare(`INSERT INTO prof_tracks (player, char_id, profession, xp, spec50, spec100, updated_at) VALUES (?, ?, 'provisioning', ?, ?, ?, ?)
     ON CONFLICT (player, char_id, profession) DO UPDATE SET xp = excluded.xp, spec50 = excluded.spec50, spec100 = excluded.spec100`).run(mac.id, mac.character, xp, spec50, spec100, NOON);
   give('food:meat', 2); give('food:mushroom', 1); give('p1:13', 1);
   const door = accountProf({ fetch: s.fetch, storage: sessionStorageOf(SESSION_KEY, mac) });
@@ -117,17 +129,17 @@ test('PROF9 DONE WHEN: a Hunter\'s Stew cooked with a clean pan at a fire from t
     book, name: (k) => materialLabel(k), withdraw: async () => ({ ok: true, text: '' }), fire: () => fire, panBand: () => 1, skillet: () => false,
     craft: async (recipe, opts) => {
       const r = await book.craft(recipe, { ...opts, name: 'Silverthorn' }, (data) => { for (const it of mintPieces(data)) player.items.push(it); });
-      return { ok: r.ok, text: r.ok ? `${craftedText(mintPieces(r.data))} (+${r.data.xp} Cooking XP).` : accountRefusalText(r.error) };
+      return { ok: r.ok, text: r.ok ? `${craftedText(mintPieces(r.data))} (+${r.data.xp} Provisioning XP).` : accountRefusalText(r.error) };   // PIN MOVED (CRAFT3): world.js's fire's xp word, professionName('cooking')
     },
   });
   const page = pageOf();
   try {
     assert.match(page.text(), /The Fire/);
-    assert.match(page.text(), /A fire to cook at\. Cooking 0 \(Novice\)\. A Skillet in your pack would widen the pan's window\./);
+    assert.match(page.text(), /A fire to cook at\. Provisioning 0 \(Novice\)\. A Skillet in your pack would widen the pan's window\./);   // PIN MOVED (CRAFT3): the fire reads Provisioning's track
     page.dish('Hunter\'s Stew (northern Root Bulb)').onclick();
     assert.match(page.text(), /Raw Meat 2 \/ 2 \(2 stored\)/);
     assert.match(page.text(), /Endurance \+5 for 2 hours\./);
-    assert.match(page.text(), /One serving, into your pack\. 3 pans; every pan taken off done is a clean pan, half again its 20 Cooking XP\./);
+    assert.match(page.text(), /One serving, into your pack\. 3 pans; every pan taken off done is a clean pan, half again its 20 Provisioning XP\./);   // PIN MOVED (CRAFT3): a dish raises Provisioning
     page.button('Cook').onclick();
     assert.equal(profActUnderWay(), true);
     assert.match(page.text(), /The pan \(Hunter's Stew\) - take each pan off while it is done, in the window \(Space\): 3 pans/);
@@ -139,9 +151,10 @@ test('PROF9 DONE WHEN: a Hunter\'s Stew cooked with a clean pan at a fire from t
     assert.deepEqual([stew.templateIndex, stew.group, stew.name, stew.recipe, stew.maker, stew.quality, stew.noRot, stew.chef], [685, 'UselessItems2', 'Hunter\'s Stew', 'stew:north', 'Silverthorn', undefined, undefined, undefined]);
     assert.match(stew.provenance, /^[0-9a-f]{16}$/);
     assert.deepEqual([isFood(stew), isDish(stew), foodOf(stew).satiety], [true, true, FOOD[TEMPLATE.Meat].satiety]);
-    assert.equal(book.track('cooking').xp, 30 + 500, 'a clean pan half again, and the first stew\'s 500');
+    // PIN MOVED (CRAFT3): book.track('cooking') is Provisioning's track, the dish's XP credited there
+    assert.deepEqual([book.track('cooking').profession, book.track('cooking').xp, book.track('provisioning').xp], ['provisioning', 30 + 500, 30 + 500], 'a clean pan half again, and the first stew\'s 500');
     assert.deepEqual([book.held('food:meat'), book.held('food:mushroom'), book.held('p1:13')], [0, 0, 0]);
-    assert.match(page.text(), /You cooked a Hunter's Stew \(\+530 Cooking XP\)\./);
+    assert.match(page.text(), /You cooked a Hunter's Stew \(\+530 Provisioning XP\)\./);   // PIN MOVED (CRAFT3): the fire's xp word
     // EATEN: C&C's own law - the hunger met - and Endurance +5 for two hours, the player's own buff
     const now = 100_000;
     hungry(player, now);
@@ -185,16 +198,17 @@ test('PROF9 DONE WHEN: a Hunter\'s Stew cooked with a clean pan at a fire from t
 
 // ─── THE PAGE ────────────────────────────────────────────────────────
 
-/** The Stores page over a stub book - the fire where `fire` says, Cooking at `rank` under `specs`. */
+/** The Stores page over a stub book - the fire where `fire` says, Cooking at `rank` under `specs`. PIN MOVED (CRAFT3): the
+ *  book keyed as profBook keys it - by track, a discipline asked its craft's (Cooking's Provisioning, Masonry's Building). */
 function stubPages({ fire = COOK_FIRE, rank = 0, specs = { 50: null, 100: null }, held: heldIn = {}, skillet = false, over = {} } = {}) {
   resetProfPages();
   setPref('gentleActs', false);
   const held = new Map(Object.entries({ 'food:meat': 9, 'food:mushroom': 9, 'p1:13': 9, 'p2:13': 0, ...heldIn }));
-  const tracks = new Map([['cooking', { profession: 'cooking', xp: xpForRank(rank), rank, specs }], ['masonry', { profession: 'masonry', xp: 0, rank: 0, specs: { 50: null, 100: null } }]]);
+  const tracks = new Map([['provisioning', { profession: 'provisioning', xp: xpForRank(rank), rank, specs }], ['building', { profession: 'building', xp: 0, rank: 0, specs: { 50: null, 100: null } }]]);
   const book = {
     state: { open: true, day: 1, character: 'c', account: 'a', readAt: Date.now(), stores: new Map(), tracks, today: {}, caps: {}, hunt: { hides: 0, high: 0 } }, stale: () => false, refresh: async () => ({ ok: true }),
     held: (k) => held.get(k) ?? 0, store: (k) => ({ material: k, own: held.get(k) ?? 0, bought: 0 }),
-    track: (p) => tracks.get(p) ?? { profession: p, xp: 0, rank: 0, specs: { 50: null, 100: null } }, materials: () => [], pendingWithdrawals: 0, pendingCrafts: 0,
+    track: (p) => tracks.get(trackOf(p)) ?? { profession: trackOf(p), xp: 0, rank: 0, specs: { 50: null, 100: null } }, materials: () => [], pendingWithdrawals: 0, pendingCrafts: 0,
     choose: async () => ({ ok: true }),
   };
   const calls = [];
@@ -216,11 +230,13 @@ test('PROF9 pages: The Fire - away from one, the word (no dish offered); at one,
     page.done();
     ({ calls } = stubPages());
     page = pageOf();
+    // PIN MOVED (CRAFT2): each dish once, its word the furthest its herb's ways go; the ways in its box
     assert.deepEqual(page.buttons().filter((b) => b.className.includes('prof-recipe')).map((b) => b.textContent), [
-      'Hunter\'s Stew (northern Root Bulb)can cook now', 'Hunter\'s Stew (southern Root Bulb)wants its inputs',
-      'Fisherman\'s Supper (northern Green Leaves)wants its inputs', 'Fisherman\'s Supper (southern Green Leaves)wants its inputs',
-      'Orchard Tart (northern Yellow Berries)rank 10', 'Orchard Tart (southern Yellow Berries)rank 10', 'Feast of the Hearthrank 70',
+      'Hunter\'s Stewcan cook now', 'Fisherman\'s Supperwants its inputs', 'Orchard Tartrank 10', 'Feast of the Hearthrank 70',
     ]);
+    page.dish('Hunter\'s Stew').onclick();
+    assert.match(page.text(), /Hunter's Stew \(northern Root Bulb\) - rank 0/, 'the way whose herb is held');
+    assert.deepEqual(page.buttons().filter((b) => b.parentNode?.className?.includes('prof-made')).map((b) => [b.textContent, b.className.includes('prof-locked')]), [['northern Root Bulb', false], ['southern Root Bulb', true]]);
     page.dish('Hunter\'s Stew (northern').onclick();
     page.button('Cook').onclick();
     assert.equal(page.dish('Hunter\'s Stew (southern').disabled, true, 'nothing else picked while the pan is on');
@@ -268,10 +284,10 @@ test('PROF9 pages: The Fire - away from one, the word (no dish offered); at one,
     // a Skillet: the window half again; a Cook's two; a Provisioner's keeping
     const st = stubPages({ skillet: true, rank: 100, specs: { 50: 'cook', 100: 'provisioner' } });
     page = pageOf();
-    assert.match(page.text(), /Cooking 100 \(Master\)\. Your Skillet widens the pan's window\./);
+    assert.match(page.text(), /Provisioning 100 \(Master\)\. Your Skillet widens the pan's window\./);   // PIN MOVED (CRAFT3): the fire reads Provisioning's track
     page.dish('Hunter\'s Stew (northern').onclick();
     assert.match(page.text(), /Endurance \+5 for 2 hours\. Yours never spoil\./);
-    assert.match(page.text(), /Two servings \(a Cook's\), into your pack\. 3 pans; every pan taken off done is a clean pan, half again its 140 Cooking XP\./);
+    assert.match(page.text(), /Two servings \(a Cook's\), into your pack\. 3 pans; every pan taken off done is a clean pan, half again its 140 Provisioning XP\./);   // PIN MOVED (CRAFT3): a dish raises Provisioning
     page.button('Cook').onclick();
     assert.deepEqual([_cookForTests().act.state.lo, _cookForTests().act.state.hi], panWindow(100, 1, true));
     assert.ok(_cookForTests().act.state.hi - _cookForTests().act.state.lo > PAN_ACT.w * 1.5 * 1.5 - 1e-9);
@@ -326,15 +342,24 @@ test('PROF9 pages: Cooking practised on the Professions page - its four cards ch
   stubPages({ rank: 55, specs: { 50: 'field-cook', 100: null } });
   const page = pageOf(drawProfessionsPage);
   try {
-    page.buttons().find((b) => b.textContent.startsWith('Cooking')).onclick();
+    // PIN MOVED (CRAFT3): Cooking is practised under Provisioning, Alchemy's craft and its - no row of its own; the craft's
+    // four a rank, each card naming its discipline, Cooking's four among them; its unlocks both disciplines' by rank
+    assert.equal(page.buttons().find((b) => b.textContent.startsWith('Cooking')), undefined, 'no Cooking row');
+    page.buttons().find((b) => b.textContent.startsWith('Provisioning')).onclick();
     page.draw();
     assert.doesNotMatch(page.text(), /not practised in the Bay yet/);
     const cards = page.buttons().filter((b) => b.className.includes('prof-spec'));
-    assert.deepEqual(cards.map((c) => [c.textContent.slice(0, c.textContent.indexOf(' ') > 0 && c.textContent.startsWith('Field') ? 10 : c.textContent.startsWith('Provisioner') ? 11 : 4), c.disabled]),
-      [['Cook', false], ['Field Cook', true], ['Chef', true], ['Provisioner', true]], 'the Cook offered (a change), the Field Cook chosen, the two at 100 shut below it');
-    assert.match(page.text(), /Hunter's Stew, Fisherman's Supperrank 0/);
-    assert.match(page.text(), /Orchard Tartrank 10/);
-    assert.match(page.text(), /Feast of the Hearthrank 70/);
+    assert.deepEqual(cards.map((c) => [c.querySelector('b')?.textContent, c.querySelector('.prof-of')?.textContent, c.disabled]), [
+      ['Brewer', 'Alchemy', false], ['Distiller', 'Alchemy', false], ['Cook', 'Cooking', false], ['Field Cook', 'Cooking', true],
+      ['Master Alchemist', 'Alchemy', true], ['Transmuter', 'Alchemy', true], ['Chef', 'Cooking', true], ['Provisioner', 'Cooking', true],
+    ], 'the Brewer, the Distiller and the Cook offered (a change), the Field Cook chosen, the four at 100 shut below it');
+    assert.deepEqual([...page.root().querySelectorAll('.px-stat')].map((r) => [r.querySelector('.k')?.textContent, r.querySelector('.v')?.textContent]), [
+      ['Alchemy: Orc Strength, Stamina, Healing, Water Walking', 'rank 0'], ['Cooking: Hunter\'s Stew, Fisherman\'s Supper', 'rank 0'],
+      ['Alchemy: Resist Fire, Resist Frost, Resist Shock, Restore Power', 'rank 10'], ['Cooking: Orchard Tart', 'rank 10'],
+      ['Alchemy: Slow Falling, Water Breathing, Cure Disease, Heal True', 'rank 25'], ['Alchemy: Resist Poison, Free Action, Levitation', 'rank 40'],
+      ['Alchemy: Chameleon Form, Shadow Form, Cure Poison', 'rank 55'], ['Alchemy: Invisibility', 'rank 70'], ['Cooking: Feast of the Hearth', 'rank 70'],
+      ['Alchemy: Purification', 'rank 90'],
+    ], 'the Stew and the Supper at 0, the Tart at 10, the Feast at 70 - each beside Alchemy\'s of its tier');
   } finally { page.done(); setProfessionsPages(null); }
 });
 
@@ -424,33 +449,41 @@ test('PROF9 items: what eating does - a dish eaten again renews its effect, neve
   setPref('survival', 'casual');
 });
 
-test('PROF9 items: a Field Cook lights a Campfire Kit\'s fire without its charge (3.3) - C&C\'s placing, its `keep`; a tent is no campfire', () => {
-  const kitItem = createSurvivalItem(TEMPLATE.Campfire);
-  const list = [kitItem];
-  const uses = kitItem.currentCondition;
-  const at = { feet: [0, 0, 0], yaw: 0, probe: () => 1, place: {} };
-  const kept = placeCampItem(kitItem, list, { ...at, keep: true });
-  assert.deepEqual([kept.ok, kept.camp.kind, kitItem.currentCondition, list.length], [true, CAMP_KIND.Fire, uses, 1]);
-  const spent = placeCampItem(kitItem, list, { ...at });
-  assert.deepEqual([spent.ok, kitItem.currentCondition], [true, uses - 1]);
-  const tent = createSurvivalItem(TEMPLATE.CampingEquipment);
-  const tl = [tent];
-  const tu = tent.currentCondition;
-  placeCampItem(tent, tl, { ...at, keep: true });
-  assert.equal(tent.currentCondition, tu - 1, 'a Field Cook\'s is a campfire\'s');
+test('PROF9 items: a Field Cook\'s night at their own Campfire spends no fuel (3.3 under REST2 - the kit\'s lit charge became a night\'s fuel): a Campfire\'s alone - an Ember Jar\'s night, a tent\'s wear and an old save\'s kit fire spend as ever; on the pool the same, and anyone else\'s night spends one (mutants: the perk unread; a tent or an old save\'s kit fire kept - AUDIT REST III F12: a jar\'s keep is recorded equivalent, the game never writes a jar with fuel)', () => {
+  const night = (rec, fc) => { const r = spendCampNight(rec, 0, fc); return [r.spent, !!r.kept, rec.wear]; };
+  assert.deepEqual(night({ kind: CAMP_KIND.Fire, fuel: true, wear: 8, litUntil: 99 }, true), [false, true, 8], 'a Field Cook\'s own Campfire: every night of fuel kept');
+  assert.deepEqual(night({ kind: CAMP_KIND.Fire, fuel: true, wear: 8, litUntil: 99 }, false), [true, false, 7], 'anyone else\'s: one night spent');
+  assert.deepEqual(night({ kind: CAMP_KIND.Fire, jar: true, wear: 1, litUntil: 99 }, true), [true, false, 0], 'an Ember Jar\'s one night is spent (its record carries no fuel - placeCampItem\'s)');   // AUDIT REST II (L8-5): the shape the game writes
+  assert.deepEqual(night({ kind: CAMP_KIND.Tent, wear: 5, litUntil: 99 }, true), [true, false, 4], 'a tent wears as ever');
+  assert.deepEqual(night({ kind: CAMP_KIND.Fire, wear: 3, litUntil: 99 }, true), [true, false, 2], 'an old save\'s kit fire has no fuel of its own to keep');
+  assert.deepEqual([fieldCookKeeps({ kind: CAMP_KIND.Fire, fuel: true }), fieldCookKeeps(null)], [true, false]);
+  // the pool: online, a Campfire placed whole, a night slept beside it
+  setSharedClock(() => 1000);
+  try {
+    const flat = (o, d, m) => (d[1] < 0 && m >= o[1] ? o[1] : null);
+    const pool = (fieldCook) => createCamps({ entity: { items: [] }, camera: () => ({ feet: [0, 1, 0], yaw: 0 }), collider: () => ({ raycast: flat }), place: () => ({}), fieldCook });
+    for (const [fc, wear] of [[() => true, CAMPFIRE_USES], [() => false, CAMPFIRE_USES - 1], [null, CAMPFIRE_USES - 1]]) {
+      const p = pool(fc);
+      const kit = createSurvivalItem(TEMPLATE.Campfire);
+      assert.equal(p.placeItem(kit, [kit]), true);
+      assert.equal(p.camps[0].rec.wear, CAMPFIRE_USES, 'placing spends nothing, for anyone (REST2)');
+      assert.equal(p.spendNightNear([0, 1, 0]), true, 'the night was slept at my own fire');
+      assert.equal(p.camps[0].rec.wear, wear, fc?.() ? 'a Field Cook: none spent' : 'no Field Cook: one night spent');
+    }
+  } finally { setSharedClock(null); }
 });
 
 // ─── THE WIRING ──────────────────────────────────────────────────────
 
 test('PROF9 wiring: the fire is any lit one (the street\'s camps and braziers, a building\'s hearth, a dungeon\'s fire) at no fee; the world crafts a dish there by Cooking\'s station, the pan\'s band off INT and PER, the Skillet off the pack; a Provisioner\'s provisions withdrawn never to spoil; a Field Cook\'s kit in the street and underground; a feast shared through ALLY-CAST\'s frame to the party; every host eats a dish and the Tart lengthens a stamina; C&C\'s own cooking stays C&C\'s, teaching nothing', () => {
   const w = src('src/scenes/world.js');
-  assert.match(w, /: profession === 'cooking'   \/\/ PROF9: the fire - any lit one, a campfire, a hearth, a brazier; no fee\n\s+\? \{ here: \(\) => cookFireHere\(\), a: 'a fire', who: 'cook', noun: 'fire', kept: COOK_KEPT_TEXT, xp: 'Cooking'/);
+  assert.match(w, /: profession === 'cooking'   \/\/ PROF9: the fire - any lit one, a campfire, a hearth, a brazier; no fee\n\s+\? \{ here: \(\) => cookFireHere\(\), a: 'a fire', who: 'cook', noun: 'fire', kept: COOK_KEPT_TEXT, xp: professionName\('cooking'\) \}/);   // PIN MOVED (CRAFT3): the fire's XP word its craft's track's name - Provisioning
   assert.match(w, /const cookFireHere = \(\) => \(_mode\(\) === 'exterior'\n\s+\? \(camps\.fireNear\(walkMode && playerSpawned \? player\.pos : cam\.pos\) \? COOK_FIRE : null\)\n\s+: modes\?\.cookFireHere\?\.\(\) \?\? null\);/);
   assert.match(w, /fire: \(\) => cookFireHere\(\),\n\s+panBand: \(\) => panBand\(\{ intelligence: liveStat\(playerEntity, 'intelligence'\), personality: liveStat\(playerEntity, 'personality'\) \}\),\n\s+skillet: \(\) => hasSkillet\(playerEntity\?\.items\),/);
   assert.match(w, /noRot: profBook\?\.track\('cooking'\)\?\.specs\?\.\[100\] === 'provisioner' \}\);/);
-  assert.match(w, /fieldCook: \(\) => fieldCookNow\(\),   \/\/ PROF9: a Field Cook's kit keeps its charge\n/);
+  assert.match(w, /fieldCook: \(\) => fieldCookNow\(\),   \/\/ PROF9: a Field Cook's own Campfire keeps its fuel\n/);
   assert.match(w, /const fieldCookNow = \(\) => profBook\?\.state\?\.open === true && profBook\.track\('cooking'\)\?\.specs\?\.\[50\] === 'field-cook';/);
-  assert.match(w, /fieldCook: \(\) => fieldCookNow\(\),   \/\/ PROF9: a Field Cook's kit keeps its charge underground too/);
+  assert.match(w, /fieldCook: \(\) => fieldCookNow\(\),   \/\/ PROF9: a Field Cook's own Campfire keeps its fuel underground too/);
   assert.match(w, /setFeastShare\(\(spell\) => \{\n\s+if \(!online \|\| online\.status !== 'open' \|\| !social\?\.party\) return \[\];\n(?:\s+\/\/[^\n]*\n)*\s+return shareFeastWith\(peersNear\(\), \{ isMate: \(id\) => social\.isPartyPeer\(id\), send: \(id\) => online\.sendCast\?\.\(allyCastFrame\(spell, DISH_LEVEL, id\)\),/);   // PIN MOVED (AUDIT PROF-541 K5, R2-H1): the mates in sight, by cookItems.js shareFeastWith
   const m = src('src/scenes/worldModes.js');
   assert.match(m, /cookFireHere\(\) \{\n\s+if \(mode === 'interior'\) return interiorCamps\.fireNear\(player\.pos\) \? COOK_FIRE : null;\n\s+if \(mode === 'dungeon'\) return dungeonCtx\?\.cookFire\?\.\(\) === true \? COOK_FIRE : null;\n\s+return null;/);
@@ -459,7 +492,7 @@ test('PROF9 wiring: the fire is any lit one (the street\'s camps and braziers, a
   assert.match(d, /cookFire: \(\) => !!\(_fpFeet && camps\.fireNear\(_fpFeet\)\),/);
   assert.match(d, /fieldCook: \(\) => opts\.fieldCook\?\.\(\) === true,/);
   const c = src('src/scenes/camps.js');
-  assert.match(c, /keep: fieldCook\?\.\(\) === true,/);
+  assert.match(c, /const r = spendCampNight\(best\.rec, now\(\), fieldCook\?\.\(\) === true\);\n\s+if \(r\.kept\) return true;/);
   // C&C's own cooking: the camp's and the brazier's own list, the mod's law, no profession in it
   assert.match(c, /const r = cookFood\(raw\[i\], items, \{ skillet: hasSkillet\(items\) \}\);/);
   assert.doesNotMatch(c, /profBook|recipeLaw|professionLaw/);
@@ -529,11 +562,12 @@ test('AUDIT PROF-541 K3: a feast is a party mate\'s gift alone - a stranger\'s "
   assert.ok(stranger, 'the stranger\'s list would carry it');
   assert.equal(takeFeastGift(me, stranger, frame.level, false), false, 'a stranger\'s feast dropped');
   assert.deepEqual([liveStat(me, 'strength'), liveBundles(me).length, [...new Set(me.activeEffects.map((a) => a.roundsRemaining))]], [55, 1, [1439]], 'the party\'s day, as it was');
-  // what it did before: laid on beside the ally's feast, its rounds added
+  // what it did before: laid on beside the ally's feast, its rounds added (2,879) - PIN MOVED (STACK-CAP): a like-kind
+  // merge renews now and adds nothing, so the drop stands on the stranger alone
   const was = { items: [], stats: { ...STATS }, activeEffects: [] };
   applySpell(mate, frame.level, was, {}, () => 0.5, null, { allyCast: true });
   applySpell(stranger, frame.level, was, {}, () => 0.5, null, { allyCast: true });
-  assert.ok(was.activeEffects.some((a) => a.roundsRemaining > 2000), 'like-kind stacking (effects.js) - why it is dropped');
+  assert.deepEqual([...new Set(was.activeEffects.map((a) => a.roundsRemaining))], [1439], 'the like-kind merge renews (effects.js renewRounds) - never the 2,879 it once stacked to');
 });
 
 test('AUDIT PROF-541 K4: a dish renewed is never shortened - a standing bundle with as many rounds left keeps them, the incoming skipped (a Chef\'s feast is not cut by a plain one eaten or shared); a shorter one standing is renewed', () => {
@@ -589,24 +623,25 @@ test('AUDIT PROF-541 K7: the fire\'s XP line says what the service pays - the to
   let page = pageOf();
   try {
     page.dish('Hunter\'s Stew (northern').onclick();
-    assert.match(page.text(), /every pan taken off done is a clean pan, 350 Cooking XP to a plain dish's 280 - the town's Apothecary's 2 steps in both\./);
+    // PIN MOVED (CRAFT3): a dish raises Provisioning - its XP said so
+    assert.match(page.text(), /every pan taken off done is a clean pan, 350 Provisioning XP to a plain dish's 280 - the town's Apothecary's 2 steps in both\./);
     page.done();
     stubPages({ rank: 100, over: { cookSteps: () => 1 } });
     page = pageOf();
     page.dish('Hunter\'s Stew (northern').onclick();
-    assert.match(page.text(), /a clean pan, 280 Cooking XP to a plain dish's 210 - the town's Apothecary's step in both\./);
+    assert.match(page.text(), /a clean pan, 280 Provisioning XP to a plain dish's 210 - the town's Apothecary's step in both\./);   // PIN MOVED (CRAFT3): Provisioning XP
     page.done();
     stubPages({ rank: 100, over: { cookSteps: () => 0 } });
     page = pageOf();
     page.dish('Hunter\'s Stew (northern').onclick();
-    assert.match(page.text(), /a clean pan, half again its 140 Cooking XP\./);
+    assert.match(page.text(), /a clean pan, half again its 140 Provisioning XP\./);   // PIN MOVED (CRAFT3): Provisioning XP
   } finally { page.done(); setProfessionsPages(null); }
   assert.match(src('src/scenes/world.js'), /cookSteps: \(\) => myHall\('cooking'\)\.steps,/);   // PIN MOVED (AUDIT PROF-541 R2-H1): the guard's law fortLaw.js hallStepsFor's, driven below
 });
 
 test('AUDIT PROF-541 K8: a Brew pressed while another craft holds the one-craft latch (profBook.js prof-busy) says the hands are busy, not that a brew is in the cauldron', () => {
   const w = src('src/scenes/world.js');
-  assert.match(w, /r\?\.error === 'prof-busy' \? 'Your hands are busy with another craft\.' : accountRefusalText\(r\?\.error\)/);
+  assert.match(w, /r\?\.error === 'prof-busy' \? 'Your hands are busy with another craft\.' : `\$\{accountRefusalText\(r\?\.error\)\}\$\{movedFirstText\(r\)\}`/);   // PIN MOVED (AUDIT2 BAG1 K8): and what went into the Stores first
   assert.doesNotMatch(w, /Your last brew is still in the cauldron/);
 });
 

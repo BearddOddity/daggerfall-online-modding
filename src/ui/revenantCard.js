@@ -33,6 +33,7 @@ import { PIXEL_STACK, PIXEL_TEXT_SHADOW } from './pixelifyFive.js';
 import { requestFittedIcon, fittedImg } from './textureCanvas.js';
 import { armDrawWatchdog, disarmDraw } from './drawWatchdog.js';
 import { sweepHudLayout } from './hudLayout.js';   // HUD-MOVE: a new stack stands where the player put the last
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export const REVENANT_CARD_STYLE_ID = 'revenant-card-css';
 export const REVENANT_STACK_ID = 'revenant-cards';
@@ -53,7 +54,7 @@ const numeral = (rank) => ROMAN[Math.max(0, Math.min(5, rank | 0))];
 
 export const REVENANT_CARD_CSS = `
 .rvncard-stack {
-  position: fixed; left: calc(12px + env(safe-area-inset-left, 0px)); top: calc(17vh + env(safe-area-inset-top, 0px));
+  position: fixed; left: calc(12px + var(--ui-pillar, 0px) + env(safe-area-inset-left, 0px)); top: calc(17vh + env(safe-area-inset-top, 0px));   /* RETRO-UI */
   z-index: 31; pointer-events: none; display: flex; flex-direction: column; gap: 10px;
   width: min(380px, calc(100vw - 24px));
   font-family: ${PIXEL_STACK}; -webkit-font-smoothing: none; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'clig' 0;
@@ -127,6 +128,22 @@ body .rvncard.is-dismiss, body .rvncard.is-release { border-left-color: #6d6a63;
 body .rvncard.is-dismiss .rvncard-kicker, body .rvncard.is-release .rvncard-kicker { color: #b8b0a0; }
 body .rvncard.is-downed { border-left-color: #c9822e; }
 body .rvncard.is-downed .rvncard-kicker { color: #e0a54a; }
+/* RVN12b (bible/12-Enhanced-AI/Feud-Arc.md 24.2): FEUD's edges - its last stand blood with an ember rim, its signature
+   iron red, a theft amber, a betrayal black; the rest by their kin (decided here): a felling, a festering, its lair
+   and a weakness blood; a rout, an unbroken escape and a desertion amber; a Devoted one's warning the companion's */
+body .rvncard.is-laststand { border-left-color: #8c3a32; box-shadow: inset 0 0 0 1px #e0602a; }
+body .rvncard.is-laststand .rvncard-kicker { color: #ff8a4a; }
+body .rvncard.is-signature { border-left-color: #a8332a; }
+body .rvncard.is-signature .rvncard-kicker { color: #e06a5a; }
+body .rvncard.is-stole { border-left-color: #c9822e; }
+body .rvncard.is-stole .rvncard-kicker { color: #e0a54a; }
+body .rvncard.is-betrayed { border-left-color: #0b0b0b; }
+body .rvncard.is-betrayed .rvncard-kicker { color: #d8d8d8; }
+body .rvncard.is-felled, body .rvncard.is-festered, body .rvncard.is-lair, body .rvncard.is-weakness { border-left-color: #8c3a32; }
+body .rvncard.is-routed, body .rvncard.is-unbroken, body .rvncard.is-deserted { border-left-color: #c9822e; }
+body .rvncard.is-routed .rvncard-kicker, body .rvncard.is-unbroken .rvncard-kicker, body .rvncard.is-deserted .rvncard-kicker { color: #e0a54a; }
+body .rvncard.is-warn { border-left-color: #8a63d2; }
+body .rvncard.is-warn .rvncard-kicker { color: #c3a8ff; }
 body .rvncard .rvncard-sr {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
@@ -261,6 +278,7 @@ function setPortrait(face, ev) {
 export function showRevenantCard(ev) {
   try {
     if (!ev || !isEnhanced()) return false;
+    noteFirstUse('revenants');   // TUT1
     const d = docOf();
     if (!d?.body || !d.createElement) return false;
     const stack = ensure(d);

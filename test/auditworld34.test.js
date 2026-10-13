@@ -28,7 +28,7 @@ import * as relay from '../server/src/relay.js';
 import { RELAY_VERSION } from '../src/net/wire.js';   // LOCALDEV1: the worker entry exports handlers alone
 import { roomKeyFor, OnlineSession } from '../src/net/online.js';
 import { MAIN_STORY_DUNGEON_IDS, isMainStoryDungeon } from '../src/world/dungeonTextures.js';
-import { useSmallerDungeon, SMALLER_DUNGEONS_STATE } from '../src/world/smallerDungeons.js';
+import { useSmallerDungeon, dungeonSizeFor, onlineDungeonSize, SMALLER_DUNGEONS_STATE } from '../src/world/smallerDungeons.js';
 import { fakeRoom } from './fakeRoom.mjs';
 import { fakeSocketClass } from './fakeSocket.mjs';
 
@@ -37,6 +37,13 @@ const at = (px, pz) => ({ x: px * PIXEL_UNITS + 10, y: 0, z: pz * PIXEL_UNITS + 
 const ofType = (ws, t) => ws.sent.filter((m) => m.t === t);
 const PRIVATEERS_HOLD = 187853213;
 const quiet = (fn) => { const info = console.info, warn = console.warn; console.info = () => {}; console.warn = () => {}; try { return fn(); } finally { console.info = info; console.warn = warn; } };
+const until = async (ready, label) => {
+  const deadline = Date.now() + 5000;
+  while (!ready()) {
+    assert.ok(Date.now() < deadline, `${label}: timed out waiting for the real relay response`);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+};
 
 test('AUDIT WORLD34 A1 (THE ROOT): the world-room law admits a REAL map id - every one of the port\'s own fourteen main-story ids, Privateer\'s Hold first - at both ends of the wire, and still refuses everything that is not one', () => {
   assert.equal(isMainStoryDungeon(PRIVATEERS_HOLD), true, 'the port\'s own table knows Privateer\'s Hold by this number');
@@ -89,13 +96,16 @@ test('AUDIT WORLD34 A1 executed: two real sessions through the real Room in Priv
       ws.open();
       return { s, ws, server, seen };
     };
-    const a = link('aaaa-0001'); await new Promise((f) => setTimeout(f, 25));
-    const b = link('bbbb-0002'); await new Promise((f) => setTimeout(f, 25));
+    const a = link('aaaa-0001'); await until(() => a.s.host === 'aaaa-0001', 'first welcome');
+    const b = link('bbbb-0002'); await until(() => b.s.host === 'aaaa-0001', 'second welcome');
     assert.equal(a.s.host, 'aaaa-0001', 'a hosts'); assert.equal(b.s.host, 'aaaa-0001', 'b is told');
     assert.deepEqual([...b.s.peers.keys()], ['aaaa-0001'], 'presence: b sees a');
-    const foes = a.s.sendFoes({ n: 1, k: 'dungeon:1', f: [{ i: 0, h: 5 }] }); await new Promise((f) => setTimeout(f, 25));
-    const act = b.s.sendAct({ k: 'dungeon:1', a: [{ key: 'act:1:2', state: 'forward', t: 1 }] }); await new Promise((f) => setTimeout(f, 25));
-    const world = a.s.sendWorld({ locationKey: 'dungeon:1', stamp: 'a', world: { foes: [], actions: [] } }); await new Promise((f) => setTimeout(f, 25));
+    const foes = a.s.sendFoes({ n: 1, k: 'dungeon:1', f: [{ i: 0, h: 5 }] });
+    if (foes) await until(() => b.seen.foes.length > 0, 'foe fan');
+    const act = b.s.sendAct({ k: 'dungeon:1', a: [{ key: 'act:1:2', state: 'forward', t: 1 }] });
+    if (act) await until(() => a.seen.acts.length > 0, 'action fan');
+    const world = a.s.sendWorld({ locationKey: 'dungeon:1', stamp: 'a', world: { foes: [], actions: [] } });
+    if (world) await until(() => r.store.has('world:meta'), 'world memory');
     return { foes, act, world, bFoes: b.seen.foes.length, aActs: a.seen.acts.length, stored: r.store.has('world:meta'), peers: b.s.peers.size };
   };
   const real = await run(`dungeon:m${PRIVATEERS_HOLD}`);
@@ -195,13 +205,14 @@ test('AUDIT WORLD34 D3: sendWorld is under the room\'s guard like every other ou
   assert.equal(s.stats.worlds, 0);
 });
 
-test('AUDIT WORLD34 B2: online, the whole dungeon - the layout the room addresses by index is one layout, whatever a client\'s Smaller Dungeons setting or a quest\'s frozen copy of it says', () => {
+test('AUDIT WORLD34 B2: online, ONE layout - the layout the room addresses by index is one layout, whatever a client\'s Smaller Dungeons setting or a quest\'s frozen copy of it says (SD-ONLINE: the world\'s size for the dungeon, where it was the whole dungeon - PIN MOVED)', () => {
   const loc = { hasDungeon: true, mapTableData: { mapId: 12345 }, dungeon: { blocks: Array.from({ length: 12 }, (_, i) => ({ blockName: i ? `B${i}` : 'S0' })) } };
   assert.equal(useSmallerDungeon(loc, { setting: true }), true, 'offline: the setting');
   assert.equal(useSmallerDungeon(loc, { setting: true, online: true }), false, 'online: never');
   const machine = { getSiteLinks: () => [{ questUID: 1 }], getQuest: () => ({ smallerDungeonsState: SMALLER_DUNGEONS_STATE.Enabled }) };
   assert.equal(useSmallerDungeon(loc, { setting: false, questMachine: machine }), true, 'offline: the quest\'s frozen state wins');
   assert.equal(useSmallerDungeon(loc, { setting: false, questMachine: machine, online: true }), false, 'online: not even the quest\'s');
+  assert.equal(dungeonSizeFor(loc, { setting: true, medium: false, questMachine: machine, online: true }), onlineDungeonSize(loc), 'SD-ONLINE: the world\'s one size for it - no setting and no quest\'s copy reaches it');
   const m = rd('src/scenes/worldModes.js'), w = rd('src/scenes/world.js');
   assert.match(m, /dungeonLocationFor\(hit\.dfLocation, \{ questMachine: questBridge\?\.machine, online: host\.dungeonOnline\?\.\(\) \?\? false \}\)/, 'the entry seam asks');
   assert.match(w, /dungeonOnline: \(\) => onlineOn,/, 'and the world host answers');
@@ -224,7 +235,7 @@ test('AUDIT WORLD34 B1/B3 by source: a dead foe is retyped too (a joiner whose s
 test('AUDIT WORLD34 C2 by source: the memory\'s action records are the SHARED half out (no picker\'s latch) and PROJECTED in (validActionRecord, as an act\'s are) - the relay serves the stored bytes back unparsed for thirty days', () => {
   const d = rd('src/scenes/dungeonContext.js');
   assert.match(d, /import \{[^\n]*sharedRecord, validActionRecord \} from '\.\.\/world\/actionSystem\.js';/);
-  assert.match(d, /w\.loot = lootRecords\(\[\.\.\._lootSeen\]\);\s*(?:for \(const f of w\.foes\) delete f\.noBody;[^\n]*\n\s*)?(?:\/\/[^\n]*\n\s*)*w\.actions = \(w\.actions \?\? \[\]\)\.map\(sharedRecord\);\s*(?:w\.camps = campMemory\(\);[^\n]*\n\s*)?return \{ locationKey: _locationKey, stamp: _sharedStamp, world: w \};/, 'out');   // SURV3: the camps ride the memory too   // PIN MOVED (the revenant audit): a foe's `noBody` stripped after the loot
+  assert.match(d, /w\.loot = lootRecords\(\[\.\.\._lootSeen\]\);\s*(?:for \(const f of w\.foes\) delete f\.noBody;[^\n]*\n\s*)?(?:for \(const f of w\.foes\) delete f\.eliteFoe;[^\n]*\n\s*)?(?:\/\/[^\n]*\n\s*)*w\.actions = \(w\.actions \?\? \[\]\)\.map\(sharedRecord\);\s*(?:w\.camps = campMemory\(\);[^\n]*\n\s*)?return \{ locationKey: _locationKey, stamp: _sharedStamp, world: w \};/, 'out');   // SURV3: the camps ride the memory too   // PIN MOVED (the revenant audit): a foe's `noBody` stripped after the loot   // PIN MOVED (AUDIT BAL): and its `eliteFoe` (bible/05-Combat/Balance-Arc.md section 10)
   assert.match(d, /const acts = Array\.isArray\(shared\.world\.actions\) \? shared\.world\.actions\.map\(validActionRecord\)\.filter\(Boolean\) : \[\];[\s\S]*?const sfoes = Array\.isArray\(shared\.world\.foes\) \? shared\.world\.foes\.slice\(0, _layoutFoes\)\.map\(validSharedFoe\) : \[\];[\s\S]*?applyWorld\(\{ \.\.\.shared\.world, piles: undefined, actions: acts, foes: sfoes \}/, 'in');
 });
 

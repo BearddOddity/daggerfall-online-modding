@@ -25,8 +25,9 @@
 //
 // KNOWN LIMITS, recorded: a caster the frame did not draw casts nothing -
 // the hosts' frustum culling (EV3) means a tower behind the camera throws
-// no shadow into the view; the character rigs (the Morrowind body, the
-// peers, the first-person arm) cast none; the water surface receives none.
+// no shadow into the view; the player's and the peers' Morrowind bodies and
+// the first-person arm cast none (MWNPC16: an NPC's body casts its own
+// shape - recordCharacter's skinned arm); the water surface receives none.
 // Later tiers own those.
 //
 // The depth programs are the renderer's OWN vertex shaders (handed over
@@ -56,18 +57,22 @@
 //     the culling above is what makes 24 face replays cheap.
 
 import { lookAt, multiply, ortho, perspective } from '../world/mat4.js';
-import { spherePlanes, transformSphere, matrixScale, transformSphereScaled, recordVisible, subMeshVisible, batchVisible, sphereInPlanes, batchSphere, ZERO_ORIGIN, placementRadius, placedHalfDiagonal, placementsInCube, placementsInVolume } from './bounds.js';   // EL5: the cull; PERF-EXT1: and a batch's placements
+import { spherePlanes, transformSphere, matrixScale, transformSphereScaled, recordVisible, subMeshVisible, batchVisible, sphereInPlanes, batchSphere, ZERO_ORIGIN, placementRadius, placedHalfDiagonal, placementsInCube, placementsInCubeOf, placementsInVolume, placementsInVolumeOf, volumeName } from './bounds.js';   // EL5: the cull; PERF-EXT1: and a batch's placements; PERF-VOL: their answers kept by the planes' name
 import { billboardKey } from './billboardKey.js';   // AUDIT 68 S16-bbkey-stale-shadow-reach: re-keyed here, however the batch reached the records
 import { aabbOutside } from './frustum.js';   // SHADOW-REACH: a host's box against the cascades
+import { getPref } from '../systems/uiPrefs.js';
+import { AIR_TUNING } from './airPass.js';   // FLICKER-FIX: the calmer eye
 import { pageParam } from '../systems/pageQuery.js';   // PERF-URL: the page's query, parsed once a search
 import { BAYER_GLSL, DISSOLVE_GLSL } from './orderedDither.js';   // AUDIT BAY A12: a fading ship's shadow dissolves with her
+import { windfallLawOn, swayShare, windfallLeanMax, windfallAnchorAfterShift } from './windfallSway.js';   // WINDFALL1: the flora's lean while Windfall's law stands
+import { SKIN_PALETTE_UNIT } from './skinPalette.js';   // MWNPC16: a skinned body's palette, read where the lit draw reads it
 
 /** The sun map: two cascades of this size, as a depth texture array. */
 export const SHADOW_SUN_SIZE = 2048;
 /** A caster's face size (six layers of the point depth array per caster). */
 export const SHADOW_POINT_SIZE = 512;
 /** EL5: how many lanterns cast at once - the nearest to the eye. */
-export const SHADOW_POINT_CASTERS = 8;   // EL6: six - a gate passage has that many lanterns in reach; HQ1: eight - SC1's cache made a still caster nearly free, so a tavern's every lamp throws its shadow
+export const SHADOW_POINT_CASTERS = 12;   // FLICKER-FIX (2026-10-02): twelve, not eight - a lamp past the eight read the lo map (static casters only), so the player's and the townsfolk's shadows vanished for it and came back when it swapped in (+48 MB of depth layers). EL6: six; HQ1: eight - SC1's cache made a still caster nearly free.
 /** EL8: the caster-slot table's size - one int per light slot the lane can
  *  hold (enhancedLighting.js EL_MAX_LIGHTS, pinned equal): a light's slot in
  *  one lookup, not a search over the casters per light per fragment. */
@@ -301,20 +306,79 @@ export const SHADOW_RECORD_MAX = 6000;
 export const SHADOW_DYNAMIC_HOLD = 60;
 /** AUDIT SC1: how many placements of ONE mesh the pass remembers (a dungeon's doors share a model), and how far a
  *  draw may sit from a remembered placement and still be that placement's (a door swings a hand's breadth a frame). */
-export const SHADOW_INSTANCE_MAX = 128;   // AUDIT REACH: and a placement not drawn for a hold is evicted for a new one (a mesh cache is never destroyed - the doors of every dungeon of a session would fill it)
+export const SHADOW_INSTANCE_MAX = 1024;   // AUDIT REACH: and a placement not drawn for a hold is evicted for a new one (a mesh cache is never destroyed - the doors of every dungeon of a session would fill it); PERF-INST: 128 before the placements were filed by place (AUDIT PERF-INST: 1024, not 4096 - ~0.6 KB a placement, a full mesh's memory kept for the session)
 export const SHADOW_INSTANCE_REACH = 2;
+/** PERF-INST (2026-10-10, the owner: "prob caused by placed objects by players"): A MESH'S PLACEMENTS ARE FILED BY PLACE
+ *  past this many. Each draw scanned every placement its mesh had - a frame of N copies of one model was N x N
+ *  distances - and past SHADOW_INSTANCE_MAX (128 then) every further copy read as moved, for ever: a town of yards
+ *  furnished with the same chair, a room of two hundred placed pieces or a long view of a model too odd to batch had
+ *  every copy past the 128th replayed as a dynamic caster into every lantern near it, every frame. Past this count a
+ *  placement is filed on a grid of SHADOW_INSTANCE_REACH cubes, and the answer - the exact placement first (the
+ *  earliest remembered), then the nearest unclaimed one within the reach (the earliest on a tie) - is the scan's.
+ *  AUDIT PERF-INST (the redesign, every answer still the scan's):
+ *  - the cells are CUBES, not columns - a stack of copies one above another spread over their own cells, where a
+ *    column held them all and every draw measured every one;
+ *  - a cell keeps its placements in the order they were remembered, and a draw that stands more than the stillness
+ *    epsilon inside its own cell asks that cell first: the first placement there within the epsilon IS the scan's
+ *    exact one (none outside the cell can be within it), the common answer for every still copy, from one cell;
+ *    else the 3x3x3 round it, as the scan's answer is found there;
+ *  - a cell is found by OFFSET from the draw's own (a coordinate past 2^53 cells adds nothing to it - the first cut's
+ *    `gx <= cx + 1` loop never ended there);
+ *  - the cells are in the ORIGIN'S FRAME - a place less the pass's cumulative shift - so a floating-origin shift
+ *    moves no placement's cell (the first cut filed every placement again at every crossing, tens of ms with a few
+ *    full meshes); only one a float32 rounding carries over a cell's edge is filed again;
+ *  - a full memory's stalest placements are queued once a frame, ordered as the scan finds them (by when last seen,
+ *    then remembered), where the first cut walked every placement for every miss. */
+export const SHADOW_INSTANCE_LINEAR = 64;
+/** A cube's key from its three cell coordinates: ten bits each, a small integer (no number boxed a lookup); cubes
+ *  2,048 units apart on an axis share a key, which only hands a walk more placements to measure. */
+const instKey = (gx, gy, gz) => ((gx & 0x3ff) << 20) | ((gy & 0x3ff) << 10) | (gz & 0x3ff);
+/** The cubes stand off the round numbers by this share of one (the golden section's): a mesh placed on a whole grid, or
+ *  everything on a floor at y = 0, would otherwise stand on the cubes' faces, where a draw must ask a cube's
+ *  neighbours too. Where a cube's face stands decides no answer, only how many cubes are asked. */
+export const SHADOW_INSTANCE_PHASE = 0.3819660112501051;
 /** AUDIT REACH (the sway): a flora batch leaning less than this at its crown is still - half a cube texel at a lantern's
  *  typical reach - and a batch leaning more is a dynamic on ITS OWN cadence, SHADOW_SWAY_EVERY frames: the sway is slow,
  *  and every frame for every flora batch of a pixel handed SC1's whole saving back in a town with trees. */
 export const SHADOW_SWAY_STILL = 0.02;
 export const SHADOW_SWAY_EVERY = 4;
+/** FLICKER-FIX (2026-10-02): STEADY SHADOWS. The cadences above (far cascade every 2nd frame, far lanterns every 3rd,
+ *  sway every 4th) show up on screen as shadows popping on and off from frame to frame. With this on, every map is
+ *  redrawn every frame. It also (a) makes the caster hold much stickier, so two lamps at nearly the same distance never swap a full
+ *  shadow map (with dynamic shadows) for the lo map (static only) from one frame to the next, and (b) lifts the lo
+ *  tier's rebuild budget. Costs GPU time; turn off Settings > Features > Steady shadows (or from the console,
+ *  window.__DF_SHADOW_TUNING.override = false; null hands it back to the row) to get EL8's schedule back. */
+export const SHADOW_TUNING = { steady: true, override: null, debug: false, debugForce: null, selfLamps: null, calmForce: null, facePrepass: true, sunPrepass: true, volumeMemo: true };
+// PERF-SHADOW1: `facePrepass` false walks every lantern face and dynamic scan over every record, as before the pre-pass
+// (_casterCandidates) - the pins' oracle and an A/B's off arm (console: window.__DF_SHADOW_TUNING.facePrepass = false).
+// PERF-SUN3: `sunPrepass` false walks every sun cascade over every record, as before its own pre-pass (_sunCandidates) -
+// the same oracle and off arm for the sun (window.__DF_SHADOW_TUNING.sunPrepass = false).
+// PERF-VOL: `volumeMemo` false asks every placed batch of every replay afresh, as before the planes were named (bounds.js
+// volumeName) - the pins' oracle and an A/B's off arm (window.__DF_SHADOW_TUNING.volumeMemo = false).
+// AUDIT 637 B8: declared here, where the console finds it.
+/** STEADY-BALANCE (2026-10-04, Discord: "shadows too dark and too light where they should be normal ... light of candles too
+ *  bright ... it fixed the flickering tho"): THE PLAYER'S OWN CARD CASTS INTO THE TWO LAMPS NEAREST IT AGAIN, steady or not.
+ *  FLICKER-FIX had cast it into EVERY lamp with a full map under Steady shadows (twelve): in first person the card
+ *  ("Shadows Only", the default) stands a pace before the eye, so every lamp BEHIND the player threw a silhouette right
+ *  where the player was looking - a tavern's dozen lamps stacked a dozen into one black mass at the crosshair, and a
+ *  candle below the card threw it across the ceiling. The darker screen then opened the eye (EL4's adaptation, toward
+ *  AIR_ADAPT_MAX) and every lamp's hot spot blew out to white: the "too dark" and the "too bright" were one fault.
+ *  The hop FLICKER-FIX wanted gone is AUDIT FLICKER P2's hold (the card's two lamps kept by place), and under Steady
+ *  shadows those two maps are redrawn every frame like the rest, so there is no cadence lag left to hop on.
+ *  `selfLamps` (console: window.__DF_SHADOW_TUNING.selfLamps = 12) puts FLICKER-FIX's every-lamp card back to compare;
+ *  null is SHADOW_SELF_LAMPS. */
+export const SHADOW_SELF_LAMPS = 2;
+if (typeof window !== 'undefined') /** @type {any} */ (window).__DF_SHADOW_TUNING = SHADOW_TUNING;   // FLICKER-FIX: set `override` live to compare
 /** WIND3's lean at a flat's crown, world units: the shader's push at top = 1 and the gust's peak (renderer.js BB_VS). */
 export const swayLean = (wl, sway, h) => wl * 1.3 * 0.0015 * sway * h;
 /** PERF-EXT1: the radius that bounds each quad of batch `b` in a record whose wind's rate is `wl` - bounds.js's
  *  placementRadius over WIND3's lean, which BB_VS applies only while uSway > 0 and scales by the quad's height
  *  whichever way it hangs (an upside-down flame's h is negative). The review: the half-diagonal once a size
  *  (placedHalfDiagonal), not a Math.hypot at every ask. */
-const quadRadius = (wl, b) => { const h = b.size.h; return placementRadius(placedHalfDiagonal(b), b.sway > 0 ? swayLean(wl, b.sway, h < 0 ? -h : h) : 0); };
+/** WINDFALL1: the crown's lean of `b` under record `r`'s wind - WIND3's at the record's rate `wl`, or, while the mod's law
+ *  stands (`law`, render/windfallSway.js), its law's most at the batch's mask. */
+const crownLean = (r, wl, law, b, h) => { const share = swayShare(b, law); return share > 0 ? (law ? windfallLeanMax(r.windfall, share, h) : swayLean(wl, share, h)) : 0; };
+const quadRadius = (r, wl, law, b) => { const h = b.size.h; return placementRadius(placedHalfDiagonal(b), crownLean(r, wl, law, b, h < 0 ? -h : h)); };
 /** AUDIT SC1: a remembered placement matches to this - a floating-origin rebase adds the offset in a different order
  *  than the host did, and the last bit of a float is no motion. */
 export const SHADOW_STILL_EPS = 1e-3;
@@ -349,10 +413,18 @@ export const SHADOW_LO_UNIT = 8;
 export const SHADOW_LO_STEP = 8;
 /** DISC15: every light the caster table can name. */
 export const SHADOW_LO_MAX = SHADOW_CASTER_TABLE;
+/** EMPTY-HOLD: how many frames in a row with no caster recorded keep the last frame's maps before they are cleared. */
+export const SHADOW_EMPTY_HOLD = 30;
 /** DISC15: how many lo maps a frame redraws for a changed static set (a door that came to rest) - a new light's map
  *  is drawn at once, whatever this says. */
 export const SHADOW_LO_REBUILDS = 2;
-/** SC1: the door - `?shadowcache=off` replays every caster at the cadence, as before. */
+/** FLICKER-FIX: the lo tier's rebuilds a frame under Steady shadows - a stale lo map settles in a third of the frames. */
+export const SHADOW_LO_REBUILDS_STEADY = 6;
+/** SC1: the door - `?shadowcache=off` replays every caster at the cadence, as before.
+ *  CACHE-COPY (2026-10-07): ON unless asked off, again. The anti-flicker patch's CACHE-OFF had turned it OFF unless
+ *  asked on (the address, the device, an Enhanced Lighting part "Shadow cache (faster, may flicker)") because the
+ *  cached shadows blinked - the blink was the cache's COPY on Direct3D (_blitSlot), not the cache, and the copy is a
+ *  draw now; with the cache off every lamp replayed its whole room six faces a frame. */
 export function shadowCacheOn(search = globalThis.location?.search ?? '') {
   return pageParam('shadowcache', search) !== 'off';   // PERF-URL
 }
@@ -478,12 +550,47 @@ const CUBE_FACES = Object.freeze([
 /** The six face view-projections of a point light at `pos` reaching `far`.
  *  `out` is six Float32Array(16). */
 export function pointFaceMatrices(pos, far, out) {
-  const proj = perspective(Math.PI / 2, 1, SHADOW_POINT_NEAR, far);
+  // PERF-ALLOC1 (2026-10-10): into two scratches - the same floats (lookAtInto / perspectiveInto, below), where every
+  // lantern's every frame minted a projection, six views and their twenty-four arrays (the real game at Knightstale by
+  // night: lookAt alone 47 KB a frame of the 1.4 MB the frame allocates)
+  const proj = perspectiveInto(_faceProj, Math.PI / 2, 1, SHADOW_POINT_NEAR, far);
   for (let f = 0; f < 6; f++) {
-    const [d, up] = CUBE_FACES[f];
-    const view = lookAt(pos, [pos[0] + d[0], pos[1] + d[1], pos[2] + d[2]], up);
-    multiply(proj, view, out[f]);
+    const d = CUBE_FACES[f][0], up = CUBE_FACES[f][1];
+    multiply(proj, lookAtInto(_faceView, pos, pos[0] + d[0], pos[1] + d[1], pos[2] + d[2], up), out[f]);
   }
+  return out;
+}
+const _faceProj = new Float32Array(16), _faceView = new Float32Array(16);
+/** PERF-ALLOC1: world/mat4.js lookAt written into `out` (a Float32Array(16)), the centre as three numbers - its
+ *  arithmetic in its order, so its floats; nothing allocated. HERE and not in mat4.js: mat4.js is in the relay's bundle
+ *  (test/relayversion.test.js RELAY_GRAPH), and a byte of it changed is a relay deploy - the client's own scratch twin
+ *  costs the relay nothing. test/perfalloc1.test.js holds it to mat4.js's lookAt to the bit. */
+export function lookAtInto(out, eye, cx, cy, cz, up) {
+  const zx = eye[0] - cx, zy = eye[1] - cy, zz = eye[2] - cz;
+  const zl = Math.hypot(zx, zy, zz);
+  const z0 = zx / zl, z1 = zy / zl, z2 = zz / zl;
+  let x0 = up[1] * z2 - up[2] * z1, x1 = up[2] * z0 - up[0] * z2, x2 = up[0] * z1 - up[1] * z0;
+  const xl = Math.hypot(x0, x1, x2);
+  x0 /= xl; x1 /= xl; x2 /= xl;
+  const y0 = z1 * x2 - z2 * x1, y1 = z2 * x0 - z0 * x2, y2 = z0 * x1 - z1 * x0;
+  out[0] = x0; out[1] = y0; out[2] = z0; out[3] = 0;
+  out[4] = x1; out[5] = y1; out[6] = z1; out[7] = 0;
+  out[8] = x2; out[9] = y2; out[10] = z2; out[11] = 0;
+  out[12] = -(x0 * eye[0] + x1 * eye[1] + x2 * eye[2]);
+  out[13] = -(y0 * eye[0] + y1 * eye[1] + y2 * eye[2]);
+  out[14] = -(z0 * eye[0] + z1 * eye[1] + z2 * eye[2]);
+  out[15] = 1;
+  return out;
+}
+/** PERF-ALLOC1: world/mat4.js perspective written into `out` (every element: the rest zero, as a new array's). */
+export function perspectiveInto(out, fovYRad, aspect, near, far) {
+  const f = 1 / Math.tan(fovYRad / 2);
+  out.fill(0);
+  out[0] = f / aspect;
+  out[5] = f;
+  out[10] = (far + near) / (near - far);
+  out[11] = -1;
+  out[14] = (2 * far * near) / (near - far);
   return out;
 }
 
@@ -530,6 +637,8 @@ export function pickShadowCaster(lights, eye, carried = null) {
  * newcomer must be clearly nearer to take its place; the set changes when the player really moves, never on a tie.
  */
 export const CASTER_KEEP_RATIO = 0.8;
+/** FLICKER-FIX: the keep ratio under SHADOW_TUNING.steady - a newcomer must be a third nearer to take a held map. */
+export const CASTER_KEEP_RATIO_STEADY = 0.65;
 /** Was the light at `lights[i]` a caster last frame? `held` is the flat [x, y, z, _] list the pass kept, by
  *  POSITION (the hosts re-sort their lights every frame, so an index is no name - SC1's own matching). */
 function heldAt(held, heldN, lights, i) {
@@ -587,7 +696,7 @@ export function pickShadowCasters(lights, eye, max = SHADOW_POINT_CASTERS, carri
   for (let i = 0; i < n; i++) {
     if (carried && carried[i]) continue;   // MAC-T1: the light in the player's hand takes no caster slot in ANY camera (F3's law by name)
     const dx = lights[i * 4] - eye[0], dy = lights[i * 4 + 1] - eye[1], dz = lights[i * 4 + 2] - eye[2];
-    const d = Math.sqrt(dx * dx + dy * dy + dz * dz) * (held && heldAt(held, heldN, lights, i) ? CASTER_KEEP_RATIO : 1);
+    const d = Math.sqrt(dx * dx + dy * dy + dz * dz) * (held && heldAt(held, heldN, lights, i) ? (SHADOW_TUNING.steady ? CASTER_KEEP_RATIO_STEADY : CASTER_KEEP_RATIO) : 1);
     if (!(lights[i * 4 + 3] > 0) || lights[i * 4 + 3] > SHADOW_CASTER_MAX_RANGE) continue;   // AUDIT-EL F11; LIGHT-NEAR1: no lower bound on `d` - the lamp overhead casts
     if (picked.length === max && d >= picked[max - 1][1]) continue;
     let at = picked.length;
@@ -832,17 +941,115 @@ uniform sampler2D uTex;
 void main() {
   if (texture(uTex, vUV).a < 0.5) discard;
 }`;
+/** CACHE-COPY (2026-10-07): SC1's cache into the live layers BY A DRAW (_blitSlot) - a full-screen triangle made of
+ *  gl_VertexID alone (deepWatersRender.js's), drawn with an empty vertex array. */
+export const DEPTH_COPY_VS = `#version 300 es
+void main() {
+  vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
+  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}`;
+/** CACHE-COPY: each texel takes the cache's depth at its own texel of layer uLayer. HIGHP, the sampler most of all: a
+ *  mediump fetch would round the 24-bit depth to eleven bits. A depth texture with no compare mode reads as red. */
+export const DEPTH_COPY_FS = `#version 300 es
+precision highp float;
+precision highp int;
+precision highp sampler2DArray;
+uniform sampler2DArray uCache;
+uniform int uLayer;
+void main() {
+  gl_FragDepth = texelFetch(uCache, ivec3(gl_FragCoord.xy, uLayer), 0).r;
+}`;
 
-/** AUDIT REACH: what _dynamicNear answers - nothing near, a swaying flat alone (the slow cadence), a mover. */
-const DYN_NONE = 0, DYN_SWAY = 1, DYN_MOVER = 2;
+/** AUDIT REACH: what _dynamicNear answers - nothing near, a swaying flat alone (the slow cadence), a mover.
+ *  AUDIT MWNPC16-18 A2: or Morrowind bodies alone (DYN_BODY) - redrawn only when one of them changed (_dynamicNear's
+ *  `_bodySig`, against the slot's own): a body stood out of the view is never posed, and it held its lamps' six dynamic
+ *  faces redrawn every frame to draw it as it was. */
+const DYN_NONE = 0, DYN_SWAY = 1, DYN_MOVER = 2, DYN_BODY = 3;
 const REC_MESH = 0, REC_TERRAIN = 1, REC_BB = 2, REC_CHAR = 3;   // EL7: the character rigs cast
 const REPLAY_ALL = 0, REPLAY_STATIC = 1, REPLAY_DYNAMIC = 2, REPLAY_LO = 3;   // SC1: what a replay draws; DISC29-E: the lo tier's - the still, and a flat that only animates where it stands
+/**
+ * PERF-FACE (2026-10-10, the owner: "prob caused by ... crowded places"): A LIVE FACE THAT HOLDS THE CACHE IS LEFT.
+ * SC1 keeps a lantern's statics in a cache and draws its movers over a copy of it - and the copy was of all six faces
+ * whenever anything moved in the lantern's reach: a walker by a lamp, a peer, a townsman, a swaying tree under Steady
+ * shadows, every frame, six full 512^2 depth copies (CACHE-COPY's draw) for a mover that stands in front of one or two
+ * of them. Each live face now knows whether it holds the cache and nothing else (`_faceDyn` 0 - a dynamic replay drew
+ * nothing into it, or a copy made it so); such a face is not copied before the movers are drawn over it, since what
+ * the copy would write is what it holds. A face a dynamic drew into (or one not known: a fresh slot, the uncached path)
+ * is copied as before, and a fresh cache copies all six. Every live face ends the frame as the cache plus this frame's
+ * movers in it - the picture the six copies made.
+ */
+const FACES_ALL = 0x3f;
+/** PERF-SHADOW1 (2026-10-06): how far past a lantern's shadow `far` the centre of a sphere of radius r may stand, on any
+ *  axis, and still be taken by one of its cube's six faces - in units of r. Each face is a 90-degree perspective
+ *  (pointFaceMatrices): its far plane takes a centre to far + r along the face's axis, and its four sides - planes
+ *  through the light at 45 degrees - take one to (along) + r sqrt 2 <= far + r (1 + sqrt 2) across it; the near plane
+ *  bounds only from behind. A sphere past far + r (1 + sqrt 2) on some axis is taken by NO face's sphereInPlanes. */
+export const CUBE_REACH = 1 + Math.SQRT2;
+/** PERF-SHADOW1: the reach CUBE_REACH grants a sphere of radius r past the far. AUDIT 637 B6: a radius below zero - a
+ *  sphere the planes take only well inside them - reaches far + r along a face's axis, which is the farther of its far
+ *  plane's bound and its sides' (r (1 + sqrt 2) is the nearer for a negative r). One home for the cube's reach: the
+ *  sphere walk and a placed batch's quads (_candidateQuads) both take it. */
+export const cubeReach = (r) => (r > 0 ? r * CUBE_REACH : r);
+/** AUDIT 637 B1: the far plane's float32 rounding, per world unit of far and of the light's place. A face's far plane is
+ *  row 3 less row 2 of its float32 view-projection (frustumPlanes): two entries near 1 whose difference is the plane's
+ *  normal, 2 near / (far - near). spherePlanes divides by that normal, so a rounding of an entry (2^-24) moves the
+ *  plane by (far - near) / (2 near) of it - at the far plane, and over the light's own place. Three such roundings
+ *  (the product's, the subtraction's, the normal's) and a margin: 4 x 2^-24 / near. */
+export const CUBE_F32_FAR = (4 * 2 ** -24) / SHADOW_POINT_NEAR;
+/** PERF-SHADOW1: the slack the cube keeps over that bound - the faces' planes are float32 and the light is a world
+ *  place, so a margin over the rounding of both (a pre-pass that is ever the narrower test would drop a draw). Measured
+ *  with the real planes: past the exact bound by up to 1.3e-3 for a lantern 30 km from the origin.
+ *  AUDIT 637 B1: that was the side planes', for fars to 36 - the far plane's grows with far x (far + the place)
+ *  (CUBE_F32_FAR): 2.75e-3 past the bound for a lantern of far 96 at the origin, where this gave 2e-3, and the pre-pass
+ *  dropped a draw a face made. Lights reach to SHADOW_CASTER_MAX_RANGE. */
+export const cubeSlack = (px, py, pz, far) => {
+  const s = Math.abs(px) + Math.abs(py) + Math.abs(pz) + far;
+  return 1e-3 + 1e-5 * s + CUBE_F32_FAR * far * s;
+};
+/** PERF-SHADOW1: can a sphere [x, y, z, r] reach the cube of lantern `k` in `lim` (x, y, z, far, slack a lantern)? A
+ *  NaN anywhere answers yes, as the faces' sphereInPlanes does (a NaN in any term of a plane's sum compares false, so
+ *  no plane culls it): Math.max carries a NaN on any axis into the one compare, where a test axis by axis would cull
+ *  a sphere NaN on one axis by another. AUDIT 637 B5: and so does a centre off at infinity - a face's plane meets it as
+ *  0 x Infinity or Infinity - Infinity, a NaN, and culls nothing with that plane - so it is kept, as some face takes it. */
+export const cubeKeeps = (lim, k, x, y, z, r) => {
+  const o = k * 5, R = lim[o + 3] + cubeReach(r) + lim[o + 4];
+  const d = Math.max(Math.abs(x - lim[o]), Math.abs(y - lim[o + 1]), Math.abs(z - lim[o + 2]));
+  return !(d > R) || d === Infinity;
+};
 
 /**
  * The pass: the maps, the depth programs, the record pool, the replay.
  * `opts.build(vs, fs)` compiles a program (the renderer's _buildProgram);
  * `opts.vs` is { mesh, bb, terrain } - the renderer's own vertex shaders.
  */
+/** PERF-INST: the cube of placement `s` of `o` - its place in the origin's frame (`shift` the pass's cumulative one). */
+function _instKeyOf(s, shift) {
+  const R = SHADOW_INSTANCE_REACH;
+  return instKey(Math.floor((s.m[12] - shift[0]) / R + SHADOW_INSTANCE_PHASE), Math.floor((s.m[13] - shift[1]) / R + SHADOW_INSTANCE_PHASE), Math.floor((s.m[14] - shift[2]) / R + SHADOW_INSTANCE_PHASE));
+}
+/** PERF-INST: file placement `s` of `o` under its cube (out of the one it stood in), in its cell's remembered order. */
+function _file(o, s, shift) {
+  const k = _instKeyOf(s, shift);
+  if (s.filed && k === s.key) return;
+  const grid = o._shInstGrid;
+  if (s.filed) {
+    const was = grid.get(s.key);
+    if (was) { const i = was.indexOf(s); if (i >= 0) was.splice(i, 1); if (!was.length) grid.delete(s.key); }
+  }
+  let cell = grid.get(k);
+  if (!cell) { cell = []; grid.set(k, cell); }
+  let at = cell.length;   // AUDIT PERF-INST: in the order remembered - the first within the epsilon is the scan's exact one
+  while (at > 0 && cell[at - 1].ord > s.ord) at--;
+  cell.splice(at, 0, s);
+  s.key = k; s.filed = true;
+}
+/** PERF-INST: every placement of `o` filed (the first time past SHADOW_INSTANCE_LINEAR). */
+function _fileAll(o, shift) {
+  o._shInstGrid = new Map();
+  for (const s of o._shInst) { s.filed = false; s.key = NaN; _file(o, s, shift); }
+  return o._shInstGrid;
+}
+
 export class ShadowPass {
   constructor(gl, opts) {
     this.gl = gl;
@@ -851,15 +1058,25 @@ export class ShadowPass {
     const terrain = opts.build(opts.vs.terrain, DEPTH_FS);
     const bb = opts.build(opts.vs.bb, DEPTH_BB_FS);
     const char = opts.vs.char ? opts.build(opts.vs.char, DEPTH_FS) : null;   // EL7: the rigs' own vertex layout
+    // MWNPC16: a GPU-skinned body's depth - the world's skinned vertex shader, built the first time a body casts
+    // (_bodyPrograms): a page whose NPCs never stand in a body never compiles it
+    this._buildBody = opts.vs.charSkin ? () => opts.build(opts.vs.charSkin, DEPTH_FS) : null;
+    this._buildBodyCut = opts.vs.charSkin ? () => opts.build(opts.vs.charSkin, DEPTH_BB_FS) : null;
+    this._buildCharCut = opts.vs.char ? () => opts.build(opts.vs.char, DEPTH_BB_FS) : null;
     const meshCut = opts.build(opts.vs.mesh, DEPTH_CUT_FS);   // AUDIT BAY A12
+    const meshCutout = opts.build(opts.vs.mesh, DEPTH_BB_FS);   // RW1: a cutout picture's sub-mesh - its holes cast no shadow (the flats' own half-alpha cut)
+    const copy = opts.build(DEPTH_COPY_VS, DEPTH_COPY_FS);   // CACHE-COPY: the cache into the live layers (_blitSlot)
     this.programs = {
+      copy: { p: copy, cache: u(copy, 'uCache'), layer: u(copy, 'uLayer') },
       mesh: { p: mesh, proj: u(mesh, 'uProj'), view: u(mesh, 'uView'), model: u(mesh, 'uModel') },
       meshCut: { p: meshCut, proj: u(meshCut, 'uProj'), view: u(meshCut, 'uView'), model: u(meshCut, 'uModel'), cut: u(meshCut, 'uDissolveCut') },
+      meshCutout: { p: meshCutout, proj: u(meshCutout, 'uProj'), view: u(meshCutout, 'uView'), model: u(meshCutout, 'uModel'), tex: u(meshCutout, 'uTex') },   // RW1
       char: char ? { p: char, proj: u(char, 'uProj'), view: u(char, 'uView'), model: u(char, 'uModel') } : null,
       terrain: { p: terrain, proj: u(terrain, 'uProj'), view: u(terrain, 'uView'), model: u(terrain, 'uModel') },
       bb: {
         p: bb, proj: u(bb, 'uProj'), view: u(bb, 'uView'), right: u(bb, 'uRight'), up: u(bb, 'uUp'), origin: u(bb, 'uOrigin'),
         size: u(bb, 'uSize'), tex: u(bb, 'uTex'), flatWind: u(bb, 'uFlatWind'), sway: u(bb, 'uSway'),
+        wfSway: u(bb, 'uWindfallSway'), wfAxis: u(bb, 'uWindfallAxis'),   // WINDFALL1: render/windfallSway.js
         face: u(bb, 'uFacePoint'),   // DISC29-E: the lamp each flat turns to face, per vertex (renderer.js BB_VS)
       },
     };
@@ -875,10 +1092,14 @@ export class ShadowPass {
     // `?shadowcache=off` never reads were allocated all the same
     this.cacheTex = null;
     this.cacheFbos = [];
+    this._copyVao = gl.createVertexArray();                       // CACHE-COPY: the copy's triangle reads no attribute
     this.cacheOn = true;                                          // SC1: the door (renderer.setShadowCache)
     this._slotSig = new Int32Array(2 * SHADOW_POINT_CASTERS);     // SC1: per slot, the static signature's (hash, count) the cache was drawn from
     this._slotCached = new Uint8Array(SHADOW_POINT_CASTERS);      // SC1: the cache holds this slot's light's statics
     this._slotLiveDyn = new Uint8Array(SHADOW_POINT_CASTERS);     // SC1: the live layers carry dynamics over the cache
+    this._slotBodySig = new Int32Array(2 * SHADOW_POINT_CASTERS);  // AUDIT MWNPC16-18 A2: per slot, the bodies its live layers hold - (hash, count); count -1 when anything else was drawn
+    this._bodySig = new Int32Array(2);                            // AUDIT MWNPC16-18 A2: _dynamicNear's answer for the bodies in a slot's reach
+    this._faceDyn = new Uint8Array(6 * SHADOW_POINT_CASTERS).fill(1);   // PERF-FACE: per live face, 0 = it holds the cache and nothing else
     this._slotSelf = new Uint8Array(SHADOW_POINT_CASTERS);        // DISC24-C: the live layers carry the player's own card
     // DISC15: THE LO TIER - allocated on the first room that asks (_ensureLo), grown by SHADOW_LO_STEP. Until then a
     // one-texel array stands on SHADOW_LO_UNIT: every lane program declares the sampler, and a shadow sampler must
@@ -894,7 +1115,7 @@ export class ShadowPass {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
     // the pool: records are minted once and reused by index
-    /** @type {Array<{kind:number, mesh:any, matrix:Float32Array, texRemap:any, surface:any, arrayTex:any, tilemapTex:any, tileSize:number, batches:any, flatWind:Float32Array, right:Float32Array, up:Float32Array, bounded:boolean, sphere:Float32Array, subSpheres:Float32Array, cellSpheres:Float32Array, dynamic:boolean, cut:number}>} */
+    /** @type {Array<{kind:number, mesh:any, matrix:Float32Array, texRemap:any, surface:any, arrayTex:any, tilemapTex:any, tileSize:number, batches:any, flatWind:Float32Array, windfall:Float32Array, wfSway:Float32Array|null, wfAxis:Float32Array|null, right:Float32Array, up:Float32Array, bounded:boolean, sphere:Float32Array, subSpheres:Float32Array, cellSpheres:Float32Array, dynamic:boolean, cut:number, body:boolean, anchored:boolean, look:number, matrixBits:Int32Array|null}>} */
     this.records = [];
     this.count = 0;
     this.recording = true;
@@ -915,9 +1136,13 @@ export class ShadowPass {
     this._sunScaleK = 1;   // AUDIT DEEP R-3: the cascades' scale the maps were last drawn at
     this.kind = null;
     /** per-frame counts, for a probe */
-    this.stats = { records: 0, sunDraws: 0, pointDraws: 0, culled: 0, cascadesDrawn: 0, facesDrawn: 0, staticFaces: 0, dynFaces: 0, blits: 0, cachedSlots: 0, loSlots: 0, loFaces: 0 };   // SC1: the faces split, the blits, the slots served from the cache; DISC15: the lo tier's slots and faces
+    this.stats = { records: 0, sunDraws: 0, pointDraws: 0, culled: 0, cascadesDrawn: 0, facesDrawn: 0, staticFaces: 0, dynFaces: 0, blits: 0, cachedSlots: 0, loSlots: 0, loFaces: 0, selfLamps: 0 };   // SC1: the faces split, the blits, the slots served from the cache; DISC15: the lo tier's slots and faces
+    // AUDIT 637 B7: `culled` counts what a replay's own tests culled. A lantern face walks its candidates alone (PERF-SHADOW1),
+    // so what it cannot reach it never asks - and never counts: the perf meter's `culled` is the sun's, the air's and the
+    // faces' own culls of what the cube kept, smaller than it read before the pre-pass for the same frame.
     this._planes = new Float32Array(24);   // EL5: the replay's frustum
     this._bSphere = new Float64Array(4);   // AUDIT 68 S16-batch-sphere-dup: batchSphere's scratch for the SC1 scans
+    this._cubeArgs = new Float64Array(5);   // PERF-ALLOC2: _candidateQuads' cube for placementsInCubeOf
     this._selfAt = new Float64Array(3);    // DISC29-E: where the player's own card stands this frame (_selfCardAt)
     this._selfCard = null;                 // AUDIT PRE-MERGE 0929 E2: the card, noted as recordBillboards meets it (cleared by discard)
     this._slotOfScratch = new Int32Array(SHADOW_POINT_CASTERS);   // SC1: rank -> slot
@@ -934,6 +1159,20 @@ export class ShadowPass {
     this._farOf = new Float64Array(SHADOW_POINT_CASTERS);   // LA-SHADOW4: each rank's far this frame
     this._sigOne = new Float64Array(4);
     this._sigOneOut = new Int32Array(2);
+    // PERF-SHADOW1: each ranked lantern's candidates this frame (_casterCandidates) - the records that can reach its
+    // cube (indices, in record order) and, of a billboard list, the flats that can (`bb`, a list a candidate) - with the
+    // lanterns' (x, y, z, far, slack), per lantern the slot the record in hand holds in its list (-1: none yet), and
+    // per lantern 1 while its lists hold a placed batch its quads have not been asked of (_candidateQuads)
+    this._cands = Array.from({ length: SHADOW_POINT_CASTERS }, () => ({ n: 0, hw: 0, rec: new Int32Array(64), bb: [] }));   // AUDIT 637 B4: `hw` the most slots filled since discard
+    this._candOf = new Array(SHADOW_POINT_CASTERS).fill(null);
+    this._candLim = new Float64Array(5 * SHADOW_POINT_CASTERS);
+    this._candOpen = new Int32Array(SHADOW_POINT_CASTERS);
+    this._candQuads = new Uint8Array(SHADOW_POINT_CASTERS);
+    this._candWalked = false;   // AUDIT 637 B3: this frame's walk made (render clears it; _candFor makes it on the first ask)
+    // PERF-SUN3: each sun cascade's candidates this frame (_sunCandidates) - the lanterns' shape - with the planes they
+    // were found by, one set a cascade
+    this._sunCands = SHADOW_CASCADES.map(() => ({ n: 0, hw: 0, rec: new Int32Array(64), bb: [] }));
+    this._sunCandPlanes = SHADOW_CASCADES.map(() => new Float32Array(24));
     this._sunPlanes = SHADOW_CASCADES.map(() => new Float32Array(24));   // SHADOW-REACH: the cascades' frusta, for the hosts' reach test
     this._sunPlanesFrame = -1;
     this._shiftGen = 0;                 // AUDIT SC1: the floating origin's generation (shiftOrigin)
@@ -1022,7 +1261,7 @@ export class ShadowPass {
       for (let j = 0; j < cap; j++) if (!taken[j]) { slotOf[i] = j; taken[j] = 1; break; }
     }
     for (let j = 0; j < cap; j++) if (!taken[j]) { sl[j * 4] = NaN; this._loBuilt[j] = 0; }   // a light gone: its slot is drawn afresh for the next
-    let rebuilds = SHADOW_LO_REBUILDS;
+    let rebuilds = SHADOW_TUNING.steady ? SHADOW_LO_REBUILDS_STEADY : SHADOW_LO_REBUILDS;   // FLICKER-FIX: more per frame, never all at once (a door in a twenty-lamp room is a hitch)
     for (let i = 0; i < n; i++) {
       const j = slotOf[i];
       if (j < 0) continue;
@@ -1072,8 +1311,11 @@ export class ShadowPass {
     if (this.count >= SHADOW_RECORD_MAX) return null;
     let r = this.records[this.count];
     if (!r) {
-      r = { kind: 0, mesh: null, matrix: new Float32Array(16), texRemap: null, surface: null, arrayTex: null, tilemapTex: null, tileSize: 0, batches: null, flatWind: new Float32Array(4), right: new Float32Array(3), up: new Float32Array(3),
-        bounded: false, sphere: new Float32Array(4), subSpheres: new Float32Array(0), cellSpheres: new Float32Array(0), dynamic: false, cut: 0 };   // EL5: the world-space spheres, the record's and its sub-meshes'; LA-AUDIT A1: and its shadow cells'; SC1: moved since last frame
+      r = { kind: 0, mesh: null, matrix: new Float32Array(16), texRemap: null, surface: null, arrayTex: null, tilemapTex: null, tileSize: 0, batches: null, flatWind: new Float32Array(4), windfall: new Float32Array(8), wfSway: null, wfAxis: null, right: new Float32Array(3), up: new Float32Array(3),
+        bounded: false, sphere: new Float32Array(4), subSpheres: new Float32Array(0), cellSpheres: new Float32Array(0), dynamic: false, cut: 0,   // EL5: the world-space spheres, the record's and its sub-meshes'; LA-AUDIT A1: and its shadow cells'; SC1: moved since last frame
+        body: false, anchored: false, look: 0, matrixBits: null };   // AUDIT MWNPC16-18: a Morrowind body's record (recordShadowBody's) - it never walks (A3, the lo tier); its look this frame (A2)
+      r.matrixBits = new Int32Array(r.matrix.buffer);
+      r.wfSway = r.windfall.subarray(0, 4); r.wfAxis = r.windfall.subarray(4, 8);   // WINDFALL1: the law's two vec4s, viewed once
       this.records[this.count] = r;
     }
     this.count++;
@@ -1144,7 +1386,10 @@ export class ShadowPass {
     // object, which the host moved; a mesh's and a tile's matrix and spheres are the pass's copies.
     for (let i = 0; i < this.count; i++) {
       const r = this.records[i];
-      if (r.kind === REC_BB) continue;
+      if (r.kind === REC_BB) {   // its batches' origins are the host's, moved; AUDIT ENVIRONS W3: its law's anchor is the record's copy - the land's place kept, as the host keeps its own (WINDFALL1)
+        if (windfallLawOn(r.windfall)) { const a = windfallAnchorAfterShift([r.windfall[6], r.windfall[7]], offset); r.windfall[6] = a[0]; r.windfall[7] = a[1]; }
+        continue;
+      }
       r.matrix[12] += offset[0]; r.matrix[13] += offset[1]; r.matrix[14] += offset[2];
       if (!r.bounded) continue;
       r.sphere[0] += offset[0]; r.sphere[1] += offset[1]; r.sphere[2] += offset[2];
@@ -1182,7 +1427,11 @@ export class ShadowPass {
       const d = this._shiftDelta(o);
       for (const s of inst) { s.m[12] += d[0]; s.m[13] += d[1]; s.m[14] += d[2]; }
       this._shiftSeen(o);
+      // PERF-INST (AUDIT): the cubes are in the origin's frame, so the shift moved no placement's - but float32 rounds
+      // a moved place, and one that rounding carried over a cube's edge is filed again
+      if (o._shInstGrid) for (const p of inst) if (_instKeyOf(p, this._shiftNow) !== p.key) _file(o, p, this._shiftNow);
     }
+    if (inst.length > SHADOW_INSTANCE_LINEAR) return this._movedFiled(o, inst, matrix);   // PERF-INST
     const x = matrix[12], y = matrix[13], z = matrix[14];
     // AUDIT REACH: THE PLACEMENT ITSELF FIRST. The first cut matched the NEAREST remembered placement within the reach,
     // so two still placements of one mesh closer than that (double doors, an arrow in the wall beside another)
@@ -1190,22 +1439,19 @@ export class ShadowPass {
     // epsilon) is that placement, still; only a draw at none is matched to the nearest within reach - a mover's own
     // last placement, a step behind it - and a draw past every reach is a new placement. A placement not drawn for
     // a hold is the one a new placement evicts when the memory is full.
-    let exact = null, best = null, bestD = SHADOW_INSTANCE_REACH * SHADOW_INSTANCE_REACH, oldest = null;
+    let exact = null, best = null, bestD = SHADOW_INSTANCE_REACH * SHADOW_INSTANCE_REACH;
     const eps2 = SHADOW_STILL_EPS * SHADOW_STILL_EPS;
     for (let i = 0; i < inst.length; i++) {
       const s = inst[i], m = s.m, d = (m[12] - x) * (m[12] - x) + (m[13] - y) * (m[13] - y) + (m[14] - z) * (m[14] - z);
       if (d <= eps2) { exact = s; break; }
       if (d < bestD && s.seen !== this.frameNo) { bestD = d; best = s; }   // a placement already claimed by a draw this frame is another instance's, not this draw's last step
-      if (oldest === null || s.seen < oldest.seen) oldest = s;
     }
     let s = exact ?? best;
+    // AUDIT PERF-INST: a full memory is the filed path's - this scan runs at SHADOW_INSTANCE_LINEAR placements or fewer,
+    // under the cap (test/perfinst.test.js holds the two apart), so a draw it finds nothing for is a new placement
     if (!s) {
-      if (inst.length >= SHADOW_INSTANCE_MAX) {
-        if (!oldest || this.frameNo - oldest.seen < SHADOW_DYNAMIC_HOLD) return true;   // every placement live: dynamic, never wrong
-        s = oldest; s.m.set(matrix); s.at = null; s.seen = this.frameNo;   // a placement not drawn for a hold: this one's now
-        return false;
-      }
-      inst.push({ m: new Float32Array(matrix), at: null, seen: this.frameNo });
+      inst.push({ m: new Float32Array(matrix), at: null, seen: this.frameNo, ord: inst.length, key: NaN, filed: false });
+      if (inst.length > SHADOW_INSTANCE_LINEAR) _fileAll(o, this._shiftNow);   // PERF-INST: past the scan's count - filed from here on
       return false;
     }
     s.seen = this.frameNo;
@@ -1214,6 +1460,99 @@ export class ShadowPass {
     for (let i = 0; i < 16; i++) if (Math.abs(m[i] - matrix[i]) > SHADOW_STILL_EPS) { same = false; break; }
     if (!same) { m.set(matrix); s.at = this.frameNo; }
     return s.at != null && this.frameNo - s.at < SHADOW_DYNAMIC_HOLD;   // moved now, or within the hold
+  }
+  /** PERF-INST: _moved's answer for a mesh with more placements than SHADOW_INSTANCE_LINEAR - the scan's placement
+   *  (the exact one, earliest remembered; else the nearest within the reach not claimed this frame, earliest on a tie),
+   *  found in the draw's own cube when it stands inside it, else in the 3x3x3 round it; the same memory kept - a
+   *  placement whose cube changes is filed again, a full memory evicts the stalest or answers dynamic. */
+  _movedFiled(o, inst, matrix) {
+    const shift = this._shiftNow, R = SHADOW_INSTANCE_REACH;
+    const grid = o._shInstGrid ?? _fileAll(o, shift);
+    const x = matrix[12], y = matrix[13], z = matrix[14];
+    const eps2 = SHADOW_STILL_EPS * SHADOW_STILL_EPS;
+    let exact = null, best = null, bestD = R * R;
+    const fx = (x - shift[0]) / R + SHADOW_INSTANCE_PHASE, fy = (y - shift[1]) / R + SHADOW_INSTANCE_PHASE, fz = (z - shift[2]) / R + SHADOW_INSTANCE_PHASE;   // the draw in the origin's frame, in cubes
+    if (Number.isFinite(fx) && Number.isFinite(fy) && Number.isFinite(fz)) {   // a translation that is not finite matches nothing (the scan's NaN compares)
+      const cx = Math.floor(fx), cy = Math.floor(fy), cz = Math.floor(fz);
+      // THE EXACT ONE FIRST: every placement within the epsilon stands in the draw's own cube, or in the neighbour past a
+      // face it stands within twice the epsilon of - and in each cube the first of them, in the order remembered, is that
+      // cube's earliest; the earliest of those is the scan's exact one. The common answer, a still copy, from one cube.
+      const m0 = 2 * SHADOW_STILL_EPS / R;
+      const x0 = fx - cx <= m0 ? -1 : 0, x1 = cx + 1 - fx <= m0 ? 1 : 0;
+      const y0 = fy - cy <= m0 ? -1 : 0, y1 = cy + 1 - fy <= m0 ? 1 : 0;
+      const z0 = fz - cz <= m0 ? -1 : 0, z1 = cz + 1 - fz <= m0 ? 1 : 0;
+      for (let dx = x0; dx <= x1; dx++) {
+        for (let dy = y0; dy <= y1; dy++) {
+          for (let dz = z0; dz <= z1; dz++) {
+            const cell = grid.get(instKey(cx + dx, cy + dy, cz + dz));
+            if (!cell) continue;
+            for (let i = 0; i < cell.length; i++) {
+              const p = cell[i], m = p.m;
+              if (exact !== null && p.ord > exact.ord) break;   // past the earliest found: nothing earlier in this cube
+              if ((m[12] - x) * (m[12] - x) + (m[13] - y) * (m[13] - y) + (m[14] - z) * (m[14] - z) <= eps2) { exact = p; break; }
+            }
+          }
+        }
+      }
+      // ELSE THE NEAREST UNCLAIMED within the reach, from the 3x3x3 round the draw. No placement within the epsilon
+      // stands there (every one would stand in a cube just asked), so one claimed this frame is no answer and is not
+      // measured: a pile of copies past the cap, every one claimed, costs a look at each, not a distance.
+      if (exact === null) {
+        for (let dx = -1; dx <= 1; dx++) {   // AUDIT PERF-INST: by offset - `gx <= cx + 1` never ended past 2^53 cells
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dz = -1; dz <= 1; dz++) {
+              const cell = grid.get(instKey(cx + dx, cy + dy, cz + dz));
+              if (!cell) continue;
+              for (let i = 0; i < cell.length; i++) {
+                const p = cell[i];
+                if (p.seen === this.frameNo) continue;
+                const m = p.m, d = (m[12] - x) * (m[12] - x) + (m[13] - y) * (m[13] - y) + (m[14] - z) * (m[14] - z);
+                if (d < bestD || (d === bestD && best !== null && p.ord < best.ord)) { bestD = d; best = p; }
+              }
+            }
+          }
+        }
+      }
+    }
+    let s = exact ?? best;
+    if (!s) {
+      if (inst.length >= SHADOW_INSTANCE_MAX) {
+        s = this._stalest(o, inst);
+        if (s === null) return true;   // every placement live: dynamic, never wrong
+        s.m.set(matrix); s.at = null; s.seen = this.frameNo;   // a placement not drawn for a hold: this one's now
+        _file(o, s, shift);
+        return false;
+      }
+      s = { m: new Float32Array(matrix), at: null, seen: this.frameNo, ord: inst.length, key: NaN, filed: false };
+      inst.push(s);
+      _file(o, s, shift);
+      return false;
+    }
+    s.seen = this.frameNo;
+    const m = s.m;
+    let same = true;
+    for (let i = 0; i < 16; i++) if (Math.abs(m[i] - matrix[i]) > SHADOW_STILL_EPS) { same = false; break; }
+    if (!same) { m.set(matrix); s.at = this.frameNo; _file(o, s, shift); }
+    return s.at != null && this.frameNo - s.at < SHADOW_DYNAMIC_HOLD;   // moved now, or within the hold
+  }
+  /** PERF-INST (AUDIT): a full memory's next placement to give up - the scan's `oldest` (the least recently seen, the
+   *  earliest remembered of those), when that is not drawn for a hold; null when every placement is live. The stalest
+   *  are queued once a frame, by (seen, remembered); a draw this frame can only make a placement fresher, so the first
+   *  queued one still as it was queued is the least seen of all - and when none is left, every placement is live. */
+  _stalest(o, inst) {
+    let q = o._shInstStale;
+    if (!q || q.frame !== this.frameNo) {
+      const list = [], seen = [];
+      for (let i = 0; i < inst.length; i++) if (this.frameNo - inst[i].seen >= SHADOW_DYNAMIC_HOLD) list.push(inst[i]);
+      list.sort((a, b) => a.seen - b.seen || a.ord - b.ord);
+      for (let i = 0; i < list.length; i++) seen.push(list[i].seen);
+      q = o._shInstStale = { frame: this.frameNo, list, seen, at: 0 };
+    }
+    while (q.at < q.list.length) {
+      const i = q.at++;
+      if (q.list[i].seen === q.seen[i]) return q.list[i];   // drawn since it was queued: live now, passed over
+    }
+    return null;
   }
   /** AUDIT PRE-MERGE 0928 R1: its vertex generation (updateMeshVertices, a sail's bake; 0 before one) changed since the
    *  pass last saw it, now or within the hold - _moved's law for the mesh's own geometry; a first sight is still. */
@@ -1256,17 +1595,70 @@ export class ShadowPass {
     r.bounded = !!surface.bounds;
     if (r.bounded) transformSphere(matrix, surface.bounds, r.sphere);
   }
-  /** EL7: a character rig (createCharacterMesh's bundle: vao, count, ranges) casts too. */
-  recordCharacter(mesh, matrix) {
+  /** EL7: a character rig (createCharacterMesh's bundle: vao, count, ranges) casts too.
+   *  MWNPC16 (2026-10-11, a player's screenshot via Mac: "Old sprite shadows still show"): AND A MORROWIND BODY, in its
+   *  own shape. MWNPC1 turned a GPU-skinned body away here - CHAR_VS has no skin, so it would have cast its bind pose -
+   *  and MWNPC5b kept each NPC's classic billboard in the pass to cast for it (`castOnly`): a Daggerfall sprite's
+   *  silhouette thrown on the wall behind a man in Morrowind's steel. A skinned body now replays through the world's
+   *  own skinned vertex shader (opts.vs.charSkin) off its own palette, as posed when it was drawn - the replay is the
+   *  next frame's first work, before any body poses again - and a cast-only flat casts nothing. `sphere` [x, y, z, r]
+   *  in the world, for a mesh with no bounds of its own (a body's is its posed box, drawThird's); else the mesh's.
+   *  AUDIT MWNPC16-18: `body` - a Morrowind body's record (renderer.js recordShadowBody), and `anchored` - one that never walks (its flat has no origin: DISC29-E's own test of a flat that
+   *  cannot walk), which the lo tier's lamps take (A3: past the twelve, a standing person cast nothing - the body is
+   *  a mover, and its flat now casts none); and every body's LOOK this frame (A2) - its mesh, its pose's generation
+   *  (renderer.js `_poseGen`, bumped at every upload of a pose), its matrix and its hidden ranges - so a lamp whose
+   *  movers are bodies that did not change keeps the faces it drew. */
+  recordCharacter(mesh, matrix, sphere = null, body = false, anchored = false) {
+    if (!mesh) return;
     const r = this._rec(); if (!r) return;
     r.kind = REC_CHAR; r.mesh = mesh; r.matrix.set(matrix);
     r.dynamic = true;   // SC1: a rig is never still
-    r.bounded = !!mesh.bounds;
-    if (r.bounded) transformSphere(matrix, mesh.bounds, r.sphere);
+    r.body = !!body; r.anchored = r.body && !!anchored;
+    if (sphere) { r.bounded = true; r.sphere[0] = sphere[0]; r.sphere[1] = sphere[1]; r.sphere[2] = sphere[2]; r.sphere[3] = sphere[3]; }
+    else {
+      r.bounded = !!mesh.bounds;
+      if (r.bounded) transformSphere(matrix, mesh.bounds, r.sphere);
+    }
+    let h = Math.imul(shId(mesh) ^ 0x2f0b3e5d, 0x9e3779b1) ^ (mesh._poseGen | 0);
+    const mb = r.matrixBits;
+    for (let i = 0; i < 16; i++) h = (Math.imul(h ^ mb[i], 0x85ebca6b) + i) | 0;
+    const ranges = mesh.ranges;
+    if (ranges) for (let i = 0; i < ranges.length; i++) if (ranges[i].hidden) h = Math.imul(h ^ (i + 1), 0xc2b2ae35);
+    r.look = h | 0;
+    // MWNPC16: the skinned programs, built before the replay that needs them - AUDIT MWNPC16-18 A1 (B F3): and the cut
+    // one a CPU-skinned body's hair needs (?gpuskin=off, a layout the shader refused): it cast as solid cards
+    if (mesh.skin || (!this._bodyBuilt && ranges && ranges.some((rg) => rg.alphaCut > 0 && rg.tex))) this._bodyWanted = true;
   }
-  recordBillboards(batches, flatWind, camRight, camUp) {
+  /** MWNPC16: the body programs, built once, the first frame a skinned body or a cut-out range casts - here, in the
+   *  pass's own GL time (render: before any replay, which binds its own program first), never at a record inside the
+   *  world pass, where a useProgram would go behind the renderer's back. Each sampler on its unit: the palette on the
+   *  lit draw's (SKIN_PALETTE_UNIT), the picture on 0.
+   *  AUDIT MWNPC16-18 N2: a build that throws leaves the programs it did not make null - a body then casts as the
+   *  replay's null tests say (a skinned one nothing, a cut range in its run) - and never escapes render(), which would
+   *  skip the frame's discard and its viewport and pass words. */
+  _ensureBodyPrograms() {
+    if (this._bodyBuilt) return;
+    this._bodyBuilt = true;
+    const gl = this.gl, P = this.programs;
+    const u = (p, n) => gl.getUniformLocation(p, n);
+    const mint = (build, cut, skinned) => {
+      if (!build) return null;
+      let p = null;
+      try { p = build(); } catch (e) { console.warn(`[shadow] a body's depth program would not build - ${e?.message ?? e}`); return null; }
+      if (!p) return null;
+      gl.useProgram(p);
+      if (skinned) gl.uniform1i(u(p, 'uSkinPalette'), SKIN_PALETTE_UNIT);
+      if (cut) gl.uniform1i(u(p, 'uTex'), 0);
+      return { p, proj: u(p, 'uProj'), view: u(p, 'uView'), model: u(p, 'uModel'), skin: skinned ? u(p, 'uSkin') : null, tex: cut ? u(p, 'uTex') : null };
+    };
+    P.body = mint(this._buildBody, false, true);
+    P.bodyCut = mint(this._buildBodyCut, true, true);
+    P.charCut = mint(this._buildCharCut, true, false);
+  }
+  recordBillboards(batches, flatWind, camRight, camUp, windfall = null) {
     const r = this._rec(); if (!r) return;
     r.kind = REC_BB; r.batches = batches; r.flatWind.set(flatWind ?? this._zeroWind);
+    if (windfall) r.windfall.set(windfall); else r.windfall.fill(0);   // WINDFALL1: the mod's law, as the flats were drawn with it
     r.right.set(camRight); r.up.set(camUp);   // EL3: the basis the batch was drawn with, for the emission replay
     r.bounded = false;   // a batch list is culled batch by batch (each has its own bounds about its origin)
     // SC1: a flat is dynamic while its origin moves (a walker, a missile, a thrown torch) - per batch, remembered on the batch
@@ -1274,7 +1666,7 @@ export class ShadowPass {
     // batch's `sway`, on a clock that runs every frame), so while a wind blows its silhouette is never twice the
     // same - a dynamic for as long as the wind lasts, and still the moment it drops. The audit had left this as
     // "a lantern's shadow of a swaying tree holds one phase".
-    const fw = r.flatWind, wl = Math.hypot(fw[0], fw[1]);
+    const fw = r.flatWind, wl = Math.hypot(fw[0], fw[1]), law = windfallLawOn(r.windfall);
     // AUDIT SC1: ...and while its FRAME changes (an animated flat's silhouette is the frame's - a townsman's idle,
     // a 211 prop - and the cache would have held the build frame's until an unrelated rebuild), and always for a
     // batch built dynamic (`_dyn`: moveBillboardBatch rewrites its vertices with the origin left null, so the
@@ -1286,13 +1678,24 @@ export class ShadowPass {
       // AUDIT REACH: the silhouette is the RECORD's (a townsman's idle, a foe's swing rewrite `record`; `frame` is a
       // 211 prop's) and its FLIP's (a turn is the sign of size.w) - the first cut watched `frame` alone
       const fr = b.frame ?? -1, rec = b.record, flip = !!(b.size && b.size.w < 0);
-      const swaying = b.sway > 0 && b.size && swayLean(wl, b.sway, b.size.h) > SHADOW_SWAY_STILL;   // leaning past half a texel: moving, on the sway's own cadence
+      const swaying = !!b.size && crownLean(r, wl, law, b, b.size.h) > SHADOW_SWAY_STILL;   // leaning past half a texel: moving, on the sway's own cadence (WINDFALL1: by whichever law stands)
       if (b._shSeen === true && b._shGen !== this._shiftGen) { const d = this._shiftDelta(b); b._shOx += d[0]; b._shOy += d[1]; b._shOz += d[2]; }
       if (b._shGen !== this._shiftGen) this._shiftSeen(b);
       const placeChanged = b._shSeen === true && !(Math.abs(b._shOx - ox) <= SHADOW_STILL_EPS && Math.abs(b._shOy - oy) <= SHADOW_STILL_EPS && Math.abs(b._shOz - oz) <= SHADOW_STILL_EPS);
       const lookChanged = b._shSeen === true && !(b._shFrame === fr && b._shRec === rec && b._shFlip === flip);
       if (placeChanged || lookChanged) b._shMovedAt = this.frameNo;
-      const moving = b._dyn === true || b.selfCard === true || (b._shMovedAt != null && this.frameNo - b._shMovedAt < SHADOW_DYNAMIC_HOLD);   // built dynamic, the player's own card (DISC24-C), moved now, or within the hold
+      // IDLER-STICKY (2026-10-06, the player's log: two townsfolk flats, 455-5 and 386-5, in and out of the static set on
+      // their idle's beat - 180 frames still, 60 animating - and every turn rebuilt nine lamps' static caches and the lo
+      // maps around them at once: the whole room's shadows blinked): a flat whose LOOK changes where it stands (an idle,
+      // a 211 prop) animates again and again, so it is a mover for good - its shadow drawn with the movers', never
+      // baked, never the reason a static cache rebuilds. A walker that stops is still the hold's alone, as before.
+      // IDLER-STICKY II (the player's next log: the same two, still in and out - they HAVE an origin, so the first cut's
+      // `o == null` never held, and their idle swap nudges the origin a hair, so `!placeChanged` would not either): ANY
+      // look change marks the batch for good - A PERSON or a prop (an NPC, a foe, a peer, a 211 prop; not a wood's
+      // placements, not a swaying plant) - is marked the first time its look changes and stays a mover: it never enters
+      // or leaves the static caches again (one that never animates stays cached, as SC1 keeps it)
+      if (lookChanged && b._dyn !== true && b.selfCard !== true && !b._place && !(b.sway > 0)) b._shIdler = true;
+      const moving = b._dyn === true || b.selfCard === true || b._shIdler === true || (b._shMovedAt != null && this.frameNo - b._shMovedAt < SHADOW_DYNAMIC_HOLD);   // built dynamic, the player's own card (DISC24-C), moved now, or within the hold
       const dyn = moving || swaying;
       // DISC29-E: ANIMATING IN PLACE - a mover only because its silhouette changes where it stands (an idling mage, a
       // 211 prop): never built dynamic, never the player's card, never swaying. The lo tier keeps it (REPLAY_LO) - the
@@ -1315,18 +1718,46 @@ export class ShadowPass {
     for (let i = 0; i < this.count; i++) { const r = this.records[i]; r.mesh = null; r.surface = null; r.batches = null; r.texRemap = null; }
     this.count = 0;
     this._selfCard = null;
+    // AUDIT 637 B4: and the lanterns' candidate lists, as far as they were ever filled - a list holds batches, and one
+    // kept past the frame kept a destroyed batch's placement grid (or a dungeon's, into the daylight) with it
+    for (const c of this._cands) { for (let j = 0; j < c.hw; j++) { const l = c.bb[j]; if (l) l.length = 0; } c.n = 0; c.hw = 0; }
+    for (const c of this._sunCands) { for (let j = 0; j < c.hw; j++) { const l = c.bb[j]; if (l) l.length = 0; } c.n = 0; c.hw = 0; }   // PERF-SUN3: the cascades' too
   }
 
 
   render(f) {
     const gl = this.gl;
     this.stats.records = this.count; this.stats.sunDraws = 0; this.stats.pointDraws = 0; this.stats.culled = 0;
+    SHADOW_TUNING.steady = SHADOW_TUNING.override ?? !!getPref('steadyShadows');
+    SHADOW_TUNING.debug = SHADOW_TUNING.debugForce ?? !!getPref('shadowDebug');   // FLICKER-FIX: the Shadow debug log chip (debugForce: the console's)
+    // STEADY-BALANCE: the calmer eye is its OWN chip now (prefs 'calmEye', off by default), no longer ridden on Steady
+    // shadows - at a third of the rate the eye took ten seconds to open into a dark room and held a candle's glare
+    // as long; with the card's stacked silhouettes gone (SHADOW_SELF_LAMPS) there is little left for it to calm
+    AIR_TUNING.calm = SHADOW_TUNING.calmForce ?? !!getPref('calmEye');
+    const heldKind = this.kind;   // EMPTY-HOLD: the kind the held maps were drawn for
     this.kind = shadowKind(f.sunScale, f.lightDir);
     this.frameNo++;
     this.stats.cascadesDrawn = 0; this.stats.facesDrawn = 0; this.stats.staticFaces = 0; this.stats.dynFaces = 0; this.stats.blits = 0; this.stats.cachedSlots = 0;   // SC1
     this.stats.loSlots = 0; this.stats.loFaces = 0;   // DISC15
+    // EMPTY-HOLD (2026-10-06, the player: "everything blinked at once ... it only happens with enhanced lighting on", on
+    // every card): a frame that recorded NO caster (a hitch, a room's memory restored, a chunk swapped mid-frame) cleared
+    // every lamp's map and forgot every slot - the whole room's shadows off for a frame and every cube redrawn on the
+    // next. A short run of empty frames now keeps the last frame's maps and their uniforms untouched (the maps are
+    // still in their layers); only a run past SHADOW_EMPTY_HOLD frames - the scene really without casters - clears
+    if (this.count === 0) {
+      this._emptyRun = (this._emptyRun ?? 0) + 1;
+      // the same sky, and no door between (the renderer's `cut`: the first frame through a door drops the other side's
+      // records - DISC15's door - and its maps must go with them, never be held into the room or out into the street)
+      if (!f.cut && this._emptyRun <= SHADOW_EMPTY_HOLD && this._hadMaps && heldKind !== null && heldKind === this.kind) {
+        if (SHADOW_TUNING.debug) console.log(`[shadow] f${this.frameNo} empty frame held (${this._emptyRun}/${SHADOW_EMPTY_HOLD})`);
+        return;
+      }
+      this.sunParams[3] = 0; this.pointParams.fill(0); this.shadowIndex.fill(-1); this.casterOf.fill(-1); this.casters = 0;
+      this.kind = null; this._hadMaps = false; this._slotLight.fill(NaN); this._sunDrawn.fill(0); return;   // AUDIT 68 S17-far-cascade-shift: no sun map is held past a run that drew none
+    }
+    this._emptyRun = 0; this._hadMaps = true;
+    if (this._bodyWanted) this._ensureBodyPrograms();   // MWNPC16: before the first replay binds its own
     this.sunParams[3] = 0; this.pointParams.fill(0); this.shadowIndex.fill(-1); this.casterOf.fill(-1); this.casters = 0;
-    if (this.count === 0) { this.kind = null; this._slotLight.fill(NaN); this._sunDrawn.fill(0); return; }   // AUDIT 68 S17-far-cascade-shift: no sun map is held past a frame that drew none
     gl.disable(gl.CULL_FACE);   // the light's projection is not the mirrored one: winding is not the world's, and both faces of an open model must cast
     gl.enable(gl.DEPTH_TEST);
     gl.depthMask(true);
@@ -1341,14 +1772,15 @@ export class ShadowPass {
       const rl = Math.hypot(ld[2], ld[0]) || 1;
       this._right[0] = ld[2] / rl; this._right[1] = 0; this._right[2] = -ld[0] / rl;
       const last = SHADOW_CASCADES.length - 1;
+      const sunCand = SHADOW_TUNING.sunPrepass !== false ? this._sunCandidates(this._sunVPNew) : null;   // PERF-SUN3
       for (let c = 0; c < SHADOW_CASCADES.length; c++) {
         // EL8: the far cascade every other frame (its map keeps its matrix until it is drawn again); a cascade never drawn is drawn now
-        if (c === last && this._sunDrawn[c] && this.frameNo % SHADOW_FAR_CASCADE_EVERY !== 0) continue;
+        if (c === last && this._sunDrawn[c] && !SHADOW_TUNING.steady && this.frameNo % SHADOW_FAR_CASCADE_EVERY !== 0) continue;
         this.sunVP[c].set(this._sunVPNew[c]);
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.sunFbos[c]);
         gl.viewport(0, 0, SHADOW_SUN_SIZE, SHADOW_SUN_SIZE);
         gl.clear(gl.DEPTH_BUFFER_BIT);
-        this.stats.sunDraws += this.replay(f, this.sunVP[c], null, false, SHADOW_CASCADE_MIN_RADIUS_TEXELS * sunTexelWorld(c, k), sunTexelWorld(c, k));   // F5: the small solids; WEEDS1: and the small SPRITES, which F5's sphere test cannot see casters skipped by the cascade's texel
+        this.stats.sunDraws += this.replay(f, this.sunVP[c], null, false, SHADOW_CASCADE_MIN_RADIUS_TEXELS * sunTexelWorld(c, k), sunTexelWorld(c, k), REPLAY_ALL, true, sunCand ? sunCand[c] : null);   // F5: the small solids; WEEDS1: and the small SPRITES, which F5's sphere test cannot see casters skipped by the cascade's texel
         this._sunDrawn[c] = 1; this.stats.cascadesDrawn++;
       }
       for (let c = 0; c < SHADOW_CASCADES.length; c++) { this.sunParams[c] = SHADOW_CASCADES[c] * k; this.sunTexel[c] = sunTexelWorld(c, k); this._sunVPFlat.set(this.sunVP[c], c * 16); }
@@ -1359,8 +1791,9 @@ export class ShadowPass {
     // of them, each into its six layers; the replays are culled to the
     // lantern's range and the face's frustum, so a caster costs what it lights
     const selfAt = f.pointLights?.length ? this._selfCardAt(this._selfAt) : null;   // DISC29-E: the player's own card's place, or null (none drawn)
+    const selfLamps = Math.max(0, Math.min(SHADOW_POINT_CASTERS, SHADOW_TUNING.selfLamps ?? SHADOW_SELF_LAMPS));   // STEADY-BALANCE
     const casters = reserveSelfCasters(pickShadowCasters(f.pointLights, f.eye, SHADOW_POINT_CASTERS, f.carried, this._heldCasters, this._heldCasterN),   // MAC-T1; LIGHT-NEAR1; DISC6: last frame's casters keep their maps on a tie
-      f.pointLights, selfAt, SHADOW_NEAR_CASTERS, SHADOW_POINT_CASTERS, f.carried, this._heldCasters, this._heldCasterN);   // AUDIT PRE-MERGE 0929 E3
+      f.pointLights, selfAt, selfLamps, SHADOW_POINT_CASTERS, f.carried, this._heldCasters, this._heldCasterN);   // AUDIT PRE-MERGE 0929 E3
     this._heldCasterN = holdCasters(this._heldCasters, f.pointLights, casters);
     if (this.cacheOn && casters.length) this._ensureCache();   // AUDIT SC1
     const L = f.pointLights;
@@ -1389,6 +1822,14 @@ export class ShadowPass {
       const same = samePlace(sl, o, L, i * 4);   // AUDIT FLICKER P3
       farOf[rank] = same ? heldShadowFar(sl[o + 3], L[i * 4 + 3]) : shadowFarFor(L[i * 4 + 3]);
     }
+    // PERF-SHADOW1: one walk, every lantern's six faces (_candFor). AUDIT 637 B3: made by the first lantern that walks
+    // this frame - a face it draws, or its dynamic scan in a frame with a dynamic record - never up front: a still town
+    // whose maps were all cached walked every record and flat against every lantern for lists nobody read (0.31 -> 0.78
+    // ms a frame, twelve lanterns over 2,000 flats). And with no dynamic record in the frame no lantern's dynamic scan
+    // can answer anything but none (each of its arms asks a record's `dynamic` first), so none is asked.
+    this._candWalked = false;
+    let anyDyn = false;
+    for (let i = 0; i < this.count; i++) if (this.records[i].dynamic) { anyDyn = true; break; }
     if (this.cacheOn && casters.length) {
       // PERF-EXT3: every ranked caster's static signature in ONE walk, before the loop that reads them - with the
       // pos and the shadow's far the loop takes (below), so a signature is the one its own walk would have folded
@@ -1423,57 +1864,71 @@ export class ShadowPass {
       // AUDIT FLICKER P2: with DISC6's hold - last frame's two by place, at the keep ratio. In first person the card stands
       // a pace before the eye and circles the feet as the player turns, so turning in place hopped the player's
       // shadow from lamp to lamp (a hall of ten lamps: 506 hops over 833 spots in one turn each, two on successive frames)
-      const selfNear = selfAt ? nearestRank(casters, L, selfAt, rank, this._selfHeld, this._selfHeldN) < SHADOW_NEAR_CASTERS : near;
+      // STEADY-BALANCE: the card's own lamps (SHADOW_SELF_LAMPS, two) steady or not - FLICKER-FIX's every lamp stacked a
+      // silhouette per lamp behind the player at the crosshair; `due` below still redraws them every frame
+      const selfNear = selfAt ? (nearestRank(casters, L, selfAt, rank, this._selfHeld, this._selfHeldN) < selfLamps) : near;
       if (selfAt && selfNear && selfN < SHADOW_POINT_CASTERS) { this._selfNext[selfN * 4] = pos[0]; this._selfNext[selfN * 4 + 1] = pos[1]; this._selfNext[selfN * 4 + 2] = pos[2]; selfN++; }
       const selfWant = selfNear ? 1 : 0;
       const selfMoved = this._slotSelf[k] !== selfWant;
-      const due = near || selfNear || (this.frameNo + k) % SHADOW_FAR_CASTER_EVERY === 0;
+      const due = SHADOW_TUNING.steady || near || selfNear || (this.frameNo + k) % SHADOW_FAR_CASTER_EVERY === 0;
       if (!this.cacheOn) {
         // the old path whole: every caster in range, static or not, into the live layers at the cadence
         if (changed || due || selfMoved) {
+          const cand = this._candFor(rank, L, casters, farOf);   // PERF-SHADOW1: this lantern's candidates (null: its faces walk everything)
+          if (cand) this._candidateQuads(rank);   // PERF-SHADOW1: the quads asked by a lantern that draws, once a frame
           pointFaceMatrices(pos, far, this.faceVP);
           for (let face = 0; face < 6; face++) {
             gl.bindFramebuffer(gl.FRAMEBUFFER, this.pointFbos[k * 6 + face]);
             gl.viewport(0, 0, SHADOW_POINT_SIZE, SHADOW_POINT_SIZE);
             gl.clear(gl.DEPTH_BUFFER_BIT);
-            this.stats.pointDraws += this.replay(f, this.faceVP[face], pos, false, 0, 0, REPLAY_ALL, selfNear);
+            this.stats.pointDraws += this.replay(f, this.faceVP[face], pos, false, 0, 0, REPLAY_ALL, selfNear, cand);
           }
           this.stats.facesDrawn += 6;
           this._slotSelf[k] = selfWant;
         }
-        this._slotCached[k] = 0; this._slotLiveDyn[k] = 0;
+        this._slotCached[k] = 0; this._slotLiveDyn[k] = 0; this._faceDyn.fill(1, k * 6, k * 6 + 6);   // PERF-FACE: no cache to be equal to
       } else {
         // SC1: the static cache, drawn only when the light or the static set in its reach changed
         const sigHash = this._sigOut[rank * 2], sigCount = this._sigOut[rank * 2 + 1];   // PERF-EXT3: folded above
         const staticStale = changed || !this._slotCached[k] || this._slotSig[k * 2] !== sigHash || this._slotSig[k * 2 + 1] !== sigCount;
         let matrices = false;
         if (staticStale) {
+          const cand = this._candFor(rank, L, casters, farOf);
+          if (cand) this._candidateQuads(rank);   // PERF-SHADOW1
           pointFaceMatrices(pos, far, this.faceVP); matrices = true;
           for (let face = 0; face < 6; face++) {
             gl.bindFramebuffer(gl.FRAMEBUFFER, this.cacheFbos[k * 6 + face]);
             gl.viewport(0, 0, SHADOW_POINT_SIZE, SHADOW_POINT_SIZE);
             gl.clear(gl.DEPTH_BUFFER_BIT);
-            this.stats.pointDraws += this.replay(f, this.faceVP[face], pos, false, 0, 0, REPLAY_STATIC);
+            this.stats.pointDraws += this.replay(f, this.faceVP[face], pos, false, 0, 0, REPLAY_STATIC, true, cand);
           }
           this.stats.facesDrawn += 6; this.stats.staticFaces += 6;
           this._slotCached[k] = 1; this._slotSig[k * 2] = sigHash; this._slotSig[k * 2 + 1] = sigCount;
         } else this.stats.cachedSlots++;
-        // the dynamics on top: the cache blitted into the live layers, then the moving casters alone, at the cadence
-        const dynNear = this._dynamicNear(pos, far, f.isSpectral, selfNear);   // 0 none, 1 sway alone, 2 a mover
-        const dueDyn = dynNear === DYN_SWAY ? (this.frameNo + k) % SHADOW_SWAY_EVERY === 0 : due;   // AUDIT REACH: a swaying wood redraws on the sway's own cadence
+        // the dynamics on top: the cache copied into the live layers (CACHE-COPY: a draw), then the moving casters alone, at the cadence
+        const dynNear = anyDyn ? this._dynamicNear(pos, far, f.isSpectral, selfNear, this._candFor(rank, L, casters, farOf)) : DYN_NONE;   // 0 none, 1 sway alone, 2 a mover, 3 bodies alone
+        // AUDIT MWNPC16-18 A2: bodies alone redraw only when one changed - the live layers hold them as they stand
+        const bodiesHeld = dynNear === DYN_BODY && this._slotBodySig[k * 2] === this._bodySig[0] && this._slotBodySig[k * 2 + 1] === this._bodySig[1];
+        const dueDyn = dynNear === DYN_SWAY ? (SHADOW_TUNING.steady || (this.frameNo + k) % SHADOW_SWAY_EVERY === 0) : dynNear === DYN_BODY ? !bodiesHeld : due;   // AUDIT REACH: a swaying wood redraws on the sway's own cadence
         if (dynNear && (dueDyn || staticStale || !this._slotLiveDyn[k] || selfMoved)) {
-          this._blitSlot(k);
+          const cand = this._candFor(rank, L, casters, farOf);
+          if (cand) this._candidateQuads(rank);   // PERF-SHADOW1 (a no-op when the static faces asked it above)
+          this._blitSlot(k, f.bindVao, staticStale ? FACES_ALL : this._dirtyFaces(k));   // CACHE-COPY: by a draw; PERF-FACE: only the faces that hold more than the cache
           if (!matrices) pointFaceMatrices(pos, far, this.faceVP);
           for (let face = 0; face < 6; face++) {
             gl.bindFramebuffer(gl.FRAMEBUFFER, this.pointFbos[k * 6 + face]);
             gl.viewport(0, 0, SHADOW_POINT_SIZE, SHADOW_POINT_SIZE);
-            this.stats.pointDraws += this.replay(f, this.faceVP[face], pos, false, 0, 0, REPLAY_DYNAMIC, selfNear);
+            const drew = this.replay(f, this.faceVP[face], pos, false, 0, 0, REPLAY_DYNAMIC, selfNear, cand);
+            this.stats.pointDraws += drew;
+            this._faceDyn[k * 6 + face] = drew > 0 ? 1 : 0;   // PERF-FACE: a face no dynamic drew into is the cache again
           }
           this.stats.facesDrawn += 6; this.stats.dynFaces += 6;
           this._slotLiveDyn[k] = 1; this._slotSelf[k] = selfWant;
+          this._slotBodySig[k * 2] = this._bodySig[0]; this._slotBodySig[k * 2 + 1] = dynNear === DYN_BODY ? this._bodySig[1] : -1;   // AUDIT MWNPC16-18 A2: what the live layers hold - a mover's never held
         } else if (staticStale || (!dynNear && this._slotLiveDyn[k])) {
           // a fresh cache, or the last walker gone: the live layers are the cache again
-          this._blitSlot(k);
+          this._blitSlot(k, f.bindVao, staticStale ? FACES_ALL : this._dirtyFaces(k));   // PERF-FACE: a face that holds the cache already is left
+          this._faceDyn.fill(0, k * 6, k * 6 + 6);
           this._slotLiveDyn[k] = 0; this._slotSelf[k] = 0;
         }
       }
@@ -1482,15 +1937,67 @@ export class ShadowPass {
       this.shadowIndex[k] = i;
       if (i < SHADOW_CASTER_TABLE) this.casterOf[i] = k;
     }
-    for (let k = 0; k < SHADOW_POINT_CASTERS; k++) if (!taken[k]) { this._slotLight[k * 4] = NaN; this._slotCached[k] = 0; this._slotLiveDyn[k] = 0; this._slotSelf[k] = 0; }   // an emptied slot is drawn afresh when it is filled
+    for (let k = 0; k < SHADOW_POINT_CASTERS; k++) if (!taken[k]) { this._slotLight[k * 4] = NaN; this._slotCached[k] = 0; this._slotLiveDyn[k] = 0; this._slotSelf[k] = 0; this._faceDyn.fill(1, k * 6, k * 6 + 6); }   // an emptied slot is drawn afresh when it is filled
     this._selfHeld.set(this._selfNext); this._selfHeldN = selfN;   // AUDIT FLICKER P2
+    this.stats.selfLamps = selfN;   // STEADY-BALANCE: how many lamps the card cast into, for the debug log
     if (f.everyLight) this._renderLo(f, L);   // DISC15: a room drawn whole - every other light reads its lo map
     this.casters = casters.length;
+    if (SHADOW_TUNING.debug) this._debugLog(f, L, casters);   // FLICKER-FIX: __DF_SHADOW_TUNING.debugForce = true
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.colorMask(true, true, true, true);
     gl.enable(gl.CULL_FACE);
   }
 
+  /** FLICKER-FIX: the debug log. With `__DF_SHADOW_TUNING.debugForce = true` the console says, on every frame where the
+   *  shadow set CHANGED, what changed: which lamps gained or lost a full shadow map (by place), how many lamps fell back
+   *  to the lo map, and what was redrawn. A flicker that lines up with these lines is a slot swap; one that does not
+   *  is something else (the shader, the exposure). */
+  _debugLog(f, L, casters) {
+    const key = (i) => `${L[i * 4].toFixed(1)},${L[i * 4 + 1].toFixed(1)},${L[i * 4 + 2].toFixed(1)}`;
+    const now = new Set(casters.map(key));
+    const prev = this._dbgSet ?? new Set();
+    const gained = [...now].filter((k) => !prev.has(k)), lost = [...prev].filter((k) => !now.has(k));
+    const st = this.stats;
+    if (gained.length || lost.length || st.staticFaces > 0 || st.loFaces > 0) {
+      console.log(`[shadow] f${this.frameNo} steady=${SHADOW_TUNING.steady} casters=${casters.length} lights=${L.length >> 2}`
+        + ` +${gained.join(' | ') || '-'} -${lost.join(' | ') || '-'} staticFaces=${st.staticFaces} dynFaces=${st.dynFaces} loFaces=${st.loFaces} cascades=${st.cascadesDrawn}`
+        + ` selfLamps=${st.selfLamps} calmEye=${AIR_TUNING.calm}`);   // STEADY-BALANCE
+    }
+    this._dbgSet = now;
+    if (st.staticFaces > 0 || st.loFaces > 0) this._debugStaticDiff();   // STATIC-WHO: what changed in the static set
+  }
+  /**
+   * STATIC-WHO (2026-10-06, the player's log: the static caches rebuilt on a beat - 60 frames, then 180 - with no lamp
+   * changed): the static set the signatures fold (the same filters), keyed by identity and place; on a rebuild frame the
+   * entries that came and went are named - the record's kind, its archive and record (a flat) or its mesh's name, its
+   * place, and the flags that move a batch in and out of the set (conceal, _shDyn, _dead).
+   */
+  _debugStaticDiff() {
+    const now = new Map();
+    for (let i = 0; i < this.count; i++) {
+      const r = this.records[i];
+      if (r.kind === REC_BB) {
+        for (const b of r.batches) {
+          if (!b?.vao || b._dead || b._shDyn || b.noShadow || b.castOnly || b.conceal || b.archive === SHADOW_LIGHT_FLATS || SHADOW_NO_CAST_ARCHIVES.has(b.archive)) continue;   // MWNPC16: a flat whose body stands casts nothing
+          const at = `${Math.round((b._shOx ?? 0) * 64)},${Math.round((b._shOz ?? 0) * 64)}`;
+          now.set(`bb${shId(b)}@${at}`, `flat ${b.archive ?? '?'}-${b.record ?? '?'} n=${b.count ?? b.instances ?? '?'} at ${at} rec#${i}${r.dynamic ? ' (dyn record)' : ''}`);
+        }
+        continue;
+      }
+      if (r.dynamic) continue;
+      const m = r.kind === REC_TERRAIN ? r.surface : r.mesh;
+      if (!m?.vao || m._dead) continue;
+      const at = `${r.matrix[12].toFixed(2)},${r.matrix[13].toFixed(2)},${r.matrix[14].toFixed(2)}`;
+      now.set(`m${shId(m)}@${at}`, `${r.kind === REC_TERRAIN ? 'terrain' : 'mesh'} ${m.name ?? m.label ?? m.key ?? ''} id${shId(m)} at ${at} rec#${i}`);
+    }
+    const prev = this._dbgStatic;
+    this._dbgStatic = now;
+    if (!prev) return;
+    const came = [...now.keys()].filter((k) => !prev.has(k)).map((k) => now.get(k));
+    const went = [...prev.keys()].filter((k) => !now.has(k)).map((k) => prev.get(k));
+    if (!came.length && !went.length) { console.log(`[shadow] f${this.frameNo} static set unchanged (${now.size}) - a rebuild for another reason (a lamp's reach, its far)`); return; }
+    console.log(`[shadow] f${this.frameNo} STATIC CHANGE (${now.size}) came ${came.length}: ${came.slice(0, 6).join(' ; ') || '-'} | went ${went.length}: ${went.slice(0, 6).join(' ; ') || '-'}`);
+  }
   /** SC1: the static signature of a lantern's reach - every static record (and static batch) whose sphere touches
    *  the light's, folded by identity and position, order-free. An unbounded record touches everything.
    *
@@ -1520,9 +2027,9 @@ export class ShadowPass {
     for (let i = 0; i < this.count; i++) {
       const r = this.records[i];
       if (r.kind === REC_BB) {
-        const wl = Math.hypot(r.flatWind[0], r.flatWind[1]);
+        const wl = Math.hypot(r.flatWind[0], r.flatWind[1]), law = windfallLawOn(r.windfall);
         for (const b of r.batches) {
-          if (!b?.vao || b._dead || (b._shDyn && !(anim && b._shAnim)) || b.noShadow || b.conceal || b.archive === SHADOW_LIGHT_FLATS || SHADOW_NO_CAST_ARCHIVES.has(b.archive)) continue;   // DISC29-E: `anim` - the lo tier's walk folds a flat animating in place too, by its id and place (a new frame is no rebuild)
+          if (!b?.vao || b._dead || (b._shDyn && !(anim && b._shAnim)) || b.noShadow || b.castOnly || b.conceal || b.archive === SHADOW_LIGHT_FLATS || SHADOW_NO_CAST_ARCHIVES.has(b.archive)) continue;   // DISC29-E: `anim` - the lo tier's walk folds a flat animating in place too, by its id and place (a new frame is no rebuild)
           const c = batchSphere(b, this._bSphere);   // AUDIT 68 S16-batch-sphere-dup: the replays' own sphere
           let id = 0, at = 0, rad = -1;
           for (let k = 0; k < nC; k++) {
@@ -1530,14 +2037,14 @@ export class ShadowPass {
             if (c && !spheresTouch(c[0], c[1], c[2], c[3], x, y, z, far)) continue;
             // PERF-EXT1: ...and a pixel-wide batch by its QUADS, in the cube its six faces tile. One with none in it puts
             // nothing in this cache, so whatever it does is no reason to rebuild it.
-            if (quads && b._place) { if (rad < 0) rad = quadRadius(wl, b); if (!placementsInCube(b, rad, x, y, z, far)) continue; }
+            if (quads && b._place) { if (rad < 0) rad = quadRadius(r, wl, law, b); if (!placementsInCube(b, rad, x, y, z, far)) continue; }
             if (id === 0) { id = shId(b); at = Math.round(b._shOx * 64) + Math.round(b._shOz * 64) * 7919; }
             out[k * 2] = foldSignature(foldSignature(out[k * 2], id), at); out[k * 2 + 1]++;
           }
         }
         continue;
       }
-      if (r.dynamic) continue;
+      if (r.dynamic && !(anim && r.kind === REC_CHAR && r.anchored)) continue;   // AUDIT MWNPC16-18 A3: the lo tier's walk folds a body that never walks too, by its id and place (a new pose is no rebuild)
       const m = r.kind === REC_TERRAIN ? r.surface : r.mesh;
       if (!m?.vao || m._dead) continue;
       let id = 0, at = 0;
@@ -1569,19 +2076,144 @@ export class ShadowPass {
     out[0] = c[0]; out[1] = c[1]; out[2] = c[2];
     return out;
   }
+  /**
+   * PERF-SHADOW1 (2026-10-06, Mac: "I wanna look into how we can continue to improve performance, including for
+   * online"): A LANTERN'S SIX FACES SHARE ONE WALK. Every face replay walked every record and every flat of the frame -
+   * the filter chain, batchSphere, the planes, and a pixel-wide wood's placements - and so did _dynamicNear, once a
+   * lantern: under Steady shadows (FLICKER-FIX, on by default) every lantern with a mover or a swaying tree near it
+   * redraws its six dynamic faces EVERY frame, so a windy town of twelve lanterns walked the whole record list some
+   * eighty times a frame to draw what stood within a few metres of each (measured in the real game, Knightstale at
+   * 15:00 on this container's CPU: the shadow pass 7.2 ms of the world host's 16.1 ms of JavaScript a frame, 5.3 of it
+   * the replays and the dynamic scans).
+   *
+   * Now ONE walk a frame finds, for every ranked lantern, the records - and of a billboard list the flats - whose
+   * sphere CAN reach its cube: a sphere taken by none of the six faces is past far + r (1 + sqrt 2) on some axis
+   * (CUBE_REACH). A lantern about to draw then asks its placed batches of their quads, once (_candidateQuads). The
+   * faces and _dynamicNear walk only the candidates, in the records' own order, and each still asks every question it
+   * asked before - so a face draws exactly what it drew: the candidates are a superset of what any face takes, nothing
+   * else is skipped, and the order of what is drawn is the order it was drawn in. The walk reads no batch's placements
+   * (the PERF-EXT review: a still room drawn whole asks none a frame). A lantern whose place or far is not a finite
+   * number gets no candidates (null: its faces walk everything, as before), and neither does a pass with
+   * SHADOW_TUNING.facePrepass false. Fills this._candOf[rank] for each ranked caster and answers it.
+   * @param {ArrayLike<number>} L @param {ArrayLike<number>} casters @param {ArrayLike<number>} farOf
+   */
+  _casterCandidates(L, casters, farOf) {
+    this._candWalked = true;
+    const out = this._candOf, lim = this._candLim, open = this._candOpen, quads = this._candQuads;
+    const nC = casters.length;
+    let live = 0;
+    for (let k = 0; k < nC; k++) {
+      const i = casters[k], x = L[i * 4], y = L[i * 4 + 1], z = L[i * 4 + 2], far = farOf[k];
+      const o = k * 5;
+      lim[o] = x; lim[o + 1] = y; lim[o + 2] = z; lim[o + 3] = far; lim[o + 4] = cubeSlack(x, y, z, far);
+      const ok = SHADOW_TUNING.facePrepass !== false && Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z) && Number.isFinite(far);
+      out[k] = ok ? this._cands[k] : null;
+      quads[k] = 0;
+      if (ok) { this._cands[k].n = 0; live++; }
+    }
+    for (let k = nC; k < out.length; k++) out[k] = null;
+    if (!live) return out;
+    const add = (k, i) => {
+      const c = out[k];
+      if (c.n === c.rec.length) { const g = new Int32Array(c.rec.length * 2); g.set(c.rec); c.rec = g; }
+      c.rec[c.n] = i;
+      return c.n++;
+    };
+    const sp = this._bSphere;
+    for (let i = 0; i < this.count; i++) {
+      const r = this.records[i];
+      if (r.kind !== REC_BB) {
+        const sx = r.sphere[0], sy = r.sphere[1], sz = r.sphere[2], sr = r.sphere[3];
+        for (let k = 0; k < nC; k++) if (out[k] && (!r.bounded || cubeKeeps(lim, k, sx, sy, sz, sr))) add(k, i);
+        continue;
+      }
+      for (let k = 0; k < nC; k++) open[k] = -1;
+      for (const b of r.batches) {
+        if (!b) continue;   // the replay's first question drops it too
+        const c = batchSphere(b, sp);   // none: every face takes it (and one with a NaN in it cubeKeeps keeps)
+        for (let k = 0; k < nC; k++) {
+          if (!out[k] || (c && !cubeKeeps(lim, k, c[0], c[1], c[2], c[3]))) continue;
+          if (b._place) quads[k] = 1;   // its quads asked if this lantern draws (_candidateQuads)
+          let j = open[k];
+          if (j < 0) { j = add(k, i); open[k] = j; const bb = out[k].bb; if (bb[j]) bb[j].length = 0; else bb[j] = []; }
+          out[k].bb[j].push(b);
+        }
+      }
+    }
+    for (let k = 0; k < nC; k++) { const c = out[k]; if (c && c.n > c.hw) c.hw = c.n; }   // AUDIT 637 B4: as far as discard() must empty
+    return out;
+  }
+  /** AUDIT 637 B3: lantern `rank`'s candidates - the walk (_casterCandidates) made by the first lantern that asks this
+   *  frame, for all of them; null when its faces walk everything. */
+  _candFor(rank, L, casters, farOf) {
+    if (!this._candWalked) this._casterCandidates(L, casters, farOf);
+    return this._candOf[rank];
+  }
+  /**
+   * PERF-SHADOW1: a lantern's placed batches asked of their QUADS - once a frame, and only by a lantern about to draw
+   * a face. A placed batch (PERF-EXT1's pixel-wide wood) passes the sphere walk for every lantern in its pixel; one of
+   * whose quads (radius `rad`) none stands within far + cubeReach(rad) of the light on every axis - placementsInCube's
+   * own box (far + rad) grown to the cube's reach and the slack - is taken by no face, and leaves this lantern's lists (a
+   * record left with no flat leaves them too, its order kept). One whose sphere or radius is not a number stays, as no
+   * face's planes cull it. A lantern that draws nothing this frame asks nothing (a still room drawn whole reads no
+   * placement), and one whose lists hold no placed batch has nothing to ask.
+   * @param {number} rank
+   */
+  _candidateQuads(rank) {
+    const cand = this._candOf[rank];
+    if (!cand || !this._candQuads[rank]) return;
+    this._candQuads[rank] = 0;
+    const lim = this._candLim, o = rank * 5, sp = this._bSphere, cube = this._cubeArgs;
+    const rec = cand.rec, bb = cand.bb;
+    let w = 0;
+    for (let j = 0; j < cand.n; j++) {
+      const r = this.records[rec[j]];
+      if (r.kind === REC_BB) {
+        const list = bb[j];
+        const wl = Math.hypot(r.flatWind[0], r.flatWind[1]), law = windfallLawOn(r.windfall);   // the record's wind, for its quads' lean (quadRadius)
+        let m = 0;
+        for (let t = 0; t < list.length; t++) {
+          const b = list[t];
+          if (b._place) {
+            const c = batchSphere(b, sp);
+            if (c && c[0] === c[0] && c[1] === c[1] && c[2] === c[2] && c[3] === c[3]) {
+              const rad = quadRadius(r, wl, law, b);
+              if (rad === rad) {   // PERF-ALLOC2: the cube through a typed array - five doubles a call were five heap numbers
+                cube[0] = rad; cube[1] = lim[o]; cube[2] = lim[o + 1]; cube[3] = lim[o + 2]; cube[4] = lim[o + 3] + cubeReach(rad) - rad + lim[o + 4];
+                if (!placementsInCubeOf(b, cube)) continue;   // AUDIT 637: the cube's own reach (placementsInCube adds the radius itself)
+              }
+            }
+          }
+          list[m++] = b;
+        }
+        list.length = m;
+        if (m === 0) continue;
+      }
+      if (w !== j) { rec[w] = rec[j]; const t = bb[w]; bb[w] = bb[j]; bb[j] = t; }   // a swap: every slot keeps a list of its own
+      w++;
+    }
+    cand.n = w;
+  }
   /** SC1: is any dynamic caster in the lantern's reach.
    *  AUDIT SC1: a dynamic the replay would not DRAW is no reason to replay - the first cut counted a moving flame
    *  (SHADOW_LIGHT_FLATS), a no-cast archive, a flat under SHADOW_FLAT_MIN_HEIGHT and a ghost, and paid the blit and six
    *  faces at the cadence to draw nothing; the skips are the replay's own (its point-light arm, texel 0). */
-  _dynamicNear(pos, far, isSpectral, self = true) {
+  _dynamicNear(pos, far, isSpectral, self = true, cand = null) {
     let near = DYN_NONE;   // AUDIT REACH: a swaying flat alone is DYN_SWAY - the slow cadence; any mover is DYN_MOVER
-    for (let i = 0; i < this.count; i++) {
-      const r = this.records[i];
+    const bs = this._bodySig;   // AUDIT MWNPC16-18 A2: the bodies in reach, (hash, count)
+    let bodies = 0;
+    bs[0] = 0; bs[1] = 0;
+    // PERF-SHADOW1: the lantern's candidates when it has them - a superset of every item this scan takes (a sphere
+    // touching the far sphere is inside the grown cube, a quad in placementsInCube's cube is in the grown one), and
+    // the answer is the set's (a mover anywhere in it, else a sway), whatever order it is met in
+    const nRec = cand ? cand.n : this.count;
+    for (let j = 0; j < nRec; j++) {
+      const r = this.records[cand ? cand.rec[j] : j];
       if (r.kind === REC_BB) {
         if (!r.dynamic) continue;
-        const wl = Math.hypot(r.flatWind[0], r.flatWind[1]);
-        for (const b of r.batches) {
-          if (!b?._shDyn || !b.vao || b._dead || b.noShadow || b.conceal) continue;
+        const wl = Math.hypot(r.flatWind[0], r.flatWind[1]), law = windfallLawOn(r.windfall);
+        for (const b of (cand ? cand.bb[j] : r.batches)) {
+          if (!b?._shDyn || !b.vao || b._dead || b.noShadow || b.castOnly || b.conceal) continue;   // MWNPC16: its body is the mover, its own record
           if (b.selfCard && !self) continue;   // DISC24-C: the player's own card is no reason to redraw a map it will not be drawn into
           if (b.archive === SHADOW_LIGHT_FLATS || SHADOW_NO_CAST_ARCHIVES.has(b.archive) || (b.size && b.size.h < SHADOW_FLAT_MIN_HEIGHT) || isSpectral(b.archive)) continue;
           if (b._shSway && near === DYN_SWAY) continue;
@@ -1591,7 +2223,7 @@ export class ShadowPass {
           // beat (six faces blitted and replayed every fourth frame) - asked of its trees, it holds only a lantern
           // one of them stands by. The CUBE, not the far sphere: a face draws into its corners (pins: a quad at
           // 22.3 of a 20 far, 17 along +X, still redraws the slot).
-          if (b._place && !placementsInCube(b, quadRadius(wl, b), pos[0], pos[1], pos[2], far)) continue;
+          if (b._place && !placementsInCube(b, quadRadius(r, wl, law, b), pos[0], pos[1], pos[2], far)) continue;
           if (!b._shSway) return DYN_MOVER;
           near = DYN_SWAY;
         }
@@ -1600,21 +2232,132 @@ export class ShadowPass {
       if (!r.dynamic) continue;
       const m = r.kind === REC_TERRAIN ? r.surface : r.mesh;
       if (!m?.vao || m._dead) continue;
-      if (!r.bounded || spheresTouch(r.sphere[0], r.sphere[1], r.sphere[2], r.sphere[3], pos[0], pos[1], pos[2], far)) return DYN_MOVER;
+      if (r.bounded && !spheresTouch(r.sphere[0], r.sphere[1], r.sphere[2], r.sphere[3], pos[0], pos[1], pos[2], far)) continue;
+      if (r.kind !== REC_CHAR || !r.body) return DYN_MOVER;   // a mesh, a voxel rig (EL7) - movers as ever
+      // AUDIT MWNPC16-18 A2: a Morrowind body - folded by its look, the answer DYN_BODY while nothing else moves
+      bs[0] = foldSignature(bs[0], r.look); bodies++;
     }
-    return near;
+    bs[1] = bodies;
+    if (bodies === 0) return near;
+    return near === DYN_SWAY ? DYN_MOVER : DYN_BODY;   // a body beside a swaying wood: a mover's cadence, as it always had
   }
-  /** SC1: the cache's six layers into the live ones - a depth blit, no rasterisation. */
-  _blitSlot(k) {
-    const gl = this.gl, S = SHADOW_POINT_SIZE;
+  /**
+   * SC1: the cache's six layers into the live ones.
+   *
+   * CACHE-COPY (2026-10-07, Mac: "instead of one of my developers fixing the flickering shadow issue, they just turned
+   * on the non-baked version on by default, which really really kill performance ... I want to fix the flickering
+   * issue properly"): BY A DRAW, NOT A BLIT. This was six blitFramebuffer(DEPTH_BUFFER_BIT) calls from a layer of the
+   * cache array into a layer of the live one - valid by the spec, and the one path AUDIT FLICKER left "whose result a
+   * driver decides", unconfirmed. Confirmed in ANGLE's source: on Windows every browser's WebGL is ANGLE over Direct3D
+   * 11, and there this blit is no copy. DEPTH_COMPONENT24 is stored D24S8, so a depth-only blit is a "partial" depth-
+   * stencil one, which Renderer11::blitRenderbufferRect hands to Blit11::copyDepth: a quad whose pixel shader
+   * (PS_PassthroughDepth2D) declares a Texture2D and is given the layer's TEXTURE2DARRAY view (a depth render target
+   * keeps no blit view of its own, so its plain one is taken). D3D11 calls a view whose dimension is not the shader's
+   * invalid and leaves the read to the driver - the statics that came back were the driver's, not the cache's, and
+   * they changed whenever the cache did: every lamp's shadows at once on every rebuild (the anti-flicker patch's "the
+   * whole room's shadows blinked", "on every card", "none with &shadowcache=off"), and a lamp redrawn every frame for a
+   * mover read them every frame (AUDIT FLICKER's "not casting right on nvidia"). SwiftShader - ANGLE over Vulkan, the
+   * probes' GPU - copies it, so no probe saw it.
+   *
+   * The draw is the same copy on every backend: a full-screen triangle that fetches the cache at its own texel (a
+   * sampler2DArray, which ANGLE's translator declares as the array it binds) and writes it as gl_FragDepth - the same
+   * 24 bits (a unorm through a float32 and back), under DEPTH_TEST with ALWAYS, the replays' LESS put back. The same
+   * fragments the blit wrote, and on Direct3D the same kind of quad. `bindVao` is the renderer's tracked binder, so the
+   * replays after it rebind their own arrays.
+   */
+  _blitSlot(k, bindVao = null, faces = FACES_ALL) {
+    if (!faces) return;   // PERF-FACE: every live face holds the cache already
+    const gl = this.gl, S = SHADOW_POINT_SIZE, C = this.programs.copy;
+    gl.useProgram(C.p);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.cacheTex);
+    gl.uniform1i(C.cache, 0);
+    if (bindVao) bindVao(this._copyVao); else gl.bindVertexArray(this._copyVao);
+    gl.depthFunc(gl.ALWAYS);
     for (let face = 0; face < 6; face++) {
-      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this.cacheFbos[k * 6 + face]);
-      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, this.pointFbos[k * 6 + face]);
-      gl.blitFramebuffer(0, 0, S, S, 0, 0, S, S, gl.DEPTH_BUFFER_BIT, gl.NEAREST);
+      if (!(faces & (1 << face))) continue;   // PERF-FACE
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.pointFbos[k * 6 + face]);
+      gl.viewport(0, 0, S, S);
+      gl.uniform1i(C.layer, k * 6 + face);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      this.stats.blits++;
     }
-    this.stats.blits += 6;
+    gl.depthFunc(gl.LESS);
+    gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);   // no cache left on a unit while a rebuild draws into it
+  }
+  /** PERF-FACE: slot k's live faces that may hold more than its cache (a dynamic drawn into them, or not known), as a
+   *  mask of bits by face. */
+  _dirtyFaces(k) {
+    const fd = this._faceDyn;
+    let m = 0;
+    for (let face = 0; face < 6; face++) if (fd[k * 6 + face]) m |= 1 << face;
+    return m;
   }
 
+  /**
+   * PERF-SUN3 (2026-10-09, Mac: "I want to continue working to increase performance across the board, especially for
+   * online"): THE SUN'S CASCADES SHARE ONE WALK - PERF-SHADOW1's half for the sun (PERF-NEXT item 1). Every cascade's
+   * replay walked every record and every flat of the frame, three walks of the whole list, to draw what stood within
+   * 12, 48 and 240 units of the eye: the frame's records are what the view DREW, out to the draw distance.
+   *
+   * The cascades are one view and one depth (sunCascadeMatrices: the same eye, light and up, an orthographic box each,
+   * SHADOW_SUN_DEPTH either side of the eye along the light), nested by radius - so their planes are the same planes
+   * but for the four at the sides, each cascade's standing inside the next one's by the difference of their radii less
+   * each box's own texel snap (about 36 units, 144 at the travel view's scale). ONE walk tests every record and flat
+   * against the FAR cascade by the very test its replay asks (recordVisible, batchVisible, on the planes spherePlanes
+   * makes of the same matrix); each nearer cascade's list is then found from the next one out's, by its own planes. A
+   * sphere outside a cascade is outside every cascade within it - the depth planes are one plane, the sides are tens of
+   * units in, and float32 rounds a plane by far less at the game's coordinates (a ten-thousandth by the floating
+   * origin, under a hundredth 120 km out) - so each list holds exactly what its cascade's sphere test takes. The
+   * replay walks its list in the records' own order and still asks every question it asked (the planes again, F5's
+   * radius, WEEDS1's height, the placements), so a cascade draws exactly what it drew.
+   *
+   * Every list is filled as the lanterns' are (_casterCandidates' shape: record indices and, of a billboard list, the
+   * flats); discard() empties them. Answers this._sunCands, one list a cascade.
+   * @param {ArrayLike<Float32Array>} vps  this frame's cascade matrices (the far cascade's even on a frame it is held)
+   */
+  _sunCandidates(vps) {
+    const out = this._sunCands, planes = this._sunCandPlanes, last = SHADOW_CASCADES.length - 1;
+    for (let c = 0; c <= last; c++) { spherePlanes(vps[c], planes[c]); out[c].n = 0; }
+    const add = (c, i) => {
+      const L = out[c];
+      if (L.n === L.rec.length) { const g = new Int32Array(L.rec.length * 2); g.set(L.rec); L.rec = g; }
+      L.rec[L.n] = i;
+      const j = L.n++;
+      if (L.bb[j]) L.bb[j].length = 0; else L.bb[j] = [];
+      return j;
+    };
+    // the far cascade: every record, every flat
+    const P = planes[last];
+    for (let i = 0; i < this.count; i++) {
+      const r = this.records[i];
+      if (r.kind !== REC_BB) { if (recordVisible(P, r)) add(last, i); continue; }
+      let j = -1;
+      for (const b of r.batches) {
+        if (!b || !batchVisible(P, b)) continue;   // the replay's first question drops a null one too
+        if (j < 0) j = add(last, i);
+        out[last].bb[j].push(b);
+      }
+    }
+    // each nearer cascade: the next one out's list, by its own planes
+    for (let c = last - 1; c >= 0; c--) {
+      const from = out[c + 1], Q = planes[c];
+      for (let t = 0; t < from.n; t++) {
+        const i = from.rec[t], r = this.records[i];
+        if (r.kind !== REC_BB) { if (recordVisible(Q, r)) add(c, i); continue; }
+        const list = from.bb[t];
+        let j = -1;
+        for (let u = 0; u < list.length; u++) {
+          const b = list[u];
+          if (!batchVisible(Q, b)) continue;
+          if (j < 0) j = add(c, i);
+          out[c].bb[j].push(b);
+        }
+      }
+    }
+    for (let c = 0; c <= last; c++) if (out[c].n > out[c].hw) out[c].hw = out[c].n;   // AUDIT 637 B4's law: as far as discard() must empty
+    return out;
+  }
   /**
    * DISC24-C (icebreyker on Discord, 2026-09-24, "Lights/shadows are still bugged": "i am still getting this problem
    * with Enhanced Lighting" - the flicker of DISC13-A, in a lit interior, the player's whole silhouette thrown on the
@@ -1631,7 +2374,7 @@ export class ShadowPass {
    *    shadowCastingMode 2), so walking round a lamp swung the silhouette through a half turn. It casts in the basis it
    *    was drawn with.
    */
-  replay(f, vp, lightPos, recordBasis = false, minRadius = 0, texel = 0, filter = REPLAY_ALL, self = true) {
+  replay(f, vp, lightPos, recordBasis = false, minRadius = 0, texel = 0, filter = REPLAY_ALL, self = true, cand = null) {
     // WEEDS1: the height a FLAT must have to cast into this replay - the
     // global floor, or four of this cascade's texels, whichever is more.
     // A replay with no texel (the lanterns, the camera's depth image) gets
@@ -1640,12 +2383,16 @@ export class ShadowPass {
     const gl = this.gl;
     const P = this.programs;
     const planes = spherePlanes(vp, this._planes);   // EL5: this replay's frustum - a record outside it is not drawn
+    let vname = -1;   // PERF-VOL: the planes' name (bounds.js volumeName), asked at the first placed batch
     let draws = 0;
     let bound = null;
     const use = (prog) => { if (bound !== prog) { gl.useProgram(prog.p); gl.uniformMatrix4fv(prog.proj, false, vp); gl.uniformMatrix4fv(prog.view, false, this._identityView); bound = prog; } };
-    for (let i = 0; i < this.count; i++) {
-      const r = this.records[i];
-      if (filter !== REPLAY_ALL && r.kind !== REC_BB && (filter === REPLAY_STATIC || filter === REPLAY_LO) === r.dynamic) continue;   // SC1: the static replay skips the movers, the dynamic one the still (DISC29-E: the lo tier's is a static one)
+    // PERF-SHADOW1: a lantern's face walks its candidates (_casterCandidates) - every record, and every flat of a list,
+    // that this face could take, in their own order - and asks each the questions below exactly as before
+    const nRec = cand ? cand.n : this.count;
+    for (let j = 0; j < nRec; j++) {
+      const r = this.records[cand ? cand.rec[j] : j];
+      if (filter !== REPLAY_ALL && r.kind !== REC_BB && (filter === REPLAY_STATIC || filter === REPLAY_LO) === r.dynamic && !(filter === REPLAY_LO && r.kind === REC_CHAR && r.anchored)) continue;   // SC1: the static replay skips the movers, the dynamic one the still (DISC29-E: the lo tier's is a static one; AUDIT MWNPC16-18 A3: and a body that never walks, as a flat animating in place)
       if (r.kind !== REC_BB && !recordVisible(planes, r)) { this.stats.culled++; continue; }
       if (minRadius > 0 && r.kind !== REC_BB && r.kind !== REC_CHAR && r.bounded && r.sphere && r.sphere[3] < minRadius) { this.stats.culled++; continue; }   // F5: a small solid or terrain piece; a rig is a person
       if (r.kind === REC_MESH) {
@@ -1654,7 +2401,7 @@ export class ShadowPass {
         let vaoBound = false;
         // LA-AUDIT A1: a static batch with shadow cells replays its cells, not its sub-meshes - the same triangles in
         // the cells' own buffer (staticBatch.js shadowCells), each culled by its own sphere
-        const cells = r.bounded ? mesh.shadowCells : null;
+        const cells = r.bounded && !mesh._evAnyCut ? mesh.shadowCells : null;   // RW1: a mesh with a cutout picture replays its sub-meshes - a cell mixes pictures
         const subs = cells ?? mesh.subMeshes;
         const vao = cells ? mesh.shadowVao : mesh.vao;
         // PERF-EXT2 (2026-09-25, the players' "fps issues in the exterior
@@ -1672,13 +2419,22 @@ export class ShadowPass {
         let runAt = -1, runEnd = -1;
         for (let k = 0; k < subs.length; k++) {
           if (cells ? !sphereInPlanes(planes, r.cellSpheres[k * 4], r.cellSpheres[k * 4 + 1], r.cellSpheres[k * 4 + 2], r.cellSpheres[k * 4 + 3]) : !subMeshVisible(planes, r, k)) { this.stats.culled++; continue; }
+          const sm = subs[k], n = sm.primitiveCount * 3;
+          if (!cells && sm._evCut && sm._evTex) {   // RW1: a cutout picture (renderer.js _markCutout) - its holes cast nothing: its own draw, its picture's half-alpha cut
+            if (runAt >= 0) { gl.drawElements(gl.TRIANGLES, runEnd - runAt, gl.UNSIGNED_INT, runAt * 4); draws++; runAt = -1; runEnd = -1; }
+            use(P.meshCutout); gl.uniformMatrix4fv(P.meshCutout.model, false, r.matrix);
+            gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, sm._evTex); gl.uniform1i(P.meshCutout.tex, 0);
+            f.bindVao(vao);
+            gl.drawElements(gl.TRIANGLES, n, gl.UNSIGNED_INT, sm.startIndex * 4); draws++;
+            vaoBound = false;   // the record's own program again for the next run
+            continue;
+          }
           if (!vaoBound) {
             const prog = r.cut > 0 ? P.meshCut : P.mesh;   // AUDIT BAY A12: a fading ship's share of her depth
             use(prog); gl.uniformMatrix4fv(prog.model, false, r.matrix);
             if (r.cut > 0) gl.uniform1f(prog.cut, r.cut);
             f.bindVao(vao); vaoBound = true;
           }
-          const sm = subs[k], n = sm.primitiveCount * 3;
           if (sm.startIndex === runEnd) { runEnd += n; continue; }
           if (runAt >= 0) { gl.drawElements(gl.TRIANGLES, runEnd - runAt, gl.UNSIGNED_INT, runAt * 4); draws++; }
           runAt = sm.startIndex; runEnd = runAt + n;
@@ -1686,12 +2442,42 @@ export class ShadowPass {
         if (runAt >= 0) { gl.drawElements(gl.TRIANGLES, runEnd - runAt, gl.UNSIGNED_INT, runAt * 4); draws++; }
       } else if (r.kind === REC_CHAR) {
         const mesh = r.mesh;
-        if (!P.char || !mesh?.vao || mesh._dead) continue;
-        use(P.char);
-        gl.uniformMatrix4fv(P.char.model, false, r.matrix);
+        if (!mesh?.vao || mesh._dead) continue;
+        // MWNPC16: a GPU-skinned body through its skinned depth program, its palette on the lit draw's unit (handed to
+        // the renderer, which keeps the unit's word - f.holdSkin); one let go since its record (its palette deleted)
+        // casts nothing
+        const skin = mesh.skin || null;
+        if (skin && !skin.tex) continue;
+        const prog = skin ? P.body : P.char;
+        if (!prog) continue;
+        use(prog);
+        gl.uniformMatrix4fv(prog.model, false, r.matrix);
+        if (skin) { gl.uniform1f(prog.skin, skin.pairs); f.holdSkin?.(skin.tex); }
         f.bindVao(mesh.vao);
         if (mesh.ranges && mesh.ranges.length) {
-          for (const rg of mesh.ranges) { if (rg.hidden) continue; gl.drawArrays(gl.TRIANGLES, rg.first, rg.count); draws++; }
+          // MWNPC16: A RUN OF RANGES IS ONE DEPTH DRAW (PERF-EXT2's law for a rig): a body is a range a piece - a head,
+          // hair, a cuirass, two gauntlets, boots - laid end to end, and a depth draw binds nothing between two of them.
+          // A hidden range (a sheathed blade, an unlit torch - rule 57) breaks the run; a range with a cut-out picture
+          // (hair, a fringe) is its own draw through its picture's half-alpha cut, as a flat casts.
+          const cutP = skin ? P.bodyCut : P.charCut;
+          let runAt = -1, runEnd = -1;
+          for (const rg of mesh.ranges) {
+            if (rg.hidden || !(rg.count > 0)) continue;
+            if (rg.alphaCut > 0 && rg.tex && cutP) {
+              if (runAt >= 0) { gl.drawArrays(gl.TRIANGLES, runAt, runEnd - runAt); draws++; runAt = -1; runEnd = -1; }
+              use(cutP);
+              gl.uniformMatrix4fv(cutP.model, false, r.matrix);
+              if (skin) gl.uniform1f(cutP.skin, skin.pairs);
+              gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, rg.tex);
+              gl.drawArrays(gl.TRIANGLES, rg.first, rg.count); draws++;
+              use(prog);   // the record's own program again for the next run (its model and skin are the program's)
+              continue;
+            }
+            if (rg.first === runEnd) { runEnd += rg.count; continue; }
+            if (runAt >= 0) { gl.drawArrays(gl.TRIANGLES, runAt, runEnd - runAt); draws++; }
+            runAt = rg.first; runEnd = rg.first + rg.count;
+          }
+          if (runAt >= 0) { gl.drawArrays(gl.TRIANGLES, runAt, runEnd - runAt); draws++; }
         } else { gl.drawArrays(gl.TRIANGLES, 0, mesh.count); draws++; }
       } else if (r.kind === REC_TERRAIN) {
         const s = r.surface;
@@ -1705,6 +2491,7 @@ export class ShadowPass {
         use(P.bb);
         gl.uniform1i(P.bb.tex, 0);
         gl.uniform4fv(P.bb.flatWind, r.flatWind);
+        if (P.bb.wfAxis) { gl.uniform4fv(P.bb.wfSway, r.wfSway); gl.uniform4fv(P.bb.wfAxis, r.wfAxis); }   // WINDFALL1: the mod's law, as the flats were drawn
         gl.activeTexture(gl.TEXTURE0);
         let lastSway = null;
         // PERF-BASIS (2026-09-19): THE BASIS IS UPLOADED ONCE, NOT ONCE A
@@ -1735,18 +2522,25 @@ export class ShadowPass {
         // this loop binds another, and only this loop writes these two.
         // Reset per record, beside the sway's and the texture's.
         let lastW = NaN, lastH = NaN, lastOx = NaN, lastOy = NaN, lastOz = NaN;
-        const wl = Math.hypot(r.flatWind[0], r.flatWind[1]);   // PERF-EXT1: the record's wind, for its quads' lean
-        for (const b of r.batches) {
+        const wl = Math.hypot(r.flatWind[0], r.flatWind[1]), law = windfallLawOn(r.windfall);   // PERF-EXT1: the record's wind, for its quads' lean; WINDFALL1: and whose law
+        for (const b of (cand ? cand.bb[j] : r.batches)) {
           if (!b?.vao || b._dead || b.conceal || f.isSpectral(b.archive)) continue;   // a concealed foe and a ghost cast nothing
           if (filter === REPLAY_LO ? (b._shDyn && !b._shAnim) : (filter !== REPLAY_ALL && (filter === REPLAY_STATIC) === !!b._shDyn)) continue;   // SC1: by the batch's own word; DISC29-E: the lo tier takes a flat that animates in place
           if (lightPos && b.archive === SHADOW_LIGHT_FLATS) continue;   // EL6: a flame is the lantern, not its occluder
           if (lightPos && b.selfCard && !self) continue;   // DISC24-C: the player's own card, only where it is redrawn every frame
-          if (b.noShadow || SHADOW_NO_CAST_ARCHIVES.has(b.archive) || (b.size && b.size.h < minFlatH)) { this.stats.culled++; continue; }   // F2: a thing on the ground is no standing card   // WEEDS1: ...and nothing under four texels of THIS cascade
+          if (b.noShadow || b.castOnly || SHADOW_NO_CAST_ARCHIVES.has(b.archive) || (b.size && b.size.h < minFlatH)) { this.stats.culled++; continue; }   // MWNPC16: a flat whose Morrowind body stands - the body casts its own shape (recordCharacter)   // F2: a thing on the ground is no standing card   // WEEDS1: ...and nothing under four texels of THIS cascade
           if (!batchVisible(planes, b)) { this.stats.culled++; continue; }   // EL5
           // PERF-EXT1: a pixel-wide batch passes the sphere test in every cascade and face of its pixel; asked of its
           // quads it is drawn only where one of them stands (the census's noon city: cascade 0 drew 123 flat batches a
           // frame for 7 with a tree in it, cascade 1 144 for 79). A skip here is a batch that rasterises nothing.
-          if (b._place && !placementsInVolume(b, quadRadius(wl, b), planes)) { this.stats.culled++; continue; }
+          if (b._place) {
+            // PERF-VOL: the answer kept from the last frame's same planes - a LANTERN's alone (AUDIT PERF-ARENA V2: the sun
+            // turns every frame and a cascade follows the eye, so no cascade's planes ever come again); the name is asked
+            // at the replay's first placed batch, and a replay with none asks the walk itself, as before
+            const rad = quadRadius(r, wl, law, b);
+            if (vname < 0) vname = lightPos && SHADOW_TUNING.volumeMemo !== false ? volumeName(planes) : 0;
+            if (!(vname === 0 ? placementsInVolume(b, rad, planes) : placementsInVolumeOf(b, rad, planes, vname))) { this.stats.culled++; continue; }
+          }
           // WEEDS1: F5's sphere test used to sit here and is GONE, because
           // it can no longer decide anything. A single-flat batch's radius
           // is hypot(w, h) / 2, so F5 fired only when hypot(w, h) < 4 texels
@@ -1788,11 +2582,11 @@ export class ShadowPass {
           if (o[0] !== lastOx || o[1] !== lastOy || o[2] !== lastOz) { gl.uniform3f(P.bb.origin, o[0], o[1], o[2]); lastOx = o[0]; lastOy = o[1]; lastOz = o[2]; }   // PERF-EXT11
           const w = b.size.w, h = b.size.h;
           if (w !== lastW || h !== lastH) { gl.uniform2f(P.bb.size, w, h); lastW = w; lastH = h; }   // PERF-EXT11
-          const sw = b.sway || 0;
+          const sw = swayShare(b, law);   // WINDFALL1: the mod's mask under its law
           if (sw !== lastSway) { gl.uniform1f(P.bb.sway, sw); lastSway = sw; }
           if (tex !== lastTex) { gl.bindTexture(gl.TEXTURE_2D, tex); lastTex = tex; }   // PERF-BASIS
           f.bindVao(b.vao);
-          gl.drawElements(gl.TRIANGLES, b.indexCount, gl.UNSIGNED_INT, 0);
+          gl.drawElements(gl.TRIANGLES, b.indexCount, gl.UNSIGNED_INT, b._ibOff | 0);   // PERF-ARENA: a still batch's range of its arena's indices
           draws++;
         }
       }

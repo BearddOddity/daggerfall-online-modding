@@ -91,7 +91,7 @@ import { getFloat, effectiveSettings, setValue, saveSettings } from '../systems/
 import { ENUM_LAW } from './settingsLaw.js';
 import { audio } from '../systems/audio.js';
 import { SOUND } from '../systems/soundClips.js';
-import { BUILD_TAG } from '../buildTag.js';
+import { BUILD_TAG, UPDATE } from '../buildTag.js';
 import { bindings, eventMeans } from './input.js';   // KB1: the live registry, for the toggle-close binding; AUDIT DISC28 UI-1: the event's own read of it
 import { getBinding } from '../systems/inputActions.js';   // KB1: InputManager.GetBinding(Actions.Escape)
 import { localizedText, t } from '../systems/textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language
@@ -265,7 +265,7 @@ export class PauseOptionsWindow {
     this.isCloseWindowDeferred = false;
     this._click();   // ContinueButton's sound, which this port's two close doors share
     this._closeWith();
-    // MAC1 J, the classic twin (ui/pauseDoor.js:"export function pauseMenuAct"): the close runs
+    // MAC1 J, the classic twin (ui/pauseDoor.js:"return (action) =>"): the close runs
     // inside this click/keyup, the activation requestPointerLock needs.
     this.hooks.relock?.();
   }
@@ -282,7 +282,7 @@ export class PauseOptionsWindow {
     if (inRect(R.continue, vx, vy)) {
       this._click();
       this._closeWith();
-      // MAC1 J, the classic twin (ui/pauseDoor.js:"export function pauseMenuAct"): the close runs
+      // MAC1 J, the classic twin (ui/pauseDoor.js:"return (action) =>"): the close runs
       // inside this click/keyup, the activation requestPointerLock needs.
       // On the RESUME exits, never on the shared `_closeWith`: the SAVE
       // and LOAD arms below travel it to OPEN the slot window, and the
@@ -423,7 +423,9 @@ export class PauseOptionsWindow {
     // the version line, right-aligned at the top (:146-152) - the
     // PORT's identity, not DFU's VersionInfo strings (Ledger A, THE
     // PAUSE WINDOW'S VERSION LINE IS THE PORT'S OWN BUILD TAG)
-    const ver = `Daggerfall Online ${BUILD_TAG}`;   // BR1: the PRODUCT's name here, not the working name - this line is the whole of the branding surface a player sees in game
+    // REL8: the player's update number first (scripts/updateNumber.mjs), the commit beside it for a report; a build
+    // that cannot know its number (a dev serve, a shallow clone) says the commit alone, as before
+    const ver = UPDATE ? `DFO Online ${UPDATE} (${BUILD_TAG})` : `DFO Online ${BUILD_TAG}`;   // BR1: the PRODUCT's name here, not the working name - this line is the whole of the branding surface a player sees in game
     shadowText(renderer, font, ver, m, 320 - 2 - measureText(font.fnt, ver), 2,
       { color: [0.75, 0.75, 0.75, 1] });
     // the stacked box (exit confirm / note), the U23 shape: laid out
@@ -511,7 +513,7 @@ export function openClassicPauseFlow(show, hooks = {}) {
     // MAC1 J: a COMPLETED save or load drains the whole stack back to
     // the HUD, inside the slot window's own click - so this exit is a
     // resume too, and the enhanced twin relocks on exactly it
-    // (ui/pauseDoor.js:"gesture; the exit" fires for 'save' and 'load', not 'exit').
+    // (ui/pauseDoor.js:"if (action !== 'exit')" fires for 'save' and 'load', not 'exit').
     popToHUD: push ? () => { win?._closeWith(); hooks.relock?.(); } : null,
     ...extra,
   });

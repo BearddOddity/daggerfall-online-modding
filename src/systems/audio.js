@@ -54,6 +54,12 @@ export function placeAudio(pan, p) {
   const [x, y, z] = audioFrame(p);
   pan.positionX.value = x; pan.positionY.value = y; pan.positionZ.value = z;
 }
+/** RAIN-LEAK: a stopped loop lets go of EVERY node it built - its source, gain, panner and low-pass. Disconnecting the
+ *  source alone left the rest wired into the bus, which a browser may keep alive for the page's life: a gain and a
+ *  filter per rain shower. Null nodes are skipped; a node already gone is no fault. */
+export function releaseNodes(...nodes) {
+  for (const n of nodes) { if (n) { try { n.disconnect(); } catch { /* gone */ } } }
+}
 /** The panning model every positional source takes (see AudioEngine._panner). */
 export const PANNING_MODEL = 'HRTF';
 
@@ -61,6 +67,10 @@ export const PANNING_MODEL = 'HRTF';
  *  (net/peerFx.js isHurtClip). Null offline. */
 let _oneShotObserver = null;
 export function setOneShotObserver(fn) { _oneShotObserver = typeof fn === 'function' ? fn : null; }
+
+/** AUDIT SD III (A3): how long a named bed (AudioEngine.setBed) takes to rise as it begins and to fade as it is let go
+ *  (s) - the arena's crowd bed's (systems/arenaSound.js BED_FADE_S). */
+const BED_FADE_S = 0.4;
 
 export class AudioEngine {
   constructor() {
@@ -348,6 +358,14 @@ export class AudioEngine {
     return true;
   }
 
+  /** ARENA2: a DAGGER.SND record's samples (mono, SAMPLE_RATE) - the raw voices a made sound is built from
+   *  (systems/arenaSound.js: the crowd's cheer and boo out of AmbientPeople1-10). Read off the player's own archive,
+   *  no context needed; null with no archive or no such record. Never a replacement's: the made sound is Daggerfall's. */
+  samplesOf(index) {
+    const rec = this.snd?.getSound?.(index);
+    return rec?.waveData?.length ? pcm8ToFloat32(rec.waveData) : null;
+  }
+
   _ready() {
     this._ensureCtx();
     return this.enabled && this.ctx && this.ctx.state === 'running';
@@ -439,13 +457,29 @@ export class AudioEngine {
     const tail = lowpass > 0 ? this._lowpass(lowpass) : null;
     if (tail) src.connect(gain).connect(tail).connect(this._out()); else src.connect(gain).connect(this._out());
     src.start();
+    const release = () => releaseNodes(src, gain, tail);   // RAIN-LEAK: the whole chain, not the source alone
     return {
       stop() {
         try { src.stop(); } catch { /* already stopped */ }
-        src.disconnect();
+        release();
       },
       /** WX2: the loop's gain, live - the rain loop fades with the front. */
       setVolume(v) { gain.gain.value = Math.max(0, Math.min(1, v)); },
+      /** HOTFIX 1003 (live: "audio crackling after a match ends"): an ending, not a cut - the gain ramps to nothing
+       *  over `seconds`, then the source stops. A loop stopped at its level pops; a crowd's bed of noise pops loudly. */
+      fadeStop(seconds = 0.4) {
+        try {
+          const t = src.context.currentTime;
+          gain.gain.cancelScheduledValues(t);
+          gain.gain.setValueAtTime(gain.gain.value, t);
+          gain.gain.linearRampToValueAtTime(0, t + seconds);
+          src.stop(t + seconds + 0.05);
+          src.onended = release;
+        } catch {
+          try { src.stop(); } catch { /* already stopped */ }
+          release();
+        }
+      },
       /** FIELD-WIND1: the loop's pitch, live (Unity's AudioSource.pitch, WebAudio's playbackRate) - the wind's bed
        *  brightens as the wind gets up. */
       setPitch(p) { src.playbackRate.value = p; },
@@ -520,6 +554,54 @@ export class AudioEngine {
     return ch;
   }
 
+  /**
+   * WINDFALL1: A PLAIN UNITY AudioSource, KEPT - a 2D source a mod holds for the session (Windfall's
+   * WindEnvironmentEffects.CreateAudioSource: spatialBlend 0, no loop) and plays one-shots on. What a fire-and-forget
+   * playOneShot cannot give is the source's own state: `volume` is LIVE (Unity scales every one-shot still playing on
+   * the source by it - the mod fades a passage out indoors by lowering it), `pitch` likewise, `isPlaying` holds while
+   * any shot it started runs, and `stop()` ends them all. One gain node on the bus (SoundVolume is the bus's, as
+   * everywhere), made on the first shot a running context can play; a shot that cannot start (no context yet, no such
+   * clip) leaves the source idle, as a null clip does. `volume` clamps to 0..1 as Unity's does.
+   */
+  source() {
+    const engine = this;
+    let gain = null, vol = 1, rate = 1;
+    const live = new Set();
+    const node = () => {
+      if (!engine._ready()) return null;
+      if (!gain || gain.context !== engine.ctx) { gain = engine.ctx.createGain(); gain.connect(engine._out()); }
+      gain.gain.value = vol;
+      return gain;
+    };
+    return {
+      get volume() { return vol; },
+      set volume(v) { vol = Math.max(0, Math.min(1, Number(v) || 0)); if (gain) gain.gain.value = vol; },
+      get pitch() { return rate; },
+      set pitch(p) { rate = Number(p) || 1; for (const s of live) s.playbackRate.value = rate; },
+      get isPlaying() { return live.size > 0; },
+      /** PlayOneShot(clip): answers the clip's duration at this pitch, or undefined when nothing started. */
+      playOneShot(key) {
+        const g = node();
+        const buf = g ? engine._buffer(key) : null;
+        if (!buf) return undefined;
+        const s = engine.ctx.createBufferSource();
+        s.buffer = buf;
+        s.playbackRate.value = rate;
+        s.connect(g);
+        s.onended = () => { live.delete(s); try { s.disconnect(); } catch { /* gone */ } };
+        s.start();
+        live.add(s);
+        return buf.duration / rate;
+      },
+      stop() {
+        for (const s of live) { try { s.stop(); } catch { /* already stopped */ } try { s.disconnect(); } catch { /* gone */ } }
+        live.clear();
+      },
+      /** EVERY ALLOCATION HAS AN OWNER: the shots and the gain node, for the owner's teardown. */
+      dispose() { this.stop(); if (gain) { try { gain.disconnect(); } catch { /* gone */ } gain = null; } },
+    };
+  }
+
   /** Positional one-shot: a PannerNode standing in for Unity's 3D
    *  AudioSource. The default profile is the DaggerfallAudioSource
    *  shape (min 1 / max 500, logarithmic - WebAudio 'inverse' is the
@@ -542,7 +624,9 @@ export class AudioEngine {
    *  (streamingWorld.js, 819.2 m at every map pixel crossed) moved the ear over 800 m from the stand-in in one
    *  frame - the thunder fell 35 dB mid-roll, which is the abrupt end. A `far` shot keeps its offset from the listener
    *  (setListener moves it) until its clip has run out, so its distance and its bearing hold, as they do for a
-   *  sound kilometres off. */
+   *  sound kilometres off. AUDIT SD IV (A5): `far` a name - the place's that played it, which fadeFar lets go.
+   *  @param {number} index @param {number[]} pos @param {number} [volume]
+   *  @param {{ refDistance?: number, maxDistance?: number, distanceModel?: string, pitch?: number, far?: boolean | string }} [opts] */
   play3d(index, pos, volume = 1, { refDistance = 1, maxDistance = 500, distanceModel = 'inverse', pitch = 1, far = false } = {}) {
     if (!this._ready()) return undefined;
     const buf = this._buffer(index);
@@ -557,9 +641,32 @@ export class AudioEngine {
     src.start();
     if (far) {   // DISC17-B: its offset from the ear, held until the clip has run out
       const L = this._listener;
-      (this._far ??= []).push({ pan, off: [pos[0] - L.x, pos[1] - L.y, pos[2] - L.z], until: this.ctx.currentTime + buf.duration / pitch });
+      (this._far ??= []).push({ pan, off: [pos[0] - L.x, pos[1] - L.y, pos[2] - L.z], until: this.ctx.currentTime + buf.duration / pitch, src, gain, tag: far === true ? null : far });
     }
     return buf.duration;   // A3: the ambient channel's busy clock
+  }
+
+  /** AUDIT SD IV (A5): A PLACE'S FAR SHOTS LET GO WITH IT - each `far` one-shot played under `tag` and still sounding
+   *  fades to nothing over `seconds` (its beds' fade) and stops, and the ear lets it go. The Hour's air let its beds
+   *  go as it was left, and a moan or a bell sounding then rang on at the ear in the street for seconds. A shot with no
+   *  name (a distant storm's thunder) is never touched. */
+  fadeFar(tag, seconds = BED_FADE_S) {
+    const far = this._far;
+    if (!tag || !far?.length) return;
+    let n = 0;
+    for (const f of far) {
+      if (f.tag !== tag) { far[n++] = f; continue; }
+      try {
+        const t = this.ctx.currentTime;
+        f.gain.gain.cancelScheduledValues(t);
+        f.gain.gain.setValueAtTime(f.gain.gain.value, t);
+        f.gain.gain.linearRampToValueAtTime(0, t + seconds);
+        f.src.stop(t + seconds + 0.05);
+      } catch {
+        try { f.src.stop(); } catch { /* already stopped */ }
+      }
+    }
+    far.length = n;
   }
 
   /** Looping positional source (A2 torches: DFU AddTorchAudioSource -
@@ -591,13 +698,29 @@ export class AudioEngine {
     const tail = lowpass > 0 ? this._lowpass(lowpass) : null;   // BA1: AudioLowPassFilter, as loop() has it
     if (tail) src.connect(gain).connect(pan).connect(tail).connect(this._out()); else src.connect(gain).connect(pan).connect(this._out());
     src.start();
+    const release = () => releaseNodes(src, gain, pan, tail);   // RAIN-LEAK: loop()'s
     return {
       move(p) { placeAudio(pan, p); },
       /** CSA-G: the loop's gain, live (a Unity AudioSource's `volume`). */
       setVolume(v) { gain.gain.value = Math.max(0, v); },
       stop() {
         try { src.stop(); } catch { /* already stopped */ }
-        src.disconnect();
+        release();
+      },
+      /** AUDIT SD III (A7): an ending, not a cut - `loop`'s (HOTFIX 1003): the gain to nothing over `seconds`, then the
+       *  source stopped. The Rift's bell was cut at its level as its dungeon was left. */
+      fadeStop(seconds = BED_FADE_S) {
+        try {
+          const t = src.context.currentTime;
+          gain.gain.cancelScheduledValues(t);
+          gain.gain.setValueAtTime(gain.gain.value, t);
+          gain.gain.linearRampToValueAtTime(0, t + seconds);
+          src.stop(t + seconds + 0.05);
+          src.onended = release;
+        } catch {
+          try { src.stop(); } catch { /* already stopped */ }
+          release();
+        }
       },
     };
   }
@@ -680,6 +803,63 @@ export class AudioEngine {
 
   /** AUDIT DISC7 B6: move a named positional loop, if one stands (the floating origin's recentre). */
   moveLoop3d(name, pos) { this._loops3d?.get(name)?.move?.(pos); }
+
+  /**
+   * AUDIT SD III (A3): A NAMED BED - a sound under a place that never stops between its passes: one buffer looping in
+   * the engine itself (`src.loop`), its volume and pitch live, where setLoop's channel re-arms a one-shot as each pass
+   * ends (DFU's riding clop - right for a hoofbeat's swap, and at every pass of a bed a gap of the main thread's
+   * dispatch: the Hour's void stuttered every 5.8 s, its works every 2). It rises from nothing as it begins and fades
+   * to nothing as it is let go (`clip` null) or swapped for another clip, over BED_FADE_S - a bed cut at its level
+   * pops. The same call each frame keeps it; `setBed3d` stands one at `pos` (moved each call).
+   */
+  setBed(name, clip, { volume = 1, pitch = 1 } = {}) { return this._bed(this._beds ??= new Map(), name, clip, null, { volume, pitch }); }
+  setBed3d(name, clip, pos, { volume = 1, pitch = 1, refDistance = 1, maxDistance = 500, distanceModel = 'inverse' } = {}) {
+    return this._bed(this._beds3d ??= new Map(), name, clip, pos, { volume, pitch, refDistance, maxDistance, distanceModel });
+  }
+  _bed(beds, name, clip, pos, o) {
+    const was = beds.get(name);
+    if (was && was.clip === clip && clip != null) { was.setVolume(o.volume); was.setPitch(o.pitch); if (pos) was.move(pos); return was; }
+    if (was) { beds.delete(name); was.fadeStop(); }
+    if (clip == null || !this._ready()) return null;
+    const buf = this._buffer(clip);
+    if (!buf) return null;
+    const ctx = this.ctx, src = ctx.createBufferSource(), gain = ctx.createGain(), fade = ctx.createGain();
+    src.buffer = buf;
+    src.loop = true;
+    src.playbackRate.value = o.pitch;
+    gain.gain.value = Math.max(0, o.volume);
+    const t = ctx.currentTime;
+    fade.gain.setValueAtTime(0, t);
+    fade.gain.linearRampToValueAtTime(1, t + BED_FADE_S);
+    const pan = pos ? this._panner(pos, o) : null;
+    src.connect(gain).connect(fade);
+    if (pan) fade.connect(pan).connect(this._out()); else fade.connect(this._out());
+    src.start();
+    let gone = false;
+    const bed = {
+      clip,
+      setVolume(v) { gain.gain.value = Math.max(0, v); },
+      setPitch(p) { src.playbackRate.value = p; },
+      move(p) { if (pan) placeAudio(pan, p); },
+      fadeStop(seconds = BED_FADE_S) {
+        if (gone) return;
+        gone = true;
+        try {
+          const now = ctx.currentTime;
+          fade.gain.cancelScheduledValues(now);
+          fade.gain.setValueAtTime(fade.gain.value, now);
+          fade.gain.linearRampToValueAtTime(0, now + seconds);
+          src.stop(now + seconds + 0.05);
+          src.onended = () => { try { src.disconnect(); fade.disconnect(); pan?.disconnect(); } catch { /* gone */ } };
+        } catch {
+          try { src.stop(); } catch { /* already stopped */ }
+          try { src.disconnect(); fade.disconnect(); pan?.disconnect(); } catch { /* gone */ }
+        }
+      },
+    };
+    beds.set(name, bed);
+    return bed;
+  }
 }
 
 export const audio = new AudioEngine();
@@ -749,7 +929,33 @@ export class QuestAudioSource {
     if (typeof dur === 'number' && dur > 0) this._endsAt = this._clock() + dur;
     return dur;
   }
+
+  /** The quest machine's `playSound` hook, whole - the ONE body both hosts that own a machine call (world.js,
+   *  exterior.js). PlaySound.cs:110-116's busy skip (busy: false, nothing stamped, the action tries again next tick;
+   *  idle: played through the ID door and true), and QUIET-VENGEANCE: a sound on QUIET_QUEST_SOUNDS plays at its
+   *  volume and no sooner than its gap (real seconds) after its last play - inside the gap it answers false exactly
+   *  as a busy source does, so the action keeps its interval due and plays the moment the gap is out. */
+  playQuestSound(id) {
+    if (this.isPlaying()) return false;
+    const quiet = QUIET_QUEST_SOUNDS[id] ?? null;
+    if (quiet) {
+      const now = this._clock();
+      if (now < (this._quietUntil?.get(id) ?? -Infinity)) return false;
+      (this._quietUntil ??= new Map()).set(id, now + quiet.gapS);
+    }
+    this.playOneShotId(id, quiet ? quiet.volume : 1);
+    return true;
+  }
 }
+
+/** QUIET-VENGEANCE (FIELD BUGS 2026-10-04b, Mac: "Reduce Lysandus VENGENANCE audio"): the quest sounds the port plays
+ *  softer and sparser than DFU, by Quests-Sounds id. `386, vengence` is S0000977's `play sound vengence 5 0` - King
+ *  Lysandus' ghost in Daggerfall at night, every five game minutes for as long as the player is there (about every 25
+ *  real seconds at the classic time scale), at full volume and with no position. Here at 0.4 of it, and once a minute
+ *  at most. Port-Ledger A. */
+export const QUIET_QUEST_SOUNDS = Object.freeze({
+  386: Object.freeze({ volume: 0.4, gapS: 60 }),
+});
 
 /** Real seconds, monotonic - `performance.now()` where there is one. */
 export function defaultAudioClock() {

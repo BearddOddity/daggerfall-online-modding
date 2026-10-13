@@ -46,6 +46,7 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import { openDeepWaters, deepWatersLocationRects } from '../world/deepWatersClient.js';
+import { isValidMapPixel } from '../world/deepWatersBake.js';   // ETHER-HOLD: the mod's map is the Bay's 1000 x 500
 import { modSetting, modSettingsGeneration, MOD_SETTINGS } from '../systems/modSettings.js';
 import { DeepWaterTileData } from '../world/deepWaterTileData.js';
 import { sampleMeshLocalY, HOLES_RESOLUTION, TILE_WORLD_SIZE } from '../world/deepWaterFloor.js';
@@ -56,6 +57,7 @@ import { sampleDepthMeters } from '../world/deepBathymetry.js';
 import { scaledSliderValue } from '../world/deepWaterLook.js';   // DW-E2: GetScaledSliderValue, one home
 import { POPULATE_RADIUS } from './deepWatersEncounters.js';   // DEEP-SHARE: the populate radius is the share's
 import { amGroupRollOwner } from '../systems/campEncounters.js';   // DEEP-SHARE: the camps' election
+import { onFloatingFrame } from '../player/collider.js';   // PERF-COL2 (AUDIT): the walls' bucket rides the floating origin
 
 export const DEEP_WATERS_VENDOR = 'iliac-puddle-no-more';
 
@@ -198,6 +200,7 @@ export function wallColliderIndices(floor) {
  * @param {() => {x: number, y: number}} deps.currentPixel - the player's pixel (PlayerGPS.CurrentMapPixel)
  * @param {object} deps.collider - the world's Collider
  * @param {(px: number, py: number, out: number[]) => number[]} deps.pixelTranslation
+ * @param {() => any} [deps.floatingFrame] - PERF-COL2 (AUDIT): the frame pixelTranslation rides (player/collider.js onFloatingFrame)
  * @param {object} deps.gpu - {create(entry, result) -> handle, destroy(handle), setTilemap(entry, bytes)}
  * @param {object} [deps.client] - test seam: an openDeepWaters-shaped client
  * @param {() => boolean} [deps.canRunHeavy] - DeepWaterRuntime.CanRunHeavyRuntimeWork (the settings callback's rebuild gate)
@@ -207,7 +210,7 @@ export function wallColliderIndices(floor) {
  * @param {() => boolean} [deps.canMutateTerrainData] - OH-B: DeepWaterRuntime.CanMutateTerrainData, RefreshLoadedTile's gate
  * @param {() => number} [deps.clock] - milliseconds (performance.now), for the promote timing
  */
-export function createDeepWatersHost({ woods, woodsBytes = null, locations = [], maps = null, blocks = null, built, climateAt, currentPixel, collider = null, pixelTranslation = null, gpu = null, client = null,
+export function createDeepWatersHost({ woods, woodsBytes = null, locations = [], maps = null, blocks = null, built, climateAt, currentPixel, collider = null, pixelTranslation = null, floatingFrame = null, gpu = null, client = null,
   canRunHeavy = () => true, onFloorRefreshed = null, onSeafloorBuilt = null, canMutateTerrainData = () => true, clock = () => performance.now() }) {
   const dw = client ?? openDeepWaters({ woods, woodsBytes, rects: deepWatersLocationRects(woods, locations, maps, blocks) });
   let bake = null;
@@ -249,9 +252,12 @@ export function createDeepWatersHost({ woods, woodsBytes = null, locations = [],
     return !mapDataHasWater({ samples: pixel.samples, tilemap: pixel.tilemap });
   }
 
-  /** The promote, on the worker - or its answer at once for a dry pixel. */
+  /** The promote, on the worker - or its answer at once for a dry pixel, and for a pixel past the Bay's map (the
+   *  Etheric Sea, TAMRIEL2's continent): the mod's bathymetry is the Bay's, so nothing is carved there and the kernel's
+   *  water stands and swims. Every arm - the near promote, the pump's deferred builds, a refresh - comes through here
+   *  (ETHER-HOLD: the deferred arm carved the Etheric Sea's floor, and a player stood on it, unable to swim). */
   function promote(pixel) {
-    if (isDry(pixel)) return Promise.resolve(null);
+    if (!isValidMapPixel(pixel.px, pixel.py) || isDry(pixel)) return Promise.resolve(null);
     return dw.buildPixel(jobFor(pixel), centre());
   }
 
@@ -269,7 +275,8 @@ export function createDeepWatersHost({ woods, woodsBytes = null, locations = [],
     if (wall && collider && pixelTranslation) {
       state.bucket = `${keyOf(entry)}:deepwaters`;
       const o = [0, 0, 0];
-      collider.addMesh(state.bucket, state.floor.positions, wall, IDENTITY, () => pixelTranslation(entry.px, entry.py, o));
+      const t = () => pixelTranslation(entry.px, entry.py, o);
+      collider.addMesh(state.bucket, state.floor.positions, wall, IDENTITY, floatingFrame ? onFloatingFrame(floatingFrame(), t) : t);   // PERF-COL2 (AUDIT): filed by place, as the pixel's own
       wallBuckets.add(state.bucket);
     }
   }

@@ -77,6 +77,9 @@ What a fragment sees, in order:
    the density itself for exp and exp2, zero with the fog off), times
    `EL_SCATTER`. Clear air glows nowhere; Better Ambience's foggy dungeon
    shows every torch as a halo. Pinned against a numeric integration.
+   The glow's density is capped at `EL_SCATTER_DENSITY_MAX` (UW-GLOW,
+   below) - the integral carries no extinction, so past its tuning point
+   it grows without bound.
 6. **sRGB encode.** The fog COLOUR is blended in decoded form and
    re-encoded, so a fully fogged fragment is bit-for-bit the fog colour,
    which is the sky's colour at the horizon, drawn by a program this lane
@@ -200,7 +203,10 @@ own (`_uploadEl`), the maps bound on units 13 and 14 (the cloud shadow's
 **Known limits, recorded:** a caster the frame did not draw casts nothing
 - the hosts' frustum culling (EV3) means a tower behind the camera throws
 no shadow into the view; the character rigs (the Morrowind body, the
-peers, the first-person arm) cast none; the water surface receives none;
+peers, the first-person arm) cast none (AMENDED BY MWNPC16, 2026-10-11 -
+`04-Characters/Morrowind-NPCs.md` section 24: an NPC's Morrowind body casts
+its own shape; the player's and the peers' bodies and the arm still cast
+none, as shadowPass.js's header says); the water surface receives none;
 the moon casts none (the map is the sun's, and at night the lanterns are
 the light). EL3 or a later pass owns those.
 
@@ -992,8 +998,9 @@ static casters in its reach changes: `_staticSignature`, an order-free
 fold over the identities and positions of the still records whose
 spheres touch the light's (the hosts' draw order is the culling's and
 must not count). The live layers are then the cache BLITTED
-(`_blitSlot`: six depth blits, no rasterisation) with the dynamics
-drawn on top at EL8's cadence - and nothing at all when no dynamic is
+(`_blitSlot`: six depth blits, no rasterisation - a triangle a face
+since CACHE-COPY, below: on Direct3D the blit was the driver's read)
+with the dynamics drawn on top at EL8's cadence - and nothing at all when no dynamic is
 near. A still room costs zero shadow draws a frame.
 
 **Sticky slots.** A light keeps the slot it had while it stays among the
@@ -2041,13 +2048,181 @@ For the report itself (NVIDIA, a shop's hanging lamp): nothing found depends on 
 lookups sit in per-light loops, but all three maps have one level with MIN = MAG = LINEAR, so no LOD a GPU picks can
 change a result; no index runs out of range; no noise from time or a frame counter. The one path left whose result a
 driver decides is SC1's depth blit from the static cache into the live layers (`_blitSlot`, valid by the spec: the
-same DEPTH_COMPONENT24, the same size, NEAREST) - unconfirmed, and not changed on a guess. What this section fixed
+same DEPTH_COMPONENT24, the same size, NEAREST) - unconfirmed, and not changed on a guess (CACHE-COPY, 2026-10-07, below:
+confirmed in ANGLE's source and replaced by a draw). What this section fixed
 indoors is frame-rate dependent (P1, P2, R1, R4), and frame rate is what differs between two machines.
 
-Recorded, not changed: a batch past 128 placements is treated as dynamic (raising the cap costs a pairwise walk); the
+Recorded, not changed: a mesh drawn at more than 1,024 places at once, every one of them live, is dynamic past the
+1,024th (PERF-INST, 2026-10-10, `Performance-Priority.md`: its placements filed by place, the memory to 1,024); the
 record pool stops at 6000; a boat's lantern follows the boat a frame behind; the player's own card, the corpses and the
 flyers are not moved at a crossing (one frame); a cut from room to room inside one interior replays the last room's
 casters for a frame; a peer's WB9h body out of view does not cast.
 `test/audit_flicker.test.js` (7); fourteen older pins re-aimed at the new text (el2, perfsun_fragment, la_audit,
 la_shadow, perfexta, la_post, sc1, disc15, el5_field, disc23b, la_cost, invislook; el3_air and lc1_clusters for F3
 and F4). `tools/mutants/audit_flicker.json` (28, all dead).
+
+## CACHE-COPY - THE BLINK WAS THE CACHE'S COPY, NOT THE CACHE (2026-10-07, Mac: "So one thing I noticed, instead of one of my developers fixing the flickering shadow issue, they just turned on the non-baked version on by default, which really really kill performance. Instead of such a half baked fix, I want to fix the flickering issue properly")
+
+**What was turned off.** The anti-flicker patch (`01-Overview/Waypoints-And-Pace.md`, 2026-10-06) answered "every
+shadow in the tavern blinking at once ... on every card, and none with `&shadowcache=off`" with CACHE-OFF: SC1's static
+cache off unless asked on. With it off every caster slot replays every caster in its reach into six faces every frame
+(under Steady shadows, every slot) - the cost SC1 was built to remove. The patch's other parts were its guesses on the
+way there - EMPTY-HOLD (a run of empty frames held) and IDLER-STICKY (a flat whose picture changed in place a mover for
+good) - and after both the player still saw it ("it still flicker but not with ... &shadowcache=off").
+
+**What blinked.** Nothing in the cache's logic. On SwiftShader the cached maps are the full replay's pixel for pixel -
+`tools/shadowCacheProbe.mjs`'s walker, and `tools/shadowTavernProbe.mjs`'s tavern (fourteen lamps with DISC15's lo tier,
+townsfolk with an origin swapping their picture and nudged 2 mm on their idle's beat, an animated flat, the player's
+card; 200 frames, the caches rebuilt 246 faces' worth on the beat). What SwiftShader never runs is the path AUDIT
+FLICKER left as the one "whose result a driver decides": `_blitSlot`, six `blitFramebuffer(DEPTH_BUFFER_BIT)` calls a
+slot out of a layer of the cache array into a layer of the live one. ANGLE's source says what Direct3D 11 does with it,
+and on Windows every browser's WebGL is ANGLE over D3D11 (Chrome, Edge, Firefox; the desktop app's Chromium too):
+- `Framebuffer11::blitImpl` hands a depth blit to `Renderer11::blitRenderbufferRect`. DEPTH_COMPONENT24 is stored
+  `D24_UNORM_S8_UINT`, so a blit of the depth alone is a "partial" depth-stencil blit (`partialDSBlit`), which may not be
+  a `CopySubresourceRegion`: it goes to `Blit11::copyDepth`, a full-screen quad whose pixel shader writes SV_DEPTH.
+- The quad reads the source through its render target's shader view. A depth render target of a 2D array's layer is
+  built with no blit view (`TextureStorage11_2DArray::getRenderTarget`), so its plain one is taken - a `TEXTURE2DARRAY`
+  view of that layer.
+- `copyDepth` always draws with `PS_PassthroughDepth2D`, which declares `Texture2D<float4> TextureF`. A view whose
+  dimension is not the shader's declaration is invalid in D3D11 (the debug layer's DEVICE_DRAW_VIEW_DIMENSION_MISMATCH),
+  and what the read returns is the driver's.
+So the statics in the live layers were whatever each driver read, not the cache. A lamp with no mover near is copied
+when its cache is rebuilt, and every lamp in reach of a change to the static set rebuilds on the same frame - the
+patch's own reading of the player's logs (STATIC-WHO) put the blink on those frames: two townsfolk leaving and rejoining
+the static set on their idle's beat, nine lamps rebuilt at once. A lamp with a mover near is copied every frame (AUDIT
+FLICKER's report: "not casting right on nvidia gpu but not on amd" - a driver's choice, frame by frame). `?shadowcache=off`
+copies nothing, which is why it never blinked.
+
+**The copy is a draw** (`render/shadowPass.js` `_blitSlot`, SC1's name kept). A full-screen triangle a face into the
+live layer (`DEPTH_COPY_VS`: three vertices made of gl_VertexID over an empty vertex array, deepWatersRender.js's), its
+fragment shader fetching the cache at its own texel of the same layer and writing it as `gl_FragDepth` (`DEPTH_COPY_FS`:
+`texelFetch` on a HIGHP `sampler2DArray` - a mediump fetch would round the 24-bit depth to eleven bits), under DEPTH_TEST
+with ALWAYS and the replays' LESS put back after; the cache bound on unit 0 for the copy and unbound after it; the empty
+array bound through the renderer's tracked binder (`f.bindVao`), so the replays after it rebind their own. Every backend
+runs it down the path it runs every shadow lookup down - ANGLE's translator declares a `sampler2DArray` as the array
+view it binds. The depth comes through exactly (a 24-bit unorm through a float32 and back is the same 24 bits). It costs
+what the blit cost - the same fragments, and on D3D11 the same kind of quad - and the cache's saving is whole again: a
+still room draws nothing a frame, a lamp by a mover copies and draws the mover. The copy's program is compiled with the
+lane's others (24 shaders on install, 22 before), never on the frame that first needs it.
+
+**The door is SC1's again.** `shadowCacheOn` answers on unless `?shadowcache=off` (the comparison's door). CACHE-OFF's
+`shadowcache=on`, the device's `dfjs.shadowCache`, the Enhanced Lighting row's "Shadow cache (faster, may flicker)" part
+(`prefs.shadowCache`) and the renderer's `shadowCacheDefault` with its console line are gone. EMPTY-HOLD, IDLER-STICKY
+and STATIC-WHO stand - none was the blink, and each is pinned where it is (audit68_render_b S17, disc15, audit_reach B3).
+IDLER-STICKY draws an idler with the movers rather than rebuilding its lamps' caches at every idle: a steady redraw for a
+rebuild's spike, a trade, not a fix of anything that blinked.
+
+**Recorded, not changed.** The probes agree frame for frame but for one kind of frame: the one in which a flat that has
+stood still changes its picture (a townsman's first idle frame, a prop starting). The replay reads a batch's live state
+at the next beginFrame while the classification is the record's, so the full replay draws the new picture a frame before
+the cache's movers take it - one silhouette in its old pose one frame longer (2 of the tavern's 200 frames, 8 levels of
+255 at most). Not verified on Direct3D: there is no Windows GPU here. The cause is ANGLE's source read, not a capture,
+and the fix takes the path away rather than depending on what any driver does with it.
+
+**On the machines that flickered** (Mac, the same day: "Ive noticed certain nivida cards have the issue. Like rapid
+flickering, epileptic inducing"). The undefined read is every card's - ANGLE's one NVIDIA depth workaround
+(`depthStencilBlitExtraCopy`) sits in `Blit11::copyAndConvert`, the stencil staging copy, not in `copyDepth` - and what
+a driver makes of it differs. A lamp with a mover by it (a townsman, the player's own card) is copied every frame under
+Steady shadows, so a driver whose read changes frame to frame strobes it; a lamp with nothing moving is copied when its
+cache rebuilds, the room's blink. Because it strobes, the fix should be seen on such a card before it ships to one, and
+nobody should have to watch the strobe to see it: `tools/fixtures/depth-copy-check.html` (under `npm run dev`;
+`src/tools/depthCopyCheck.js`) fills a cache-shaped array (72 layers) with a known depth in every texel, copies it both
+ways on the machine's own GPU - the old blit, and the draw with shadowPass.js's own `DEPTH_COPY_VS`/`DEPTH_COPY_FS` -
+and counts the texels that come back wrong, round after round on a new pattern (a strobe changes the count), offscreen.
+Each round's CONTROL - the draw aimed one layer off on purpose - must be found wrong in every texel as another layer's
+value, or the page says its numbers mean nothing. On SwiftShader (`tools/depthCopyProbe.mjs`): both copies exact over
+4,718,592 texels, the control wrong in all of them. Its verdict on an affected card is the confirmation this record
+could not make.
+
+**The four hosts.** No host changed: the copy is the renderer's shadow pass, under `scenes/exterior.js`,
+`scenes/world.js`, `scenes/worldModes.js` (interiors) and `scenes/dungeonContext.js` alike.
+
+`test/cachecopy.test.js` (5); `tools/mutants/cachecopy.json` (15, all dead). Pins moved: sc1_shadowcache, audit_lighting,
+audit_reach, shadowreach and disc24c_self_shadow count the copy program's draws where they counted `blitFramebuffer`;
+el1_enhancedlighting's lane install compiles 24 (farclip1's 24 + 2) and its row has no Shadow cache part; perfurl_doors and sc1 read the door
+on again; antiflicker keeps EMPTY-HOLD's constant alone, and its four CACHE-OFF mutants went with the code they mutated.
+
+## INTERIOR-DIM - A BUILDING'S LAMPS BURN LOWER, AND THE EYE HOLDS INDOORS (2026-10-11, Mac, of a player's screenshot of a guild hall - two hanging lanterns, warm pools on the floor, dark green walls between them: "I want to improve interior lighting to be more like this and less bright")
+
+**What was bright.** Not the ambient. DaggerfallInterior's own 0.18 (PlayerAmbientLight's InteriorAmbientLight) decodes
+to 0.027 in linear, and the dark between the lamps already sat about where the screenshot's does. Two things lifted the
+room:
+- **The lamps.** AddLight's second switch gives a building's lamp an intensity that the hosts multiply into its colour
+  (`world/interiorLights.js` interiorLightProperties), and the lane decodes that product as a colour. A lantern's 1.4
+  (records 24-27, `[1, 0.98, 0.64]`) decodes to 2.16 in linear, about 3.5 times the street's lantern (lanternColor at the
+  city's 1, the ~1900 K flame). Every lamp's range (15 for most) covers a tavern, so a room of four lanterns was lit
+  flat from wall to wall, with no pools.
+- **The eye.** EL4's adaptation aims a frame's mean at AIR_ADAPT_KEY (0.18) and stops at AIR_ADAPT_MAX (1.8). A room is
+  always darker than that key, so the eye always opened to its ceiling indoors and lifted the dark toward grey.
+
+**What changed, the lane only** (`render/enhancedLighting.js`):
+- `EL_INTERIOR_LIGHT_SCALE` 0.5: on the lane, a building's own lamps burn at half the intensity the switch gives them.
+  That is half in display terms and about a fifth in linear, so a lantern now sits below the street's flame. The
+  falloff is unchanged, and it shows as pools now that the lamps no longer saturate the room.
+- `interiorLightColor(on, color, intensity)`: the hosts' colour x intensity, with the scale on the lane. A WHITE lamp (the
+  prefab's white, which the candles and the switch's "todo" records keep) takes `EL_FLAME_COLOR` on the lane, as the
+  city's and the dungeon's white lanterns already did. The turquoise lamp (record 8) keeps its colour. Off the lane it
+  returns DFU's numbers to the bit.
+- `EL_INTERIOR_GRADE` `{ adaptKey: 0.12, adaptMax: 1.2 }` and `interiorGrade(on)`: the room's grade, through
+  SD-LOOK's seam (`Renderer.setSceneGrade`, `AirPass.setGrade`). The eye aims at a darker mean and opens to 1.2 at most.
+  Bloom, vignette and contrast keep the lane's defaults. The classic set gets null (it has no resolve to grade).
+
+Unchanged: the ambient (EL4's "an interior keeps its daylight ambient" stands), the night ambient, every lamp's range
+and place, and the shadows. The player's own lights (the torch, the magic candle, the spells, a dropped torch), the
+others' torches, a ship's lanterns (CSA) and Improved Interior Lighting's lights (IIL1, its own colours and intensities,
+the `?iil=shadows` door) keep their numbers. A home's decor lamps join the room's own list (`scenes/decorRoom.js`), so
+they burn lower with it.
+
+**The four hosts.** `scenes/worldModes.js`'s interior arm: the lamps through `interiorLightColor`, and the grade after
+the view out (`viewOutFrame` shows any world image still owed, and a resolve takes the grade). The grade sits above the
+clear colour and the viewport rect, which E5 and seams 2 keep directly on the beginFrame. `scenes/world.js` and `scenes/exterior.js` reach their buildings through that arm and need nothing of their own.
+`scenes/dungeonContext.js` is a dungeon: EL4's own dark (`EL_DUNGEON_AMBIENT_SCALE`) is untouched, and its arm asks no
+room grade (SD-LOOK's Hour stays the only grade there). The dev route `scenes/interior.js` takes both, as the arm does.
+
+**Measured, not seen on a GPU.** The screenshot's frame (the game's rect cut out of the phone capture), decoded, has
+display-luminance percentiles p5 0.041, p25 0.063, p50 0.084, p75 0.111, p95 0.223. `tools/interiorDimProbe.mjs` draws
+two rooms on SwiftShader through the real renderer and the lane. They are synthetic boxes (dark green walls, brown
+floor, wood) at the interior's ambient under the switch's own lamps, with no game data. Each is drawn before and after,
+with eight seconds of the eye's clock:
+
+| room | p5 | p25 | p50 | p75 | p95 |
+|---|---|---|---|---|---|
+| hall (two hung lanterns), before | 0.128 | 0.181 | 0.236 | 0.296 | 0.435 |
+| hall, after | 0.031 | 0.054 | 0.075 | 0.102 | 0.170 |
+| tavern (four lanterns, two candles, a torch, a prefab white), before | 0.232 | 0.298 | 0.358 | 0.431 | 0.509 |
+| tavern, after | 0.069 | 0.098 | 0.127 | 0.169 | 0.211 |
+
+The hall's after-frame lands within a hundredth or two of the screenshot's quartiles. A share of 0.6 put its median at
+0.097 (the screenshot's 0.084 lies between the two), and the real rooms' AO, furniture shadows and darker art only take
+light away. The pictures are written where the probe is told (they are synthetic, so they may be looked at anywhere).
+What the probe cannot say is how a real room reads to the eye. Every number above is a named constant, and that call
+is Mac's.
+
+`test/interiordim.test.js` (4); `tools/mutants/interiordim.json` (15, all dead). PINS MOVED: sd25_look counted ONE
+`setSceneGrade` in worldModes.js ("the Hour alone asks a grade"); it counts two now and holds the Hour as the dungeon
+arm's only grade. perlightcolors (LT1) and audit18_hosts_outer read both hosts' colour x intensity as the literal
+product; they read the `interiorLightColor` call now, and LT1 holds its off-the-lane answer to the product.
+
+## UW-GLOW - THE LIGHT IN THE HAND UNDER WATER (2026-10-11, a player on Discord: "having a candle spell or other light source on while underwater results in almost total blindness")
+
+The disc was the lane's fog in-scatter (step 5 above), not the underwater
+tint. Its gain is `EL_SCATTER` times the fog's density, and `EL_SCATTER`
+was tuned in Better Ambience's linear 0..40 fog - a density of 1/40. The
+dungeon's underwater murk (`UnderwaterFog`, exp up to 0.25) is a visibility
+fog ten times that, and the integral has no extinction: a light within a
+stride of the eye integrated at 0.25, lifted by the eye's adaptation and
+per-channel tonemap, read 221 grey at the screen's centre (the candle) and
+an orange haze over the whole view (the torch). The rings were that smooth
+ramp through the 8-bit and retro passes.
+
+`EL_SCATTER_DENSITY_MAX = 1 / 40` (`enhancedLighting.js`) caps the density
+the GLOW integrates - `Renderer._scatterGain` takes the lesser of the fog's
+and the lane's `scatterDensityMax`, for both the lane's `uELScatter` and the
+air pass's volumetric glow. The candle's centre under water now reads ~111,
+the tuned halo; the light still lights the walls through `elPointLit`. The
+air pass's haze EXTINCTION is not capped (vc7b's pin holds it to the raw
+law). Every fog at or under 1/40 is bit-identical - DFU's dungeon, Better
+Ambience, rain, snow, the interiors; the outdoor weather's `heavy` (0.05)
+and `sandstorm` (0.09) glow lower by the same cap, the same unbounded
+growth. test/uw_glow.test.js pins the gain under the murk and the centre
+pixel it makes.

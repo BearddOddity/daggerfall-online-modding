@@ -38,8 +38,8 @@
  {
   "name": "WEEDS1-the-sun-cascade-stops-passing-its-texel-so-the-saving-never-happens",
   "file": "src/render/shadowPass.js",
-  "old": "SHADOW_CASCADE_MIN_RADIUS_TEXELS * sunTexelWorld(c, k), sunTexelWorld(c, k));",
-  "new": "SHADOW_CASCADE_MIN_RADIUS_TEXELS * sunTexelWorld(c, k));",
+  "old": "SHADOW_CASCADE_MIN_RADIUS_TEXELS * sunTexelWorld(c, k), sunTexelWorld(c, k), REPLAY_ALL",
+  "new": "SHADOW_CASCADE_MIN_RADIUS_TEXELS * sunTexelWorld(c, k), 0, REPLAY_ALL",
   "tests": [
    "test/weeds1_flatcasters.test.js"
   ]
@@ -47,11 +47,12 @@
  {
   "name": "WEEDS1-the-LANTERN-replay-starts-passing-a-texel-and-props-stop-shadowing-by-lamplight",
   "file": "src/render/shadowPass.js",
-  "old": "this.replay(f, this.faceVP[face], pos, false, 0, 0, REPLAY_ALL, selfNear);",
-  "new": "this.replay(f, this.faceVP[face], pos, false, 0, 0.5, REPLAY_ALL, selfNear);",
+  "old": "this.replay(f, this.faceVP[face], pos, false, 0, 0, REPLAY_ALL, selfNear, cand);",
+  "new": "this.replay(f, this.faceVP[face], pos, false, 0, 0.5, REPLAY_ALL, selfNear, cand);",
   "tests": [
    "test/weeds1_flatcasters.test.js"
-  ]
+  ],
+  "note": "PERF-SHADOW1 (re-aimed by content): the lantern replay hands on its candidates (`cand`) after `selfNear`; the mutant still passes the lantern a texel."
  },
  {
   "name": "WEEDS1-the-height-test-takes-the-magnitude-so-an-upside-down-flame-starts-casting",
@@ -65,8 +66,8 @@
  {
   "name": "WEEDS1-the-sprite-test-is-deleted-and-nothing-is-left-to-decide-it",
   "file": "src/render/shadowPass.js",
-  "old": "          if (b.noShadow || SHADOW_NO_CAST_ARCHIVES.has(b.archive) || (b.size && b.size.h < minFlatH)) { this.stats.culled++; continue; }",
-  "new": "          if (b.noShadow || SHADOW_NO_CAST_ARCHIVES.has(b.archive)) { this.stats.culled++; continue; }",
+  "old": "          if (b.noShadow || b.castOnly || SHADOW_NO_CAST_ARCHIVES.has(b.archive) || (b.size && b.size.h < minFlatH)) { this.stats.culled++; continue; }",
+  "new": "          if (b.noShadow || b.castOnly || SHADOW_NO_CAST_ARCHIVES.has(b.archive)) { this.stats.culled++; continue; }",
   "tests": [
    "test/weeds1_flatcasters.test.js",
    "test/bugs5_field.test.js"

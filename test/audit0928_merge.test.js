@@ -26,6 +26,11 @@ import { withPlayerLights, CANDLE } from '../src/scenes/magicCandle.js';
 import { peerTorchLight, torchPoseByte } from '../src/systems/playerTorch.js';
 import { effectiveLevel } from '../src/systems/mentorMode.js';   // SOFTCAP2: the mentor's level the spawn sites read (a free name there, the module's own import)
 import { applyChampion } from '../src/systems/champions.js';   // LOOT7: applyEliteScaling stands a layout champion (a free name there, the module's own import)
+import { inFireWard } from '../src/world/dungeonFires.js';   // REST3: the spawn's ward (a free name there, the module's own import)
+import { freeLodgedFeet } from '../src/characters/foeSpacing.js';   // FIELD BUGS 2026-10-04d CRATE-FREE: the build's stand (a free name there, the module's own import)
+import { auraWingLights } from '../src/render/auraRing.js';   // SERAPH-WINGS: peerTorchLights' tail
+import { foeSeed, applyWireLook } from '../src/characters/foeBodies.js';   // AUDIT MW-NPC II K3: the dungeon context's look seed, in the mounted scope
+import { partyOnlyQuestShare } from '../src/scenes/questFoeHost.js';   // QUEST-OWNER: the dungeon's quest seam, narrowed to the party (ownShare)
 
 function sliced(path) {
   const S = readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -82,9 +87,11 @@ const FNS = ['fitMaxima', 'buildFoeAt', 'applySpawnAlliance', 'applyEliteScaling
 const DECLS = ['isRoomFoe', 'onlineRoom', 'questPoolOps', 'abyssFoeView', 'ENCOUNTER_PLACE_ATTEMPTS', 'GENDER_BIT', 'q2', 'q3', 'canStandFoe',
   'SHARED_FOES_MAX', 'KILLED_BY_MS', 'FOES_FRAME_SLACK', 'ownLoose', 'ownQuestTag', 'ownShare', 'questTouched', 'ownPupKey', 'ownHeirIsMe', 'ownHeirElse',
   'foeMaxOf', 'FOE_MAX_PER_FRAME', '_maxLeft'];   // THE MERGE: AUDIT SETS M1's own lane pays a foe's maximum through these
+// AUDIT REST II F1 (RE-AIMED): the rest encounter's spot is one home now - encounterSpot, which _spawnEncounter calls
+// and a joiner's ask reads too - so it joins the optional helpers below
 const CTX_BODY = `
   ${DECLS.map(DC.declSrc).join('\n')}
-  ${['isPuppetFoe', 'runByAnother', 'takeRoomPlace'].map(DC.optional).join('\n')}
+  ${['isPuppetFoe', 'runByAnother', 'takeRoomPlace', 'encounterSpot'].map(DC.optional).join('\n')}
   ${FNS.map(DC.fnSrc).join('\n')}
   const abyss = ${DC.propSrc('api', 'abyss')};
   return { buildFoeAt, retypeFoe, _spawnEncounter, standSharedPuppet, applySharedRecords, foesFrame, isRoomFoe, spawnLooseFoe, ownLoose, ownFrame, standOwnPuppet, abyss };
@@ -95,6 +102,7 @@ function context({ authority, self }) {
   let batchN = 0;
   const heard = [];
   const state = {
+    foeSeed, applyWireLook,   // AUDIT MW-NPC II K3: the records' look seed (roomRecord, applyFoeRecord, the puppets' stands)
     console: { error: () => {}, warn: () => {}, info: () => {} },
     ENEMY_BASICS, MobileUnit, enemyHierarchyOrder, validFoeRecord, FOE_HEALTH_MAX, FOE_LEVEL_MAX, FOES_FRAME_MAX, CELL_FRAME_RECORDS_MAX,
     foes: [], _layoutFoes: 0, _layoutStood: true, _spawnUid: 0, _ctxDead: false, _authority: authority,
@@ -102,7 +110,7 @@ function context({ authority, self }) {
     _ownSeq: 0, _ownFrameSeq: 0, _ownPups: new Map(), _ownPending: new Map(), _ownPendLoose: new Set(), _ownOwners: new Map(), _ownAdopted: new Map(),
     _retyping: new Set(), _lootSeen: new Set(), _lootAt: new Map(), flatGroups: new Map(), billboardBatches: [],
     lastPlayerFeet: [0, 0, 0], _motorYaw: 0, collider: {}, dfLocation: null, dungeon: { blocks: [] },
-    opts: { selfId: () => self, questShare: () => null, onEnemySpawn: (rec) => { heard.push(rec); state.hook?.(rec); } },
+    partyOnlyQuestShare, opts: { selfId: () => self, questShare: () => null, onEnemySpawn: (rec) => { heard.push(rec); state.hook?.(rec); } },
     renderer: { createBillboardBatch: () => ({ id: ++batchN }), destroyBillboardBatch: () => {} },
     foeDeps: {
       floorLanding: (c, p) => [p[0], p[1] - 0.2, p[2]],
@@ -122,6 +130,9 @@ function context({ authority, self }) {
     renownFoeDied: () => {}, reportPlayerKill: () => {}, addCorpseFood: () => {}, stampWonWeapons: () => {}, spawnCorpse: (f) => { f.corpse = true; },
     playerEntity: {}, _wallNow: () => 1000, _sharedFoe: () => false, fightN: () => 1,
     placeFoeEnv: (o) => o, entityOccupancy: () => () => false, fieldOfView: () => 1.2, placeFoeFreely: () => ({ x: 6, y: 0, z: 6 }),
+    inFireWard, dungeonFires: [],   // REST3: the spawn's ward (a free name there, the law's own import), no fire placed here
+    freeLodgedFeet,   // FIELD BUGS 2026-10-04d CRATE-FREE: the build's stand - a collider with nothing to ask holds nobody
+    sharedClockOn: () => false, ambushNight: () => false,   // AUDIT REST-PARTY C1/A1: the ward online's alone, and a night running told of the stand - free names there too
     performance: { now: () => 0 },
   };
   const api = mount(CTX_BODY, state);
@@ -339,6 +350,7 @@ function dungeonLights(abyss) {
     online: { peers: new Map([['p1', { id: 'p1', shown: pose }]]), visible: () => true },
     cam: { pos: [8, 1.7, 4], yaw: 0 }, onlineToScene: (s) => [s.x, s.y, s.z], peerTorchLight, _peerCandleLights: [candle],
     performance: { now: () => 0 },
+    auraWingLights, _auraWearers: [], _auraLights: [],   // SERAPH-WINGS: the list's tail - no wings worn here
   });
   const dgColor = new Float32Array([0.8, 0.6, 0.4]);
   const lit = mount(`

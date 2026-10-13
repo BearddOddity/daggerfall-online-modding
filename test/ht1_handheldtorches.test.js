@@ -772,7 +772,7 @@ test('HT1: the projectile - from the free hand\'s side, the look tilted by the a
   b.p.offsetAll([1, 0, 0]); q.p.offsetAll([1, 0, 0]); near(p.pos[0], 1.35, 1e-9, 'a recenter moves the flight too');
 });
 
-test('HT1: a foe struck - hostile, the to-hit roll with Accuracy, ContinuousDamage-Health with the mod\'s Duration and Magnitude on the foe (no roll of Chance: DFU\'s effect declares none), the light effect stacking a re-hit\'s rounds, the ignite clip; the flame billboard upside down and the light behind and above its feet while the rounds last; Combustion off spends the torch with no fire', async () => {
+test('HT1: a foe struck - hostile, the to-hit roll with Accuracy, ContinuousDamage-Health with the mod\'s Duration and Magnitude on the foe (no roll of Chance: DFU\'s effect declares none), the light effect renewing on a re-hit, the ignite clip; the flame billboard upside down and the light behind and above its feet while the rounds last; Combustion off spends the torch with no fire', async () => {
   setWorldMinutes(9000);
   const foe = { entity: { level: 1, health: 30, maxHealth: 30, activeEffects: [], armorValues: [], stats: { agility: 50, luck: 50 }, skills: {} }, ai: { feet: [0.35, 0, 1], height: 1.8, yaw: 0, isHostile: true }, dead: false };
   const uploads = [];
@@ -791,7 +791,7 @@ test('HT1: a foe struck - hostile, the to-hit roll with Accuracy, ContinuousDama
   assert.deepEqual(fire, { kind: ENEMY_FIRE_KIND, key: ENEMY_LIGHT_EFFECT_KEY, roundsRemaining: 3 }); assert.equal(ENEMY_LIGHT_EFFECT_KEY, 'HandheldTorchesEnemyLight');
   assert.equal(q.p.foeBurning(foe), true);
   assert.deepEqual(q.shots.at(-1)[0], CLIPS.ignite, 'the ignite clip at the point');
-  q.p.igniteFoe(foe); assert.equal(fire.roundsRemaining, 6, 'AddState: a re-hit stacks its rounds');
+  fire.roundsRemaining = 1; q.p.igniteFoe(foe); assert.equal(fire.roundsRemaining, 3, 'a re-hit renews its rounds, never stacks them');   // PIN MOVED (STACK-CAP): AddState stacked them (6)
   await settle(); q.p.tick(0.016);
   assert.deepEqual(uploads.slice(0, 6).map((u) => u.join(':')), ['375:0:0', '375:0:1', '375:0:2', '375:0:3', '375:0:4', '375:0:5']);
   const flame = q.p.batches().find((b) => b.archive === PUFF.archive);
@@ -827,7 +827,7 @@ test('HT1: the rig runs the component beside the widget - one per rig, the pool 
   assert.match(rig, /const _torchesOn = handheldOn\(\);\s*(?:\/\/[^\n]*\n\s*)*if \(!_torchesOn && _handheldWasOn\) handheld\.dispose\(\);[^\n]*\n\s*_handheldWasOn = _torchesOn;[\s\S]{0,3000}?if \(widgetOn\(\) \|\| _torchesOn \|\| shieldOn\(\) \|\| thunderlockHeld\(\)\) \{/);
   // AUDIT-EOTB2: the torch hand's third-person gate asks the sprite body too (Eye Of The Beholder's ToggleBillboard hides the FPV hand)
   assert.match(rig, /if \(_torchesOn\) \{\s*bindTorches\(\);\s*const tctx = \{\s*renderer, canvas: c, entity, machine: playerWeapon\.machine, sheathed: playerWeapon\.sheathed, usingRightHand: playerWeapon\.usingRightHand,\s*castPlaying: fpsSpellCasting\.isPlayingAnim, spellArmed: spellArmed\(\), thirdPerson: fpArm\.thirdActive\(\) \|\| eotbHidesWeapon\(\),[^\n]*\n\s*climbing: !!cam\?\.climbing, swimming: !!mv\.swimming, transformedLycanthrope: !!entity && isTransformedLycanthrope\(entity\),/);
-  assert.match(rig, /look, swingHeld: _held, cursorActive: cursorActive\(\), camera: camThunk, collider: \(\) => collider\?\.\(\) \?\? null,\s*actionDown: \(action\) => !!actionDown\?\.\(action\), sheathWeapons: \(\) => \{ if \(!playerWeapon\.sheathed\) playerWeapon\.toggleSheath\(\); \},\s*\};\s*handheld\.update\(dt, tctx\);\s*handheld\.lateUpdate\(dt, tctx\);/);
+  assert.match(rig, /look: lookAxes, swingHeld: _held, cursorActive: cursorActive\(\), camera: camThunk, collider: \(\) => collider\?\.\(\) \?\? null,\s*actionDown: \(action\) => !!actionDown\?\.\(action\), sheathWeapons: \(\) => \{ if \(!playerWeapon\.sheathed\) playerWeapon\.toggleSheath\(\); \},\s*\};\s*handheld\.update\(dt, tctx\);\s*handheld\.lateUpdate\(dt, tctx\);/);
   // MAC-I: every sprite in this seam takes the frame's TINT now (FPSWeapon.Tint, off the room's light);
   // the ORDER and the returns are what this pin holds, and neither moved.
   // SW1: the shield draws between the arms' return and the torch hand -
@@ -838,7 +838,7 @@ test('HT1: the rig runs the component beside the widget - one per rig, the pool 
   // holding the screen stops the classic body's four painters, the torch
   // hand among them (hands holding a map hold no torch either).
   assert.match(rig, /if \(fpArm\.active\(\)\) \{[^}]*fpArm\.draw\(c\);[^}]*return; \}\s*(?:\/\/[^\n]*\n\s*)*if \(sheetWindowUp\(\)\) return;\s*(?:\/\/[^\n]*\n\s*)*if \(shieldRect\) shield\.draw\(\(index, rect, uv\) => drawShieldSprite\(index, rect, uv, fpTint\)\);\s*if \(handheldOn\(\) && c\) handheld\.draw\(renderer, c, fpTint\);\s*if \(torchOnly && !gunSliding\) return;[^\n]*\n\s*(?:\/\/[^\n]*\n\s*)*if \(!shown\(\) && !gunSliding\) return;[^\n]*\n\s*(?:\/\/[^\n]*\n\s*)*const tlArt = c && thunderlockHeld\(\) \? artFor\(playerWeapon\.weapon\) : null;\s*if \(tlArt\?\.anchor && tlArt\.unionBox\) \{ drawThunderlock\(tlArt, c, fpTint\); return; \}\s*(?:\/\/[^\n]*\n\s*)*if \(gunSliding && !shown\(\)\) return;\s*if \(widgetOn\(\) && c && widget\.draw\(renderer, c, fpTint\)\) return;/, 'the arms return first (no classic hand under the Morrowind arms), the shield behind the torch hand, the torch hand under the weapon');
-  assert.match(rig, /actionDown = null, torches = \(\) => null, sheetWindowUp = \(\) => false(?:, dropRefusal = \(\) => null)?(?:, actTool = \(\) => null)? \}\)/, 'KB1: the registry\'s held read (it was the raw key set) and the pool - the two deps the hosts feed, and MAP-WEAPON\'s third - defaulted so a host that never heard of it draws what it always drew');
+  assert.match(rig, /actionDown = null, torches = \(\) => null, sheetWindowUp = \(\) => false(?:, dropRefusal = \(\) => null)?(?:, actTool = \(\) => null)?(?:, technique = null)? \}\)/, 'KB1: the registry\'s held read (it was the raw key set) and the pool - the two deps the hosts feed, and MAP-WEAPON\'s third - defaulted so a host that never heard of it draws what it always drew');
   assert.match(rig, /if \(!_torchesOn && _handheldWasOn\) handheld\.dispose\(\);/, 'AUDIT 66 F8: the switch off is a teardown - update() runs only while the mod is on, so the burning loop could not stop itself');
   assert.match(rig, /dispose\(\) \{ handheld\.dispose\(\); _handheldWasOn = false; \}/, 'AUDIT 66 F8: and the host has a door to call');
   assert.match(rig, /handheld,\s*\/\/ HT1/);
@@ -878,7 +878,8 @@ test('HT1: the five hosts - each owns a pool, feeds the rig its raw keys and the
   }
   assert.match(world, /if \(collectLoose\) droppedTorches\.collectPixel\(key\);/, 'world: a dropped torch is a loose object, swept with its pixel');
   assert.match(world, /droppedTorches\.offsetAll\(r\.offset\);/, 'world: the recenter');
-  assert.match(world, /droppedTorches: droppedTorches\.snapshot\(\(pos\) => \{ const wc = state\.worldCoords\(pos\); return \[wc\.x, pos\[1\] - state\.compensation\[1\], wc\.z\]; \}\),/, 'world: the save data in world coordinates');
+  // AUDIT LANDFORMS C1 MOVED THIS PIN: the height compensation-free and in DFU's frame (groundFrameHeight)
+  assert.match(world, /droppedTorches: droppedTorches\.snapshot\(\(pos\) => \{ const wc = state\.worldCoords\(pos\); return \[wc\.x, groundFrameHeight\(pos\[1\] - state\.compensation\[1\], pos\[0\], pos\[2\]\), wc\.z\]; \}\),/, 'world: the save data in world coordinates');
   assert.match(world, /droppedTorches\.restore\(restandAt\('position'\)\(w\.droppedTorches\), \(p\) => \{ const \[lx, lz\] = state\.localFromWorld\(p\[0\], p\[2\]\); return \[lx, p\[1\] \+ state\.compensation\[1\], lz\]; \}\);/, 'world: restored into the local frame');   // TERRAIN-SCALE1: stood again on today's ground first
   assert.match(world, /droppedTorches\.restore\(arrived\.droppedTorches\.map\(/, 'world: the F9 envelope too');   // TERRAIN-SCALE1: stood again on today's ground
   // the interior mode
@@ -895,7 +896,7 @@ test('HT1: the five hosts - each owns a pool, feeds the rig its raw keys and the
   // TERRAIN-SCALE1: measured from the building, and placed on this visit's origin
   assert.match(wm, /const droppedTorches = interiorTorches\.snapshot\(\(p\) => \[p\[0\] - o\[0\], p\[1\] - o\[1\], p\[2\] - o\[2\]\]\);/); assert.match(wm, /interiorTorches\.restore\(data\.droppedTorches, place\);/);
   assert.match(wm, /key\.startsWith\('droppedTorch:'\)\) \{/, 'the dungeon arm\'s loot ladder takes the key');
-  assert.match(wm, /\.\.\.dungeonCtx\.torchLights\(\)(?:\.map\(_dgTint\))?(?:, \.\.\.\(host\.modeLights\?\.\(\) \?\? \[\]\))?\)/);   // AUDIT DISC19: the dungeon's colour on each, the candle alone white assert.match(wm, /\.\.\.dungeonCtx\.torchBatches\(\)/);
+  assert.match(wm, /\.\.\.dungeonCtx\.torchLights\(\)(?:\.map\(_dgTint\))?(?:, \.\.\.\(dungeonCtx\.sdEndLights\?\.\(\) \?\? \[\]\))?(?:, \.\.\.\(host\.modeLights\?\.\(\) \?\? \[\]\))?\)/);   // AUDIT DISC19: the dungeon's colour on each, the candle alone white assert.match(wm, /\.\.\.dungeonCtx\.torchBatches\(\)/);
   // the dungeon context and the standalone dungeon
   assert.match(dc, /droppedTorches, torchBatches: \(\) => droppedTorches\.batches\(\), torchLights: \(\) => droppedTorches\.lights\(\),/);
   assert.match(dc, /targets\.push\(\.\.\.droppedTorches\.targets\(\)\);/); assert.match(dc, /if \(kind === 'droppedTorch'\) return droppedTorches\.activate\(key, mode\) \? 1 : 0;/);
@@ -903,7 +904,7 @@ test('HT1: the five hosts - each owns a pool, feeds the rig its raw keys and the
   assert.match(dc, /delete w\.droppedLoot;\s*delete w\.droppedTorches;/, 'the shared world carries nothing of the player\'s own');
   assert.match(dc, /waterLevel: \(\) => \(_fpFeet \? blockWaterLevelAt\(/, 'the dungeon\'s water plane for the douse');
   assert.match(dc, /droppedTorches\.destroyAll\(\);\s*weaponRig\.dispose\?\.\(\);/, 'AUDIT 66 F5/F8: the pool and the rig\'s component leave with the dungeon, beside the foes\' batches and the wall torches\' loops');
-  assert.match(dj, /\.\.\.ctx\.torchLights\(\)\)/); assert.match(dj, /\.\.\.ctx\.torchBatches\(\)\]/); assert.match(dj, /key\.startsWith\('droppedTorch:'\) \|\| key\.startsWith\('camp:'\) \|\| key\.startsWith\('hearth:'\)\)\) \{/);   // AUDIT-WH2 L2-F1/F2: the fires joined this ladder - ?dungeon stood and NAMED camp:/hearth: and answered neither
+  assert.match(dj, /\.\.\.ctx\.torchLights\(\)\)/); assert.match(dj, /\.\.\.ctx\.torchBatches\(\)\]/); assert.match(dj, /key\.startsWith\('droppedTorch:'\) \|\| key\.startsWith\('camp:'\) \|\| key\.startsWith\('hearth:'\)(?: \|\| key\.startsWith\('search:'\))?\)\) \{/);   // AUDIT-WH2 L2-F1/F2: the fires joined this ladder (SEARCH1: and the searchables after them) - ?dungeon stood and NAMED camp:/hearth: and answered neither
   assert.match(dj, /actionDown: \(action\) => held\(keys, action\)/);
 });
 
@@ -1023,7 +1024,7 @@ test('TORCH-VIS (the ladder): a lit hand draws while merely sheathed, the weapon
   // the sheathed case, and a readied spell, a cast in flight and an equip countdown all still hide the torch
   assert.match(rig, /const torchOnly = !shown\(\) && !spellArmed\(\) && !fpsSpellCasting\.isPlayingAnim\s*\n\s*&& \(entity\?\.equipCountdown \?\? 0\) <= 0 && isHeldLight\(entity\?\.lightSource\)\s*\n\s*&& \(!fpArm\.active\(\) \|\| fpArm\.torchShown\(\)\)\s*\n\s*&& !lanternAtWaist\(entity\?\.lightSource\);/,
     'the exception names every leg of shown() it does NOT relax, asks the mod\'s own light test, and lets the Morrowind arm veto a light it has no art for - HT-WAIST: and a lantern at the waist, which no hand holds');
-  assert.match(rig, /if \(paralyzed \|\| \(!shown\(\) && !torchOnly && !sheetOnly && !shieldRect && !gunSliding\)\) return;/, 'the gate takes the exception, and paralysis still takes everything (MAP-FIELD put the held sheet\'s own leg beside the torch\'s, SW1b the shield\'s, FIELD-GUN13 the gun still sliding out of frame - the same law, four things that are not a drawn weapon)');
+  assert.match(rig, /if \(paralyzed \|\| \(!shown\(\) && !torchOnly && !sheetOnly && !shieldRect && !gunSliding && !armCasts\)\) return;/, 'the gate takes the exception, and paralysis still takes everything (MAP-FIELD put the held sheet\'s own leg beside the torch\'s, SW1b the shield\'s, FIELD-GUN13 the gun still sliding out of frame, MW-CAST1 the Morrowind arm\'s casting hands - the same law, five things that are not a drawn weapon)');
   // and the weapon stays hidden: the return sits AFTER the torch hand and BEFORE the clone and the sprite
   const draw = rig.slice(rig.indexOf('const torchOnly ='));
   const torchAt = draw.indexOf('handheld.draw(renderer, c, fpTint)');

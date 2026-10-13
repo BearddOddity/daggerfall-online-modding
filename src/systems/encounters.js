@@ -174,6 +174,16 @@ export function chooseRandomEnemy(ctx, rolls = Math.random) {
 // the read below is DFU's own belt-and-braces copy at :560, whose
 // comment admits it "should not need" to be there.
 
+/** REST5 (bible/06-Systems/Rest-Arc.md 2.6): ONLY THE RESTER ROLLS. A party member's night carried for me runs my own
+ *  RestSession through my own host's bag - its hourly checks, its catch-up loop - and every host's ambush is this one
+ *  decision (the outdoor encounter tick and the dungeon's _restAdvance both ask it), so inside `quietNights(fn)` it
+ *  answers nothing. Re-entrant; the count always comes back down. */
+let _quiet = 0;
+export function quietNights(fn) {
+  _quiet++;
+  try { return fn(); } finally { _quiet--; }
+}
+
 /** IntermittentEnemySpawn (:547-618) as a pure decision: null, or
  *  { mobileType, minDistance }. ctx adds { inside, inDungeon,
  *  isResting, enemyAlertActive, gameMinutes, preventEnemySpawns } to
@@ -181,6 +191,7 @@ export function chooseRandomEnemy(ctx, rolls = Math.random) {
  *  (the catch-up loop) and stops on the first spawn, exactly as
  *  PlayerEntity.Update. */
 export function intermittentEnemySpawn(ctx, rolls = Math.random) {
+  if (_quiet > 0) return null;   // REST5: a night carried for a party member wakes to no ambush (quietNights)
   // SURV4: a ROUGH rest (survival/rest.js - the window opened on bare ground, no bed and no fire) doubles the
   // minute's chance: the same decision asked twice, the first spawn taken. SURV-TIERS: how many asks a rest
   // costs is its kind priced by the player's tier at the open (scenes/shared.js createRestDeps stamps `restAsks` -
@@ -321,11 +332,14 @@ export const RESTING_DISTANCE = 12;
  * nothing pending to count. Nor were quest spawns ever in that sweep
  * on either side - DFU's CreateFoe is a QuestAction that calls
  * CreateFoeGameObjects + TryPlacement itself (no CreateFoeSpawner in
- * CreateFoe.cs), which is systems/quest/actions.js:"RestoreSaveData (CreateFoe.cs:412-430)" here.
+ * CreateFoe.cs), which is systems/quest/actions.js:"this.pendingFoes = world.createFoeGameObjects" here.
  */
 export function areEnemiesNearby(foes, { resting = false, includingPacified = false } = {}) {
   for (const f of foes ?? []) {
     if (!f || f.dead || !f.ai) continue;
+    // WATER-FOES (systems/foeReach.js): a foe in the water while the player is aboard a boat cannot reach them - the
+    // host latches it each frame, and it is no enemy nearby (a departure: the mod's helm asks the C# as it is)
+    if (f.ai.unreachable) continue;
     // AUDIT WORLD3 C3: "nearby" means near ME. Since WORLD3 a foe's detected/inSight pair can be its sense of ANOTHER
     // player (a peer candidate on the host's target machine) and `_dist` the distance to that player - so a foe across
     // the dungeon fighting the joiner refused the host's rest and, through onExhausted, killed it. The motor latches
@@ -348,4 +362,13 @@ export function areEnemiesNearby(foes, { resting = false, includingPacified = fa
  *  pacification here". */
 export function foeHostile(f) {
   return !!f && !f.dead && !!f.ai && (f.ai.isHostile ?? true) && mobileTeamOf(f.entity) !== 'PlayerAlly';
+}
+
+/** WILD-ALERT (2026-10-04, Mac: "Enemies alerted are given an exclamation point and slow down as they do now, non alerted
+ *  enemies do not slowdown or bother the player"): A FOE ALERTED TO ME - hostile (the gate above), its target me (the
+ *  motor's own latch, `targetIsLocalPlayer`; a peer's puppet, its stream's), and seeing me or still hunting me blind
+ *  (EnemyMotor.GiveUpTimer, the pursuit that outlives a lost sight). What holds a fast traveller's clock (OW6) and wears
+ *  the "!" (systems/wildAlert.js); a foe that has not noticed me is neither. */
+export function foeAlerted(f) {
+  return foeHostile(f) && f.ai.targetIsLocalPlayer === true && (!!f.ai.detected || (f.ai.giveUpTimer ?? 0) > 0);
 }

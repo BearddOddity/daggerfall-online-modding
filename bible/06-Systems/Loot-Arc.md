@@ -43,7 +43,7 @@ Every one of these is a standing call of Mac's, and no slice moves it:
          a Legendary ──► one in ten Exalted (LOOT2) ──► thirty records (LOOT3) ──► each with a POWER (LOOT5)
          five affix kinds that DO things - a sear, a leech, thorns, focus, a slayer's edge (LOOT4)
  CHASE   the source's family ──► its signature Legendaries weigh five to one (LOOT6)
-         a champion: a trait, a name, twice the health ──► a Rare or better, always (LOOT7)
+         a champion: a trait, a name, twice the health ──► its own roll, no Rare forced (LOOT7, CHAMP-LOOT)
          the drought: pieces taken without a Legendary ──► the source's own chance, up to three times (LOOT8)
  LOOP    a Magic+ piece ──► salvaged for Welkynd Shards (LOOT9) ──► the Reforge: one line rolled again
          a Legendary found ──► the codex (LOOT10) ──► its power imprinted on a Rare
@@ -101,9 +101,32 @@ opened (SET2), in one module (`systems/lootPowers.js`):
 |---|---|---|---|---|---|---|
 | `elemental` (fire, frost, shock) | weapons | prefix | 1-3 | 3-6 | 6-10 | that much of its element on every weapon blow at a foe - none on a foe immune to it, half on one that resists |
 | `leech` | weapons | suffix | 2-4 | 4-7 | 7-10 | that share (%) of every weapon blow that lands heals you |
-| `thorns` | armour | prefix | 1-3 | 3-6 | 6-10 | a foe whose blow lands on you takes that much back (all you wear, at most 25 a blow) |
+| `thorns` | armour | prefix | 1-3 | 3-6 | 6-10 | a foe whose blow lands on you takes that much back (all you wear, at most 10 a blow - BAL5, it was 25 - and never its last point) |
 | `focus` | jewellery | prefix | 2-4 | 4-7 | 7-10 | that share (%) off your spells' magicka (all you wear, at most 30%) |
 | `slayer` (undead, daedra, humanoid, animal) | weapons | suffix | 5-10 | 10-20 | 20-30 | that much more (%) weapon damage to that kind of foe - DFU's own grouping (`enemyEntityGroup`: a vampire undead, a dragonling an animal, an orc humanoid) |
+
+CAST-SPEED (2026-10-08, Mac: "have casting speed a new rarity affix") appended a sixth, after every kind before it:
+`castSpeed`, jewellery and weapons, suffix, 3-6 / 6-10 / 10-15, "+N% casting speed" - every worn line summed, the
+weapons in hand among them, at most 30%, onto the cast's rate (`systems/castSpeed.js`;
+`02-Formats/Morrowind-Rules.md` CAST-SPEED). Appended last keeps the numbers' pass where it was; the last pass itself
+moved (CAST-SPEED-PINS, 2026-10-08): a jewel's proc pool was empty before this kind, so a jewel whose chance hit now
+draws where it drew nothing, and a weapon's pick lands in a pool one wider - a seeded hoard holding such a piece rolls
+on from a moved stream. The serpent hoard pins found it on main after the merge and were re-aimed.
+
+TECH1 (2026-10-10, the owner: "detailed weapon skill affixes for each weapon type") appended a seventh, after
+`castSpeed`: `technique`, weapons and the Gauntlets, no slot (it names no piece), 5-15 / 15-30 / 30-50, "<name> +N%" -
+ONE line naming one of twelve techniques the piece's family knows, which a key does (`05-Combat/Weapon-Techniques.md`).
+It is never rolled with the other lines: it is not among `AFFIX_IDS`, the kinds every pool draws from, so the numbers'
+pass, the proc line, the Exalted's, the curse's and the Reforge's pools are the pools they were; every door rolls it in
+its own pass, LAST (Magic 12%, Rare 30%, Legendary 45%; law 9 of the second arc), so no stream above moved. The Reforge
+turns it only into another of its family's, and a line added after the mint is set before it.
+
+BAL9c (2026-10-12, the owner: "introduce some new magic/mage perks to the rarity loot pool ... still dont make it
+overpowered"; `05-Combat/Balance-Arc.md` section 15) set two more after `castSpeed` and before `technique`, so the
+numbers' pass draws as it did: `potency`, jewellery and weapons, prefix, 3-6 / 6-10 / 10-15, "+N% spell damage" - a
+damage spell's landing at a foe, all you wear at most 30% (`systems/spellPower.js`); and `wellspring`, jewellery,
+suffix, 2-4 / 4-7 / 7-10, "N% magicka on a kill" - the caster's leech, all you wear at most 10% a kill. The last pass
+moved as CAST-SPEED's did: a jewel's proc pick lands in four kinds where it landed in two, a blade's in five where four.
 
 A weapon's three are the weapon IN HAND's alone; a wearer's armour and jewellery sum, under the caps. Each answers MY
 entity alone, offline and online, and never a player (law 5). Names: `Burning Longsword of the Leech`, `Barbed
@@ -118,7 +141,12 @@ under a line, the night, a first blow, bare hands), stacks a strike or a kill ra
 echoes, a leech, a kill's heal or magicka or gold or spell on me, a charge that turns a blow aside, a hex on the foe
 that struck me, a death cheated, a cost cut, a spell absorbed, a round's regeneration, a better find. A power counts
 ONCE however many pieces carry it (a Legendary and a Rare imprinted with it). The powers work offline and online and
-never on a player (law 5); the HUD's set chips show a power's stacks and recovery as a set's do.
+never on a player (law 5); the HUD's set chips show a power's stacks and recovery as a set's do. BAL9c (2026-10-12,
+`05-Combat/Balance-Arc.md` section 15) added three records of the casters' own, a table after the wardrobe's six
+(`ARCANE_LEGENDARIES`), the first powers to reach a spell's damage, its throw and its magicka: the Eye of Magnus
+(Magnus's Gaze, a Destruction spell's throw 15 lower after its immunity), the Ring of Artaeum (Wellspring of Artaeum, 1%
+of the magicka back a round, 2% under half) and Shalidor's Brand (Arcane Surge, +25% spell damage above three quarters
+of the magicka) - all the loot adds to a spell at most 50%.
 
 ## 8. LOOT6 - signature drops
 
@@ -149,9 +177,10 @@ elite's). Its name is the trait's and its own - `Mighty Orc Warlord` - on the HU
 death line (LOOT7-CHECK, section 17: on the plaque while it fights you too, and - on either skin - said at the first
 blow either way, with what its trait does).
 
-**Its loot.** A champion is a stronger source: its tier +4 and its quality x1.5. And it ALWAYS carries a Rare or
-better: if its own roll found none, its best eligible piece is made Rare - or, carrying none, a weapon or a piece of
-armour at its level is minted and made Rare. The chime rings at its fall.
+**Its loot.** A champion's body carries its own roll and nothing more (CHAMP-LOOT, 2026-10-03, Mac: "no more champion
+guaranteed rare"): its pieces roll Magic and Rare at half a plain foe's thresholds and its Legendary threshold two tiers
+more and a quarter again. LOOT7's Rare-or-better guarantee is gone. The numbers and their pin are in
+`06-Systems/Searchables.md`.
 
 **Online.** A dungeon's foes are its layout's, built on every client from the location (the elite's way): the
 champion and its trait are a HASH of the location and the marker, so every client stands the same champion with no
@@ -191,7 +220,7 @@ Exalted 10 and 2,000.
 
 **The codex.** Every Legendary record - and every Aetheric piece - a character has TAKEN is in its codex, with the day
 it was first found. The first find is said and heard (the HUD's line, the level-up's fanfare): *"Wyrmbane - a
-Legendary! It joins your codex."* The Codex window lists all thirty and the Aetheric sets: a found record's name,
+Legendary! It joins your codex."* (LOOT-BANNER, 2026-10-09: on Enhanced Plus the loot banner announcing the piece says it instead - a "New to your codex" chip and the same chime; the classic skin keeps the line. `10-UI/Loot-Banner.md` section 4.) The Codex window lists every Legendary record (thirty at LOOT10; the wardrobe's six and the Thunderlock since - AUDIT CARDS-5 R1) and the Aetheric sets - and so does the Holdings rail's Collections page (`11-Multiplayer/Tavern-Cards.md` section 26), the same rows and lines: a found record's name,
 lore, lines, power and where it is found; an unfound one's place and its hint (*"Said to be carried by the
 undead"*). It rides the character's save (a mod record).
 
@@ -323,7 +352,9 @@ Every record keeps LR2's law (`test/lr1_lootrarity.test.js` reads them all - its
 now, not the amulet and the ring it was written with, so a bracer's, a mark's and a torc's record are each shown to
 land). A held spell is a cheap one - Slowfalling (240), Shadow Form (150), Water Breathing (170) - since DFU bills a
 CastWhenHeld's casting cost in condition at the first equip (LR4's watch item 9); the first ten's Aegis of Dawn keeps
-its Spell Resistance as LR2 shipped it.
+its Spell Resistance as LR2 shipped it. LEGEND-HELD (FIELD BUGS 2026-10-11b, a departure): a Legendary's equip now bills
+nothing at all - the Aegis's Spell Resistance cost a leather Buckler a third of its condition the first time it went on
+(`01-Overview/Field-Bugs-2026-10-11b.md`); every other held piece keeps DFU's bill.
 
 What moved with the pool: the Sigil Broker's Legendaries are drawn from the thirty (`baseLegendaries` - the port's
 own records, the same on every machine, so the stock is still the day's alone), and the gate's spoils and a town's
@@ -358,8 +389,9 @@ imported by the game beside the sets' own (`scenes/world.js`, folded onto the se
   (`elementShare`, the career's own `careerTolerance`); the weapon IN HAND's lines alone.
 - a STRIKE listener (the blow that landed, its final damage): the leech's share heals me, the fraction carried
   (`healMine`), never past my maximum and never a body.
-- a LANDED-BLOW listener: the thorns I wear back to the foe whose blow took my health, summed under `THORNS_CAP` (25),
-  through the foe's own pool's door. **One law of a blow**: `sigilSetPowers.js` now tells named listeners
+- a LANDED-BLOW listener: the thorns I wear back to the foe whose blow took my health, summed under `THORNS_CAP` (25;
+  10 since BAL5, `05-Combat/Balance-Arc.md` section 11, and never the foe's last point), through the foe's own pool's
+  door. **One law of a blow**: `sigilSetPowers.js` now tells named listeners
   (`registerPlayerBlowLanded`) from inside its own hurt, at the moment Spite answers - the struck tail's mark, taken by
   the door as it opens (AUDIT FINAL F10), so a fall, a poison's round or a blow the door swallowed answers no thorn -
   and exports `pendingPlayerBlow`, the blow a hurt carries, for LOOT5's damage modifiers.
@@ -522,7 +554,7 @@ Pinned: `test/loot7_champions.test.js` (7) - the traits, the dungeon's marks (ab
 two locations so a client on another build cannot stand others), the street's hash (never a draw; golden for one street) and the record, the scaling and
 its refusals, the name in all four places, the two traits on their tails, the guarantee over 600 seeded kills of an
 orc, a rat and a Fire Daedra, its most valuable piece, the mint's mix, and the corpse door against the boosted source
-seed by seed; `tools/mutants/loot7.json` (50, all dead).
+seed by seed; `tools/mutants/loot7.json` (44, all dead - CHAMP-LOOT retired the eight guarantee records and added two of its own).
 
 ### LOOT8 - the drought (2026-10-01)
 
@@ -557,7 +589,7 @@ piece of 60 seeded piles (never gold or arrows; none off; it rides the wire, a f
 Rare one more, a Legendary none, the ceiling; unmarked, gold and off nothing), every take seam (into the pack, never
 out; a throwing listener never stops a take; the body's bulk take), the record (save, load, forged, a new game), the
 doors in play (sixty bodies taken, sixty counted; three times the Legendaries at 250), and a unique find's mark;
-`tools/mutants/loot8.json` (31, all dead).
+`tools/mutants/loot8.json` (30, all dead - CHAMP-LOOT retired the champion-piece record).
 
 ### LOOT9 - salvage, and the Reforge (2026-10-01)
 
@@ -618,6 +650,22 @@ price, the same kind back and another), the price and the press (refused with no
 letter of credit paying, once reforged only that line), the window (both pages, an unknown piece's card, a press, the
 ask), the guild's fourth row (classic click and key, no hook no row, the Plus face, the host's hook), and the pack
 card's Salvage; `tools/mutants/loot9.json` (52, all dead).
+
+**PORTAL1 (2026-10-04)**: the shard's second coin - a Portal Stone at every shop's counter for five of them
+(`06-Systems/Portal-Stone.md`), spent through the same purse (`shardsHeld`, `spendShards`). AUDIT PORTAL1 I1: the purse
+now spends a shard unlocked AND UNWORN - a shard is a gem, a crystal a slot takes, and a worn one spent left a ghost on
+the doll (the Reforge's since LOOT9).
+
+**SALVAGE-CLASSIC (FIELD BUGS 2026-10-12b; Discord: "magic item with only cast on use effect cannot be salvaged")**: a
+"Blazing Holy Dagger of Fireballs" - MAGIC.DEF's "Blazing %it of Fireballs" on a Holy Dagger - wore Magic on its card
+(`lootRarity.js` `rarityOf` derives it for any enchanted piece) and the Salvage page dropped it without a word. The law
+above stands: DFU's own magic, an Item Maker's piece and a soul-bound one are never graded and break for no shard (a
+guild's shelf sells that magic every day; a found one cannot be told from a bought one, and five shards are a Portal
+Stone). The faces say so now: `reforge.js` `salvageRefusal` answers `'classic'` for a piece that wears Magic, has no
+grade and no `provenance` (a made piece stays `'not'` - the Enchanting Station's disenchant is its door, as F2 below
+says); the Salvage page lists it after every piece that breaks, its press "Classic magic" and disabled, "No shards",
+the reason its title; the pack card's Salvage, pressed, says why (`enhancedInventory.js` `SALVAGE_CLASSIC`) and asks
+nothing. `test/fb1012d_salvageclassic.test.js` (4), `tools/mutants/fb1012d_salvageclassic.json` (11, all dead).
 
 ### LOOT10 - the codex, and the imprint (2026-10-01)
 
@@ -763,7 +811,7 @@ and a Superior's piece refused with nothing taken; F3 a reforge and an imprint o
 order; F6 the sheet's rules (a phone's Keep), both skins' sheets (the classic's beside the Broker's), the brass tab, the
 imprint's card (its tier's line, its word, said);
 F7 the pack and the Codex over it, keyed; F8 every record's power, the Last Lock's shots, its row and the count; F9 a
-minted and a promoted champion's Rare. `tools/mutants/auditloot.json` (30, all dead). LOOT10's page pins read every
+minted and a promoted champion's Rare. `tools/mutants/auditloot.json` (29, all dead - F9's record retired with the guarantee). LOOT10's page pins read every
 record; seven records in `loot5.json` and `loot10.json` re-aimed by content (`powerIds`, `powerFits`, `allLegendaries`).
 
 **THE MERGE with main (PATREON-LINK + HERALD, #505).** Main's HERALD took world138 first, so the merged relay is
@@ -846,3 +894,168 @@ by content (both dead); RF2's boss pin exempts ammunition by the registry; audit
 cite, which the shifter cannot reach). Judged again, every campaign the change can
 move - the loot, set, sigil, card, quick-loot and hover lists whole, and every record the three edited pins kill
 elsewhere: 831 records, 829 dead and 2 equivalent as recorded, none stale.
+
+## 18. PLAIN-LOOT - half from a foe that is no elite (2026-10-02)
+
+Mac: "reduce the loot dropped by non elite enemies by 50%". `scenes/hostCombat.js spawnEnemyLoot`, after the trio: a
+foe that is not an ELITE FOE (`eliteFoe`), an Elite Dungeon foe (`elite`) or a LOOT7 champion keeps each piece the
+chain put on its body - the table's, the worn kit's droppable cut, the map, potion and recipe, the port's extras (the
+field kit, the healing potion) - on its own coin, one in two, on the host's stream; its gold is all kept, as the
+humanoid quarter keeps it. The rarity roll and the drought run after it, over what is kept, so a plain foe's Magic,
+Rare and Legendary finds halve with its pieces. Its worn kit is still worn and fought with.
+
+**AUDIT PLAIN-LOOT.** As first built it was a factor on the table's `itemChanceScale`. DFU's ladder halves a category's
+chance at every step and rolls it truncated to whole percent (`dice100(Math.trunc(c))`), so the factor compounded down
+the ladder and a 1-3% chance fell to nothing: measured exactly over the live tables at levels 1, 10 and 25, it kept
+33-50% of the table, and none of a level-1 humanoid's on table A. A coin per piece keeps half of whatever the ladder
+made, at any chance. `test/rf2_spawnloot.test.js` PLAIN-LOOT; `tools/mutants/plainloot.json` (5, all dead).
+
+LOOT-EASE (section 19) keeps three pieces in four since 2026-10-05.
+
+## 19. LOOT-EASE - the drops eased, the kit rolled, the supplies kept (2026-10-05)
+
+Mac: *"I think loot was way overtuned as a nerf. We need to bring their drop rates up. Players are reporting only
+recieving steel items also."* and *"Lets not overture the drop rates, but they definitely need a buff. Also the new
+resting items we added, along with majicka potions should be more common loot drops, same with health pots"*.
+
+**What was measured.** The real chain - `hostCombat.js` `spawnEnemyLoot`, then the body door and `raiseEnemyDeath` -
+seeded, every shipped loot hook installed, 3,000 bodies a cell, offline and online. A plain humanoid's body held 0.9
+pieces besides its gold and a third held nothing else (1.9 and an eighth bare before PLAIN-LOOT, section 18); a
+skeleton's 0.3, seven in ten bare. Of a plain humanoid's weapons and armour, 85-98% were its own WORN KIT, which LR4
+never ladders (`lootRarity.js` `rollCorpseLoot`: a foe never fights with a piece the ladder made) - so that gear was
+Common 99 times in 100 at every level: Iron and Steel blades, leather, chain, Iron and Steel plate. That is the "only
+steel". Not the metal roll - Unleveled Loot, the room's whole online, is about 45% Iron and 43% Steel at Luck 50 with
+Silver and up the rest - but the TIER: no colour on a regular humanoid's body, and FOE-CAP's cap, best by tier and then
+by worth, kept the dearest Common piece (the steel one) and threw a potion away first. Online no rest supply dropped at
+all: `REST_ITEMS_ONLINE` was still the release-ahead switch's off.
+
+**What changed:**
+- PLAIN-LOOT keeps three pieces in four (`hostCombat.js` `PLAIN_FOE_LOOT_KEEP` 0.5 -> 0.75): half the cut given back.
+- The plain ladder (`foeLootCap.js` `PLAIN_FOE_RARITY_WEIGHTS`): Magic 5% + 0.5 a tier (19% at most), Rare 0.6% + 0.12
+  (3.8%), Legendary 0.015% + 0.0075 (0.3%) - a quarter more blue, half again the yellow and the orange, Mac's order
+  ("whites, rare = blue items, very rare = yellow, almost impossible = orange") kept; at every tier still at most half
+  the whole ladder's blue and yellow and a quarter its orange.
+- KIT-ROLL (`foeLootCap.js` `rollCorpseKit`): at its death nobody wears the kit. A plain foe on the plain ladder rolls
+  each kit piece its body still carries on the source its carried loot rolled at the spawn (`ENEMY_BASICS` by its
+  mobile type, the row every host hands `spawnEnemyLoot`), the player's luck, the finders, the door's last pass; once
+  (`untaken`, LOOT8's mark - its take counts for the drought, and a second door passes it by). Never an Elite Dungeon's
+  foe (its ladder is the whole one), a titled foe or a boss (LR4's own case: a Daedra Lord's hand). Every body door
+  calls it before the chime and the sigils read the body: the dungeon's kill, a joiner's copy and an arrival's
+  (`dungeonContext.js`), the street's kill (`exteriorFoes.js`), the watch's (`cityGuards.js`); an execution is a
+  revenant's alone, titled, and needs none. The spawn never calls it. THE FOUR HOSTS, all through those three pools:
+  `scenes/world.js` and `scenes/exterior.js` stand the street's and the watch's; `scenes/worldModes.js` stands both
+  indoors and builds `dungeonContext.js` for its dungeons, as `scenes/dungeon.js` does. AUDIT 625 (section 21) widened
+  and mended it: EVERY foe's kit on the plain ladder (Mac: "The plain ladder"), the kit known by what the spawn's roll
+  left unmarked rather than by the foe's table (so a foe restored from a save rolls it), and a copy laddered in the
+  body, never the piece the foe's own hand holds.
+- CAP-SUPPLIES (`foeLootCap.js` `capLootList`, `isLootSupply`, `registerLootSupply`): the cap keeps gold, a quest's
+  items, then a Magic-or-better piece by its tier, then a SUPPLY (a potion - DFU's IsPotion; the seven rest supplies,
+  registered by `restItems.js`), then the rest - the dearer first within each. The three is untouched.
+- MAGICKA-COMMON and POTION-COMMON's numbers (`healingSupply.js`): the Potion of Healing 10 in 100 a looting foe and 18
+  a J-O pile (6 and 12 before); DFU's own Potion of Restore Power, new to those two doors, 6 and 10, drawn after it.
+- REST-LOOT (`restItems.js`, `06-Systems/Rest-Arc.md`): `REST_ITEMS_ONLINE` on - the templates have been in every
+  release since the arc's merge (#554, 2026-10-03), the rule section 6 set - so online the shelves, the piles and the
+  foes carry them and customs lets a character's own in; a J-O pile rolls six of the seven (Ember Jar 6, Tonic 6,
+  Firewood 4, Candle 2, Salts 2, Draught 2) and a looting foe five (Ember Jar 3, Tonic 3, Candle 1, Salts 1, Draught
+  1), each its own roll; the Bedroll stays bought. The shut release stands behind the switch (`restItemsOnline`), its
+  pins kept through `_setRestItemsOnlineForTests` - the way back.
+
+**Online these are Renown 20's numbers** since RENOWN-LOOT (section 20): the buff grows with the roller's Renown, and
+offline it is this section's whole.
+
+**Measured after**, the same harness (levels 1 / 8 / 15): a plain humanoid's body 1.3 pieces, a fifth bare; a Magic or
+better piece on 5% / 8% / 12% of them, a Rare 1% / 1.2% / 2.5%, a Legendary about one in a thousand; a skeleton's 0.6
+pieces, half bare; a Potion of Healing on 7-8% of looting foes, Restore Power on 4.5-5%, a rest supply on about 7% -
+online too. No body past its cap.
+
+**Kept, and why.** The cap's three (FOE-CAP, Mac's rule), the humanoid quarter (an older call: the kit gains a colour,
+not a count), the champions', elites' and Elite Dungeons' own drops, and the metal - Unleveled Loot is a 1:1 mod, the
+room's whole online; more Silver and up is its dungeon-quality ladder's call, and Mac's.
+
+Pinned: `test/search1_searchables.test.js` (the ladder, CAP-SUPPLIES, KIT-ROLL and its doors swept against the pools'
+sigil stamps), `rf2_spawnloot` (three in four), `potion_common` (MAGICKA-COMMON), `rest6_consumables` (REST-LOOT);
+re-aimed - SIGIL1's and SURVTIERS3's door regexes, the customs pins under the shut switch (`auditrest2_camps`,
+`auditrest3`, `auditrestparty_camps`), the mounted dungeon harnesses' stubs (`audit68_dungeonctx`, `loot7check`,
+`corpsegold`, `seatheal`). `tools/mutants/lootease.json` (39, all dead); `plainloot`, `potioncommon`, `rest6`,
+`auditrestparty` and `survtiers3` re-aimed by content.
+
+## 20. RENOWN-LOOT - the buff grown with Renown (2026-10-05)
+
+Mac, of LOOT-EASE: *"Instead of a flat loot increase, lets also tie it to renoun level"*. Asked three things, Mac chose
+**"Half → all → half again"** (Renown 1 half the buff, Renown 20 all of it, Renown 40 half again, at the stages sigils
+open), **"The roller's own"** Renown, and offline **"Keep this PR's numbers"**.
+
+**The buff.** What section 19 gave over the live game - the keep's step (a half to three in four), the plain ladder's
+(FOE-CAP's first numbers to LOOT-EASE's, each tier's base, step and cap), the healing potion's two (6 to 10 a foe, 12
+to 18 a pile), Restore Power's two and the rest supplies' online (each from none). Online, each knob takes the SAME
+SHARE of its own step (`systems/renownLoot.js` `lootEased`, settled to nine places), by the stage the roller's Renown
+opens - the sigils' own five (`sigil.js` `renownSigilStage`: Renown 1, 10, 20, 30, 40):
+
+| Renown | the buff | items kept | blue at level 0 | healing (a foe / a pile) | Restore Power (a foe / a pile) | rest supplies |
+|---|---|---|---|---|---|---|
+| 1-9 | half | 62.5% | 4.5% | 8 / 15 | 3 / 5 | half LOOT-EASE's |
+| 10-19 | three quarters | 68.75% | 4.75% | 9 / 16.5 | 4.5 / 7.5 | three quarters |
+| 20-29 | all | 75% | 5% | 10 / 18 | 6 / 10 | LOOT-EASE's |
+| 30-39 | five quarters | 81.25% | 5.25% | 11 / 19.5 | 7.5 / 12.5 | five quarters |
+| 40-50 | half again | 87.5% | 5.5% | 12 / 21 | 9 / 15 | half again |
+
+The live game before LOOT-EASE: 50% kept, 4% blue, 6 / 12 healing, no Restore Power, no rest supply online. Every
+stage is above it, and Renown 40 is under the loot before PLAIN-LOOT (section 18).
+
+**What stays whole at every stage.** What LOOT-EASE fixed rather than tuned: a foe's worn kit rolls the plain ladder at
+its death (KIT-ROLL - every foe's since AUDIT 625, section 21), the cap keeps a supply before plain gear
+(CAP-SUPPLIES), the rest supplies drop online at all.
+
+**Whose Renown.** The roller's: the page that rolls the loot - a dungeon's host for its foes, a street cell's owner
+for its foes, and for a treasure pile the page that builds the dungeon (each player's own, `dungeonContext.js`
+`rollPileItems`) - as a foe's level and a pile's already follow that page's character. Read
+through SIGIL1's door (`sigil.js` `sigilOnline`, `sigilRenown`), which `scenes/world.js` sets: online from the page's
+own word before any list is minted, its Renown as the token's level is adopted (`renownAdopt`, only ever upward),
+offline again when a tab leaves its seat. Online before the page knows its Renown - the moments before the first token
+- the first stage: no roll is richer than the Renown behind it. Offline there is no Renown: section 19's numbers whole.
+
+**The four hosts** need nothing of their own: every knob is read inside the shared rolls (`hostCombat.js`
+`spawnEnemyLoot` - the keep and the ladder read once, so one spawn is one stage; `foeLootCap.js` `rollCorpseKit`; the
+healing and rest supplies' loot hooks), at the page's door. `scenes/world.js` sets it; `worldModes.js` and
+`dungeonContext.js` roll on the same page; `scenes/exterior.js` is the offline town page and never goes online.
+
+**No draw moves.** Every stage draws as many rolls as every other (a supply at a 0% share still draws its roll), so a
+seed's other loot is the same loot at every Renown; only what each roll decides changes.
+
+**Measured**, section 19's harness through the real chain (the spawn, the body door's kit roll, the death raise), 3,000
+bodies a cell, a plain Warrior at level 8: 1.11 pieces a body at Renown 1 (26.5% gold alone), 1.21 at 10, 1.30 at 20
+(18.7%; offline the same), 1.39 at 30, 1.46 at 40 (13.2%); a Potion of Healing on 5.8% / 7.9% / 10.1% of them at
+Renown 1 / 20 / 40, Restore Power on 2.2% / 4.3% / 8.2%, a rest supply on 2.4% / 7.1% / 11.0%. A skeleton's body 0.46 /
+0.59 / 0.75 pieces.
+
+Pinned: `test/renownloot.test.js` (6 - the stage and its door, the table, the keep through the real spawn, the kit at
+death, the supplies through the real hooks with their draws counted, the hosts). Moved: `test/rf2_spawnloot.test.js`
+(the chain's text - `ease` read once). `tools/mutants/renownloot.json` (26, all dead).
+
+## 21. AUDIT 625 - the loot lens (2026-10-05)
+
+Mac: *"Lets do a comprehensive audit on this"*, of PR #625. The whole record is `01-Overview/Audit-625.md`; what it
+moved here:
+
+- **L1, a foe restored from a save rolled no kit.** KIT-ROLL found the kit by the foe's equip table, object by object,
+  and every restore lays the save's COPIES over a foe's list and leaves its table alone (the dungeon's in-place patch,
+  the street's and the watch's re-spawn and overlay) - so after any load the "only steel" was back. The kit is now
+  every rarity-eligible piece the spawn's roll left UNMARKED (it marks what it rolls `untaken`, a saved field that
+  rides every copy).
+- **L2, the live piece laddered.** The droppable cut shares its objects with the foe's table and hand, so a foe brought
+  back to life in place (the save's rewind, the stream's un-death) fought with the piece its death had laddered -
+  LR4's rule broken. The body holds a marked COPY; the table's piece is what it was minted.
+- **L3, the order flipped (Mac: "The plain ladder").** A plain foe's kit rolled and a champion's, an Elite Dungeon
+  foe's and a boss's (every humanoid from level 18) stayed Common, so they left less colour than a plain foe. Every
+  foe's kit rolls the PLAIN ladder now - never a boss's multiplied one, never an Elite Dungeon's quality; their better
+  ladders stay their carried loot's. A revenant's never: its list is a player's own pieces.
+- **L4** an Ember Jar's fire crosses the camp wire as a jar (`j: 1`; REST-LOOT opened its use online and a peer saw a
+  campfire); **L5** a joiner's copy of a body and an arrival's are capped as the host's death caps its own, after their
+  kit, food and sigils; **L6** KIT-ROLL's luck, finders, last pass and family pinned (four mutants had survived every
+  suite); **L7** the cap's potion is DFU's IsPotion through its one export (`useItem.js` `isPotion`), and the watch's
+  comment says why its kit is rolled where it is.
+
+Pinned: `test/audit625_loot.test.js` (6); moved: `search1_searchables` (KIT-ROLL's scope), `renownloot` (the body's
+copy; the keep's threshold itself, not a band), `sigil1` and `survtiers3` (the copies' cap), and the mounted dungeon
+harnesses' stubs (`audit68_dungeonctx`, `loot7check`, `corpsegold`, `seatheal`). `tools/mutants/audit625.json` (the L
+records); `lootease.json`'s KIT-ROLL records re-aimed by content (the reversed law's record says so).

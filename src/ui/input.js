@@ -422,14 +422,29 @@ export function held(keys, action) {
 
 /** UXB1-S: is a key `action` holds down - as the key's owner or beside it, the primary dict and then the secondary
  *  (GetKey's dual-dict fallthrough, :1084)? `ring` is the edge ring for pressed/released; held reads the held Set.
- *  AUDIT UXB1 F5: the frame's polls ask this per action per frame, so it walks the maps as they stand - the
- *  dictEntries generator it replaced built a pair per key per call - and a dict's sharers only where it has any. */
+ *  AUDIT UXB1 F5: the frame's polls ask this per action per frame. AUDIT TECH-FX: so the codes an action holds are
+ *  read off an index built once a binding change (`actionCodes`) - walking the maps still made an entry pair a key a
+ *  call (7.5 KB and 8 us for an action bound late in the dict, as the technique key is, every frame). */
 function actionDown(b, keys, action, ring) {
-  for (const [code, a] of b.primary) if (a === action && codeDown(b, keys, code, ring)) return true;
-  if (b.sharedPrimary?.size) for (const [code, list] of b.sharedPrimary) if (list.includes(action) && codeDown(b, keys, code, ring)) return true;
-  for (const [code, a] of b.secondary) if (a === action && codeDown(b, keys, code, ring)) return true;
-  if (b.sharedSecondary?.size) for (const [code, list] of b.sharedSecondary) if (list.includes(action) && codeDown(b, keys, code, ring)) return true;
+  const codes = actionCodes(b, action);
+  for (let i = 0; i < codes.length; i++) if (codeDown(b, keys, codes[i], ring)) return true;
   return false;
+}
+/** AUDIT TECH-FX: the codes `action` holds, in actionDown's own order - the primary dict, its sharers, the secondary,
+ *  its sharers - kept on the store and rebuilt on its `rev` (systems/inputActions.js `touched`: every binding change
+ *  moves it; comboModifiers', pairedCodes' and modifierHeldFirstDict's caches ride the same law). */
+function actionCodes(b, action) {
+  const rev = b.rev ?? 0;
+  if (b._codesRev !== rev || !b._codes) { b._codes = new Map(); b._codesRev = rev; }
+  let codes = b._codes.get(action);
+  if (codes) return codes;
+  codes = [];
+  for (const [code, a] of b.primary) if (a === action) codes.push(code);
+  if (b.sharedPrimary?.size) for (const [code, list] of b.sharedPrimary) if (list.includes(action)) codes.push(code);
+  for (const [code, a] of b.secondary) if (a === action) codes.push(code);
+  if (b.sharedSecondary?.size) for (const [code, list] of b.sharedSecondary) if (list.includes(action)) codes.push(code);
+  b._codes.set(action, codes);
+  return codes;
 }
 
 /**
@@ -682,6 +697,13 @@ export function isDomControlTarget(t) {
   return !!t && (t.tagName === 'BUTTON' || t.tagName === 'SELECT' || t.tagName === 'SUMMARY' || (t.tagName === 'A' && !!t.href));
 }
 
+/** AUDIT LEGACY II U3: a Tab inside a DOM window that OWNS the keyboard's focus (its host marked `data-dom-focus` - the
+ *  pause window) is the browser's walk of it. Both hosts' overlay rungs prevented every key, so Tab moved nothing and
+ *  the Family tab's plates, its card's acts and every page's controls were a mouse's or a finger's alone. */
+export function isDomFocusWalk(e) {
+  return e?.key === 'Tab' && !!e.target?.closest?.('[data-dom-focus]');
+}
+
 /**
  * MAC-L3: THE BROWSER MENU, SHUT ONCE.
  *
@@ -727,6 +749,7 @@ export function routeKey(e, ctx, setPlayerPos = null, keys = null) {
   // overlay - a DOM field over the world (an enhanced prompt) is typed into with no overlay in the host's slot, and
   // every letter was an action (M the map, R the rest).
   if (isTextEntryTarget(e?.target)) return false;
+  if (ctx.uiOverlayActive && isDomFocusWalk(e)) return false;   // AUDIT LEGACY II U3: the window's own focus walk
   if (ctx.uiOverlayActive) {
     // U26: a NATIVE window keys off raw codes, exactly as townTalk's
     // seam has since G2 - the action map ('back'/'confirm'/'up') is
@@ -736,9 +759,12 @@ export function routeKey(e, ctx, setPlayerPos = null, keys = null) {
     if (ctx.overlayIsNative) { ctx.overlayInput(e.code, e); return true; }
     const a = overlayAction(e);
     if (a) { ctx.overlayInput(a); return true; }
-    // Quickload works from ANY overlay (the death screen's F11 hint
-    // must be true); everything else stays gated.
-    if (actionsOf(e, keys).includes('QuickLoad') && !retroToggleKey(e, keys)) { ctx.quickLoad?.(setPlayerPos); return true; }   // AUDIT 58 (f3/input): the Set rides in here too, so a QuickLoad rebound to a COMBO still answers from under a window; AUDIT RETRO1 C1: never Shift-F11, the retro toggle's chord on this key
+    // Quickload works from under the DEATH SCREEN (its F11 hint must be
+    // true); everything else stays gated. DUPE-LOAD (2026-10-11): that
+    // window alone (`loadsUnder`) - a load from under the pack or a
+    // counter left the window holding what it took off the old game,
+    // and its close handed it to the loaded one.
+    if (ctx.overlayWindow?.()?.loadsUnder === true && actionsOf(e, keys).includes('QuickLoad') && !retroToggleKey(e, keys)) { ctx.quickLoad?.(setPlayerPos); return true; }   // AUDIT 58 (f3/input): the Set rides in here too, so a QuickLoad rebound to a COMBO still answers from under the death screen; AUDIT RETRO1 C1: never Shift-F11, the retro toggle's chord on this key
     return false;
   }
   // AUDIT 64 F36/F37 - THE HUD'S OWN SHORTCUTS (DaggerfallHUD.cs
@@ -871,8 +897,12 @@ export const QUICKSLOT_ACTIONS = new Set(['QuickUse1', 'QuickUse2', 'QuickSwap',
  *
  * One list, because there is one keyboard, and every host that
  * registers a keydown calls this FIRST.
+ *
+ * MODE-WHEEL (AUDIT): F1 opens the browser's help and F3 its find bar - both drop the pointer lock - and the host's
+ * mode arm was what consumed them while they were DFU's mode keys. They ship unbound now (the wheel picks the
+ * mode), so they join the list: a habit's press is no lost lock.
  */
-export const BROWSER_STEALS = Object.freeze(['F5', 'F6', 'F11']);
+export const BROWSER_STEALS = Object.freeze(['F1', 'F3', 'F5', 'F6', 'F11']);
 export function swallowBrowserKey(e) {
   if (!BROWSER_STEALS.includes(e.code)) return false;
   e.preventDefault();
@@ -908,6 +938,9 @@ export function routeAction(action, ctx, setPlayerPos = null) {
     // openPauseFlow opens the enhanced pages for it), or says why not
     // HELM-KEYS' merge: the key shares the down arrow with less sail - at a helm it is the sails' alone (`sailing`)
     case 'Professions': return ctx.togglePause && ctx.sailing?.() !== true ? (ctx.togglePause({ at: 'professions', setPlayerPos }), true) : false;
+    // LEGACY3 (Mac: "implement it into the pause menu as a new tab"): Project Legacy's key opens the pause on its Family tab -
+    // on either skin (ui/pauseDoor.js openPauseFlow opens the enhanced pages for it). Its mod's switch is actionLive's.
+    case 'LegacyFamily': return ctx.togglePause ? (ctx.togglePause({ at: 'family', setPlayerPos }), true) : false;
     // GameManager.cs:550-553 - the CastSpell ACTION opens the
     // spellbook window; the cast itself is the attack click.
     case 'CastSpell': ctx.toggleSpellbook(); return true;

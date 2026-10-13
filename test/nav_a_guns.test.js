@@ -11,7 +11,7 @@ import {
   BOW_ARC, STERN_ARC, RIPPLE_S, RELOAD_UNDERMANNED, RELOAD_SINGLEHANDED, BARREL_DROP_S,
   bearingOf, sideForBearing, aimSolution, volleyLaunches, reloadSeconds, createGunDeck,
 } from '../src/systems/naval/navalGunnery.js';
-import { GUNS, BARREL, batteryOf, batteriesOf, HULL_BUILDS } from '../src/systems/naval/navalShips.js';
+import { GUNS, BARREL, batteryOf, batteriesOf, HULL_BUILDS, SHIP_TOUGHNESS } from '../src/systems/naval/navalShips.js';
 import {
   SHIP_STATES, STRUCK_AT, SINK_SECONDS, WATERLINE_BAND, HOLED_BONUS, FIRE_HP, FIRE_SECONDS, FIRE_STACK, FIRE_SAIL, FIRE_CREW_S, BRACE_TAKEN, BARE_POLES,
   hitZone, shotDamage, createShipDamage, repairCost, REPAIR_PRICE,
@@ -136,7 +136,7 @@ test('NAV-A the aim: a look that meets the sea lays the side\'s guns to fall the
   const d = [target[0] - eye[0], target[1] - eye[1], target[2] - eye[2]], dl = Math.hypot(...d);
   const aim = aimSolution(ship, 'starboard', { origin: eye, dir: d.map((v) => v / dl) }, seaY);
   assert.equal(aim.side, 'starboard'); assert.equal(aim.gun, 'long'); assert.equal(aim.barrel, false);
-  assert.equal(aim.launches.length, 6, 'six long guns a side on a Small Ship');
+  assert.equal(aim.launches.length, 5, 'five long guns a side on a Small Ship');   // PIN MOVED (GALLEON, 2026-10-01): Mac's galleon's five ports a side
   assert.deepEqual(aim.dir.map((v) => +v.toFixed(9) + 0), [1, 0, 0], 'fired square to starboard');
   near(aim.range, 60, 1.5, 'the zone where the look meets the sea');
   near(aim.lookPoint[0], target[0], 1e-9, 'the look\'s own point on the sea');
@@ -163,7 +163,7 @@ test('NAV-A the volley: a launch a muzzle, a gun every RIPPLE_S from the first a
   const ship = { position: [0, 0, 0], rotation: ID, velocity: [0, 0, 0], hull: 4 };
   const aim = aimSolution(ship, 'port', null, 0, { range: 100 });
   const a = volleyLaunches(aim, 42, { skill: 0.5 }), b = volleyLaunches(aim, 42, { skill: 0.5 });
-  assert.equal(a.length, 7, 'seven long guns a side on the Carrack');
+  assert.equal(a.length, 5, 'five long guns a side on the Carrack');   // PIN MOVED (SHIPS-2, 2026-10-07): Mac's carrack, a gun a port
   assert.deepEqual(a, b);
   assert.notDeepEqual(volleyLaunches(aim, 43, { skill: 0.5 }), a);
   a.forEach((l, i) => near(l.delay, i * RIPPLE_S, 1e-12));
@@ -254,7 +254,8 @@ test('NAV-A a ship\'s life: she strikes her colours at STRUCK_AT, sinks at nough
   near(f.fire, FIRE_SECONDS, 0);
   f.step(100);
   near(f.hull, 100 - FIRE_HP * FIRE_SECONDS * 2, 1e-9, 'each out after its own seconds');
-  assert.equal(f.crew, 5 - Math.floor(FIRE_SECONDS * 2 / FIRE_CREW_S), 'a man each FIRE_CREW_S of burning');
+  // PIN MOVED (TOUGHER-SHIPS): a man's worth each FIRE_CREW_S of burning, a toughened crew losing 1/SHIP_TOUGHNESS of a man for it
+  assert.equal(f.crew, 5 - Math.floor(Math.floor(FIRE_SECONDS * 2 / FIRE_CREW_S) / SHIP_TOUGHNESS), 'a man\'s worth each FIRE_CREW_S of burning');
   assert.equal(f.fires, 0);
   assert.ok(FIRE_STACK >= 2);
   // the way
@@ -307,9 +308,9 @@ test('NAV-A the hulls\' batteries as HULL_BUILDS measures them: a rowboat none, 
   const kinds = (h) => Object.fromEntries(batteriesOf(h).map((b) => [b.side, `${b.gun}x${b.muzzles.length}`]));
   assert.deepEqual(kinds(0), {});
   assert.deepEqual(kinds(1), { starboard: 'swivelx3', port: 'swivelx3', bow: 'swivelx1' });
-  assert.deepEqual(kinds(2), { starboard: 'longx6', port: 'longx6', bow: 'chainx2', stern: 'barrelx1' });
+  assert.deepEqual(kinds(2), { starboard: 'longx5', port: 'longx5', bow: 'chainx2', stern: 'barrelx1' });   // PIN MOVED (GALLEON, 2026-10-01): a gun a port
   assert.deepEqual(kinds(3), { starboard: 'longx4', port: 'longx4', bow: 'heavyx3' });
-  assert.deepEqual(kinds(4), { starboard: 'longx7', port: 'longx7', bow: 'chainx2', stern: 'barrelx1' });
+  assert.deepEqual(kinds(4), { starboard: 'longx5', port: 'longx5', bow: 'chainx2', stern: 'barrelx1' });   // PIN MOVED (SHIPS-2, 2026-10-07): Mac's carrack, a gun a port
   for (let h = 1; h < HULL_BUILDS.length; h++) {
     for (const m of batteryOf(h, 'starboard').muzzles) assert.ok(m[0] > 0, `hull ${h}: a starboard muzzle on the starboard side`);
     for (const m of batteryOf(h, 'port').muzzles) assert.ok(m[0] < 0, `hull ${h}: a port muzzle on the port side`);

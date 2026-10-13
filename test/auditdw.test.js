@@ -87,7 +87,8 @@ test('AUDIT-DW F1: the list drawer decodes THE RECORD it draws before the upload
   assert.match(rd('src/ui/textureCanvas.js'), /\? preloadTextureRecord\(archive, record, 0, 'Albedo', dye\)\.catch\(\(\) => null\)/, 'the DOM door');
   assert.match(rd('src/ui/paperDoll.js'), /await preloadTextureRecord\(archive, record, 0, 'Albedo', dye\);[^\n]*\n\s+const swap = decodedTextureTopDown/, 'the doll');
   assert.match(rd('src/combat/diverseWeaponsIcons.js'), /gate: moddedWeaponHUDAnimsEnabled, lazy: true/, 'the mod\'s icons are lazy');
-  assert.match(rd('src/systems/textureReplacement.js'), /entry\.archive === Number\(archive\) && !entry\.lazy && !_decoded\.has\(key\)/, 'and the archive preload skips them');
+  // PIN MOVED (AUDIT VE R1): the preload decodes each key from the one entry that answers it now - a lazy one is still skipped
+  assert.match(rd('src/systems/textureReplacement.js'), /if \(entry && !entry\.lazy && !decodedFrom\(key, entry\)\) todo\.push\(\[key, entry\]\);/, 'and the archive preload skips them');
 });
 
 // ── the widget clone's bench, the WW1 suite's shape ───────────────────
@@ -149,7 +150,7 @@ test('AUDIT-DW F3: under DoubleScaleTextures a `w_` hit draws into the doubled b
 
 test('AUDIT-DW F4 (named, not changed): DFU keeps the first template\'s custom frames within a class and metal; the port keys the atlas by the name it is asked by', () => {
   const rig = rd('src/combat/weaponRig.js');
-  assert.match(rig, /const key = `\$\{type\}:\$\{item\?\.material \?\? 0\}:\$\{thunderlock \? '' : atlasFileName\(item, WEAPON_FILE\[type\] \?\? ''\)\}`;/);
+  assert.match(rig, /const key = `\$\{type\}:\$\{item\?\.material \?\? 0\}:\$\{thunderlock \? \(gilded \? 'gilded' : ''\) : atlasFileName\(item, WEAPON_FILE\[type\] \?\? ''\)\}`;/);
   assert.match(rig, /WHICH IS WHAT DFU DOES \(AUDIT-DW\n\s+\/\/ F4, a named departure\): FPSWeapon reloads its atlas only when\n\s+\/\/ WeaponType or MetalType change \(FPSWeapon\.cs:138\)/, 'the departure is named where the key is');
   assert.match(rd('bible/05-Combat/Diverse-Weapons.md'), /## AUDIT-DW/, 'and recorded');
 });
@@ -160,7 +161,8 @@ test('AUDIT-DW: checked and standing - the shipped set, the index, the door orde
   assert.match(door, /const attached = _names\.length \? await attachedImage\(name, decode\) : null;/);
   assert.match(door, /if \(!hasDiverseWeaponsSprite\(name\) \|\| typeof fetchFn !== 'function'\) return null;/);
   // the icon install sits at the scene boot, after the survival pair and before the archives load
-  assert.match(rd('src/scenes/shared.js'), /installDiverseWeaponsIcons\(\);[^\n]*\n\s+installRoleplayRealismItems\(\);[^\n]*\n\s+installRoleplayRealism\(\);[^\n]*\n\s+const textures = storedTextureNames\(\)/);
+  // PIN MOVED (AUDIT VE R2): the store's one registration follows the installs - the seam's own copy of it is gone
+  assert.match(rd('src/scenes/shared.js'), /installDiverseWeaponsIcons\(\);[^\n]*\n\s+installRoleplayRealismItems\(\);[^\n]*\n\s+installRoleplayRealism\(\);[^\n]*\n(?:\s+\/\/[^\n]*\n)*\s+const textures = registerTextureStore\(\)/);
   // GetName's dye arm and its one exception, in one home
   assert.match(rd('src/characters/dyes.js'), /if \(!Number\.isFinite\(v\) \|\| v === DYE_COLORS\.Unchanged\) return '';/);
   // the records

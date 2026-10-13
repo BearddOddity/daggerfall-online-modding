@@ -24,6 +24,7 @@
 import {
   createWeaponMachine, machineAttack, machineStep, gestureDirection,
   MAX_GESTURE_SECONDS, BOW_DRAWN_HOLD_FRAME, machineCancelBowDraw, THUNDERLOCK_NUM_FRAMES, CLASSIC_UPDATE_INTERVAL,
+  blowSchedule,   // MW-PACE1: the strike just begun, timed - what the Morrowind arm fits its blow into
 } from '../characters/weaponStates.js';
 import { GUN_FEEL, GUN_TICK_SECONDS, GUN_COOLDOWN_SECONDS } from './gunFeel.js';   // FIELD-GUN7: the lab's cadence, from the one home
 import { DIRECTION_TO_STRIKE, ATTACKS_FP, sampleClip } from '../characters/anims.js';
@@ -35,6 +36,7 @@ import { calculateAttackDamage } from './formulas.js';
 import { isShieldTemplate } from '../systems/armorMaterials.js';   // a12: UpdateHands' IsShield leg
 import { equipDelayFor } from '../systems/equip.js';               // a12: ToggleHand's EquipDelayTimes[GroupIndex]
 import { getBool, getFloat, getInt } from '../systems/settings.js';   // AUDIT 28 W2b: MeleeAttackFriendlyProtection; W11: WeaponAttackThreshold, WeaponSwingMode
+import { blowReaches, blowMult, scaleBlowDamage, playerBody } from './techniqueBlow.js';   // TECH1: a technique's blow - its shape and its weight, a leaf
 
 export const DEFAULT_WEAPON_REACH = 2.25;   // WeaponManager.cs:35
 export const SPHERE_CAST_RADIUS = 0.25;     // WeaponManager.cs:51
@@ -102,6 +104,7 @@ export function playerMeleeCanHit(dist, inView, losClear) {
 
 /** WeaponManager.cs:45 - the switch-delay divisor, a float. */
 import { BOW_SWITCH_DIVISOR } from '../characters/weaponStates.js';   // ONE home (WeaponManager.cs:45); a12's switch law reads it here
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 export { BOW_SWITCH_DIVISOR };
 
 /** Internal_Strings.csv: usingRightHand / usingLeftHand - the two
@@ -250,6 +253,7 @@ export class PlayerWeapon {
   toggleSheath() {
     this.sheathed = !this.sheathed;
     if (this.sheathed) return false;
+    noteFirstUse('combat');   // TUT1: the first weapon drawn
     const t = weaponTypeForItem(this.weapon);
     return t !== WEAPON_TYPES.Melee && t !== WEAPON_TYPES.None;
   }
@@ -276,6 +280,10 @@ export class PlayerWeapon {
     this.currentLeftHandWeapon = null;
     this.sheathed = true;   // classic starts sheathed; Z readies (WeaponManager.Sheathed)
     this.lastDrawMs = 0;   // PCO1: the last bow shot's weaponAnimTime (_bowAnimTimeMs)
+    // TECH1 (bible/05-Combat/Weapon-Techniques.md): the swing in flight is a technique's - its blow (combat/techniqueBlow.js:
+    // the reach, the arc, the weight), set as the technique starts the swing and taken down once the machine is idle again
+    // (combat/techniques.js), so every pool the ONE swing is offered to reads the same blow. Null for every other swing.
+    this.techniqueBlow = null;
     this.animCtx = null;   // AUDIT-RR F1: the rig's thunk answering { entity, weaponType, usingRightHand } - what GetMeleeWeaponAnimTime's C# signature carries (player, weaponType, weaponHands)
     // DFU's Gesture: the timestamped trail, its vector sum and its
     // TRAVEL length (WeaponManager.cs:93-155).
@@ -359,7 +367,11 @@ export class PlayerWeapon {
    * weapon - the material gate (0 damage on anything silver-to-hit) and a
    * 0-0 weapon range, ~9 a swing where the beast's +30 HandToHand fist
    * does ~21. Everything else `weapon` carries (the draw, the swing sound,
-   * the art) is the screen's and stays.
+   * the art) is the screen's and stays. BAL6-CLAWS (bible/05-Combat/
+   * Balance-Arc.md section 12): BAL6 had the claws strike as silver; the
+   * owner reverted it - the bare hand, ungated, DFU's. BAL6-GAUNTLETS: the
+   * plate gauntlets the beast wears add their metal's damage to it, a port
+   * departure (combat/clawMetal.js, read by both cores).
    */
   get strikingWeapon() {
     if (!this.weapon?.werecreatureClaws) return this.weapon;
@@ -421,7 +433,8 @@ export class PlayerWeapon {
     // StrikeDown (the BowDrawback-off classic instant shot - the
     // machine's StrikeUp draw half is that setting's other arm) and
     // only after the button was RELEASED since the last shot
-    // (lastAttackHand == Hand.None).
+    // (lastAttackHand == Hand.None) - which the drawn bow keeps.
+    // BOW-CLOCK departs for the instant shot below.
     if (this.machine.isBow) {
       const rise = held && !this._bowHeld;
       this._bowHeld = held;
@@ -446,7 +459,13 @@ export class PlayerWeapon {
         if (rise && m.state !== 'StrikeUp' && machineAttack(m, 'StrikeUp')) return 'StrikeUp';
         return null;
       }
-      if (rise && machineAttack(m, 'StrikeDown')) { this.lastDrawMs = this._bowAnimTimeMs(); return 'StrikeDown'; }   // PCO1: the instant shot has no draw (0 ticks held)
+      // BOW-CLOCK (FIELD BUGS 2026-10-09g, the owner's call on a player's "there is no way to actually just 'hold
+      // attack' and continue to shoot arrows"): THE INSTANT SHOT REPEATS WHILE HELD - a DEPARTURE from DFU's
+      // released-since-the-last-shot gate, for BowDrawback off alone. The machine still decides when: its cooldown
+      // and its Idle refuse every frame until the bow is ready, so a held button looses the moment it is, at DFU's own
+      // rate - and a press made early is not lost for being early. The drawn bow above keeps DFU's gate: it looses on
+      // the button's release, so it cannot repeat on a hold.
+      if (held && machineAttack(m, 'StrikeDown')) { this.lastDrawMs = this._bowAnimTimeMs(); return 'StrikeDown'; }   // PCO1: the instant shot has no draw (0 ticks held)
       return null;
     }
     this._bowHeld = false;
@@ -537,6 +556,15 @@ export class PlayerWeapon {
     return [this._gx, this._gy];
   }
 
+  /** TECH1 (bible/05-Combat/Weapon-Techniques.md): A TECHNIQUE'S STRIKE - the machine's own strike `strike` begun for a
+   *  weapon's technique (combat/techniques.js), by the same machineAttack a click takes; a bow's loose writes its draw
+   *  time as the click's does (PCO1). True when it began - never mid-swing or in a bow's recovery. */
+  techniqueStrike(strike) {
+    if (!machineAttack(this.machine, strike)) return false;
+    if (this.machine.isBow) this.lastDrawMs = this._bowAnimTimeMs();
+    return true;
+  }
+
   /** ClickToAttack verbatim (WeaponManager): a click fires an attack
    *  in a RANDOM direction from Range(UpRight, DownRight + 1) over
    *  the MouseDirections order - UpRight, Left, Right, DownLeft,
@@ -596,6 +624,14 @@ export class PlayerWeapon {
     return machineStep(this.machine, dt, this.liveSpeed, this.animCtx?.() ?? null);
   }
 
+  /** MW-PACE1: THE STRIKE JUST BEGUN, TIMED - when its hit lands and when it is done, at this frame's `dt`
+   *  (characters/weaponStates.js blowSchedule: the machine's own tick, read off the same live Speed and the same
+   *  GetMeleeWeaponAnimTime ask as update() above). Null for a ranged weapon or an idle machine. combat/weaponRig.js
+   *  fpAttack hands it to the Morrowind arm, which fits its blow into it. */
+  strikeSchedule(dt = 0) {
+    return blowSchedule(this.machine, this.liveSpeed, this.animCtx?.() ?? null, dt);
+  }
+
   /** The FP viewmodel pose this frame: the fpMelee1H base with the
    *  dedicated FP sweep composited on the machine's frame clock. */
   pose() {
@@ -635,29 +671,47 @@ export class PlayerWeapon {
     // in-reach protected foe stands in for the first collider on the
     // ray; recorded in Audit-28.md.
     const protectedInReach = [];
+    // TECH1: a technique's swing - its own reach and arc (a ring about the feet, a dash's lane, DFU's view at a longer
+    // reach) for every foe that is no player's body, and its weight on the formula's number; `single` strikes the
+    // nearest it reaches alone. A player's body takes the plain swing's test and number (TECH law 3: a technique never meets
+    // a player).
+    const tb = this.techniqueBlow;
+    const techOn = (foe) => !!tb && !playerBody(foe);
+    const singles = [];
     const strike = (foe) => {
-      const damage = calculateAttackDamage(playerCombat, foe.entity, {
-        ...playerAttackOptions(this.strikingWeapon, this.machine.state, backstabOf(foe), rolls), say,   // DISC10-E L2: the hand's item, never the claws marker
+      const opts = playerAttackOptions(this.strikingWeapon, this.machine.state, backstabOf(foe), rolls);
+      if (techOn(foe) && Number.isFinite(tb.toHit)) opts.toHitMod += tb.toHit;   // the technique's own term beside the swing's
+      const rolled = calculateAttackDamage(playerCombat, foe.entity, {
+        ...opts, say,   // DISC10-E L2: the hand's item, never the claws marker
         unaware: foeUnaware(foe),   // SET2: the foe had not noticed me - read here, where its AI is in hand
         // C2-slice (AUDIT 23 combat-11): the PLAYER's poisoned blade
         // infects ITS victim - the formulas clear the weapon's poison
         // either way, so without this hook the dose vanished unspent.
         onInflictPoison: onPoison ? (att, tgt, pt) => onPoison(foe, pt) : null,
       });
+      const damage = techOn(foe) ? scaleBlowDamage(rolled, blowMult(tb, foe)) : rolled;   // TECH1: a miss stays a miss
       results.push({ foe, damage });
       this.onAttackResult?.({ foe, damage });   // WW1: OnAttackDamageCalculated's one consumer, the weapon widget's recoil
     };
     for (const foe of foes) {
       if (foe.dead || !foe.entity) continue;
-      const { dist, inView, losClear } = canSee(foe);
-      if (!playerMeleeCanHit(dist, inView, losClear)) continue;
-      if (friendlyProtected(foe, protection === undefined ? {} : { protection })) { protectedInReach.push({ foe, dist }); continue; }
+      const sight = canSee(foe);
+      const { dist, inView, losClear } = sight;
+      if (!(techOn(foe) ? blowReaches(tb, foe, sight) : playerMeleeCanHit(dist, inView, losClear))) continue;
+      // AUDIT TECH1: the fallback below stands in for DFU's look ray (the first collider it meets) - a technique's
+      // all-round reach never widens it, so an ally or a foe at peace is struck only where a plain swing would strike it
+      if (friendlyProtected(foe, protection === undefined ? {} : { protection })) { if (!techOn(foe) || playerMeleeCanHit(dist, inView, losClear)) protectedInReach.push({ foe, dist }); continue; }
+      if (tb?.single && techOn(foe)) { singles.push({ foe, dist }); continue; }   // TECH1: the one blow waits for the nearest
       strike(foe);
     }
+    if (singles.length) { singles.sort((a, b) => a.dist - b.dist); strike(singles[0].foe); }
     if (results.length === 0 && protectedInReach.length) {
       protectedInReach.sort((a, b) => a.dist - b.dist);
       strike(protectedInReach[0].foe);
     }
+    // ARENA-FIX 9: the swing told, struck or not - a swing that reached nobody is a miss on the arena's sand (a blow
+    // that reached a foe is told by the formula's own resolution)
+    for (const fn of _swingListeners.values()) { try { fn(results.length); } catch { /* a listener is not the swing's problem */ } }
     return results;
   }
 }
@@ -682,7 +736,12 @@ export class PlayerWeapon {
  *  effects) is false. Read where the foe RECORD is in hand (the swing here, the arrow in arrowFlight.js): the formula is
  *  handed the entity, which knows nothing of its AI. A PUPPET (a foe another player's machine runs) is never unaware
  *  here - its AI is its owner's, and what this machine holds of it is not a word about whether it saw me. */
-export const foeUnaware = (foe) => !!foe?.ai && !foe.puppet && foe.ai.detected === false;
+const _swingListeners = new Map();
+/** ARENA-FIX 9: NAMED listeners told each melee hit frame's count of foes struck (PlayerWeapon.resolveHit - every host
+ *  resolves the player's swing through it). A name re-registered replaces, `null` removes. */
+export function registerPlayerSwingListener(name, fn) { if (typeof fn === 'function') _swingListeners.set(name, fn); else _swingListeners.delete(name); }
+
+export const foeUnaware = (foe) => !!foe?.ai && !foe.puppet && foe.ai.detected === false && foe.entity?.revenant?.edge?.watchful !== true;   // RVN2: a Watchful revenant is never unaware
 
 export function playerAttackOptions(weapon, machineState, backstabChance = 0, rolls = Math.random) {
   const swing = SWING_MODS[machineState] ?? { damage: 0, toHit: 0 };

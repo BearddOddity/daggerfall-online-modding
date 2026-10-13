@@ -195,7 +195,7 @@ test('LIVING CREW THE HOST: a ship in range stands her crew as mobile units - th
   const boat = smallShip();
   const flats = peopleFlatsOf(boat);
   const main = mainLevel(deck);
-  assert.ok(Math.abs(main - 6.77) < 0.1, `her main deck: ${main}`);
+  assert.ok(Math.abs(main - 6.2) < 0.1, `her main deck: ${main}`);   // PIN MOVED (GALLEON, 2026-10-01): the new galleon's
   const below = flats.filter((f) => f.feet[1] < main - DECK_STEP), onDeck = flats.filter((f) => f.feet[1] >= main - DECK_STEP);
   assert.ok(below.length >= 1 && onDeck.length >= 4, `flats: ${onDeck.length} on or above her deck, ${below.length} below`);
   const h = host();
@@ -346,13 +346,14 @@ test('LIVING CREW THE LANDING AND THE RAIL, lifted from the world host over the 
   const boat = smallShip();
   const line = (start) => { const i = WORLD.indexOf(start); assert.ok(i >= 0, start); return WORLD.slice(i, WORLD.indexOf('\n', i) + 1); };
   const fn = (name) => { const m = new RegExp(`\\n  function ${name}\\([^)]*\\) \\{\\n[\\s\\S]*?\\n  \\}\\n`).exec(WORLD); assert.ok(m, name); return m[0]; };
-  // PIN MOVED (AUDIT NAV2 F33): the deck point's ray starts under her deck's headroom - DECK_HEADROOM in the lifted scope
-  const body = `const { intoDeck, outOfDeck, DECK_HEADROOM, csa, raycastColliders, csaColliderMesh } = s;
+  // PIN MOVED (AUDIT NAV2 F33): the deck point's ray starts under her deck's headroom - DECK_HEADROOM in the lifted scope;
+  // AUDIT GALLEON D2 (2026-10-02): her rail asked at her main level - mainLevel in it too
+  const body = `const { intoDeck, outOfDeck, DECK_HEADROOM, csa, raycastColliders, csaColliderMesh, mainLevel } = s;
     ${line('  const navalDeckToWorld = (boat, p, out) =>')}${line('  const navalWorldToDeck = (boat, p, out) =>')}${line('  const NAVAL_RAIL_GAP =')}
     ${fn('navalDeckPoint')}${fn('navalDeckLanding')}${fn('navalRailSpots')}
     return { navalDeckLanding, navalRailSpots };`;
   // eslint-disable-next-line no-new-func
-  const w = new Function('s', body)({ intoDeck, outOfDeck, DECK_HEADROOM, csa: { deckOf: () => deck }, raycastColliders: () => null, csaColliderMesh: null });
+  const w = new Function('s', body)({ intoDeck, outOfDeck, DECK_HEADROOM, csa: { deckOf: () => deck }, raycastColliders: () => null, csaColliderMesh: null, mainLevel });
   const [feet, yaw] = w.navalDeckLanding(boat, [14, 8, 2]);
   assert.ok(deck.walkable(feet[0], feet[2]) && feet[0] > 3, `her edge across from him: ${feet}`);
   assert.ok(Math.abs(feet[2] - 2) < 0.5, 'across from where he stood');
@@ -393,7 +394,7 @@ test('LIVING CREW THE WORDS: a bubble a line over his head at the HUD\'s scale -
 test('LIVING CREW THE WORLD by source: the crews stepped before the people are drawn, their sprites among them; the words after the bars; every clear stands them down; the fight\'s end brings my hands home; a grapple\'s side each crew\'s own, her other ship by the host\'s door; me never walked through; a room\'s boat seeded by whose and which; the boarding\'s doors (mutants: each unwired)', () => {
   assert.match(WORLD, /navalCrewFrame\(gamePaused\(\) \? 0 : foeDt\);[^\n]*\n\s+livePersonBatches\.push\(\.\.\.exteriorFoes\.batches\(\), \.\.\.navalCrew\.batches\(\)\);/);   // AUDIT NAV2 F53 PIN MOVED: held by a pause
   assert.match(WORLD, /navalCrewBars\(proj, view, mwv\.eye\);[^\n]*\n\s+navalCrewLines\(proj, view, mwv\.eye, dt\);/);   // FIELD BUGS 2026-10-02b PIN MOVED: the frame's dt, the lifts' ease
-  assert.match(WORLD, /navalFlames\.clear\(\); navalCrew\.clear\(\);[^\n]*drawCrewLines\(\[\]\); \};/);
+  assert.match(WORLD, /navalFlames\.clear\(\); navalCrew\.clear\(\);[^\n]*drawCrewLines\(\[\]\); lowerGlass\(\); \};/);   // AUDIT CAPTAIN'S SEA S1 PIN MOVED: and the glass lowered after the crews
   assert.match(WORLD, /if \(_crewBoarding && !b\) for \(const boat of csa\.boats\) navalCrew\.reset\(boat\);/);
   assert.match(WORLD, /const other = grapple \? \(key === grapple\.shipId \? grapple\.boat : key === grapple\.boat \? naval\.boatOf\(grapple\.shipId\) : null\) : null;/);
   assert.match(WORLD, /_crewCtx\.muster = _crewThem\[0\] >= 0 \? 1 : -1;/);
@@ -401,5 +402,5 @@ test('LIVING CREW THE WORLD by source: the crews stepped before the people are d
   assert.match(WORLD, /seed = _crewSeed\(boat\.peerKey \?\? ''\);/);
   assert.match(WORLD, /crewOf: \(boat, n, opts\) => navalCrew\.takeByBoat\(boat, n, opts\),\n\s+landing: \(boat, feet\) => navalDeckLanding\(boat, feet\),\n\s+railSpots: \(boat, toward, n\) => navalRailSpots\(boat, toward, n\),/);
   assert.match(WORLD, /allied: side === 'ally', team: side === 'ally' \? null : team, \.\.\.\(gender \? \{ gender \} : \{\}\) \}\)/, 'a crewman stood as himself');
-  assert.match(readFileSync(new URL('../src/scenes/comeSailAwayPeers.js', import.meta.url), 'utf8'), /if \(boat\) boat\.peerKey = `\$\{owner\}:\$\{i\}`;/);
+  assert.match(readFileSync(new URL('../src/scenes/comeSailAwayPeers.js', import.meta.url), 'utf8'), /if \(boat\) \{ boat\.peerKey = `\$\{owner\}:\$\{i\}`;/);
 });

@@ -142,7 +142,7 @@
       "test/chatfit.test.js"
     ],
     "old": "      line.append(nameEl);\n      const gt = guildTagText(r.gt);",
-    "new": "      { const badge = titleBadge(r); if (badge) line.append(titleSpan(badge, 'dfchat-who-title')); }\n      line.append(nameEl);\n      const gt = guildTagText(r.gt);"
+    "new": "      if (r.title) line.append(el('span', 'dfchat-who-title', String(r.title)));\n      line.append(nameEl);\n      const gt = guildTagText(r.gt);"
   },
   {
     "name": "TR-founder-cutoff-moved-forward",
@@ -150,17 +150,29 @@
     "tests": [
       "test/titlen.test.js"
     ],
-    "old": "export const FOUNDER_UNTIL = 1_790_294_400;",
-    "new": "export const FOUNDER_UNTIL = 1_790_380_800;"
+    "old": "export const FOUNDER_UNTIL = 1_790_337_600;",
+    "new": "export const FOUNDER_UNTIL = 1_790_380_800;",
+    "note": "FOUNDER5 (PIN MOVED, re-aimed by content): the instant is 12:00Z on the 25th now; moved forward a further twelve hours, it still dies."
   },
   {
     "name": "DEV3-tabby-not-granted",
     "file": "server-account/wrangler.toml",
-    "old": "DEVELOPER_HANDLES = \"Lattymoy,trashBattery,LostMyLeg,Tabby\"",
-    "new": "DEVELOPER_HANDLES = \"Lattymoy,trashBattery,LostMyLeg\"",
+    "old": "DEVELOPER_HANDLES = \"Lattymoy,trashBattery,LostMyLeg,Tabby,RookieG\"",
+    "new": "DEVELOPER_HANDLES = \"Lattymoy,trashBattery,LostMyLeg,RookieG\"",
     "tests": [
       "test/titlen.test.js"
-    ]
+    ],
+    "note": "DEV4 (re-aimed by content): the list gained RookieG."
+  },
+  {
+    "name": "DEV4-rookieg-not-granted",
+    "file": "server-account/wrangler.toml",
+    "old": "DEVELOPER_HANDLES = \"Lattymoy,trashBattery,LostMyLeg,Tabby,RookieG\"",
+    "new": "DEVELOPER_HANDLES = \"Lattymoy,trashBattery,LostMyLeg,Tabby,RookieG(Dev)\"",
+    "tests": [
+      "test/titlen.test.js"
+    ],
+    "note": "The bracketed handle listed for the account RookieG (the owner: \"Change RookieG(Dev) to RookieG\"): RookieG holds nothing, and the developer's rights go to whoever registers the other name."
   },
   {
     "name": "DISC-flylighter-not-granted",

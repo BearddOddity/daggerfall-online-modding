@@ -50,9 +50,17 @@
 // day and an arrival is not pushed to dusk. Online that is the whole
 // complaint: the shared clock's day is one real hour, and neither a
 // rest nor a trip moves that clock. The hood is the travel rules'
-// alone: the day's -20 is the street's sun on the stats (indoors and
-// underground there is none - FIELD BUGS 2026-10-01b), and a hood
-// leaves it.
+// rules' and, since HOOD-SUN, the stats': the day's -20 is the
+// street's sun on the stats (indoors and underground there is none -
+// FIELD BUGS 2026-10-01b), and a raised hood keeps that sun off too.
+//
+// HOOD-SUN (2026-10-07, Mac: "The vampire cloak and hood doesn't work ingame for shielding against the sun"): THE HOOD SHIELDS THE STATS. VAMP-HOOD let a hood lift the
+// travel rules alone, so a hooded vampire in the street at noon still
+// stood 20 down - the sun's only bite since VAMP-DAY, and the one the
+// player could see. vampirismMagicRound asks racialSunAverse, the one
+// hood law: under a raised hood the street's sun does not reach the
+// curse - BAL6: and the vampire stands at 0 under it, the sun's -20
+// kept off but a roof's +20 not given (Balance-Arc.md section 12).
 //
 // THE QUESTS went live in V2d (racialQuests.js): P0A01L00 on the
 // first 50% hit of the 38-day arm with hasStartedInitialVampireQuest
@@ -86,7 +94,7 @@ import { endVampireQuests } from './racialQuests.js';   // V2d: the cure's P0* t
 import { localizedText, localizedTable } from './textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language
 import { cloakState } from './survival/temperature.js';   // VAMP-HOOD: the ONE "is the hood up" - the felt temperature's, never a second list
 import { isEnhanced } from './uiSkin.js';   // HOOD-SAID: the hint names the skin's own button
-import { playerInSunlight } from './passiveSpecials.js';   // FIELD BUGS 2026-10-01b: the day's -20 is the SUN's - IsPlayerInSunlight, the one seam every host registers
+import { playerInSunlight, careerSunAverse } from './passiveSpecials.js';   // FIELD BUGS 2026-10-01b: the day's -20 is the SUN's - IsPlayerInSunlight, the one seam every host registers; HOOD-CAREER: the career's hooded rung
 
 /** VampirismEffect.VampirismCurseKey (:33). */
 export const VAMPIRISM_CURSE_KEY = 'Vampirism-Curse';
@@ -106,8 +114,13 @@ export const VAMPIRE_STAT_MOD = 20;
  *  and a dungeon's EnableDungeonParent (:1110). So the penalty asks that same flag through the seam every host
  *  registers (passiveSpecials.js playerInSunlight: worldModes for the street and its buildings, dungeonContext for a
  *  dungeon), and out of the sun - indoors, underground, in a cell, or by night - the vampire has what DFU gives him at
- *  every hour: ApplyVampireAdvantages' +20 (VampirismEffect.cs:349-359). No bonus past it. */
-export const vampireStatMod = (clockMinutes) => (playerInSunlight(clockMinutes) ? -VAMPIRE_STAT_MOD : VAMPIRE_STAT_MOD);
+ *  every hour: ApplyVampireAdvantages' +20 (VampirismEffect.cs:349-359). No bonus past it.
+ *  BAL6 (bible/05-Combat/Balance-Arc.md section 12; asked, "Hood only shields"): THE HOOD SHIELDS, IT DOES NOT MAKE IT
+ *  NIGHT. HOOD-SUN gave a raised hood in the street by day the full +20 - the night's bonus at noon, so with a hood the
+ *  curse stood +20 at every hour and everywhere (the measurement's x1.67-2.07 a mortal's damage a second, x0.80-0.89 of
+ *  what it takes). Under a hood in the sun the vampire is neither burned nor blessed: 0. Out of the sun (indoors,
+ *  underground, in a cell, by night) DFU's +20 stands, as Mac asked of the interiors. */
+export const vampireStatMod = (clockMinutes, sunAverse = true) => (playerInSunlight(clockMinutes) ? (sunAverse ? -VAMPIRE_STAT_MOD : 0) : VAMPIRE_STAT_MOD);   // HOOD-SUN: a raised hood (racialSunAverse false) keeps the sun off; BAL6: and gives no bonus in it
 export const VAMPIRE_SKILL_MOD = 30;
 export const VAMPIRE_STATS = Object.freeze(['strength', 'willpower', 'agility', 'endurance', 'personality', 'speed', 'luck']);
 export const VAMPIRE_SKILLS = Object.freeze([
@@ -245,13 +258,14 @@ export function consumeVampirismPending(entity, { now = 0 } = {}) {
  * it), and the advantages re-applied - the Anthotis alone add
  * Intelligence (:295-296). VAMP-DAY: the sun's -20 on the same stats,
  * DFU's +20 out of it - FIELD BUGS 2026-10-01b: by day only where the
- * sun reaches, the host's roof read through vampireStatMod
+ * sun reaches, the host's roof read through vampireStatMod - and
+ * HOOD-SUN: never under a raised hood (racialSunAverse; BAL6: 0 there)
  * (`nowMinutes` is the world clock, worldTick's `clockMinutes`).
  */
 export function vampirismMagicRound(entity, { nowMinutes = 0, skyMinutes = nowMinutes } = {}) {
   const entry = liveVampirism(entity);
   if (!entry) return;
-  const mod = vampireStatMod(skyMinutes);   // LIVED1: VAMP-DAY's day and night are the world's sky; the thirst below is the character's own clock
+  const mod = vampireStatMod(skyMinutes, racialSunAverse(entity));   // HOOD-SUN: the hood's law; LIVED1: VAMP-DAY's day and night are the world's sky; the thirst below is the character's own clock
   entry.statMods = {};
   for (const stat of VAMPIRE_STATS) entry.statMods[stat] = mod;
   if (entry.clan === VAMPIRE_CLANS.Anthotis) entry.statMods.intelligence = mod;
@@ -430,6 +444,19 @@ export function racialFastTravelBlock(entity, nowMinutes = 0) {
   if (!racialSunAverse(entity)) return null;
   if (!isDayFromMinutes(nowMinutes)) return null;
   return { text: sunlightTravelText(), hint: isEnhanced() ? VAMPIRE_HOOD_TEXT : VAMPIRE_HOOD_TEXT_CLASSIC };   // HOOD-SAID: the skin's own button
+}
+
+/** The career rung at the travel map's door - DaggerfallUI.cs:614-621,
+ *  `Career.DamageFromSunlight && WorldTime.Now.IsDay` shows the same
+ *  sunlightDamageFastTravelDay box - HOOD-CAREER: bare-headed, as the
+ *  racial rung above (passiveSpecials.js careerSunAverse). Answers null,
+ *  or the refusal and the hood's `hint`, the racial rung's shape. It
+ *  never reads the racial override: the two rungs are DFU's two. */
+export function careerFastTravelBlock(entity, nowMinutes = 0) {
+  if (!careerSunAverse(entity)) return null;
+  if (!isDayFromMinutes(nowMinutes)) return null;
+  const hint = isEnhanced() ? VAMPIRE_HOOD_TEXT : VAMPIRE_HOOD_TEXT_CLASSIC;   // HOOD-SAID: the skin's own button
+  return { text: sunlightTravelText(), hint };   // L10N3d: the same routed box as the racial rung
 }
 
 /**

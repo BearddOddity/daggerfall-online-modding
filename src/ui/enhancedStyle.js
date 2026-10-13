@@ -33,11 +33,16 @@
    string the game pays for only when a screen is mounted. */
 import { PIXELIFY_FIVE_FACE, PIXEL_STACK, PIXEL_FONT_CSS } from './pixelifyFive.js';   // FIX-D: Silkscreen's five ahead of Pixelify Sans
 import { badgeCss } from './playerBadge.js';   // ACC3c: one rule per title and per glyph, walked out of the vocabulary - the card writes a class and the skin carries the colour
-import { PLUS_CSS, PLUS_STYLE_ID, applyPlusTheme } from './enhancedPlusStyle.js';   // PLUS1: the Enhanced Plus sheet, laid over this one
+import { STONE_WORD, PLUS_CSS, PLUS_STYLE_ID, applyPlusTheme } from './enhancedPlusStyle.js';   // PLUS1: the Enhanced Plus sheet, laid over this one
 import { installPlusCursor } from './plusCursor.js';   // PLUS7: the gauntlet cursor
 import { installWindowMotion } from './windowMotion.js';   // PLUS1/WM1: windows unfold and fold - Enhanced Plus only
 import { isEnhancedPlus } from '../systems/uiSkin.js';   // PLUS1: the Plus sheet is laid only under Plus
 import { pageHas } from '../systems/pageQuery.js';   // PERF-URL: the page's query, parsed once a search
+import { paceControlsCss } from './travelPaceControls.js';   // PACE-DIALS: the Overworld block's speed dials
+import { SERPENT_RING_MAP_CSS } from './serpentMapMark.js';   // SERPENT-TIMERS: the sea serpent's row marked in its waters' own colour
+import { SD_RING_MAP_CSS } from './sdMapMark.js';   // SD2c: the Super dungeon's row in its omen's brass
+import { TIER_MARKS, tierMarkCss } from './lootTierMarks.js';   // LOOT-MARKS: the quick loot's tier gem and wash
+import { SUPPORT_MARKS_CSS } from './supportAsks.js';   // SUPPORT1: the asks' marks - the door's icons and the website's corner, one drawing
 
 /**
  * QUICK-LOOT-STATS: THE PLAQUE'S LAYOUT NUMBERS LIVE WITH THE DRESS.
@@ -302,6 +307,7 @@ select, input, textarea { font: inherit; }
 .svwho { grid-column: 2; grid-row: 1; min-width: 0; }
 .svwho h3 { font-family: var(--display); font-weight: 400; font-size: 21px; margin: 0 0 2px; overflow-wrap: anywhere; }
 .svsub { color: var(--bone); font-size: 13px; margin: 0 0 2px; }
+.svhouse { color: #d8c79a; font-size: 12px; font-style: italic; margin: 0 0 2px; overflow-wrap: anywhere; }   /* LEGACY7: the house on the roster's tile */
 .svwhen { color: var(--dim); font-size: 12px; margin: 0 0 10px; }
 .svwho .stats { gap: 4px 14px; margin: 0; }
 
@@ -992,6 +998,7 @@ img.fit { image-rendering: pixelated; }   /* AUDIT UI A1: a fitted picture drawn
 .itemrow[data-rarity="legendary"] .itemname > span:first-child, .packdetail .card[data-rarity="legendary"] h3, .wplaque-row[data-rarity="legendary"] > span:first-child { color: #e07a2e; }
 .itemrow[data-rarity="aetheric"] .itemname > span:first-child, .packdetail .card[data-rarity="aetheric"] h3, .wplaque-row[data-rarity="aetheric"] > span:first-child { color: #bfe8ff; }
 .itemrow[data-rarity="artifact"] .itemname > span:first-child, .packdetail .card[data-rarity="artifact"] h3, .wplaque-row[data-rarity="artifact"] > span:first-child { color: #b57bee; }
+.itemrow[data-rarity="gilded"] .itemname > span:first-child, .packdetail .card[data-rarity="gilded"] h3, .wplaque-row[data-rarity="gilded"] > span:first-child { color: #ffcf4d; }
 .packdetail ul.rarity { list-style: none; margin: 4px 0 10px; padding: 0; font-family: var(--data); font-size: 13px; line-height: 1.5; }
 .packdetail ul.rarity li:first-child { text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; color: var(--dim); }
 .packdetail ul.rarity li.lore { color: var(--dim); font-style: italic; }   /* CARD-FIT: by its own class - the card's list carries no lore now, and its last AFFIX wore the lore's dim italic */
@@ -1173,6 +1180,10 @@ img.fit { image-rendering: pixelated; }   /* AUDIT UI A1: a fitted picture drawn
 .card a.act { display: inline-flex; align-items: center; text-decoration: none; }
 .card .acctpatreon .acctwearrow { align-items: center; }
 .card .acctpatreonstate { display: inline-flex; align-items: center; font-size: 12.5px; color: var(--dim); }
+/* NAME-AS - THE NAME THE ROOM READS: two of the wardrobe's own buttons in the card's own colour (the chosen one at full
+   strength behind the doubled edge, the other dimmed, as a title worn and held), and one quiet line under them saying
+   what the other players see - tight under its buttons, where .meta's own foot would part them. */
+.card .acctnameas p.meta { margin: 0; }
 /* One rule per title and per glyph, WALKED out of the vocabulary in
    ui/playerBadge.js - so the gold on this card and the gold over a
    head are one fact, and a title added to the token gets a colour
@@ -1200,6 +1211,72 @@ ${badgeCss()}
   padding: 1px 5px; border-radius: 2px; min-width: 1.4em; text-align: center; font-variant-numeric: tabular-nums;
   color: #f2c46b; background: rgba(242, 196, 107, 0.1); border: 1px solid rgba(242, 196, 107, 0.8); margin-right: 0.35em; }
 .card h3 .acctrenown:empty { display: none; }   /* AUDIT RENOWN1 UI-8: an empty box is never drawn, whatever the script above it does */
+
+/* ═══ PROFILE-MENU: THE SIGNED-IN CARD IS A PROFILE ════════════════
+   (2026-10-07, Mac: "organize and detail the player profile (the top
+   right icon section)".) ui/enhancedAccount.js draws it in the order a
+   player reads one - WHO (the plate), WHAT THEY HAVE DONE (the record,
+   the characters), WHAT THEY WEAR, THE ACCOUNT - each a section under a
+   head of its own. Paint here; under Plus the record's tiles play the
+   kit's panel role (ui/enhancedFrame.js). */
+.card.acctin { display: flex; flex-direction: column; gap: 16px; }
+/* THE PLATE: the portrait over the name, on the window's one axis. */
+.card .acctplate { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;
+  padding-bottom: 16px; border-bottom: 1px solid var(--iron); }
+.card .acctportrait { position: relative; flex: none; width: 88px; height: 88px; border-radius: 50%; overflow: hidden;
+  border: 3px solid var(--brass); background: radial-gradient(circle at 50% 38%, #1b2029 0%, #0a0c11 72%);
+  box-shadow: 0 0 0 2px var(--iron), 0 3px 10px rgba(0,0,0,0.65); }
+.card .acctportrait canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%;
+  image-rendering: pixelated; }
+.card .acctportrait.hasface { background: #0a0c11; }   /* the face fills the well - no night glow behind it */
+.card .acctsilhouette { position: absolute; inset: 0; }
+.card .acctsilhouette::before { content: ''; position: absolute; left: 31%; top: 16%; width: 38%; height: 40%;
+  border-radius: 48% 48% 44% 44%; background: #3a424d; }
+.card .acctsilhouette::after { content: ''; position: absolute; left: 12%; top: 58%; width: 76%; height: 60%;
+  border-radius: 50% 50% 0 0; background: #3a424d; }
+.card .acctident { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
+.card .acctident h3 { margin: 0; overflow-wrap: anywhere; }
+/* the title worn, in its own colour (the badge rule below), and the glyphs shown */
+.card .acctworn { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 10px; }
+.card .acctworntitle { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+.card .acctwornword, .card button.acttitle .acttitleword { display: inline-block; }
+.card h3 .acctname { vertical-align: middle; }
+.card .acctworn .acctglyph { gap: 0; }
+.card .acctworn .acctglyphart { width: 18px; height: 18px; }
+.card .acctcharline { font-size: 13px; color: var(--dim); overflow-wrap: anywhere; }
+/* THE SECTIONS: two columns where the window is wide, one where it is not (a container, so the WINDOW's width says) */
+.card.acctin { container-type: inline-size; }
+.card .acctgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+/* AUDIT PROFILE-MENU P2: two columns only where both have something in them (ui/enhancedAccount.js marks the grid) */
+@container (min-width: 600px) { .card .acctgrid.acctgrid2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; } }
+.card .acctcol { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.card .acctsec { min-width: 0; }
+.card .acctsec .acctwear, .card .acctsec ul.acctfacts { margin-bottom: 0; }
+/* a section's head: the heading caps between two engraved wings */
+.card .acctsechead { display: flex; align-items: center; gap: 10px; margin: 0 0 8px;
+  font-size: 12px; font-weight: 400; letter-spacing: 0.22em; text-indent: 0.22em; text-transform: uppercase; color: var(--brass); }
+.card .acctsechead::before, .card .acctsechead::after { content: ''; flex: 1; height: 1px; background: var(--iron); }
+/* THE RECORD: a tile a deed - the figure large, its name small under it */
+.card ul.acctfacts.acctrecord { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.card ul.acctfacts.acctrecord li { flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  padding: 10px 8px; border: 2px solid var(--iron); background: rgba(0,0,0,0.25); text-align: center; }
+.card ul.acctfacts.acctrecord li:last-child { border-bottom: 2px solid var(--iron); }
+.card ul.acctfacts.acctrecord .acctkey { order: 2; flex: none; font-size: 11px; letter-spacing: 0.12em; }
+.card ul.acctfacts.acctrecord .acctval { order: 1; flex: none; font-size: 17px; line-height: 1.2; }
+.card ul.acctfacts.acctrecord .acctbar { order: 3; flex: none; margin-top: 4px; }
+/* the duels' tile takes the row: its figure is words, and its bar is the share won */
+.card ul.acctfacts.acctrecord li:has(.acctbar) { grid-column: 1 / -1; }
+.card ul.acctfacts.acctrecord li:has(.acctbar) .acctval { font-size: 15px; }
+/* THE CHARACTERS: a row each, the way to the next level drawn under it */
+.card ul.acctfacts.acctchars li { flex-wrap: wrap; gap: 6px 12px; }
+.card ul.acctfacts.acctchars .acctkey { display: none; }
+.card ul.acctfacts.acctchars .acctval { font-size: 14px; }
+/* THE BAR: a meter in the skin's brass, the browser's own <progress> told how to draw (ACC1e: no style from script) */
+.card progress.acctbar { -webkit-appearance: none; appearance: none; display: block; flex: 1 0 100%; width: 100%; height: 8px;
+  margin: 2px 0 0; border: 1px solid var(--iron); background: #0b0e12; color: var(--brass); }
+.card progress.acctbar::-webkit-progress-bar { background: #0b0e12; }
+.card progress.acctbar::-webkit-progress-value { background: linear-gradient(180deg, #f3cf86 0 2px, #c08a3e 2px 5px, #7a5424 5px); }
+.card progress.acctbar::-moz-progress-bar { background: linear-gradient(180deg, #f3cf86 0 2px, #c08a3e 2px 5px, #7a5424 5px); }
 
 /* ═══ THE RECOVERY CODE ═══════════════════════════════════════════
    THE ONE MOMENT THIS STRING EXISTS. Email is completely optional
@@ -1619,6 +1696,12 @@ ${badgeCss()}
   font-family: var(--body, sans-serif); color: var(--bone);
 }
 .hmroot:active { cursor: grabbing; }
+/* FIELD BUGS 2026-10-09e MAP-SCALE ("icons and text too small on high resolutions"): THE MAP'S SCALE (ui/mapScale.js,
+   set on the root by ui/heldMap.js _layout as --hm-ui) - every piece over the sheet is zoomed by it as one, as the
+   sheet's own ink is drawn at it. A zoomed box multiplies its viewport units too (standardized CSS zoom), so every
+   bound below that is written in vw or vh divides by it: a bound stays the screen's, its margins the chrome's. */
+.hmroot { --hm-ui: 1; }
+.hmroot > :not(.hmstage) { zoom: var(--hm-ui, 1); }
 /* MAP3: the hands lane - the Morrowind arm and the world show through,
    the ink canvas lies on the held paper under its matrix3d */
 .hmroot.hmlanehands .hmink { will-change: transform; }
@@ -1628,7 +1711,7 @@ ${badgeCss()}
 .hmroot .hmfoot { background: rgba(10, 12, 17, 0.94); padding: 6px 10px; border-radius: 4px;
   /* EM3-3D fix (Mac's shot: the key tips ran into the HUD's bars): near-opaque, so the vitals and the HUD's words
      under the window do not read through the line, and never wider than the screen - it wraps instead */
-  max-width: calc(100vw - 36px); flex-wrap: wrap; row-gap: 4px; }
+  max-width: calc(100vw / var(--hm-ui, 1) - 36px); flex-wrap: wrap; row-gap: 4px; }
 .hmstage { position: absolute; will-change: transform; }
 /* the painting is 1448x1086 and is only ever shown SMALLER than that, so
    it is scaled smooth - a pixelated downscale would alias its dither.
@@ -1662,7 +1745,7 @@ ${badgeCss()}
 .hmsearch input:focus { outline: none; border-color: var(--brass); }
 .hmresults {
   display: none; position: absolute; top: 100%; left: 0; right: 0;
-  margin: 4px 0 0; padding: 0; list-style: none; max-height: 46vh;
+  margin: 4px 0 0; padding: 0; list-style: none; max-height: calc(46vh / var(--hm-ui, 1));
   overflow: auto; background: rgba(10, 13, 17, 0.94);
   border: 1px solid var(--iron); z-index: 1;
 }
@@ -1674,9 +1757,10 @@ ${badgeCss()}
 .hmresult:hover { background: #12161b; }
 .hmresult-region { color: var(--dim); font-size: 12px; }
 .hmclose { pointer-events: auto; }
+.hmfindme { pointer-events: auto; margin-right: 8px; }
 .hmcard {
   display: none; position: absolute; right: 18px; bottom: 18px;
-  width: min(340px, calc(100vw - 36px)); padding: 18px 20px;
+  width: min(340px, calc(100vw / var(--hm-ui, 1) - 36px)); padding: 18px 20px;
   background: rgba(10, 13, 17, 0.92); border: 1px solid var(--iron);
   margin-bottom: env(safe-area-inset-bottom);
 }
@@ -1727,7 +1811,7 @@ ${badgeCss()}
 .hmports.on { color: var(--brass); border-color: var(--brass); }
 .hmbox {
   display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  width: min(460px, calc(100vw - 36px)); max-height: 70vh; overflow: auto; padding: 18px 22px;
+  width: min(460px, calc(100vw / var(--hm-ui, 1) - 36px)); max-height: calc(70vh / var(--hm-ui, 1)); overflow: auto; padding: 18px 22px;
   background: rgba(10, 13, 17, 0.94); border: 1px solid var(--iron); z-index: 2;
 }
 .hmbox.open { display: block; }
@@ -1744,7 +1828,7 @@ ${badgeCss()}
   .hmsearch { flex: 1 1 100%; order: 3; }
   .hmhint { display: none; }
   .hmcard { right: 12px; bottom: 76px; }
-  .hmfoot { left: 12px; bottom: 12px; flex-wrap: wrap; max-width: calc(100vw - 24px); }
+  .hmfoot { left: 12px; bottom: 12px; flex-wrap: wrap; max-width: calc(100vw / var(--hm-ui, 1) - 24px); }
   /* AUDIT GUIDE K6: the legend wraps inside the foot - it ran nowrap off a phone's edge, the quest's word first lost */
   .hmlegend { flex: 1 1 auto; flex-wrap: wrap; min-width: 0; }
 }
@@ -1787,11 +1871,15 @@ ${badgeCss()}
 .px-win .px-tr { right: -1px; top: -1px; transform: translate(50%,-50%); }
 .px-win .px-bl { left: -1px; bottom: -1px; transform: translate(-50%,50%); }
 .px-win .px-br { right: -1px; bottom: -1px; transform: translate(50%,50%); }
-.px-tabs { display: flex; justify-content: center; gap: 4px;
+/* AUDIT HOLDINGS C4: four tabs - Quests, Stats, Holdings, System - outgrew a narrow window (the strip never wrapped,
+   its host clips: under ~720 px both end tabs were cut); tighter under 900 px and 660 px, wrapped as a last resort, never cut */
+.px-tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px;
   border-bottom: 2px solid rgba(125,116,96,0.55); padding: 6px 8px 2px; }
-.px-tabs button { font: inherit; font-size: 20px; letter-spacing: 0.16em; text-indent: 0.16em;
+/* AUDIT LEGACY U5: five tabs (Project Legacy's Family) - the spacing a step tighter, so the five stand on one row in the
+   window's 920 px; the narrower steps below are unchanged */
+.px-tabs button { font: inherit; font-size: 20px; letter-spacing: 0.12em; text-indent: 0.12em;
   text-transform: uppercase; color: #d8cfae; background: none; border: 0; cursor: pointer;
-  min-height: 44px; padding: 6px 18px; display: flex; align-items: center; gap: 12px;
+  min-height: 44px; padding: 6px 12px; display: flex; align-items: center; gap: 8px;
   text-shadow: 2px 2px 0 rgba(0,0,0,0.8); transition: none; }
 .px-tabs button .px-c { font-size: 15px; color: rgb(243,239,44); visibility: hidden;
   text-shadow: 2px 2px 0 rgb(93,77,12); }
@@ -2013,6 +2101,23 @@ ${badgeCss()}
    in view while the list scrolls, and a second Continue closes the list.
    (The button reads Confirm since UXB1-B.) */
 .ctl-head { position: sticky; top: 0; z-index: 2; }
+/* UNSAVED-MARK (FIELD BUGS 2026-10-11, "It shows that my selected key is set ... it just didn't save"): on Settings the
+   toolbar is sticky at the top of the same scroll (ORG2), and stood over the head and its Confirm - the head sticks
+   under it now, at the toolbar's own measured height (enhancedMenu.js optionsToolbar, --opt-tools-h). A key a Confirm
+   still owes is marked on its row, and the Confirm that owes it is lit. */
+.opt-tools + .opt-body .ctl-head { top: var(--opt-tools-h, 0px); }
+.opt-tools + .opt-body .ctl-row { scroll-margin-top: calc(var(--opt-tools-h, 0px) + 160px); }   /* a row scrolled to (a pad's focus, a find) lands under both */
+.ctl-row.ctl-unsaved { box-shadow: inset 3px 0 0 var(--brass); }
+.ctl-row.ctl-unsaved .ctl-unsaved-note, .ctl-pending { color: var(--brass); }
+.ctl-head.ctl-owed .ctl-continue { box-shadow: 0 0 0 2px var(--brass), 0 0 12px rgba(192,138,62,0.55); }
+/* ...and on a phone the scroll between the toolbar and the rail is a few rows tall: the head is its buttons on one line
+   and the line a Confirm owes - the law's sentence is the intro's to say there, and each owed row says it again */
+@media (max-width: 480px) {
+  .ctl-head:not(.ctl-asking) > p.meta { display: none; }
+  .ctl-head:not(.ctl-asking) .acts { flex-wrap: nowrap; gap: 6px; }
+  .ctl-head:not(.ctl-asking) .acts .act { flex: 1 1 0; min-width: 0; padding-left: 6px; padding-right: 6px; }
+  .ctl-head .ctl-notice { margin-top: 6px; }
+}
 .ctl-foot { display: flex; justify-content: flex-end; }
 .ctl-row:last-child { border-bottom: 0; }
 /* UXB1-D (2026-09-25, the UX backlog): a question about a key stands in the
@@ -2087,9 +2192,24 @@ ${badgeCss()}
 .px-qverdict { text-align: center; color: #9c937d; font-size: 14px; letter-spacing: 0.2em;
   text-transform: uppercase; margin: -6px 0 12px; text-shadow: 2px 2px 0 rgba(0,0,0,0.7); }
 .px-qverdict.won { color: rgb(243,239,44); text-shadow: 2px 2px 0 rgb(93,77,12); }
+@media (max-width: 900px) {
+  .px-tabs button { font-size: 18px; letter-spacing: 0.1em; text-indent: 0.1em; padding: 6px 10px; gap: 6px; }
+}
+@media (max-width: 660px) {
+  .px-tabs button { font-size: 15px; letter-spacing: 0.06em; text-indent: 0.06em; padding: 6px 6px; gap: 0; }
+  .px-tabs button .px-c { display: none; }
+}
+/* AUDIT LEGACY II U9: five tabs (Project Legacy's Family) on a phone held upright and a small tablet - a step tighter
+   again, so the strip stands on one row from 320 px; wrapped still as the last resort, never cut */
+@media (max-width: 780px) and (min-width: 661px) {
+  .px-tabs button { font-size: 16px; letter-spacing: 0.06em; text-indent: 0.06em; padding: 6px 8px; gap: 4px; }
+}
+@media (max-width: 420px) {
+  .px-tabs { gap: 2px; padding: 6px 4px 2px; }
+  .px-tabs button { font-size: 13px; letter-spacing: 0.02em; text-indent: 0.02em; padding: 6px 4px; }
+}
 @media (max-width: 480px) {
   .px-win { width: 100vw; height: calc(100dvh - 48px); border-left: 0; border-right: 0; }
-  .px-tabs button { font-size: 17px; letter-spacing: 0.1em; text-indent: 0.1em; padding: 6px 10px; gap: 8px; }
   /* PX4: the journal stacks - the rail is a strip of rows across the
      top, the detail beneath, both still whole pixels. */
   .px-journal { flex-direction: column; }
@@ -2110,22 +2230,25 @@ ${badgeCss()}
 /* INTRO2: one supplied wordmark, at its natural aspect ratio. BR4: it
    carries its own alpha, so it draws with no blend mode - screen would
    erase its black outlines and the ONLINE lettering. */
-.px-wordmark:has(.brand-logo) { width: min(540px, 84vw); line-height: 0; flex-shrink: 0; }
+/* BR5: the DFO mark is 526 x 322 (1.63:1) and painted to its edges, where
+   BR4's was 2.48:1 with its last 81 of 850 rows empty. Each box keeps the
+   HEIGHT it had, so nothing above or below it moves: the door's old mark
+   stood 540 x 769/2112 tall, and the same height at the new ratio is
+   540 x 769/2112 x 526/322 = 321px wide (84vw -> 50vw; the short landscape
+   screen's 394px -> 234, 56vw -> 33.3vw). */
+.px-wordmark:has(.brand-logo) { width: min(321px, 50vw); line-height: 0; flex-shrink: 0; }
 .brand-logo { display: block; width: 100%; height: auto; object-fit: contain;
   image-rendering: auto; }
-/* BR4: the file's last 81 of its 850 rows are empty canvas below the
-   banner, so the door and the masthead pull what follows up over them
-   (a margin in % is of the WIDTH: 81 of 2112). With that, and 540px
-   where INTRO2's 3:1 mark had 590, the taller mark spends the door's old
-   height - at 590 it pushed the menu off a 720px screen. Not the intro:
-   its title is centred on its box, and the box is what its probe
-   measures against the tap target. */
-.px-wordmark .brand-logo, .brand-home .brand-logo { margin-bottom: calc(-100% * 81 / 2112); }
+/* BR5: the masthead's mark spent 769/2112 of the column's width in height
+   (BR4's file less its empty rows); the DFO mark spends the same height at
+   769/2112 x 526/322 = 59.5% of the width, centred. No margin pulls
+   anything up any more - the file has no empty rows. */
+.brand-home .brand-logo { width: 59.5%; margin: 0 auto; }
 .brand-home { display: block; width: 100%; border: 0; padding: 0; background: transparent; cursor: pointer; }
 .brand-home:focus-visible { outline: 2px solid var(--brass); outline-offset: 6px; }
 .shell .brand h1:has(.brand-logo) { line-height: 0; }
 @media (max-height: 560px) and (min-width: 600px) {
-  .px-wordmark:has(.brand-logo) { width: min(394px, 56vw); }   /* BR4: INTRO2's 430px, at the same height */
+  .px-wordmark:has(.brand-logo) { width: min(234px, 33.3vw); }   /* BR4: INTRO2's 430px, at the same height; BR5: BR4's 394px, at the same height */
 }
 .px-wordmark small { display: block; font-family: ${PIXEL_STACK};
   font-size: 16px; letter-spacing: 0.5em; text-indent: 0.5em;
@@ -2156,7 +2279,7 @@ ${badgeCss()}
 /* PX1b: THREE ZONES - build left, the skin toggle dead center, About
    the bottom-right box. A grid, because flex space-between centers the
    middle child only when the outer two happen to weigh the same. */
-.px-foot { position: absolute; left: 0; right: 0; bottom: 0;
+.px-foot { position: absolute; left: 0; right: 0; bottom: 0; pointer-events: none;
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: end;
   padding: 12px 16px; font-size: 15px; letter-spacing: 0.12em;
   text-transform: uppercase; color: #9c937d;
@@ -2164,10 +2287,15 @@ ${badgeCss()}
 .px-build { justify-self: start; }
 /* MENU-TOGGLE: the skin switch that stood centred is retired; the centre is left open and About keeps the right. */
 .px-foot .px-about { grid-column: 3; }
+/* LOAD1: the Screenshots plaque - About's box, beside it on the right. */
+.px-footright { grid-column: 3; justify-self: end; display: flex; align-items: flex-end; gap: 10px; }
+/* TUT1: the Tutorials plaque - About's box, over the build line at the left. */
+.px-footleft { grid-column: 1; justify-self: start; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.px-footleft .px-about { justify-self: auto; }
 /* The About box: the ONE box on the boxless face, which is what makes
    it read as a plaque rather than a menu row. 2px border in whole
    pixels, gold on hover by the same pair. */
-.px-about { font: inherit; font-size: 16px; letter-spacing: 0.14em; text-indent: 0.14em;
+.px-about { pointer-events: auto; font: inherit; font-size: 16px; letter-spacing: 0.14em; text-indent: 0.14em;
   text-transform: uppercase; color: #d8cfae; cursor: pointer;
   justify-self: end; min-height: 44px; padding: 8px 18px;
   background: rgba(10,12,17,0.55); border: 2px solid #7d7460;
@@ -2195,9 +2323,10 @@ ${badgeCss()}
 }
 .px-profile:focus-visible { outline: none; }
 /* L10N1b: THE FIRST-RUN LANGUAGE OFFER - the top-left corner, the About box's plate, the question in the language it
-   offers. Gone for good once answered. */
+   offers. Gone for good once answered. It stands under SUPPORT1's asks, which hold the corner itself (their box is
+   52px tall: a 44px mark, its padding and its border), and above them should the two ever meet. */
 .px-langoffer {
-  position: absolute; top: 16px; left: 18px; z-index: 4; max-width: min(360px, calc(100vw - 36px));
+  position: absolute; top: 76px; left: 18px; z-index: 5; max-width: min(360px, calc(100vw - 36px));
   padding: 12px 14px; background: rgba(10,12,17,0.95); border: 2px solid var(--brass);
   box-shadow: 0 0 0 2px var(--iron), 0 3px 10px rgba(0,0,0,0.65); color: #d8cfae;
 }
@@ -2207,7 +2336,7 @@ ${badgeCss()}
 .px-langoffer-note { font-size: 0.85em; opacity: 0.8; margin-bottom: 8px; }
 @media (max-width: 480px) {
   /* a phone's mark is a 48px portrait 10px from the right: the offer stands beside it, never over it */
-  .px-langoffer { top: 10px; left: 10px; max-width: calc(100vw - 88px); }
+  .px-langoffer { top: 70px; left: 10px; max-width: calc(100vw - 88px); }
 }
 /* THE PORTRAIT: a round well rimmed in brass over the iron ring, the
    face inside at its own pixels. */
@@ -2251,8 +2380,31 @@ ${badgeCss()}
   max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-size: 12px; letter-spacing: 0.04em; color: #9d957f;
 }
+/* SUPPORT1: ON THE FRONT DOOR THE CAPTION IS BOUNDED IN PIXELS. Its two lines' 14ch and 22ch are the font's - up to
+   158px in Pixelify Sans - and a reach that is the font's cannot be the band's (THE CORNERS' BAND, below). 140px keeps
+   "No character yet" whole (123px) and holds the mark's reach to 234px, so the band ended at 1007 under BR4's 540px
+   mark and a 1024x768 door still fit without a scroll (BR5's 321px mark ends it at 788); a character's longer line
+   ends in its ellipsis three letters sooner. */
+.px-home:not(.px-over) .px-profilename { max-width: min(14ch, 140px); }
+.px-home:not(.px-over) .px-profilesub { max-width: min(22ch, 140px); }
 .px-profile:hover .px-profilename, .px-profile:focus-visible .px-profilename {
   color: rgb(243,239,44); text-shadow: 2px 2px 0 rgb(93,77,12); }
+
+/* ── SUPPORT1: THE ASKS (Mac, 2026-10-05: "add the patron/kofi ingame on the main menu as 2 icons") ──────────────────
+   The door's TOP-LEFT corner, the one it had free - and the only home a pair of icons has at every size without
+   standing on something a player presses: the foot's centre runs under the last row of the menu on a 768px screen (the
+   PX8 shape), and a phone's foot is full (the build, and Screenshots over About). Patreon's mark and Ko-fi's mug,
+   drawn by ui/supportAsks.js exactly as the website's corner draws them, a 44px target each, in a plaque wearing the
+   About box's own face (ACC1f: two corner marks that look unrelated read as two kinds of thing) - the kit's carved
+   frame under Plus (ui/enhancedFrame.js, the window role). A mark lights in the classic pair's gold under the pointer
+   and the keyboard (the marks' own rule). */
+${SUPPORT_MARKS_CSS}
+.px-support { position: absolute; top: 16px; left: 18px; z-index: 4; display: flex; gap: 2px; padding: 2px;
+  background: rgba(10,12,17,0.55); border: 2px solid #7d7460; }
+/* Each mark stands on its feet 12px up, so the two five-row bodies (MARK_BODY_ROWS) centre in the 44px cell side by
+   side and the mug's steam rises into the room above its own. */
+.px-supportlink { display: flex; align-items: flex-end; justify-content: center; width: 44px; height: 44px;
+  padding-bottom: 12px; border: 0; outline: none; }
 
 /* THE WINDOW is the pause window's frame with the account card inside
    it, so the door has ONE kind of modal rather than two. It is
@@ -2305,6 +2457,43 @@ ${badgeCss()}
 /* The card inside brings its own frame, and a box inside a box reads
    as a mistake - the window IS the frame here. */
 .px-win.px-acctwin .card.acct { border: 0; background: none; padding: 0; margin: 0; }
+/* PROFILE-MENU: signed in, the window widens for the profile's two columns, and the sections read as ledgers - a
+   key left and its value right - under the plate that keeps the window's one axis. */
+.px-win.px-acctwin:has(.card.acct.acctin) { max-height: min(720px, calc(100dvh - clamp(270px, 33vh, 400px) - 84px)); }
+/* AUDIT PROFILE-MENU P2: wide only for two columns - a profile with one has nothing to stand beside it */
+.px-win.px-acctwin:has(.acctgrid2) { width: min(820px, 94vw); }
+/* AUDIT PROFILE-MENU P1: A SHORT SCREEN GIVES IT THE HEIGHT, as SHORT-TOUCH gives the sign-in window - the stage drops its
+   deep top padding there, but the rule above still took the 270px it no longer has: a landscape phone (844x390) drew a
+   window 36px tall, and 740x360 one of 6 */
+@media (max-height: 560px) { .px-win.px-acctwin:has(.card.acct.acctin) { max-height: calc(100dvh - 20px); } }
+/* AUDIT PROFILE-MENU P4: CLOSE IS ALWAYS IN REACH. The profile is long, and its row of presses (Change password, Sign out,
+   Close) stood under all of it - 470px of scrolling on a phone to put the window away. It stands at the window's foot,
+   over a fade of the window's own ink, wherever the body is scrolled. */
+.px-win.px-acctwin .card.acct.acctin .acts { position: sticky; bottom: 0; z-index: 1; padding-bottom: 20px;
+  background: linear-gradient(180deg, transparent, var(--ink) 16px); }
+/* the body's own foot padding is the bar's (scrolled words show through a scroller's padding, under a bar stuck above it) */
+.px-win.px-acctwin:has(.card.acct.acctin) .px-body { padding-bottom: 0; }
+/* a phone: the four presses two to a row, not four rows of the screen */
+@media (max-width: 480px) {
+  .px-win.px-acctwin .card.acct.acctin .acts { gap: 8px; }
+  .px-win.px-acctwin .card.acct.acctin .acts .act { flex: 1 1 40%; min-width: 0; padding-left: 8px; padding-right: 8px; }
+}
+.px-over .px-win.px-acctwin:has(.card.acct.acctin) { max-height: min(760px, 86dvh); }
+/* a phone: the window is the screen's, the door shut behind it - over the corner marks and the menu, which read through
+   a 0.6 scrim under a window too short to cover them */
+@media (max-width: 480px) {
+  .px-stage.px-acctstage { padding: max(10px, env(safe-area-inset-top)) 8px max(10px, env(safe-area-inset-bottom)); background: rgba(8,10,15,0.88); }
+  .px-win.px-acctwin, .px-win.px-acctwin:has(.card.acct.acctin) { width: 100%; max-height: calc(100dvh - 20px); }
+  .px-win.px-acctwin .px-body { padding: 18px 16px 20px; }
+}
+.px-win.px-acctwin .card.acct.acctin .acctsec { text-align: left; }
+.px-win.px-acctwin .card.acct.acctin ul.acctfacts li { justify-content: space-between; }
+.px-win.px-acctwin .card.acct.acctin ul.acctfacts .acctval { text-align: right; }
+.px-win.px-acctwin .card.acct.acctin ul.acctfacts.acctrecord li { justify-content: center; }
+.px-win.px-acctwin .card.acct.acctin ul.acctfacts.acctrecord .acctval { text-align: center; }
+.px-win.px-acctwin .card.acct.acctin ul.acctfacts.acctchars .acctval { text-align: left; }
+.px-win.px-acctwin .card.acct.acctin .acctwearrow { justify-content: flex-start; }
+.px-win.px-acctwin .card.acct.acctin .acts { padding-top: 14px; border-top: 1px solid var(--iron); }
 
 /* DISC23-B2 (Mac: "a choosable skin system in the menu player profile
    system itself"): THE SKIN, under the account on the same axis. No box
@@ -2385,7 +2574,7 @@ ${badgeCss()}
 .px-timerswin .tm-row { display: flex; align-items: center; gap: 12px; padding: 9px 10px 9px 14px; position: relative;
   border-bottom: 1px solid rgba(125,116,96,0.25); }
 .px-timerswin .tm-row::before { content: '\\25c6'; position: absolute; left: 0; top: 12px; font-size: 9px; color: var(--tm-kind, #9c937d); }
-.px-timerswin .tm-gate { --tm-kind: #e2554c; } .px-timerswin .tm-raid { --tm-kind: #f2c46b; } .px-timerswin .tm-battle { --tm-kind: #d98074; }
+.px-timerswin .tm-gate { --tm-kind: #e2554c; } .px-timerswin .tm-serpent { --tm-kind: ${SERPENT_RING_MAP_CSS}; } .px-timerswin .tm-super { --tm-kind: ${SD_RING_MAP_CSS}; } .px-timerswin .tm-raid { --tm-kind: #f2c46b; } .px-timerswin .tm-battle { --tm-kind: #d98074; }
 .px-timerswin .tm-seat { --tm-kind: #c08a3e; } .px-timerswin .tm-reset { --tm-kind: #85a8a1; }
 .px-timerswin .tm-row.live { background: rgba(192,138,62,0.08); }
 .px-timerswin .tm-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -2400,14 +2589,74 @@ ${badgeCss()}
 /* AUDIT TIMERS1 UI-4: STONE'S LIGHT GROUND (AUDIT MERGE-PLUS D3's law) - the window takes the theme's panel, and Stone's
    light grey left the dim words at 2.6:1 and the where line at 3.0; lifted past 4.5:1 over a hard black drop. */
 :root[data-plus-theme="stone"] .px-timerswin { --dim: #e2dccd; --brass: #ffd98a; text-shadow: 1px 1px 0 rgba(5,6,8,0.85); }
+/* AUDIT PROFILE-MENU P3: the profile on Stone's light ground, the same lift - its tiles' names read 2.3:1 and its heads 2.6:1 */
+:root[data-plus-theme="stone"] .px-acctwin { --dim: #e2dccd; --brass: #ffd98a; text-shadow: 1px 1px 0 rgba(5,6,8,0.85); }
 :root[data-plus-theme="stone"] .px-timerswin .tm-where { color: #fbf8f0; }
 :root[data-plus-theme="stone"] .px-timerswin .tm-count { color: #ffe3a6; }
 :root[data-plus-theme="stone"] .px-timerswin .tm-row.live .tm-count { color: #c8ffd6; }
 @media (max-width: 560px) {
-  .px-timersword { display: none; }
   .px-win.px-timerswin .px-body { padding: 16px 14px 18px; }
   .px-timerswin .tm-count { font-size: 16px; }
 }
+/* SERVER-POST (Mac: "an ingame server mailbox that goes next to the hourglass in the pause menu. It should show
+   notifications whenever players have a message"): THE MAILBOX - an envelope beside the hourglass (ui/enhancedPost.js;
+   placed as the hourglass is, beside it - 360px off the edge stands in until it is measured), a count on it while
+   anything waits, and its window in the pause window's frame on the hourglass's own stage (.px-timersstage). */
+.px-postmark { position: absolute; top: 12px; right: 360px; z-index: 4; display: flex; align-items: center;
+  min-height: 44px; min-width: 44px; justify-content: center; padding: 0 6px; background: none; border: 0; cursor: pointer; }
+.px-postmark:focus-visible { outline: 2px solid #f3cf86; outline-offset: 2px; }
+.px-envelope { display: block; width: 30px; height: 24px; image-rendering: pixelated; filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.8));
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 8' shape-rendering='crispEdges'><rect x='0' y='0' width='10' height='8' fill='%23c08a3e'/><rect x='1' y='1' width='8' height='6' fill='%23d8cfae'/><rect x='1' y='1' width='1' height='1' fill='%23c08a3e'/><rect x='2' y='2' width='1' height='1' fill='%23c08a3e'/><rect x='3' y='3' width='1' height='1' fill='%23c08a3e'/><rect x='8' y='1' width='1' height='1' fill='%23c08a3e'/><rect x='7' y='2' width='1' height='1' fill='%23c08a3e'/><rect x='6' y='3' width='1' height='1' fill='%23c08a3e'/><rect x='4' y='4' width='2' height='1' fill='%23b8322b'/></svg>") center / contain no-repeat; }
+.px-postmark:hover .px-envelope, .px-postmark:focus-visible .px-envelope { transform: translateY(-2px); transition: transform 160ms steps(2); }
+.px-postbadge { position: absolute; top: 2px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  background: #b8322b; color: #fff4e0; font-size: 11px; line-height: 18px; text-align: center; letter-spacing: 0;
+  box-shadow: 0 0 0 2px #0a0c11; font-variant-numeric: tabular-nums; }
+.px-postbadge:empty { display: none; }
+@keyframes pm-nudge { 0%, 70%, 100% { transform: rotate(0deg); } 80% { transform: rotate(-8deg); } 90% { transform: rotate(8deg); } }
+.px-postmark.waiting .px-envelope { animation: pm-nudge 2.4s steps(6) infinite; }
+@media (prefers-reduced-motion: reduce) { .px-postmark.waiting .px-envelope { animation: none; } }
+.px-win.px-postwin { height: auto; max-height: min(680px, 86dvh); width: min(560px, 94vw); background: #0a0c11; }
+.px-win.px-postwin .px-body { padding: 20px 24px 22px; overflow-y: auto; }
+.px-postwin .pm-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.px-postwin .pm-title { margin: 0; font-size: 22px; letter-spacing: 0.18em; text-transform: uppercase; color: #efe8d6; }
+.px-postwin .pm-say { margin: 6px 0 4px; min-height: 16px; font-size: 12px; color: #e8a49c; }
+.px-postwin .pm-say.ok { color: #9fe8b4; }
+.px-postwin .pm-empty { color: var(--dim); font-size: 13px; }
+.px-postwin .pm-list { display: flex; flex-direction: column; }
+.px-postwin .pm-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 10px; text-align: left; cursor: pointer;
+  background: none; border: 0; border-bottom: 1px solid rgba(125,116,96,0.25); color: inherit; font: inherit; }
+.px-postwin .pm-row:hover { background: rgba(192,138,62,0.1); }
+.px-postwin .pm-row:focus-visible { background: rgba(192,138,62,0.14); outline: 2px solid #f3cf86; outline-offset: -2px; }   /* AUDIT SERVER-POST: the focus seen, not a tint alone */
+.px-postwin .pm-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.px-postwin .pm-dot { flex: 0 0 8px; width: 8px; height: 8px; background: transparent; }
+.px-postwin .pm-row.unread .pm-dot, .px-postwin .pm-row.gift .pm-dot { background: #f3cf86; box-shadow: 0 0 6px rgba(243,207,134,0.6); }
+.px-postwin .pm-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.px-postwin .pm-subject { font-size: 15px; color: #efe8d6; overflow-wrap: anywhere; margin: 0; }
+.px-postwin .pm-row.unread .pm-subject { color: #fff4e0; }
+.px-postwin .pm-from { font-size: 12px; color: var(--dim); margin: 0; }
+.px-postwin .pm-chip { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: 13px; text-align: right; }
+.px-postwin .pm-state { font-size: 11px; color: var(--dim); }
+.px-postwin .pm-piece { display: flex; flex-direction: column; gap: 8px; padding-top: 6px; }
+.px-postwin .pm-piece .pm-subject { font-size: 18px; }
+.px-postwin .pm-body { margin: 6px 0; font-size: 14px; line-height: 1.5; color: #e2dccd; white-space: pre-wrap; overflow-wrap: anywhere; }
+.px-postwin .pm-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px;
+  border: 1px solid rgba(192,138,62,0.55); background: rgba(192,138,62,0.08); }
+.px-postwin .pm-itemname { font-size: 16px; letter-spacing: 0.04em; }
+.px-postwin .pm-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; }
+.px-postwin [data-rarity="magic"] { color: #6f9ee8; } .px-postwin [data-rarity="rare"] { color: #e4c34f; } .px-postwin [data-rarity="legendary"] { color: #e07a2e; }
+.px-postwin [data-rarity="aetheric"] { color: #bfe8ff; } .px-postwin [data-rarity="artifact"] { color: #b57bee; } .px-postwin [data-rarity="gilded"] { color: #ffcf4d; }
+/* AUDIT SERVER-POST: the tiers above are LR1's own hexes (systems/lootRarity.js RARITIES, pinned against it - a stylesheet
+   never imports the loot ladder, which reaches the whole combat graph); on Stone's light panel the three darkest read
+   3.0-3.3:1 and are lifted past 4.5:1 there alone. */
+:root[data-plus-theme="stone"] .px-postwin [data-rarity="magic"] { color: #b4cdf7; }
+:root[data-plus-theme="stone"] .px-postwin [data-rarity="legendary"] { color: #f7b27a; }
+:root[data-plus-theme="stone"] .px-postwin [data-rarity="artifact"] { color: #dcbaf9; }
+:root[data-plus-theme="stone"] .px-postwin { --dim: #e2dccd; --brass: #ffd98a; text-shadow: 1px 1px 0 rgba(5,6,8,0.85); }
+@media (max-width: 560px) {
+  .px-win.px-postwin .px-body { padding: 16px 14px 18px; }
+  .px-postwin .pm-item { flex-direction: column; align-items: stretch; }
+}
+@media (max-height: 560px) { .px-win.px-postwin { max-height: calc(100dvh - 20px); } }   /* AUDIT SERVER-POST: a short screen's window, as the timers' */
 .px-over .px-win.px-acctwin { align-self: center; max-height: min(640px, 86dvh); }
 @media (max-width: 480px) {
   /* On a phone the wordmark owns the top, so the mark loses its caption
@@ -2415,6 +2664,7 @@ ${badgeCss()}
   .px-profile { top: 10px; right: 10px; }
   .px-portrait { width: 48px; height: 48px; }
   .px-profiletext { display: none; }
+  .px-support { top: 10px; left: 10px; }   /* SUPPORT1: the asks mirror it, the opposite corner */
 }
 @media (max-width: 480px) {
   .px-wordmark { font-size: 60px; }
@@ -2425,6 +2675,9 @@ ${badgeCss()}
   .px-foot { grid-template-columns: 1fr auto; grid-template-areas: 'build about'; }
   .px-build { grid-area: build; align-self: center; }
   .px-foot .px-about { grid-area: about; grid-column: auto; }
+  /* LOAD1: on a phone the two plaques stack at the right - inside the 132px the stage keeps for the foot (PX8) */
+  .px-footright { grid-area: about; grid-column: auto; flex-direction: column; gap: 8px; }
+  .px-footleft { grid-area: build; grid-column: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .px-ground { animation: none; } }
 /* PX8, caught by the tap probe TWICE: centering the list on a SHORT
@@ -2437,7 +2690,48 @@ ${badgeCss()}
    foot stacks two rows only where width also runs out. */
 @media (max-height: 560px), (max-width: 480px) {
   .px-stage { justify-content: flex-start; padding: 7dvh 24px 132px; overflow-y: auto; }
+  /* Keep the ordinary pause panel above the clock; its body remains the scroller. */
+  .px-over > .px-stage:not(.px-acctstage):not(.px-timersstage) > .px-win { max-height: calc(100dvh - max(7dvh, 64px) - 64px); }
 }
+/* DOOR-FIT (2026-10-05, Mac: "Fix these now", of SUPPORT1's finding): THE FRONT DOOR NEVER CUTS ITSELF OFF. Its stage
+   centred by justify-content and scrolled only under PX8's 560px, a threshold set before the door grew to eight rows,
+   so a desktop window from 561 to about 690px tall (the eight-row door's own height) ran off BOTH ends of the screen
+   with nothing to scroll - the wordmark's top, and under about 620px the whole last row (1366x568, 1280x568). At every width the phone rule does not
+   take, it now starts at the top, scrolls, and centres by auto margins, which take the room that is left and none that
+   is not: where the door fits nothing moves, and where it does not every row can be reached. */
+@media (min-width: 481px) {
+  .px-home:not(.px-over) > .px-stage:not(.px-acctstage) { justify-content: flex-start; overflow-y: auto; }
+  .px-home:not(.px-over) > .px-stage:not(.px-acctstage) > :first-child { margin-top: auto; }
+  .px-home:not(.px-over) > .px-stage:not(.px-acctstage) > :last-child { margin-bottom: auto; }
+}
+/* SUPPORT1: THE CORNERS' BAND - the front door's twin of AUDIT TIMERS1 UI-2 (below), which stands the pause window
+   clear of the corner marks over a game. With a mark in each top corner, the door's stage starts below them wherever
+   the wordmark is wide enough to reach under either: the asks reach 122px in (18, their 98, the Plus frame's 6), the
+   profile 234 (18, its 58px portrait, the 12px gap, its caption's 140px bound, the frame's 6), and
+   (vw - min(321px, 50vw)) / 2 is less than 234 at every width under 789 (BR5: BR4's min(540px, 84vw) took it to
+   1008) - and on a phone, where the marks stand 10px in and the caption is hidden, always. Measured rather than argued: tools/supportAsksProbe.mjs maps the logo's own
+   opaque pixels onto the screen across 192 sizes, a caption at its bound among them. The band costs height, and where
+   the door no longer fits it scrolls (DOOR-FIT, above); its foot keeps the one-row foot's 68px, so the last row can be
+   scrolled clear of About and Screenshots. */
+@media (min-width: 481px) and (max-width: 788px) {
+  .px-home:not(.px-over) > .px-stage:not(.px-acctstage) { padding: 84px 24px 76px; }
+}
+@media (max-width: 480px) {
+  .px-home:not(.px-over) > .px-stage:not(.px-acctstage) { padding-top: max(7dvh, 72px); }
+}
+/* Inventory and Spellbook own direct window shells. Keep their controls above the measured controller legend. */
+html.plus-pad-prompts-visible .pack-shell,
+html.plus-pad-prompts-visible .sb-shell { box-sizing: border-box;
+  padding-bottom: calc(var(--plus-pad-clearance, 0px) + 8px); }
+html.plus-pad-prompts-visible .pack-shell > .pack-win,
+html.plus-pad-prompts-visible .sb-shell > .px-win {
+  max-height: calc(100dvh - var(--plus-pad-clearance, 0px) - 8px); }
+/* B12.01 + controller legend: reserve the measured wrapped bar, then the existing calendar row. */
+html.plus-pad-prompts-visible .px-clock { bottom: calc(var(--plus-pad-clearance, 0px) + 12px); }
+html.plus-pad-prompts-visible .px-over > .px-stage:not(.px-acctstage):not(.px-timersstage) {
+  padding-bottom: calc(var(--plus-pad-clearance, 0px) + 64px); }
+html.plus-pad-prompts-visible .px-over > .px-stage:not(.px-acctstage):not(.px-timersstage) > .px-win {
+  max-height: calc(100dvh - max(7dvh, 64px) - var(--plus-pad-clearance, 0px) - 64px); }
 /* AUDIT TIMERS1 UI-1: the timers window's stage is not the pause stage - two classes, so the rule above (one class,
    later) cannot take its padding and pin the window to the left; centred, its own padding, its list the one scroll.
    UI-2: and over the game on a short screen the pause window stands clear of the corner marks (the profile and the
@@ -2447,7 +2741,6 @@ ${badgeCss()}
 @media (max-height: 560px) {
   .px-stage.px-timersstage { padding: 10px 12px; }
   .px-win.px-timerswin { max-height: calc(100dvh - 20px); }
-  .px-timersword { display: none; }
   .px-over .px-stage:not(.px-acctstage):not(.px-timersstage) { padding-top: max(7dvh, 64px); }
 }
 
@@ -2571,6 +2864,26 @@ ${badgeCss()}
   background: #0a0c11; flex: 0 0 auto; }
 .talk-who h2 { font: inherit; font-size: 20px; letter-spacing: 0.08em; text-transform: uppercase; margin: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 2px 2px 0 rgba(0,0,0,0.8); }
+.talk-named { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+/* PLAIN-UI (bible/10-UI/Plain-Words.md): a living resident's regard under their name - the standing, a bar from -100 to
+   +100 with its middle marked, and the number; the standing's colour on the name and the mark */
+.talk-regard { display: flex; align-items: center; align-self: flex-start; gap: 8px; font: inherit; font-size: 14px; letter-spacing: 0.06em;
+  cursor: pointer; background: none; border: 0; padding: 2px 0; min-height: 24px; text-align: left; }
+/* AUDIT PLAIN-UI U10: the badge says it can be pressed - a mark after the number, the name underlined under a pointer */
+.talk-regard-value::after { content: ' ?'; color: #9c937d; }
+.talk-regard:hover .talk-regard-name, .talk-regard:focus-visible .talk-regard-name { text-decoration: underline dotted; }
+.talk-regard:focus-visible { outline: 1px dashed currentColor; outline-offset: 2px; }
+.talk-regard-words { grid-column: 1 / -1; margin: 0; font-size: 14px; line-height: 1.45; color: #c9bfa3; max-height: 4.4em; overflow-y: auto; max-width: 72ch; }   /* AUDIT PLAIN-UI C5: a short screen keeps its conversation; U9: a line a reader can follow */
+.talk-regard-name { text-transform: uppercase; }
+.talk-regard-bar { position: relative; width: 96px; height: 6px; flex: 0 0 auto; background: rgba(0,0,0,0.55);
+  box-shadow: inset 0 0 0 1px rgba(125,116,96,0.55); }
+.talk-regard-bar::before { content: ''; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: rgba(216,207,174,0.45); }
+.talk-regard-bar i { position: absolute; top: -3px; width: 4px; height: 12px; margin-left: -2px; background: currentColor; }
+.talk-regard-value { color: #d8cfae; }
+.talk-regard.friend { color: #8fd6a0; }
+.talk-regard.neutral { color: #c9bfa3; }
+.talk-regard.enemy { color: #e9a06a; }
+.talk-regard.hostile { color: #ef7b6b; }
 .talk-tone { display: flex; gap: 2px; }
 .talk-tone button, .talk-mode, .talk-cat, .talk-row, .talk-back { font: inherit; background: none; border: 0;
   color: #d8cfae; cursor: pointer; text-shadow: 2px 2px 0 rgba(0,0,0,0.8); transition: none; }
@@ -2676,13 +2989,10 @@ ${badgeCss()}
 .travelpanel.following .travelpanel-name { color: var(--brass); }
 .travelpanel-speed { display: flex; flex-direction: column; justify-content: center; gap: 2px;
   padding: 7px 14px; border-left: 1px solid rgba(192,138,62,0.25); }
-.travelpanel-stepper { display: flex; align-items: center; gap: 6px; }
 .travelpanel-accel { font-family: var(--display); font-size: 19px; min-width: 46px; text-align: center; color: var(--brass); }
-.travelpanel-accel.held { font-size: 15px; min-width: 84px; color: #d9a441; }   /* TV2: held while the land loads */
-.travelpanel-step { pointer-events: auto; width: 22px; height: 22px; line-height: 1;
-  background: rgba(43,50,59,0.9); color: var(--bone); border: 1px solid rgba(192,138,62,0.4);
-  border-radius: 2px; font-size: 14px; cursor: pointer; }
-.travelpanel-step:hover { background: rgba(78,127,114,0.35); border-color: var(--verdigris); }
+.travelpanel-accel.held { font-size: 15px; min-width: 84px; color: #d9a441; }   /* TV2: held while the land loads; OW6: or an alerted enemy near */
+/* RATE-LAW: the ground the rate is the ground's of, under the readout - a word, no control */
+.travelpanel-ground { font-size: 11px; letter-spacing: 0.06em; color: var(--dim); white-space: nowrap; text-align: center; }
 .travelpanel-acts { display: flex; align-items: center; gap: 6px; padding: 7px 12px;
   border-left: 1px solid rgba(192,138,62,0.25); }
 .travelpanel-act { pointer-events: auto; padding: 6px 12px; cursor: pointer;
@@ -2696,8 +3006,18 @@ ${badgeCss()}
 .tview { position: fixed; inset: 0; z-index: 4; pointer-events: none;
   font-family: var(--data); color: var(--bone); transition: opacity 120ms linear; }
 .tview-you { position: absolute; left: 0; top: 0; width: 0; height: 0; will-change: transform; }
-.tview-ring { position: absolute; left: -15px; top: -9px; width: 30px; height: 18px; border-radius: 50%;
-  border: 2px solid var(--brass); box-shadow: 0 0 6px rgba(192,138,62,0.55), inset 0 0 4px rgba(0,0,0,0.6); }
+/* TV-SMOOTH (2026-10-12, Mac: "the circle and the line where he walks to can be visually improved"): the ring sits on
+   the ground - a dark rim under the brass so it reads on snow and sand alike, a faint glow pooled inside it, and one
+   soft ring breathing out of it (still for a player who asks the system for less motion); 26 x 16 (Mac: "make the
+   circle around the player a bit smaller"). Its box is its border's too
+   (border-box): centred ON the feet, where the old content box sat 2 px right of and below them. */
+.tview-ring { position: absolute; left: -13px; top: -8px; width: 26px; height: 16px; border-radius: 50%; box-sizing: border-box;
+  border: 2px solid var(--brass);
+  background: radial-gradient(ellipse at center, rgba(192,138,62,0.28) 0%, rgba(192,138,62,0.08) 55%, rgba(192,138,62,0) 72%);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 0 8px rgba(192,138,62,0.6), inset 0 0 0 1px rgba(0,0,0,0.45); }
+.tview-ring::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; box-sizing: border-box;
+  border: 2px solid rgba(232,190,110,0.9); pointer-events: none; animation: tview-ring-breath 1.8s ease-out infinite; }
+@keyframes tview-ring-breath { 0% { transform: scale(1); opacity: 0.85; } 100% { transform: scale(1.7); opacity: 0; } }
 .tview-chev { position: absolute; left: -9px; top: -9px; width: 18px; height: 18px; }
 .tview-chev::before { content: ''; position: absolute; left: 4px; top: -13px; border-left: 5px solid transparent;
   border-right: 5px solid transparent; border-bottom: 9px solid var(--brass); filter: drop-shadow(0 1px 1px #000); }
@@ -2708,9 +3028,13 @@ ${badgeCss()}
    TV2's route line stays an SVG under it (a dark casing, the brass line dashed over it). */
 .tview-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .tview-route { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
-.tview-route-casing { fill: none; stroke: rgba(0,0,0,0.55); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
-.tview-route-line { fill: none; stroke: var(--brass); stroke-width: 2.5; stroke-dasharray: 9 6; stroke-linecap: round;
-  stroke-linejoin: round; }
+/* OW-DOTS (Mac: "give the travel to lines a more dotted approach"): the way is a trail of gold DOTS, each on its own
+   dark rim. OW-DOTS-GROUND (Mac: "the dotted lines dont look still"): each dot is a point on the land the view projects
+   (scenes/travelView.js routeGroundDots), drawn as a zero-length stroke whose round caps make it a dot - the rim the
+   casing's wider cap under it - so they stand where they lie while the traveller walks over them. */
+.tview-route-casing { fill: none; stroke: rgba(0,0,0,0.6); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+.tview-route-line { fill: none; stroke: #e8be6e; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+@media (prefers-reduced-motion: reduce) { .tview-ring::after { animation: none; } }
 .tview-trip { font-size: 11.5px; color: var(--brass); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* OW-BLOCK (2026-09-29, the player: "the whole bar in the top is too much ... a light weight block menu ... as much free
    screen as possible", "put the overworld block to the right"): THE OVERWORLD'S BLOCK - one compact column in the bottom-right corner,
@@ -2750,9 +3074,11 @@ ${badgeCss()}
   border: 0; box-shadow: none; background: none; }
 #travel-view .tview-dock .travelpanel-dest { flex: 1 1 100%; min-width: 0; max-width: none; padding: 9px 12px 5px; }
 #travel-view .tview-dock .travelpanel-name { display: block; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#travel-view .tview-dock .travelpanel-speed { flex: 0 0 auto; flex-direction: row; align-items: center; gap: 8px; padding: 3px 0 9px 12px; }
+#travel-view .tview-dock .travelpanel-speed { flex: 0 0 auto; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; padding: 3px 0 9px 12px; }
 #travel-view .tview-dock .travelpanel-speed > .travelpanel-label { display: none; }
-#travel-view .tview-dock .travelpanel-acts { flex: 1 1 auto; display: flex; justify-content: flex-end; gap: 6px; padding: 3px 12px 9px 8px; }
+/* the clock on the left, Camp ABOVE Exit on the right */
+#travel-view .tview-dock .travelpanel-acts { flex: 0 0 auto; margin-left: auto; display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 6px; padding: 3px 12px 9px 8px; }
+#travel-view .tview-dock .travelpanel-acts .travelpanel-act { min-width: 78px; text-align: center; }
 #travel-view .tview-dock .travelpanel-act[data-act="map"] { display: none; }
 #travel-view .tview-dock .travelpanel-act { padding: 5px 9px; }
 #travel-view .tview-dock > .travelpanel-msg { position: absolute; right: 0; left: auto; top: auto; bottom: calc(100% + 10px); transform: none;
@@ -2789,6 +3115,14 @@ ${badgeCss()}
 .tview-fdot-towns { background: #e9e4d9; } .tview-fdot-distant { background: #c08a3e; } .tview-fdot-dungeons { background: #b0443a; }
 .tview-fdot-enemies { background: #e0503c; } .tview-fdot-travellers { background: #4e7f72; } .tview-fdot-gathering { background: linear-gradient(135deg, #e586ec, #d9894a 50%, #d4e157); }
 .tview-fnum { min-width: 2ch; text-align: right; font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
+/* OW-WHO / OW-NODE-KM (FIELD BUGS 2026-10-04e): the players by kin - each switch's dot the colour their names wear
+   (systems/travelViewFilters.js TV_KIN_COLORS; a stranger the traveller's verdigris) - and the two steps, pressed round */
+.tview-fdot-kin-friends { background: #8fd0ff; } .tview-fdot-kin-guild { background: #c9a6ff; } .tview-fdot-kin-others { background: #4e7f72; }
+.tview-filter.tview-cycle { grid-template-columns: 1fr; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tview-filter.tview-cycle-wide { grid-column: 1 / -1; }
+/* SEAT-TIP: the held map's card (.hmtip), over the Overworld - placed in the root's viewport pixels; over the block
+   (.hmtip's own z-index stands later in the sheet, so this rule names both classes to outweigh it) */
+.hmtip.tview-tip { z-index: 4; }
 .tview-filter:not(.on) .tview-fnum { opacity: 0.6; }
 /* OW-CONFIRM: the view's own question - over the map's upper middle, in the block's stone; its presses the Path switch's */
 .tview-confirm { position: absolute; left: 50%; top: 28%; transform: translate(-50%, -50%); pointer-events: auto; z-index: 2;
@@ -2805,8 +3139,44 @@ ${badgeCss()}
 .tview-foot { display: flex; padding: 8px 12px 10px; }
 .tview-foot > .tview-back { flex: 1 1 auto; text-align: center; }
 @media (pointer: coarse) { .tview-bar { bottom: auto; top: 14px; } }
+/* OW-WHO (FIELD BUGS 2026-10-04e): the Players' switches and the two steps made the filters three rows taller - on a
+   touch screen the block stands from the top, and a phone held landscape ran it off the foot. The switches scroll
+   within their own section (the block itself never clips: the docked journey's word hangs above it) */
+@media (pointer: coarse) { .tview-filters { max-height: 38vh; overflow-y: auto; overscroll-behavior: contain; } }
 @media (max-width: 520px) { .tview-bar { right: 10px; width: calc(100vw - 20px); } }
 @media (prefers-reduced-motion: reduce) { .tview-filter, .tview-fdot { transition: none; } }
+/* PACE-DIALS (2026-10-06): the travel speed dials in the Overworld's block - journey or none */
+${paceControlsCss('tview')}
+/* FILTERS-LEFT (2026-10-06, the player: "move the filters for the overworld to the left bottom side"): THE FILTERS' OWN
+   BLOCK in the bottom-left corner - the right's journey block's stone; its foot MEASURED clear of what stands under it
+   (travelViewHud.js measureFurniture, as the right's block is); its head folds it away. */
+.tview-side { position: absolute; left: calc(8px + env(safe-area-inset-left, 0px)); bottom: calc(8px + env(safe-area-inset-bottom, 0px)); pointer-events: auto; box-sizing: border-box;
+  width: 268px; max-width: calc(100vw - 36px); max-height: calc(100vh - 120px); display: flex; flex-direction: column;
+  background: linear-gradient(180deg, rgba(23,27,33,0.9), rgba(14,16,19,0.93));
+  border: 1px solid rgba(192,138,62,0.45); border-radius: 3px; box-shadow: 0 2px 14px rgba(0,0,0,0.55); }
+.tview-side-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 12px; cursor: pointer;
+  background: none; border: 0; color: var(--dim); font-family: var(--data); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; text-align: left; }
+.tview-side-head:hover { color: var(--bone); }
+.tview-side-head:focus-visible { outline: 1px solid var(--brass); outline-offset: -2px; }
+.tview-side-fold { font-size: 12px; letter-spacing: 0; }
+.tview-side > .tview-filters { border-top: 1px solid rgba(192,138,62,0.2); overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+.tview-side.folded > .tview-filters { display: none; }
+/* WAYPOINTS (2026-10-06): the kinds' switches (each dot its flags' default colour), the follow dropdown, the followed list */
+.tview-fdot-wp-personal { background: #e0473a; } .tview-fdot-wp-party { background: #5cc464; } .tview-fdot-wp-guild { background: #b072e8; }
+.tview-wp-pick { grid-column: 1 / -1; }
+.tview-wp-pick:disabled { cursor: default; }
+.tview-wp-pop { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; }
+.tview-wp-opt { grid-template-columns: 11px 1fr auto; }
+.tview-wp-list { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 3px; }
+.tview-wp-row { display: grid; grid-template-columns: 11px 1fr auto auto 24px; align-items: center; gap: 6px; min-width: 0;
+  padding: 3px 4px 3px 7px; background: rgba(43,50,59,0.6); border: 1px solid rgba(192,138,62,0.25); border-radius: 2px; }
+.tview-wp-flag { width: 11px; height: 9px; box-shadow: 0 0 0 1px rgba(0,0,0,0.7); clip-path: polygon(0 0, 100% 0, 68% 50%, 100% 100%, 0 100%); }
+.tview-wp-name { min-width: 0; font-size: 11.5px; color: var(--bone); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tview-wp-dist { font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tview-mode.tview-wp-go, .tview-mode.tview-wp-x { min-width: 0; min-height: 24px; height: 24px; padding: 0 8px; line-height: 1; border-left: 1px solid rgba(192,138,62,0.4); border-radius: 2px; }
+.tview-mode.tview-wp-x { width: 24px; padding: 0; font-size: 14px; }
+@media (pointer: coarse) { .tview-side { left: 10px; bottom: 14px; max-height: 45vh; } }
+@media (max-width: 520px) { .tview-side { left: 10px; width: calc(100vw - 20px); } }
 .travelpanel-msg { position: absolute; left: 50%; top: 86px; transform: translateX(-50%);
   font-size: 13px; color: var(--brass); text-shadow: 0 1px 2px rgba(0,0,0,0.9);
   opacity: 0; transition: opacity 180ms ease; }
@@ -2854,6 +3224,30 @@ ${badgeCss()}
 .hud-bladeempty, .hud-bladefull { position: absolute; inset: 0; display: block;
   background-position: center; background-size: 100% 100%; background-repeat: no-repeat; }
 .hud-bladeempty { opacity: 0.72; }   /* FOEBAR1b: the drained bar lets the world through, as the friend's picture does */
+/* TELL9 (bible/12-Enhanced-AI/Feud-Arc.md 11.1): THE POISE TRACK under the foe's health - its wind-up read. Empty
+   outside one; amber, filling toward its poise; red and HATCHED for iron (never by colour alone); a white flash at a
+   break, "Staggered"; "Open" through an overreach. AUDIT TELL U3: the word stands centred UNDER the track (beside it, it
+   ran past the bar's right under a narrow screen's quest card), and the card clears it (the --qt-clear rules below).
+   U4: the flash plays on THIS foe's break alone (its flash class, enhancedHud.js) - never on a bar turned onto a staggered one.
+   POISE-BOX (field, 2026-10-05): every state class is the track's own, poise-<state> and poise-flash - the bare word
+   'empty' took the sheet's .empty component above (a dashed box, 26px of padding), and the idle track stood 54px tall. */
+.hud-foepoise { display: none; position: relative; width: min(280px, 40vw); height: 6px;
+  background: rgba(10,12,17,0.6); border: 1px solid rgba(125,116,96,0.45); }
+.hud-foe.poised .hud-foepoise { display: block; }
+.hud-foepoise { box-sizing: content-box; max-height: 6px; }   /* POISE-QUIET: a thin track under the bar, never a block */
+.hud-poisefill { display: block; height: 100%; width: 0; background: transparent; }
+.hud-foepoise.poise-windup .hud-poisefill { background: #e0a43a; }
+.hud-foepoise.poise-iron .hud-poisefill { background: repeating-linear-gradient(135deg, #d8342c 0 4px, #7a1410 4px 6px); }
+.hud-foepoise.poise-staggered .hud-poisefill { background: #fff; }
+.hud-foepoise.poise-staggered.poise-flash .hud-poisefill { animation: hud-poise-flash 0.45s ease-out; }
+.hud-foepoise.poise-open { border-color: rgba(241,192,79,0.9); }
+.hud-poiseword { position: absolute; left: 50%; top: calc(100% + 3px); transform: translateX(-50%); white-space: nowrap; line-height: 13px;
+  font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; }
+.hud-foepoise.poise-iron .hud-poiseword { color: #ff6a5a; }
+.hud-foepoise.poise-staggered .hud-poiseword { color: #fff; }
+.hud-foepoise.poise-open .hud-poiseword { color: #f1c04f; }
+@keyframes hud-poise-flash { 0% { box-shadow: 0 0 10px 3px rgba(255,255,255,0.9); } 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); } }
+@media (prefers-reduced-motion: reduce) { .hud-foepoise.poise-staggered.poise-flash .hud-poisefill { animation: none; } }
 
 /* THE VITALS. Magicka, health, fatigue - the reference's own order and
    DFU's own three, each with its number beside it. */
@@ -2987,7 +3381,7 @@ ${badgeCss()}
 .hud-qspell { display: none; align-items: center; gap: 6px; padding: 3px 10px;
   max-width: 100%; background: rgba(10,12,17,0.6); border: 2px solid rgba(125,116,96,0.55); }
 .hud-qspell.on { display: flex; }
-.hud-qspell.empty { display: flex; opacity: 0.55; }   /* HOTSLOT: the empty socket, dim, wearing its key */
+.hud-qspell.qspell-empty { display: flex; opacity: 0.55; }   /* HOTSLOT: the empty socket, dim, wearing its key */
 .hud-qspell .hud-qstag { position: static; transform: none; background: none; border: 0;
   min-width: 0; height: auto; padding: 0; color: #9c937d; }
 .hud-qspname { font-size: 13px; color: #d8cfae; text-shadow: 2px 2px 0 rgba(10,12,17,0.9);
@@ -3132,9 +3526,9 @@ ${badgeCss()}
 /* NO BAND ABOVE THE CAPTION (a phone on its side, where the diamond reaches the top; the chat opened tall on a laptop):
    the widget stands BESIDE the diamond instead - out of the block's column, clear of the right tag in the block's own
    padding, from the caption's top or from under what stands above where that reaches lower (the HUD writes its \`top\`
-   and its rows off the diamond's height - hudStatus.js statSide) - icons alone (.tight). */
-.hud-stat.side { position: absolute; left: 100%; top: 0; margin: 0 0 0 8px; }
-.hud-stat.noroom { display: none; }   /* no band above and none beside: it steps aside rather than stand over anything */
+   and its rows off the diamond's height - hudStatus.js statSide) - icons alone (.stat-tight). HUD-CLASS: each state is the widget's own word, stat-<state> - as the bare 'side' it took the windows' .side column above (its --ink ground). */
+.hud-stat.stat-side { position: absolute; left: 100%; top: 0; margin: 0 0 0 8px; }
+.hud-stat.stat-noroom { display: none; }   /* no band above and none beside: it steps aside rather than stand over anything */
 .hst-cell { --hst-hi: #c2b79a; --hst-lo: #3a352a; display: flex; align-items: center; gap: 8px; min-width: 0; }
 .hst-tile { position: relative; flex: 0 0 auto; width: 36px; height: 36px; display: grid; place-items: center;
   border: 2px solid; border-color: var(--hst-hi) var(--hst-lo) var(--hst-lo) var(--hst-hi);
@@ -3171,8 +3565,8 @@ ${badgeCss()}
   .hst-cell.blink .hst-pic { animation: none; }
   .hst-cell.blink .hst-tile { border-color: rgb(243,239,44) rgb(93,77,12) rgb(93,77,12) rgb(243,239,44); }
 }
-/* THE NAMES GO where there is no room for them: a phone, a short screen, a band under three rows (.tight) */
-.hud-stat.tight .hst-name { display: none; }
+/* THE NAMES GO where there is no room for them: a phone, a short screen, a band under three rows (.stat-tight) */
+.hud-stat.stat-tight .hst-name { display: none; }
 @media (max-width: 640px), (max-height: 500px) { .hud-stat .hst-name { display: none; } }
 /* A SHORT SCREEN (a phone on its side, where the diamond reaches the top): smaller tiles - the picture at one and a half,
    closer together - the numbers hudStatus.js STAT_METRICS.short counts its rows in */
@@ -3196,17 +3590,22 @@ ${badgeCss()}
    (112 + 146*4)/1024 = 68%, not 73%. So the module WRITES the real
    number: ui/enhancedHudText.js sets --hudmid-top in CSS pixels from
    the same floored arithmetic, off the same canvas, and 73% is the
-   fallback for a frame that has not been drawn yet. */
+   fallback for a frame that has not been drawn yet.
+
+   AUDIT SD IV (T5): ITS WIDTH ITS OWN - a fixed box at left 50% with no width shrinks to the half of the screen right of
+   it, so the 86vw cap never held: a phone wrapped every line at 195 px, the Hour's longest into four rows over the
+   ground's warning. max-content to the cap - divided by the HUD scale, which grows the box after it is laid out (a
+   line at scale 2 ran off both sides). The prison's line, never scaled, keeps the cap whole. */
 .hudmid { position: fixed; left: 50%; top: var(--hudmid-top, 73%); transform: translateX(-50%) scale(var(--hud-scale, 1));
   transform-origin: top center; z-index: 4; pointer-events: none; text-align: center;
-  max-width: min(680px, 86vw); font-size: 15px; letter-spacing: 0.04em;
+  width: max-content; max-width: calc(min(680px, 86vw) / var(--hud-scale, 1)); font-size: 15px; letter-spacing: 0.04em;
   font-family: ${PIXEL_STACK}; -webkit-font-smoothing: none;
   font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'clig' 0;
   color: rgb(243,239,44); text-shadow: 2px 2px 0 rgb(93,77,12); }
 /* AUDIT FONT3 F4: THE PRISON'S LINE is the prison screen's, not the HUD's - it rides the native panel (its size is the
    panel's 7-row cell at the panel's scale, ui/prisonScreen.js), never the HUD scale (which takes it to 7.5px at 0.5),
    in DaggerfallCourtWindow's own colour and shadow (DAYS_LABEL_COLOR / DAYS_LABEL_SHADOW). */
-.hudmid.hudprison { transform: translateX(-50%); font-size: var(--prison-px, 22px); letter-spacing: 0.06em;
+.hudmid.hudprison { transform: translateX(-50%); max-width: min(680px, 86vw); font-size: var(--prison-px, 22px); letter-spacing: 0.06em;
   color: rgb(232,196,76); text-shadow: 2px 2px 0 rgb(48,36,20); }
 
 /* FONT1: THE ONLINE STATUS LINE - the socket's own word (connecting,
@@ -3215,7 +3614,7 @@ ${badgeCss()}
    lane (systems/onlineLane.js), so this line is never seen in any
    other face. Brass rather than the popup's yellow: it is the machine
    talking, not the game. */
-.hudstatus { position: fixed; left: calc(8px + env(safe-area-inset-left, 0px));
+.hudstatus { position: fixed; left: calc(8px + var(--ui-pillar, 0px) + env(safe-area-inset-left, 0px));   /* RETRO-UI */
   top: calc(8px + env(safe-area-inset-top, 0px)); z-index: 4; pointer-events: none;
   max-width: min(420px, 60vw); font-size: 13px; letter-spacing: 0.04em;
   font-family: ${PIXEL_STACK}; -webkit-font-smoothing: none;
@@ -3284,6 +3683,14 @@ ${badgeCss()}
 .sb-shell .sb-nums { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 4px 0 0 26px; }
 .sb-shell .sb-num { color: var(--brass); font-size: 12px; letter-spacing: 0.1em;
   font-variant-numeric: tabular-nums; text-shadow: 2px 2px 0 rgba(0,0,0,0.8); }
+/* SB-ICON: the icon grid under the spell's buttons - the spell maker's picker, in the book. 12 to a row, as the classic grid. */
+.sb-shell .sb-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; margin: 16px 0 0; max-height: 260px; overflow-y: auto; padding: 8px; border: 2px solid rgba(125,116,96,0.35); background: rgba(0,0,0,0.25); }
+.sb-shell .sb-icon { pointer-events: auto; display: grid; place-items: center; width: 100%; aspect-ratio: 1; min-height: 40px; padding: 0; cursor: pointer; background: rgba(43,50,59,0.9); border: 2px solid rgba(125,116,96,0.45); }
+.sb-shell .sb-icon img { width: 32px; height: 32px; image-rendering: pixelated; }
+.sb-shell .sb-icon:hover, .sb-shell .sb-icon:focus-visible { outline: none; border-color: var(--verdigris); }
+.sb-shell .sb-icon.on { border-color: var(--brass); background: rgba(192,138,62,0.28); }
+.sb-shell .sb-iconnum { font-size: 11px; color: var(--dim); }
+.sb-shell .sb-iconbtn.on { color: var(--brass); }
 .sb-shell .sb-rename { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 16px 0 0; }
 .sb-shell .sb-renamelabel { color: #9c937d; font-size: 12px; letter-spacing: 0.14em;
   text-transform: uppercase; }
@@ -3351,6 +3758,9 @@ ${badgeCss()}
   margin: 10px 0 0; padding: 10px 14px; background: rgba(0,0,0,0.28);
   border: 1px solid rgba(125,116,96,0.4); border-radius: 2px; flex: 0 0 auto; }
 .trade-shell .trade-detail .tile { flex: 0 0 auto; }
+.trade-shell .trade-detail { min-height: 78px; box-sizing: border-box; }   /* TRADE-STEADY: the strip's room kept, filled or not */
+.trade-shell .trade-detail-empty { justify-content: center; }
+.trade-shell .trade-detail-empty .meta { margin: 0; font-size: 12px; color: #7d745f; letter-spacing: 0.04em; }
 .trade-shell .trade-detail-info { flex: 1 1 auto; min-width: 0; }
 .trade-shell .trade-detail-info h4 { margin: 0 0 4px; font-size: 14px; font-weight: 400;
   color: #e8e0c8; }
@@ -3579,7 +3989,7 @@ ${badgeCss()}
      tools/enhancedMenuProbe.mjs had been red since FT14 and so nobody
      saw it. Sized here rather than in the FT block below, because this
      is where the law lives and the next control added must find it. */
-  .ft-segb, .ft-mchip, .ft-tile-more, .ft-search { min-height: 44px; }   /* FT18: the search is a thumb's target too */
+  .ft-segb, .ft-mchip, .ft-tile-more, .opt-search, .opt-filters .chip, .sec-jumpbtn { min-height: 44px; }   /* FT18: the search is a thumb's target too (ORG2: and the filters and the jumps) */
   .ft-keys-to { min-height: 44px; }   /* UXB1-F: the keys' door is a control too */
 }
 .shell .step { border: 2px solid rgba(125,116,96,0.55); border-radius: 0; background: none;
@@ -4014,6 +4424,11 @@ ${badgeCss()}
 .hitnum-heal { top: 50%; color: #8fe27f; text-shadow: 2px 2px 0 rgba(0,40,0,0.9), 0 0 8px rgba(120,220,100,0.35); }
 .hitnum-tag { display: block; font-size: calc(12px * var(--hud-scale, 1)); font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase;
   text-align: center; color: #f1c04f; margin-top: -2px; }
+/* TELL9 (bible/12-Enhanced-AI/Feud-Arc.md 11.2): a word alone - a door's word with no number to join ("Holds" on a spell's
+   landing), and a perfect dodge's "Perfect", bright, a little under the reticle where no blow of mine rises */
+.hitnum-word { font-size: calc(16px * var(--hud-scale, 1)); font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #f1c04f; }
+.hitnum-perfect { top: 50%; font-size: calc(24px * var(--hud-scale, 1)); font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase;
+  color: #fff6d8; text-shadow: 2px 2px 0 rgba(60,40,0,0.95), 0 0 12px rgba(255,236,170,0.6); }
 @keyframes hitnum-rise {
   0%   { opacity: 0; transform: translate(calc(-50% + var(--dx, 0px)), 10px) scale(0.9); }
   12%  { opacity: 1; transform: translate(calc(-50% + var(--dx, 0px)), 0) scale(1); }
@@ -4099,6 +4514,21 @@ ${badgeCss()}
    the rest a tagged-template call - the octal lesson's sibling). */
 .pack-shell .pack-dock .packcol { padding: 8px 10px; display: flex; flex-wrap: wrap;
   gap: 6px; align-content: flex-start; }
+/* AUDIT 625 W3: the wallet's sheet holds its pieces as the dock's own tiles, wrapped as the dock wraps them */
+.pack-shell .walletsheet .walletpieces { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 0 2px; }
+/* WALLET-UI: the wallet's ledger - its two parts under their names, a label and a figure a row, the figures in one
+   column at the right; an empty one dimmed, a letter's worth under its count */
+.pack-shell .walletsheet { text-align: left; margin: 2px 0 6px; }
+.pack-shell .walletsheet .wallet-head { margin: 12px 0 4px; padding: 0 0 4px; border-bottom: 1px solid rgba(125,116,96,0.35);
+  font-family: inherit; font-weight: 400; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); }
+.pack-shell .walletsheet .wallet-head:first-child { margin-top: 8px; }
+.pack-shell .walletsheet .wallet-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding: 3px 0; font-size: 14px; line-height: 1.35; }
+.pack-shell .walletsheet .wallet-k { color: var(--dim); }
+.pack-shell .walletsheet .wallet-v { color: var(--bone); text-align: right; font-variant-numeric: tabular-nums; }
+.pack-shell .walletsheet .wallet-row.none .wallet-v, .pack-shell .walletsheet .wallet-v.why { color: var(--dim); opacity: 0.75; }
+.pack-shell .walletsheet .wallet-v.why { font-size: 12px; }
+.pack-shell .walletsheet .wallet-note { margin: -2px 0 3px; text-align: right; font-size: 12px; color: var(--dim); }
 /* PX22: the tab strip is ALSO a .packcol and inherited that 8px; it
    carries its tabs and nothing else, so 0 vertical padding - the 16px
    is the difference between one row of tiles and two at 660px. */
@@ -4530,14 +4960,18 @@ ${badgeCss()}
    stands centred, out of the purse's baseline, so it draws at 32 and the footer keeps its 38. */
 .pack-shell .packgold .goldbtn { align-self: center; margin: -6px 0 -6px 12px; min-height: 32px; padding: 0 12px;
   font-size: 12px; }
+/* AUDIT2 BAG1 U3: the footer's bag button (AUDIT BAG1 H2's door on a plain pack) is the gold button's kind - it took an
+   .act's own height, and the footer grew out of the item list under it */
+.pack-shell .packbar .bagbtn { align-self: center; margin: -6px 0 -6px 12px; min-height: 32px; padding: 0 12px;
+  font-size: 12px; }
 /* AUDIT2 GOLD-DROP 1: a finger's 44px is the TARGET, not the drawing (the .step rule's two rects). It stays inside
    the footer - reaching above it, a worn row or a tile painted over its top and cut it to 40 - so under a finger
    the footer's inside is 44px (46 with its rule; drawn at 44 the button made it 62) and the target fills it: 8px
    past the button's padding edge each way, its 2px border and the 6 of padding it is sunk into. */
 @media (pointer: coarse) {
   .pack-shell .packbar { padding-top: 12px; padding-bottom: 12px; }
-  .pack-shell .packgold .goldbtn { position: relative; }
-  .pack-shell .packgold .goldbtn::after { content: ''; position: absolute; left: 0; right: 0; top: -8px; bottom: -8px; }
+  .pack-shell .packgold .goldbtn, .pack-shell .packbar .bagbtn { position: relative; }
+  .pack-shell .packgold .goldbtn::after, .pack-shell .packbar .bagbtn::after { content: ''; position: absolute; left: 0; right: 0; top: -8px; bottom: -8px; }
 }
 /* AUDIT GOLD-DROP 1: THE FIELD FLOATS, as DFU's popup does. It was a row of the window below the bar, and the
    window's height is fixed, so its ~110px came out of the item list - a stacked window (641-999px) has about 50px
@@ -4646,6 +5080,25 @@ ${badgeCss()}
 .piletab.on { color: rgb(243,239,44); border-color: var(--brass); cursor: default; }
 .piletabname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .piletabn { color: #d8cfae; font-variant-numeric: tabular-nums; }
+/* WAGON-FILTER (2026-10-04, Mac: "The wagon needs a filter option"): the player's own store - the wagon, their
+   storage, the Materials Bag - carries a search and a category menu between the head and the rows, in ONE row of
+   fixed furniture (PX21e: the rows scroll, never the frame). AUDIT WAGON-FILTER C1: the first cut's wrapping chips and
+   hint stood 202-236 px tall and left a phone on its side 1 px of list; one row is 44 px. The menu wears the search's
+   dress, the brass on focus. */
+.storefilter { display: flex; align-items: center; gap: 6px; padding: 6px 10px; flex: 0 0 auto;
+  border-bottom: 2px solid rgba(125,116,96,0.3); }
+.storesearch, .storecat { font: inherit; font-size: 13px; min-height: 32px; box-sizing: border-box; color: #d8cfae;
+  background: rgba(0,0,0,0.35); border: 1px solid rgba(125,116,96,0.45); border-radius: 0; }
+.storesearch { flex: 1 1 0; min-width: 0; padding: 0 8px; }
+.storecat { flex: 0 1 auto; max-width: 48%; padding: 0 4px; }
+.storecat option { color: #d8cfae; background: #10141a; }
+.storesearch::placeholder { color: #9c937d; }
+.storesearch:focus, .storecat:focus { outline: none; border-color: var(--brass); }
+/* SHIFT-STOW's line: its own element, so hiding it leaves no band - on a touch screen (no Shift) and a short screen
+   (the list first) */
+.storehint { margin: 0; padding: 4px 10px 0; flex: 0 0 auto; font-size: 11px; letter-spacing: 0.06em; color: #9c937d;
+  text-align: center; text-shadow: 2px 2px 0 rgba(0,0,0,0.7); }
+@media (pointer: coarse), (max-height: 640px) { .storehint { display: none; } }   /* SHIFT-STOW: no Shift to tell of, or no room */
 /* NOT MULTICOL. column-count was the obvious answer and it is the
    wrong one: a multicol box that is also a SCROLL container fragments
    in the block direction, so the overflow columns went below the fold
@@ -4744,6 +5197,10 @@ ${badgeCss()}
    shadow and takes no room). */
 .wplaque-row.sel { background: rgba(125,116,96,0.28); box-shadow: inset 2px 0 0 var(--brass);
   margin: 0 calc(-1 * var(--wp-pad-x)); padding: 0 var(--wp-pad-x); }
+/* LOOT-MARKS (2026-10-12, a player's video: "seeing rarity in the quickloot is quite hard"): a rolled row's tier as a
+   gem of its own colour before the name and a wash of it under the row (ui/lootTierMarks.js); the lit row keeps its
+   brass band under the wash, its bar beside it. */
+${tierMarkCss({ wash: (k) => TIER_MARKS[k], washAlpha: 0.2, edge: '#0b0805', selGround: 'rgba(125,116,96,0.28)' })}
 /* AUDIT DISC7 A4: a refused verb (the F-card's disabled row): its reason in its name, italic in the card's own lighter bone (SOC C12's 4.9:1), never dimmed by opacity */
 .wplaque-row.off { font-style: italic; color: #c8c2b4; }
 /* ...and the line that says what the keys do, under the list. */
@@ -4809,6 +5266,23 @@ ${badgeCss()}
 @media (max-width: 720px) { .wplaque { max-width: 88vw; --wp-pad-x: 12px; padding: 8px var(--wp-pad-x); }
   .wplaque-row, .wplaque-title { font-size: 13px; } .wplaque-sub { font-size: 11px; } }
 
+/* Action lists can grow with cabin and crew verbs. Bound the whole panel, including its title;
+   worldPlaque keeps the keyboard/wheel selection visible without adding a second input handler. */
+.wplaque.has-actions { box-sizing: border-box; min-width: 0; width: max-content;
+  max-width: min(${PLAQUE_MAX_W}px, calc(100vw - 24px));
+  max-height: calc(100vh - var(--wp-top, 55%) - 12px);
+  max-height: calc(100dvh - var(--wp-top, 55%) - 12px); }
+.wplaque.on.has-actions { display: flex; flex-direction: column; }
+.wplaque.has-actions > :not(.wplaque-list) { flex-shrink: 0; }
+.wplaque.has-actions .wplaque-acts { position: relative; min-height: 0; max-height: none;
+  margin-left: calc(-1 * var(--wp-pad-x)); margin-right: calc(-1 * var(--wp-pad-x));
+  padding-left: var(--wp-pad-x); padding-right: var(--wp-pad-x);
+  overflow-y: hidden; overflow-x: hidden; }
+.wplaque.has-actions .wplaque-row { overflow-wrap: anywhere; }
+/* Action plaques retain the active theme's original translucent world surface and use its readable body-text role. */
+.wplaque.has-actions:not(.tone-private) .wplaque-title, .wplaque.has-actions .wplaque-row { color: var(--bone); }
+:root[data-plus-theme="stone"] .wplaque.has-actions:not(.tone-private) .wplaque-title, :root[data-plus-theme="stone"] .wplaque.has-actions .wplaque-row { color: ${STONE_WORD}; }
+
 /* ── PX21a: THE TRANSPORT STRIP - retired (PLUS-DEAD, 2026-09-26): Mount and Cart are a split cell of the worn grid
    (PLUS11), and the strip plain Enhanced drew went with it. */
 
@@ -4845,7 +5319,7 @@ ${badgeCss()}
 @media (max-width: 520px) {
   .pack-shell .packbar .k { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden;
     clip-path: inset(50%); }
-  .pack-shell .packgold .goldbtn { padding: 0 8px; }
+  .pack-shell .packgold .goldbtn, .pack-shell .packbar .bagbtn { padding: 0 8px; }
 }
 
 /* ── PX9: SETTINGS INSIDE THE PAUSE WINDOW ──────────────────────
@@ -4860,7 +5334,7 @@ ${badgeCss()}
 .px-setwrap .subrail { display: flex; flex-direction: row; flex-wrap: wrap; gap: 2px;
   width: auto; border-right: 0; border-bottom: 2px solid rgba(125,116,96,0.45);
   padding: 4px 6px 6px; overflow: visible; }
-.px-setwrap .subbtn { min-height: 44px; padding: 6px 12px; font-size: 14px;
+.px-setwrap .subbtn { width: auto; min-height: 40px; padding: 6px 12px; font-size: 14px;   /* ORG2: a strip of tabs, not a column */
   display: flex; align-items: center; gap: 8px;
   color: #d8cfae; text-shadow: 2px 2px 0 rgba(0,0,0,0.8); }
 .px-setwrap .subbtn.on { color: rgb(243,239,44); text-shadow: 2px 2px 0 rgb(93,77,12); }
@@ -4973,7 +5447,7 @@ ${badgeCss()}
 .hmbox-row, .hmbox-grid { color: #c5bda2; }
 /* EVENT-TIP: a world event's card at the pointer - the gate's ring, a raided town (ui/eventMapMarks.js) - in the
    pixel home's plaque language; placed in viewport pixels over the root (ui/heldMap.js _showTip) */
-.hmtip { position: absolute; z-index: 3; display: none; pointer-events: none; max-width: min(320px, calc(100vw - 16px));
+.hmtip { position: absolute; z-index: 3; display: none; pointer-events: none; max-width: min(320px, calc(100vw / var(--hm-ui, 1) - 16px));
   padding: 8px 12px; background: rgba(10,12,17,0.9); border: 2px solid rgba(216,207,174,0.7);
   outline: 2px solid rgba(125,116,96,0.35); outline-offset: 2px; color: #d8cfae; font-family: inherit;
   text-shadow: 2px 2px 0 rgba(0,0,0,0.85); }
@@ -4988,7 +5462,7 @@ ${badgeCss()}
    hover card's rule is: the key was born in the pixel home. Its toggles wear that home's frame at the foot's size -
    the gold pair while their kinds are shown, the ghost frame and a struck word while the store's flag hides them -
    and the glyphs' words are in the rows' bone. */
-.hmkey { position: absolute; left: 0; bottom: calc(100% + 4px); width: max-content; max-width: calc(100vw - 36px);
+.hmkey { position: absolute; left: 0; bottom: calc(100% + 4px); width: max-content; max-width: calc(100vw / var(--hm-ui, 1) - 36px);
   display: grid; grid-template-columns: max-content auto; gap: 3px 10px; align-items: center;
   padding: 6px 10px; border-radius: 4px; background: rgba(10, 12, 17, 0.94); pointer-events: auto; }
 .hmkeyrow { display: contents; }
@@ -5003,8 +5477,50 @@ ${badgeCss()}
 .hmkeykind.dim { opacity: 0.4; }
 .hmkeyrow.off .hmkeykind { opacity: 0.3; }
 .hmkeychip { flex: none; display: block; box-shadow: 0 0 0 1px rgba(0,0,0,0.8); }
+/* OW-WHO: the Players row's word - the row's first cell, so never hidden with the glyphs' words on a phone (the
+   grid's rows are display: contents, and a hidden first cell would shift every row after it a column) */
+.hmkeywho { font-size: 11px; color: #c5bda2; letter-spacing: 0.08em; text-transform: uppercase; text-shadow: 2px 2px 0 rgba(0,0,0,0.7); }
+/* WILD2: THE ZONE MAP'S LEGEND (ui/wildZoneMap.js buildZoneLegend) - the Wrothgarian Mountains' four rings, where I
+   stand and the zone's laws, in the held map's plaque language (the hover card's frame, the key's bone and brass): a
+   panel on the right of the paper, the room the zone map's view leaves it (ZONE_LEGEND_W). Each ring's swatch is its
+   fill on the sheet; the ring I stand in wears the brass edge. A solid panel, so a press on it is never a drag. */
+.hmwild { position: absolute; z-index: 2; top: 76px; right: 18px; width: min(300px, calc(100vw / var(--hm-ui, 1) - 36px));
+  max-height: calc(100% - 170px); overflow: hidden; padding: 12px 14px 14px; pointer-events: auto;
+  display: flex; flex-direction: column;   /* LEGEND-FIT: the laws scroll, the foot's buttons never leave the panel */
+  background: rgba(10,12,17,0.92); border: 2px solid rgba(216,207,174,0.7); outline: 2px solid rgba(125,116,96,0.35);
+  outline-offset: 3px; color: #d8cfae; font-family: inherit; text-shadow: 2px 2px 0 rgba(0,0,0,0.85); }
+.hmwild-head { border-bottom: 2px solid rgba(125,116,96,0.5); padding-bottom: 8px; margin-bottom: 8px; }
+.hmwild-kicker { font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--cinnabar); }
+.hmwild-title { font-size: 18px; letter-spacing: 0.12em; text-transform: uppercase; color: rgb(243,239,44);
+  text-shadow: 2px 2px 0 rgb(93,77,12); }
+.hmwild-where { font-size: 13px; line-height: 1.35; color: #9c937d; margin-bottom: 10px; }
+.hmwild-where.in { color: #e9e4d9; }
+.hmwild-rings { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 4px; }
+.hmwild-ring { display: grid; grid-template-columns: 16px 1fr auto; grid-template-rows: auto auto; gap: 0 8px;
+  align-items: center; padding: 5px 8px; border: 2px solid rgba(125,116,96,0.35); background: rgba(0,0,0,0.25); }
+.hmwild-ring.mine { border-color: var(--brass); background: rgba(192,138,62,0.12); }
+.hmwild-sw { grid-row: 1 / span 2; width: 14px; height: 14px; border: 2px solid; box-shadow: 0 0 0 1px rgba(0,0,0,0.8); }
+.hmwild-rname { font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: #e9e4d9; }
+.hmwild-rname b { color: rgb(243,239,44); font-weight: 400; margin-right: 2px; text-shadow: 2px 2px 0 rgb(93,77,12); }
+.hmwild-bonus { font-size: 14px; color: #f08a6a; font-variant-numeric: tabular-nums; }
+.hmwild-depth { grid-column: 2 / span 2; font-size: 11px; color: #9c937d; letter-spacing: 0.06em; }
+.hmwild-rules { margin: 0 0 12px; padding-left: 16px; font-size: 12px; line-height: 1.4; color: #c5bda2; }
+.hmwild-rules li { margin: 0 0 3px; }
+.hmwild-head, .hmwild-where, .hmwild-rings, .hmwild-foot { flex: none; }
+.hmwild-rules { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.hmwild-foot { display: grid; gap: 6px; padding-top: 8px; border-top: 2px solid rgba(125,116,96,0.35); }
+.hmroot .act.hmwild-go { border-color: var(--brass); color: rgb(243,239,44); }
+.hmroot .act.hmwild-back { width: 100%; min-height: 36px; }
+.hmroot .act.hmkeyzone { border-color: var(--cinnabar); color: #f3d7c9; text-shadow: 2px 2px 0 rgba(0,0,0,0.85); }
 @media (max-width: 860px) {
-  .hmkey { max-width: calc(100vw - 24px); }
+  /* a phone keeps the paper: the legend a compact strip of the four rings under the search, the laws left to the HUD */
+  .hmwild { top: 128px; bottom: auto; right: 12px; left: 12px; width: auto; max-height: calc(30vh / var(--hm-ui, 1)); padding: 8px 10px 10px; }
+  .hmwild-rules, .hmwild-depth { display: none; }
+  .hmwild-ring { padding: 3px 8px; }
+  .hmwild-title { font-size: 15px; }
+}
+@media (max-width: 860px) {
+  .hmkey { max-width: calc(100vw / var(--hm-ui, 1) - 24px); }
   .hmkeyname { display: none; }   /* a phone keeps the toggles and the glyphs; each glyph's title names it */
   /* the card rides up to clear the foot row here (bottom: 76px), which is where the key stands: while a place is
      picked the key steps aside, or it would lie over the card's own Travel button */
@@ -5039,43 +5555,62 @@ ${badgeCss()}
    alone. A CHOICE (no Off segment) keeps the grey block: it has no
    off to be red about. A forced switch keeps its fill - the brass
    edge and the "online" tag say it is forced. */
-/* FT18: the search and All off, one row over the tiles; a tile, a grid or a group head the search took away is
-   gone whatever display its own rule gives it (the UA's [hidden] loses to a class's display). */
-.ft-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: -4px 0 16px; }
-.ft-tools .acts { margin: 0; }
-.ft-search { flex: 1 1 220px; min-width: 0; min-height: 46px; padding: 0 12px; background: var(--ink);
+/* ── ORG2 (2026-10-09, Mac: "Graphic settings needs its own tab, etc. I really need you to go all in"): ONE SETTINGS
+   SCREEN ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   The Features home's tiles are ROWS of the one screen now: the name, the labels and the note's first sentence on the
+   left, the bar on the right - the settings list's own shape - and the drawer under both. The bar keeps every law it
+   had (DISC23-C's fills, the forced brass, Off first), and the left edge keeps the state stripe: emerald on, brass
+   forced, iron off. Over the rows: the toolbar (one search over every tab, the filters, the actions) stuck to the top of
+   the list, the tab's head, the jump strip and the sections' heads. A row changed from how the game ships wears a
+   small CHANGED mark after its name. */
+.opt-tools { position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center;
+  padding: 10px 18px; background: rgba(14,17,22,0.97); border-bottom: 1px solid #20262e; }
+.opt-search { flex: 1 1 100%; min-width: 0; min-height: 38px; padding: 0 12px; background: var(--ink);
   border: 1px solid var(--iron); color: var(--bone); font: inherit; font-size: 14px; }
-.ft-search::placeholder { color: var(--dim); }
-.ft-search:focus-visible { outline: none; border-color: var(--brass); }
-.ft-tile[hidden], .ft-grid[hidden], .ft-grouphead[hidden], .ft-none[hidden] { display: none; }
-.ft-panes { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 22px; align-items: start; }
-.ft-main { min-width: 0; }
-.ft-grouphead { display: flex; align-items: baseline; gap: 10px; margin: 18px 0 8px; }
-.ft-grouphead:first-child { margin-top: 0; }
-.ft-grouphead h2 { font-family: var(--data); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
-  color: var(--bone); margin: 0; font-weight: 600; }
-.ft-gn { font-family: var(--data); font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
-.ft-gline { flex: 1; height: 1px; background: var(--iron); }
+.opt-search::placeholder { color: var(--dim); }
+.opt-search:focus-visible { outline: none; border-color: var(--brass); }
+.opt-filters { display: flex; flex-wrap: wrap; gap: 4px; }
+.opt-filters .chip { padding: 5px 9px; font-size: 11px; }
+.opt-tools .acts { margin: 0 0 0 auto; gap: 6px; }
+.opt-tools .act { min-height: 30px; padding: 5px 10px; font-size: 11px; letter-spacing: 0.08em; }
+.opt-body > .card { margin: 12px 18px; }
+.opt-bindings { padding: 6px 18px 18px; }
+.sec-jump { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 18px 12px; border-bottom: 1px solid #20262e; }
+.sec-jumpbtn { font-family: var(--data); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim);
+  background: none; border: 1px solid var(--iron); padding: 5px 9px; cursor: pointer; }
+.sec-jumpbtn:hover { color: var(--bone); border-color: var(--dim); }
+.sec-jumpbtn:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
+.sec-head { padding: 22px 18px 8px; scroll-margin-top: 100px; border-bottom: 1px solid #20262e; }
+.sec-title { display: flex; align-items: baseline; gap: 8px; }
+.sec-head h3 { margin: 0; font-family: var(--data); font-size: 13px; letter-spacing: 0.08em; color: var(--brass); font-weight: 600; }
+.sec-head .count { font-size: 11px; color: #8b8578; font-variant-numeric: tabular-nums; }
+.row.changed .row-name::after, .ft-tile.changed .ft-tile-name::after { content: 'Changed'; margin-left: 8px; padding: 1px 5px;
+  font-family: var(--data); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--brass);
+  border: 1px solid rgba(201,162,39,0.6); vertical-align: 2px; }
+.opt-preset .ft-segb { min-width: 64px; }
+.opt-preset .ft-segb.custom { color: var(--brass); background: rgba(0,0,0,0.35); cursor: default; display: inline-flex; align-items: center; justify-content: center; }
 
-.ft-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(212px, 1fr)); gap: 8px; }
-
-.ft-tile { position: relative; background: var(--slate); border: 1px solid var(--iron);
-  padding: 9px 10px 9px 13px; display: flex; flex-direction: column; gap: 7px; cursor: pointer; }
-.ft-tile::before { content: ''; position: absolute; left: 0; top: -1px; bottom: -1px; width: 3px;
-  background: var(--iron); }
+/* the Features row */
+.ft-tile { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, auto); column-gap: 16px; row-gap: 6px;
+  align-items: center; padding: 11px 18px 11px 20px; border-bottom: 1px solid #20262e; }
+.ft-tile::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; background: var(--iron); }
 .ft-tile[data-on="1"]::before { background: var(--emerald); }
 .ft-tile[data-locked="1"]::before { background: var(--brass); }
-.ft-tile:hover, .ft-tile.sel { border-color: var(--dim); }
-.ft-tile.sel { background: var(--iron); }
-.ft-tile:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
-.ft-tile-name { font-family: var(--data); font-size: 14.5px; color: var(--bone); line-height: 1.2; letter-spacing: 0; }   /* AUDIT FONT3 L4: a mod's "X by Author" on one line where it fits - the tiles' rows stay even */
-.ft-tile-meta { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.ft-tile:hover { background: rgba(0,0,0,0.18); }
+.ft-tile.sel { background: rgba(0,0,0,0.3); }
+.ft-tile-main { grid-column: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; }
+.ft-tile-main:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.ft-tile-name { font-size: 14px; color: var(--bone); line-height: 1.25; letter-spacing: 0; }   /* AUDIT FONT3 L4: a mod's "X by Author" on one line where it fits */
+.ft-tile-meta { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 5px; }
+.ft-tile-meta .kind { font-size: 11px; padding: 1px 5px; }
 .ft-tile-lock { font-family: var(--data); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass); }
+.ft-tile-ctl { grid-column: 2; justify-self: end; max-width: 440px; }
+.ft-tile-more, .ft-tile-drawer { grid-column: 1 / -1; }
 
 /* the bar */
 .ft-seg { display: flex; flex-wrap: wrap; background: var(--ink); border: 1px solid var(--iron); padding: 2px; gap: 2px; }
 .ft-segb { font-family: var(--data); font-size: 11.5px; letter-spacing: 0.03em; color: var(--dim);
-  background: none; border: 0; padding: 3px 8px; cursor: pointer; flex: 1 1 auto; white-space: nowrap; }
+  background: none; border: 0; padding: 5px 10px; cursor: pointer; flex: 1 1 auto; white-space: nowrap; }
 .ft-segb:hover:not(:disabled) { color: var(--bone); }
 .ft-segb[aria-pressed="true"] { background: var(--iron); color: var(--bone); }
 .ft-seg.locked .ft-segb[aria-pressed="true"] { color: var(--brass); }
@@ -5085,7 +5620,7 @@ ${badgeCss()}
 .ft-segb:focus-visible { outline: 2px solid var(--brass); outline-offset: -2px; }
 
 /* the drawer's door, and the drawer */
-.ft-tile-more { font-family: var(--data); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+.ft-tile-more { justify-self: start; font-family: var(--data); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--dim); background: none; border: 0; padding: 2px 0; cursor: pointer; text-align: left; }
 .ft-tile-more:hover { color: var(--bone); }
 .ft-tile-car { display: inline-block; }
@@ -5098,19 +5633,17 @@ ${badgeCss()}
 .ft-mchip[aria-pressed="true"] { color: var(--verdigris); border-color: var(--verdigris); }
 .ft-mchip:hover { color: var(--bone); }
 .ft-tile-drawer .row { padding: 4px 0; border: 0; }
-.ft-tile-drawer .row-note, .ft-tile-drawer .row-sub { display: none; }   /* the rail carries the words */
-/* UXB1-F: a mod's keys on its tile - read-only, the key in a dashed box (a
+.ft-tile-drawer .row-note, .ft-tile-drawer .row-sub { display: none; }   /* the help pane carries the words */
+/* UXB1-F: a mod's keys on its row - read-only, the key in a dashed box (a
    key's face, not a button), and one press through to Controls. */
 .ft-key { font-family: var(--data); font-size: 11px; letter-spacing: 0.08em; color: var(--bone);
   border: 1px dashed var(--iron); padding: 2px 8px; min-width: 28px; text-align: center; }
 .ft-keys-to { align-self: flex-start; font-size: 11px; padding: 4px 10px; }
 
-/* the reading rail */
-.ft-rail { position: sticky; top: 8px; background: var(--slate); border: 1px solid var(--iron);
-  padding: 12px 13px; display: flex; flex-direction: column; gap: 9px; }
-.ft-rail-k { font-family: var(--data); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); }
-.ft-rail h3 { font-family: var(--display); font-size: 19px; color: var(--bone); margin: 0; line-height: 1.15; }
-.ft-rail-note { font-size: 12.5px; line-height: 1.5; color: var(--bone); margin: 0; opacity: 0.85; }
+/* a Features row's card in the help pane */
+.ft-card { display: flex; flex-direction: column; gap: 9px; }
+.ft-rail-k { font-family: var(--data); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
+.ft-rail-note { font-size: 13px; line-height: 1.55; color: var(--bone); margin: 0; opacity: 0.9; }
 .ft-rail-effect { font-size: 12px; line-height: 1.45; color: var(--dim); margin: 0;
   border-left: 2px solid var(--brass); padding-left: 8px; }
 .ft-rail-kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0;
@@ -5120,44 +5653,47 @@ ${badgeCss()}
 .ft-rail-kv dd { margin: 0; font-size: 12px; color: var(--bone); opacity: 0.85; }
 
 @media (max-width: 860px) {
-  .ft-panes { grid-template-columns: minmax(0, 1fr); }
-  .ft-rail { position: static; order: -1; }
+  .ft-tile { grid-template-columns: minmax(0, 1fr); padding: 11px 14px 11px 16px; }
+  .ft-tile-ctl { grid-column: 1; justify-self: stretch; max-width: none; }
+  .opt-tools { padding: 8px 12px; }
+  .sec-jump { top: 0; position: static; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 6px 12px; }
+  .sec-jump::-webkit-scrollbar { display: none; }
+  .sec-jumpbtn { flex: none; white-space: nowrap; }
+  .sec-head { scroll-margin-top: 60px; padding: 18px 14px 8px; }
+  /* the help pane is a SHEET over the rows on a phone: the shell's see-through scrim let the rows read through it */
+  .shell .detail { background: rgb(10,12,17); border-left: 0; }
 }
+/* the pause window: the list is narrower than the screen, so the bar goes under the words there too */
+.px-setwrap .ft-tile { grid-template-columns: minmax(0, 1fr); }
+.px-setwrap .ft-tile-ctl { grid-column: 1; justify-self: stretch; max-width: none; }
+.px-setwrap .opt-tools { background: rgba(10,12,17,0.97); }
+.px-setwrap .sec-head { padding: 14px 4px 6px; scroll-margin-top: 90px; }
+.px-setwrap .sec-head h3 { font-size: 13px; }
+.px-setwrap .opt-tools { padding: 8px 4px; }
+.opt-note { padding: 8px 18px; font-size: 12.5px; color: var(--dim); }
 
 /* -- FT16 (2026-09-15, Mac: "make the new feature UI elements have the
    same transparent design as the list we used to have") -----------
-   THE PASS FT14 NEVER WROTE. Every component family on this screen has
-   two paints: the base tokens above, and a .shell override for PX11,
-   where the boot door stands on the live sky and every painted panel
-   colour comes off (.shell .pane, .shell .list, .shell .row -
-   transparent grounds, low-alpha scrims, and 2px rules in the brass
-   line rather than 1px iron). FT14 wrote the first paint and stopped,
-   so the feature tiles drew SOLID --slate boxes with hairline borders
-   while the list they replaced had been see-through over the stars -
-   which is the whole of Mac's report. Not a new design: the old one,
-   applied to the new elements.
-
-   The pause window is NOT in this scope and must not be: .px-win
-   panels are opaque on purpose, there being a game behind them, so the
-   base paint above is already right there. That is why this is scoped
-   to .shell rather than written into the tokens.
-
-   The left edge keeps its state stripe (emerald on, brass forced,
-   iron off) and moves out over the 2px border so it still reads flush.
-   A switch's filled segment (DISC23-C) outranks the translucent press
-   below, so it reads the same on the shell as on the pause window. */
-.shell .ft-tile { background: none; border: 2px solid rgba(125,116,96,0.3); }
-.shell .ft-tile:hover, .shell .ft-tile.sel { background: rgba(0,0,0,0.25); border-color: rgba(125,116,96,0.55); }
-.shell .ft-tile::before { left: -2px; top: -2px; bottom: -2px; }
-.shell .ft-gline { height: 2px; background: rgba(125,116,96,0.3); }
+   Every component family on this screen has two paints: the base tokens above, and a .shell override for PX11, where
+   the boot door stands on the live sky and every painted panel colour comes off (.shell .pane, .shell .list, .shell
+   .row - transparent grounds, low-alpha scrims, and 2px rules in the brass line rather than 1px iron). The pause window
+   is NOT in this scope: .px-win panels are opaque on purpose, there being a game behind them. A switch's filled
+   segment (DISC23-C) outranks the translucent press below, so it reads the same on the shell as on the pause window. */
+.shell .ft-tile { border-bottom: 2px solid rgba(125,116,96,0.3); }
+.shell .ft-tile:hover { background: rgba(0,0,0,0.25); }
+.shell .ft-tile-name { text-shadow: 2px 2px 0 rgba(0,0,0,0.8); }
 .shell .ft-seg { background: rgba(0,0,0,0.3); border: 2px solid rgba(125,116,96,0.35); }
 .shell .ft-segb[aria-pressed="true"] { background: rgba(0,0,0,0.45); }
 .shell .ft-mchip { background: rgba(0,0,0,0.3); border: 2px solid rgba(125,116,96,0.35); }
 .shell .ft-mchip[aria-pressed="true"] { border-color: var(--verdigris); }
-.shell .ft-search { background: rgba(0,0,0,0.3); border: 2px solid rgba(125,116,96,0.35); }   /* FT18: the search, in the shell's paint */
+.shell .opt-search { background: rgba(0,0,0,0.3); border: 2px solid rgba(125,116,96,0.35); }   /* FT18: the search, in the shell's paint */
+.shell .opt-tools { background: rgba(10,12,17,0.94); border-bottom: 2px solid rgba(125,116,96,0.35); }
 .shell .ft-tile-drawer { border-top: 2px solid rgba(125,116,96,0.3); }
-.shell .ft-rail { background: rgba(10,12,17,0.55); border: 2px solid rgba(125,116,96,0.35); }
 .shell .ft-rail-kv { border-top: 2px solid rgba(125,116,96,0.3); }
+.shell .sec-jump { border-bottom: 2px solid rgba(125,116,96,0.35); }
+.shell .sec-jumpbtn { border: 2px solid rgba(125,116,96,0.35); text-shadow: 2px 2px 0 rgba(0,0,0,0.7); }
+.shell .sec-head { border-bottom: 2px solid rgba(125,116,96,0.3); }
+.shell .sec-head h3 { color: rgb(243,239,44); text-shadow: 2px 2px 0 rgb(93,77,12); }
 
 /* ── OVH1: THE OVERHAULS (2026-09-24, Mac: "3 large panels ... directional arrows allowing you to switch being
    different feature sets") ─────────────────────────────────────────────────────────────────────────────────────
@@ -5322,7 +5858,7 @@ button.lv-note.lv-clickable:hover, button.lv-note.lv-clickable:focus-visible {
    eight toasts and a box spilled the last toast off the screen); the
    boxes stand first, so what is lost is the newest toast. */
 .notice-stack {
-  position: fixed; right: 0; top: 50%; transform: translateY(-50%);
+  position: fixed; right: var(--ui-pillar, 0px); top: 50%; transform: translateY(-50%);   /* RETRO-UI: at the picture's edge, inside retro mode's pillarbox */
   z-index: 31; pointer-events: none;
   display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
   max-width: min(520px, 70vw); max-height: 90vh; overflow: hidden;
@@ -5418,7 +5954,7 @@ button.lv-note.lv-clickable:hover, button.lv-note.lv-clickable:focus-visible {
    A touch screen keeps the party list's 76; a phone takes it under the
    compass and the foe blade; a short screen keeps the title and the time. */
 .qtrack {
-  position: fixed; right: calc(8px + env(safe-area-inset-right, 0px)); top: calc(92px + env(safe-area-inset-top, 0px));
+  position: fixed; right: calc(8px + var(--ui-pillar, 0px) + env(safe-area-inset-right, 0px)); top: calc(92px + env(safe-area-inset-top, 0px));   /* RETRO-UI */
   z-index: 5; pointer-events: none; box-sizing: border-box; width: 260px; max-width: calc(100vw - 16px);
   display: flex; flex-direction: column; gap: 2px; padding: 5px 10px 6px 18px; text-align: right;
   /* AUDIT GUIDE U9: the toast's own plate (0.82) - at 0.6 the dim rows fell under 4.5:1 over a bright sky or snow */
@@ -5435,6 +5971,10 @@ button.lv-note.lv-clickable:hover, button.lv-note.lv-clickable:focus-visible {
 @media (max-width: 900px) {
   body:has(.hud-foe.on) .qtrack { --qt-clear: calc(18px + 28px * var(--hud-scale, 1) + 30px + 46px * var(--hud-scale, 1)); }
   body:has(.hud-foe.on.blade) .qtrack { --qt-clear: calc(18px + 28px * var(--hud-scale, 1) + 30px + 76px * var(--hud-scale, 1)); }
+  /* TELL9: the poise track under it - its 6px, its border and its 4px gap more; AUDIT TELL U3: and its word under it,
+     13px and a 3px gap */
+  body:has(.hud-foe.on.poised) .qtrack { --qt-clear: calc(18px + 28px * var(--hud-scale, 1) + 30px + 74px * var(--hud-scale, 1)); }
+  body:has(.hud-foe.on.blade.poised) .qtrack { --qt-clear: calc(18px + 28px * var(--hud-scale, 1) + 30px + 104px * var(--hud-scale, 1)); }
 }
 /* AUDIT GUIDE T1/D1, U1, U7: the card steps aside - keeping its line, so the party list never jumps - for what stands
    in its corner a while: the Overworld's block at the top of a touch screen, a narrow screen's chat lines, a journey's
@@ -5442,6 +5982,12 @@ button.lv-note.lv-clickable:hover, button.lv-note.lv-clickable:focus-visible {
 :root[data-tview-block="top"] .qtrack,
 body:has(.travelpanel-junction.show) .qtrack { visibility: hidden; }
 @media (max-width: 720px) { body:has(.dfchat-peek:not(:empty)) .qtrack { visibility: hidden; } }
+/* AUDIT PRE-MERGE 1003 U4: ...and for a bout's versus bar (ui/arenaHud.js, 560 wide, centred under the compass) on a
+   screen too narrow for both - 1100 and under, the bar's half and the card's 268 from the edge - where the bar stood on
+   the card on every phone and up to 1024 */
+@media (max-width: 1100px) { body:has(.arena-hud.on) .qtrack { visibility: hidden; } }
+/* AUDIT PRE-MERGE 1003b M2: and inside retro mode's pillarbox, by the picture's width (enhancedHud.js wearUiPillar) */
+:root[data-ui-narrow] body:has(.arena-hud.on) .qtrack { visibility: hidden; }
 /* AUDIT GUIDE U10: under forced colours a background image goes; the card keeps a plate of the system's own */
 @media (forced-colors: active) { .qtrack { background-color: Canvas; } }
 .qtrack-head { display: flex; justify-content: flex-end; align-items: baseline; gap: 6px; }

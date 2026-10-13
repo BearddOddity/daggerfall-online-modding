@@ -9,7 +9,9 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 
 import { Renderer, WORLD_FRAME } from '../src/render/renderer.js';
-import { SHADOW_CASCADES, SHADOW_FAR_CASCADE_EVERY } from '../src/render/shadowPass.js';
+import { SHADOW_CASCADES, SHADOW_FAR_CASCADE_EVERY, SHADOW_EMPTY_HOLD } from '../src/render/shadowPass.js';
+import { SHADOW_TUNING } from '../src/render/shadowPass.js';
+SHADOW_TUNING.override = false;   // these tests pin EL8's schedule
 import { EL_LANE } from '../src/render/enhancedLighting.js';
 import { TravelJunctionMap } from '../src/ui/travelJunctionMap.js';
 import { WISP_VS, WISP_LOOK, SAND_LOOK, WindWispsRenderer } from '../src/render/windWisps.js';
@@ -168,19 +170,30 @@ test('AUDIT 68 S17-far-cascade-shift: after a floating-origin recenter the far c
   assert.equal(sp.stats.cascadesDrawn, SHADOW_CASCADES.length - 1, 'EL8: held again on the next off frame');
 });
 
-test('AUDIT 68 S17-far-cascade-shift: a sun returning after a night or an empty frame draws its far cascade at once, never the map held from before', () => {
+test('AUDIT 68 S17-far-cascade-shift: a sun returning after a night or an empty run draws its far cascade at once, never the map held from before; EMPTY-HOLD (2026-10-06, the anti-flicker patch): a run of empty frames no longer than SHADOW_EMPTY_HOLD keeps the last maps whole - the room\'s shadows do not blink - and only a longer one clears', () => {
   const { make, frame } = shadowHost();
   const far = FAR;
-  // the sun returns: a night (point frames) or an empty frame (no records) between two suns holds no far map
+  // EMPTY-HOLD: one empty frame (a hitch, a chunk swapped mid-frame) under the same sky - the maps and their uniforms stand
+  const held = make();
+  for (let i = 0; i < 3; i++) frame(held, 0);
+  const lit = held.shadows.sunParams[3];
+  assert.notEqual(lit, 0, 'the sun map is lit');
+  frame(held, 0, { draw: false });
+  frame(held, 0);
+  assert.equal(held.shadows.kind, 'sun', 'EMPTY-HOLD: the empty frame is held');
+  assert.equal(held.shadows.sunParams[3], lit, 'its map still lit - nothing cleared');
+  assert.equal(held.shadows.stats.cascadesDrawn, 0, 'and nothing drawn from an empty frame');
+  // the sun returns: a night (point frames) or an empty run past the hold (no records) between two suns holds no far map
   // (a frame's records are replayed at the NEXT beginFrame, so the empty frame is the one after the draw-less one)
   const night = make(), empty = make();
   for (const q of [night, empty]) for (let i = 0; i < 3; i++) frame(q, 0);
   frame(night, 300, { sunScale: 0 });
   if ((night.shadows.frameNo + 1) % SHADOW_FAR_CASCADE_EVERY === 0) frame(night, 300, { sunScale: 0 });
-  frame(empty, 300, { draw: false });
+  for (let i = 0; i < SHADOW_EMPTY_HOLD + 1; i++) frame(empty, 300, { draw: false });
   if ((empty.shadows.frameNo + 2) % SHADOW_FAR_CASCADE_EVERY === 0) frame(empty, 300, { draw: false });
   frame(empty, 300);
-  assert.equal(empty.shadows.kind, null, 'an empty frame');
+  assert.equal(empty.shadows.kind, null, 'an empty run past the hold');
+  assert.equal(empty.shadows.sunParams[3], 0, 'cleared');
   for (const [name, q] of [['a night', night], ['an empty frame', empty]]) {
     const sq = q.shadows;
     assert.notEqual(sq.kind, 'sun');
@@ -256,11 +269,11 @@ test('AUDIT 68 S17-gl-program-dup: one compile and link - the order every pass w
   assert.ok(prog);
   assert.deepEqual(calls, [
     'createProgram',
-    'createShader:VERTEX_SHADER', 'shaderSource:vs-src', 'compileShader', 'getShaderParameter', 'attachShader',
-    'createShader:FRAGMENT_SHADER', 'shaderSource:fs-src', 'compileShader', 'getShaderParameter', 'attachShader',
+    'createShader:VERTEX_SHADER', 'shaderSource:vs-src', 'compileShader', 'attachShader',
+    'createShader:FRAGMENT_SHADER', 'shaderSource:fs-src', 'compileShader', 'attachShader',
     'linkProgram', 'getProgramParameter',
-  ]);
-  ok = { COMPILE_STATUS: false, LINK_STATUS: true };
+  ], 'PERF-COMPILE1: one sync point - the link status, asked once both stages and the link are in');
+  ok = { COMPILE_STATUS: false, LINK_STATUS: false };   // PERF-COMPILE1: a stage that fails fails the link, and its log is the one thrown
   assert.throws(() => buildProgram(gl, 'v', 'f'), { message: 'ERROR: 0:1: boom' }, 'the driver\'s log, as every pass threw it');
   assert.throws(() => buildProgram(gl, 'v', 'f', 'far ring'), { message: 'far ring shader: ERROR: 0:1: boom' });
   ok = { COMPILE_STATUS: true, LINK_STATUS: false };

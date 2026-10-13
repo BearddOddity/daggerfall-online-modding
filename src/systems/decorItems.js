@@ -36,17 +36,19 @@ import { getMagicItemTemplates, ITEM_GROUP_NAME_BY_CLASS } from './loot.js';
 import { getLocalizedMagicItemName } from './textManager.js';   // L10N3e: an artifact's name, by its MAGIC.DEF index
 import { TEMPLATES, isMap } from './useItem.js';
 import { isSummoned } from './inventory.js';
+import { isBagItem } from '../net/bagLaw.js';   // AUDIT ONE-BAG 2: the Materials Bag stands as no piece
+import { isPackOnly } from './itemBound.js';   // AUDIT 625 W1: nor a pack-only piece (the Wallet)
 import { decorFlatLight } from './decorCatalogue.js';
 import { itemDyeColor, itemDyeTarget } from './itemDye.js';
-import { decorItemOf, decorIsMount, DECOR_ARCHIVE_MAX, DECOR_RECORD_MAX, DECOR_ARTIFACT_UNKNOWN } from '../net/decorLaw.js';
-import { PROVENANCE_RE, MASTERWORK, makerName, markedName } from '../net/recipeLaw.js';   // PROF4: a crafted piece's id and mark
+import { decorItemOf, decorIsMount, DECOR_ARCHIVE_MAX, DECOR_RECORD_MAX, DECOR_ARTIFACT_UNKNOWN, DECOR_OWN_KEPT_BACK } from '../net/decorLaw.js';
+import { PROVENANCE_RE, MASTERWORK, makerMark, markedName } from '../net/recipeLaw.js';   // PROF4: a crafted piece's id and mark
 
 /** The groups whose items never stand as themselves: weapons and armour are mounted (DECOR2c); a vehicle is no thing
  *  one carries, coin is a counter, and a deed or a quest's own item is not the player's to set down. */
 export const DECOR_OWN_NEVER_GROUPS = Object.freeze(new Set(['Weapons', 'Armor', 'Transportation', 'Currency', 'Deeds', 'QuestItems']));
-/** The items kept back by name: paper worth money or a house (a letter of credit, a deed) and the book of the
- *  player's own spells - set down in a home, it would be out of reach wherever the player went. */
-export const DECOR_OWN_KEPT_BACK = Object.freeze(new Set([TEMPLATES.Spellbook, TEMPLATES.Letter_of_credit, TEMPLATES.House_Deed, TEMPLATES.Ship_Deed]));
+// The items kept back by name - INT9: DECOR_OWN_KEPT_BACK's home is net/decorLaw.js (the account Worker reads it: a death in
+// the zone's drop keeps them too - systems/wildDropLaw.js), re-exported here
+export { DECOR_OWN_KEPT_BACK };
 
 /** An item's picture in the world - its own fields first (an artifact's own picture, a potion's own bottle - DFU's
  *  world arm reads the item, which SetItem only seeds from the template), else its template's - as a piece's flat, or
@@ -74,7 +76,7 @@ export function decorDescriptorOf(item) {
   // PROF4 (bible/06-Systems/Professions-Arc.md 25): a crafted piece's provenance, and its mark where its name carries
   // one - online the service writes the mark from its own row, whatever this sends
   const pv = typeof item.provenance === 'string' && PROVENANCE_RE.test(item.provenance) ? item.provenance : null;
-  const mk = pv && (item.marked === true || item.quality === MASTERWORK) ? makerName(item.maker) : null;
+  const mk = pv && (item.marked === true || item.quality === MASTERWORK) ? makerMark(item.maker) : null;   // TEXT-F1: a mark the filter lets stand
   return decorItemOf({
     t: item.templateIndex, g: g >= 0 ? g : null,
     m: Number.isSafeInteger(item.material) && item.material > 0 ? item.material : null,
@@ -87,11 +89,16 @@ export function decorDescriptorOf(item) {
  * WHAT AN ITEM OF THE PLAYER'S OWN STANDS AS - `{ flat, light, item }`, its picture, the light it gives (a candle's,
  * a torch's - Daggerfall's own, as the catalogue's) and its descriptor - or null when it cannot stand: anything worn
  * (DFU's own pack list never shows it), a quest's item, a summoned one, a map (it is read, never kept), the groups
- * and items kept back above, and anything with no picture of its own.
+ * and items kept back above, the Materials Bag and a pack-only piece, and anything with no picture of its own.
  */
 export function decorStandOf(item) {
   if (!item || item.questItem || item.equipSlot != null || isSummoned(item) || isMap(item)) return null;
   if (DECOR_OWN_NEVER_GROUPS.has(item.group) || DECOR_OWN_KEPT_BACK.has(item.templateIndex)) return null;
+  // AUDIT ONE-BAG 2: the Materials Bag is never set out - a piece leaves the pack with no transfer ladder (a loaded bag's list
+  // stranded) and comes back with none (a second bag, held beside one bought meanwhile). AUDIT 625 W1: nor a PACK-ONLY
+  // piece (systems/itemBound.js isPackOnly - the Wallet's row): set down, it leaves the pack (scenes/decorTool.js
+  // commitOwn), and a wallet out of the pack leaves what it holds back on the pack's pages
+  if (isBagItem(item) || isPackOnly(item)) return null;
   const flat = decorItemFlat(item);
   const descriptor = flat ? decorDescriptorOf(item) : null;
   if (!flat || !descriptor) return null;

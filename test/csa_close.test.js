@@ -402,7 +402,7 @@ test('CSA-J (the audit): the hosts - the Transport press leaves the helm before 
   assert.doesNotMatch(w, /!== 'exterior'\) csaFrame\(dt\)/, 'no longer ahead of the modes\' frame');
   const d = src('scenes/dungeonContext.js');
   assert.match(d, /const _prevDeathPresenter = setDeathPresenter\(\(\) => \{\n\s+opts\.csaOnPlayerDeath\?\.\(\);/);
-  assert.match(d, /function onExhausted\(\) \{\n[\s\S]{0,900}?if \(out\.kind === 'drown'\) \{[^\n]*return; \}\n\s+opts\.csaOnPlayerDeath\?\.\(\);/);   // FIELD BUGS 2026-09-30b SWIM-SPENT (PIN MOVED): a swimmer's drain to nothing is no death - the collapse's arms alone reach OnPlayerDeath
+  assert.match(d, /function onExhausted\(\) \{\n[\s\S]{0,900}?if \(out\.kind === 'drown'\) \{[^\n]*return; \}\n[\s\S]{0,800}?const sandSpare = opts\.playerSpare\?\.\(\) \?\? null;\n\s+if \(sandSpare\) \{[^\n]*return; \}[^\n]*\n\s+opts\.csaOnPlayerDeath\?\.\(\);/);   // PIN MOVED (AUDIT ARENA-LADDER A1): the sand's collapse a fall, asked before it   // FIELD BUGS 2026-09-30b SWIM-SPENT (PIN MOVED): a swimmer's drain to nothing is no death - the collapse's arms alone reach OnPlayerDeath
   assert.match(d, /drainPlayerFatigue: \(n\) => drainFatigue\(n\),/);
 });
 
@@ -442,7 +442,7 @@ test('CSA-J (the audit): the load\'s doors - OnStartLoad ahead of the save\'s pl
   assert.match(w, /modStartLoad: \(\) => \{ crewAshore\.clear\(\); (?:(?:revenantAshore\.clear|clearSworn)\(\); )?if \(csaRuntime\) csaCall\(\(\) => csaRuntime\.OnStartLoad\(\)\); \},[^\n]*\n\s+modSaveLoad: \(modData\) => \{ restoreModSaveRecords\(modData, csaModLoadFailed\); \},[^\n]*\n\s+modLoaded: \(\) => \{ if \(csaRuntime\) csaCall\(\(\) => csaRuntime\.OnLoad\(\)\); \},/);
   const d = src('scenes/dungeonContext.js');
   assert.match(d, /opts\.modStartLoad\?\.\(\);[^\n]*\n\s+const extras = restorePlayer\(playerEntity, snap, spellsByIndex\);/);
-  assert.match(d, /this\.restoreSaved\(extras, setPlayerPos\);\n\s+opts\.modLoaded\?\.\(\);/);
+  assert.match(d, /this\.restoreSaved\(extras, setPlayerPos\);\n\s+(?:opts\.outerCampsLoad\?\.\(extras\);[^\n]*\n\s+)?opts\.modLoaded\?\.\(\);/);   // AUDIT REST III A1 (RE-AIMED): the save's camps outside stand before OnLoad, the load's own
   const m = src('scenes/worldModes.js');
   assert.match(m, /modStartLoad: \(\) => host\.modStartLoad\?\.\(\),/);
   assert.match(m, /modLoaded: \(\) => host\.modLoaded\?\.\(\),/);
@@ -453,7 +453,8 @@ test('CSA-J (the audit): the load\'s doors - OnStartLoad ahead of the save\'s pl
   assert.match(w, /else \{ _wodInside = false; townTalk\.say\('\(the dungeon has no entrance here[^\n]*\n\s+if \(!entered\) csaElsewhere = true;/);
   assert.match(w, /return rec && rec\.currentBoat >= 0 \? \{ \.\.\.modData, \[COME_SAIL_AWAY_VENDOR\]: \{ \.\.\.rec, currentBoat: -1 \} \} : modData;/);
   assert.match(w, /ohAbyss\?\.onRespawnerComplete\(\);[^\n]*\n\s+if \(csaRuntime\) await csa\.preload\(\);[^\n]*\n\s+if \(csaElsewhere\) extras\.modData = csaHelmLeft\(extras\.modData\);[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s+const hccRecord = extras\.modData\?\.\[HCC_VENDOR\] \?\? null;\n\s+if \(hccRecord\) hccRuntime\.restoreSaveData\(hccRecord\);\n\s+restoreModSaveRecords\(extras\.modData, csaModLoadFailed\);/, 'both before the mod loop (and HCC\'s restore, which reads the same record set)');
-  assert.match(w, /const paused = gamePaused\(\) \|\| _loading;/);
+  // PIN MOVED (ETHER-CROSSING, bible/03-World/Etheric-Sea.md): and the ship held while the crossing carries her across
+  assert.match(w, /const paused = gamePaused\(\) \|\| _loading \|\| _partyArrivalPending \|\| _etherCrossing;/);
   assert.match(w, /const csaOn = \(\) => _csaOnAtLoad;/);
   assert.match(w, /root: csaRuntime\?\.state\?\.parentedObjects\?\.get\(f\.ai\)\?\.boat\?\.GameObject \?\? null \}\);/);
   assert.match(w, /const c = \(v\) => Math\.max\(0, Math\.min\(TERRAIN_SIZE, v\)\); return terrainSampleHeightAt\(p\.samples, c\(q\[0\] - o\[0\]\), c\(q\[2\] - o\[2\]\), p\._stride \?\? 1\);/);   // FIELD-CSA2: the clamp stands; the height is Unity's heightmap's (terrainSurface.js terrainSampleHeightAt)

@@ -31,6 +31,7 @@ import { BOOK_ID_TITLES } from '../src/systems/booksData.js';
 import { splitStack, addItem, ARROW_TEMPLATE } from '../src/systems/inventory.js';
 import { ITEM_TEMPLATES, templateByIndex } from '../src/systems/itemTemplates.js';
 import { BUILDING_TYPES } from '../src/world/buildingNames.js';
+import { PELLET_TEMPLATE } from '../src/characters/thunderlockIds.js';   // SHOP-PELLETS
 import { BookFile } from '../src/formats/bookFile.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -204,7 +205,9 @@ test('A2 (data-gated): the real BOOKS files price 300..800 off their own first f
 test('A2: a shelved arrow mints at currentCondition 0 (ItemBuilder.cs:359-364)', () => {
   // A weaponsmith at quality 21 with a rolls stream of 0 stocks every
   // weapon template, arrows included.
-  const shelf = stockShopShelf({ buildingType: BUILDING_TYPES.WeaponSmith, quality: 21 }, { level: 1 }, { rolls: () => 0 });
+  // PIN MOVED (SHOP-ARROWS): read off a shelf behind the counter - the counter's own arrows carry its quiver too
+  // (test/arrowsupply.test.js), and this pin is DFU's draw alone
+  const shelf = stockShopShelf({ buildingType: BUILDING_TYPES.WeaponSmith, quality: 21 }, { level: 1 }, { rolls: () => 0, shelfIndex: 1 });
   const arrows = shelf.filter((it) => it.templateIndex === ARROW_TEMPLATE);
   assert.equal(arrows.length, 1, 'the shelf carries arrows');
   const arrow = arrows[0];
@@ -246,7 +249,7 @@ test('A2: the shelf draws RandomMaterial for an arrow too - C# evaluates the ARG
   const shelf = stockShopShelf({ buildingType: BUILDING_TYPES.WeaponSmith, quality: 21 }, { level: 1 }, { rolls: counting });
   assert.equal(n, armorDraws + weaponDraws,
     'one material draw per WEAPON template, arrows included - drop the arrow\'s and this is 62');
-  assert.equal(shelf.filter((it) => it.group === 'Weapons').length, 19);
+  assert.equal(shelf.filter((it) => it.group === 'Weapons' && it.templateIndex !== PELLET_TEMPLATE).length, 19);   // PIN MOVED (SHOP-PELLETS): DFU's nineteen - the counter's pellets beside them draw nothing (the count above is unmoved)
   assert.equal(shelf.filter((it) => it.group === 'Armor').length, 11);
   // and the site is ONE CreateWeapon call, not a re-spelling of its
   // arrow branch (ONE DFU MEMBER, ONE EXPORT)

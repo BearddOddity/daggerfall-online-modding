@@ -25,6 +25,7 @@ import { controllerLook, setControllerLook, LookFilter } from '../src/player/loo
 import { padFamily, setPadFamily } from '../src/ui/padGlyphs.js';   // QS3: the family the poller writes
 import { setValue, _resetForTests, LIVE, UNAVAILABLE } from '../src/systems/settings.js';
 import { lookScale } from '../src/ui/lookSettings.js';
+import { setPref, resetPrefs } from '../src/systems/uiPrefs.js';   // PAD-CURSOR: the assist's switch
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const rd = (p) => readFileSync(join(ROOT, p), 'utf8');
@@ -260,6 +261,7 @@ test('GP3 the controller cursor: born where the mouse last was when the pad beco
   const listeners = {};
   globalThis.window = { addEventListener: (t, f) => { (listeners[t] ??= []).push(f); }, removeEventListener: () => {}, dispatchEvent: () => {} };
   globalThis.location = { search: '?skin=classic' };   // PLUS-ONLY: the plain pad layer is the classic skin's - Enhanced Plus's is padplus1.test.js's
+  setPref('padCursorAssist', false);   // PAD-CURSOR: DFU's own linear cursor is the switch off - test/padcursor.test.js holds the assisted feel
   const store = createBindings(); resetDefaults(store); setBindings(store);
   const evs = [];
   const canvas = { getBoundingClientRect: () => ({ left: 10, top: 20, width: 640, height: 400 }), dispatchEvent: (ev) => evs.push(ev), style: {} };
@@ -308,7 +310,7 @@ test('GP3 the controller cursor: born where the mouse last was when the pad beco
     assert.ok(near(gp.cursor()[0] - before, 30), '2 * 900 / 60');
     gp.dispose();
     assert.equal(canvas.style.cursor, '');
-  } finally { globalThis.window = prev.w; globalThis.location = prev.loc; setBindings(null); setControllerLook(false); _resetForTests(); }
+  } finally { resetPrefs(); globalThis.window = prev.w; globalThis.location = prev.loc; setBindings(null); setControllerLook(false); _resetForTests(); }
 });
 
 test('GP1 the look filter\'s controller floor: while the pad is live the fraction never drops below 0.5 (mutant: the floor dropped)', () => {
@@ -330,7 +332,7 @@ test('GP1 the hosts and the tiers: all four hosts attach the pad on the touch la
   for (const h of ['src/scenes/world.js', 'src/scenes/exterior.js', 'src/scenes/dungeon.js', 'src/scenes/interior.js']) {
     const s = rd(h);
     assert.match(s, /const touch = attachTouch\(canvas, inputHooks\);\s*\n\s*const gamepad = attachGamepad\(canvas, inputHooks\);/, `${h}: the pad on the finger's hooks`);
-    assert.match(s, /gamepad\?\.tick\(dt\);[^\n]*\n(\s*\/\/[^\n]*\n)*\s*if \(!/, `${h}: ticked before the paused gate`);
+    assert.match(s, /gamepad\?\.tick\(dt\);[^\n]*\n(\s*\/\/[^\n]*\n)*(\s*const frameLook = \(\) => \{   \/\/ PERF-V8[^\n]*\n)?\s*if \(!/, `${h}: ticked before the paused gate`);   // PIN MOVED (MWNPC19): the world host's look step a PERF-V8 closure (`frameLook`)
   }
   for (const h of ['src/scenes/world.js', 'src/scenes/exterior.js', 'src/scenes/dungeon.js']) assert.match(rd(h), /mv\.analog = touch\?\.axes\(\) \?\? gamepad\?\.axes\(\) \?\? null;/, h);
   for (const k of ['Controls/EnableController', 'Controls/JoystickLookSensitivity', 'Controls/JoystickCursorSensitivity', 'Controls/JoystickMovementThreshold', 'Controls/JoystickDeadzone']) {

@@ -161,7 +161,8 @@ its arms to `rrInstall.js`.
   past 12. The resident (:862-932): a faction-0 person of a known
   gender (GetGender182/184's tables verbatim), `faceVariant = nameSeed
   % 29` under 24 (four in five), `outfitVariant = nameSeed % 4`, the
-  climate race's walker archive (Redguard, Nord, else Breton - GetClimateRace)
+  climate race's walker archive (Redguard, Nord, else Breton - GetClimateRace; REGIONAL-FOLK, a departure: a region
+  FALL.EXE calls Redguard has Redguard residents, as its street - `characters/mobilePerson.js` walkerRace)
   at the idle record, and `flatsDict[bornFlat] = { faceIndex }` - the
   port's `setFlatFaceOverride`, which `dataPipeline.flatFaceIndex`
   reads before FLATS.CFG. The Villager Variety arm (:948-978) has no
@@ -498,7 +499,8 @@ slices (RR1-RR3b) are below, numbered as the code comments carry them
 **Named, not changed:** the shipLocation departure at d02eb562 (fixed
 by RR2); RRI-present-but-disabled semantics (a class registered under a
 switch that is off answers null, as an unregistered class does); the
-standalone dungeon host has no HUD say; beds only in buildings; the C#
+standalone dungeon host has no HUD say; beds only in buildings (as a click target - a dungeon's bed is a rest point
+since FIELD BUGS 2026-10-05 DUNGEON-BEDS); the C#
 gender-carry quirk in the sprite variants (the port normalises it); the
 contact geometry (a trigger sphere against the port's 0.9 reach); the
 PitchMaxLimit snap and the 75-degree floor; the walker at 1 FPS against

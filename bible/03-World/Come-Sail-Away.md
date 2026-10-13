@@ -35,6 +35,112 @@ lines, one MonoBehaviour).
 | CSA-K | SAILING TOGETHER (the port's own, online - the player's ask, 2026-09-28: "I want people to be able to sail together, to walk on board as it moves"): the way on the wire, another player's boat boarded, stood on, carried by and left, the others seen on the deck | landed: below |
 | CSA-L | THE HELM ON SCREEN (the port's own - "instead of an overuse of keybinds, is there a way we can instead develop enhanced plus UI elements?"): the Enhanced Plus helm panel, a pad's d-pad at the helm | landed: below |
 
+## Cabins on owned sailing ships (SAILING-CABINS, 2026-10-03)
+
+Requested departure: every owned large sailing ship includes its own cabin,
+without buying a bank ship. Reuse the bank ship's interior through the existing
+interior builder; connect entry to the sailing options already present.
+
+| Sailing hull | Cabin layout |
+|---|---|
+| Small Ship (2) | Small bank ship, `SHIPAA00.RMB`, record 0 |
+| Large Galley (3) | Large bank ship, `SHIPAA01.RMB`, record 0 |
+| Carrack (4) | Large bank ship, `SHIPAA01.RMB`, record 0 |
+| Rowboat (0), Large Boat (1) | No enclosed cabin or door on these open hulls |
+
+An owned, placed ship's existing menu gains **Enter cabin** and **Open / close
+door** beside **Open storage**. Enhanced Plus selects the cabin action when aiming
+at its door; classic/touch uses the same existing list picker. The original door
+animation is still reachable. Board the ship and leave the helm before entry.
+The entry rechecks ownership, deck contact, travel and dismount state. No extra
+key binding, bank purchase, deed consumption or helm path is introduced.
+
+The layout is shared; the contents are not. Each boat UID names a permanent
+`SailingCabin [UID=...]` scene in the existing save cache, including its containers,
+placed furniture and loose items. Packing and relaunching keep that UID. Existing
+boat cargo stays in its original hold. Bank ownership is untouched. The synthetic
+building's negative UID distinguishes Recall identities.
+Saved cabin data uses validated native coordinates and a boat-local deck position;
+loading requires that boat in the loaded save, never one from the previous character.
+The interior frame remains axis-aligned, matching the translation-relative decor
+cache even when the boat turns between visits.
+
+**A bank ship's cabin, linked** (`systems/boatCabinOwnership.js`, shipped with the
+cabins in #574 and recorded here 2026-10-04). A player who owns a bank ship keeps
+its furnished room by linking it to ONE sailing ship of its size (a Small Ship to
+the small bank ship; a Large Galley or a Carrack to the large): the bank ship's
+saved scene is moved intact to that ship's `SailingCabin [UID=...]` key, never
+merged over a second furnished room, and the link is never reassigned. It is made
+by itself only when exactly one ship of that size is held; with more, the boat's
+menu offers **Link existing bank cabin**. Once linked, the bank ship's Ship
+transport and its door open that ship's cabin where she lies (`world.js`
+enterLinkedBankCabin, `worldModes.js` enterInteriorCore); a ship not afloat is
+called from the Fleet first. The ships held are counted wherever her title is:
+afloat, her parts in the pack or the wagon, and her title in the Fleet's book
+(CABIN-TITLES, 2026-10-04 - HOLDINGS moved deeds out of the pack into the book,
+and the count still read only the pack, so a ship laid up was no candidate: the
+one ship of her size afloat was taken for the only one and given the bank cabin's
+contents, and a lone ship laid up was not found at all).
+
+**Mac's "The classic style ship is broken. its two ships clipped inside of eachother" and
+"from the ship deed it spawns in a dark void outside the game world and you can move
+around another ship under construction" (2026-10-04)** are the sailing cabin drawing
+her own fleet through its walls - CABIN-HULL below, which fixed it on main the same
+day (#579).
+OPEN FOR MAC: the bank cabin link above is made WITHOUT asking when one sailing ship
+matches (`boatCabinOwnership.js linkBankCabin`, from her menu, Enter cabin and every
+load outdoors): the bank ship's room moves into her cabin, and Transport > Ship and the
+bank ship's door then lead to her cabin, not to "Your Ship". Whether that link should
+be asked first is Mac's call; it is left as it stands. (The sentence this flag first
+answered - "Bank ownership and bank ship scenes stay independent" - is retired, the
+link recorded in its place, by CABIN-TITLES.)
+
+**Return to deck** goes through the same exit transition and resolves the same
+live boat's deck pose. It uses feet height without snapping to the seabed. A missing
+boat refuses the exit without destroying the room. Cabin entry/exit does not take
+the helm, change sails, change cargo or add a second sailing simulation.
+
+The cabin is private to the owning player, but passengers may remain on deck.
+Cabin entry keeps the exterior fleet active and its existing online cell/halo
+connection at the boat anchor. The kept fleet stands outside the room: every
+hull, the owner's and every peer's, stays in the street's collider, and the
+cabin neither draws a boat nor answers a press on one (CABIN-HULL, FIELD BUGS
+2026-10-03b - the room is built at her root, so her decks had crossed it as
+floors, and a press there on her ladder or her helm stood the player on her
+deck in the building's frame, her hull alone in the black). The normal boat stream carries a `cabin: 1` flag;
+full heartbeats continue while indoors. The exterior foes stream supplies an empty
+actor envelope using its existing sequence counter. The owner's indoor position,
+movement, casts and lights are not sent outside. Updated peers hide the below-deck
+owner from rendered actors and interaction/target lists while retaining their
+network presence for boat liveness. The cabin owner receives boat and rider
+updates without spawning exterior enemies in the private room. No relay protocol
+change or second connection is required; older clients retain the fleet but may
+show the owner's stationary exterior avatar until updated.
+
+If a remote owner disconnects, times out, withdraws or teleports a boat while a
+local passenger is aboard, the passenger retains that occupied hull at its last
+pose. Its collider and aboard identity stay until they step off; it is then
+removed. A reconnect at the same berth reuses it. This is a local passenger safety
+copy, never another owned ship, a shared persistent parked-ship registry, or a
+boat the passenger can sail. Different clients need this patch for that safeguard.
+Normal owner packing already refuses occupied boats and retains that rule. Shared
+cabin visits and sailing while the owner is inside remain outside this patch.
+
+Host coverage: `world.js` supplies ownership, menu, boat pose and save data;
+`worldModes.js` builds, caches, restores and exits the cabin through the existing
+interior path. Standalone `exterior.js` has no sailing runtime or world-save
+composer and offers no cabin entry. `dungeonContext.js` has no exterior sailing
+boat and offers no cabin entry. No second interior builder is added.
+
+`test/fb1003b_cabinhull.test.js` pins the fleet out of the room (the street's
+collider, the picks, the press, the draw) and the deck solid under the first step
+back. `test/cabintitles.test.js` pins the bank cabin's count over
+the book, the pack and the boats afloat, and the not-afloat refusal. `test/sailingcabins.test.js` exercises real deed launch/pack/relaunch and runtime
+save data, menu routing, per-boat cache persistence, failures and the shipped host
+entry/exit/restore and network functions, long-running cabin heartbeats, and
+occupied-deck retention on owner loss. Actual ARENA2 rendering, doorway clearance
+and live online passenger behavior still require the in-game checks in `PATCH-NOTES-Sailing-Cabins.md`.
+
 ## The settings (CSA-A)
 
 Ten sections, fifty keys, restated key for key in `systems/modSettings.js`
@@ -1200,7 +1306,7 @@ and `BoatTimeScaleReset` - the mod's keypad minus and enter, and, for its
 keypad plus (Eye of the Beholder's AutoPerspective: one key, one action),
 the keypad's star beside it (`10-UI/Controls.md`). IncreaseTimeScale
 (6071-6082) refuses with enemies near - GameManager.AreEnemiesNearby(false,
-false), the port's `areEnemiesNearby` over the mode's foes: "There are
+false), the port's `areEnemiesNearby` over the mode's foes (WATER-FOES, below: never a foe in the water while aboard): "There are
 enemies nearby..." for a second and a half - and else takes one step up
 currentTimeScale's 1, 5, 10, 15, 30, to the fifth; DecreaseTimeScale one
 step down, never below the first; ResetTimeScale (CSA-D's) the step, or a
@@ -1230,10 +1336,31 @@ THE HOST: the scale the helm sets runs everything the port runs on
 Time.timeScale - the world's clock, the motor, the boat's move. The
 frame's own law that a scale with no Travel Options panel behind it is a
 journey over (TO1) now spares a scale the helm holds (`csaHoldsTimeScale`:
-timeScaleIndex above the first step). Online the scale is Travel Options'
+timeScaleIndex above the first step). Online the scale was Travel Options'
 journey's case (TO-ONLINE): the shared clock takes nothing from dt
-(`systems/worldTick.js`), so the helm speeds the player's own world and
-moves no room's clock.
+(`systems/worldTick.js`), so the helm sped the player's own world and
+moved no room's clock - but WALK-CLOCK raised the character's own clock by
+it, and the boat's speed went on the wire at the owner's scale.
+HELM-TIME-ONLINE (below) retired the dial online.
+
+### HELM-TIME-ONLINE (2026-10-04) - online the helm keeps the world's time
+
+Mac: *"Remove the time dial from ships online."* Online (the host's
+`sharedClockOn()`, the runtime's new `timeLocked` dep) the helm's time dial
+is gone: the three keys - and the enhanced panel's and the pad's presses,
+which ARE those keys (`BOAT_TIME_ACTIONS`) - say *"Online, time at sea
+keeps the world's pace."* (`HELM_TIME_LOCKED_TEXT`, a second and a half)
+and move nothing (`updateSailing` returns before the three key lines, which
+stand byte for byte); `helmPanelState().timeDial` is false, so the
+enhanced helm draws no `−` / `×N` / `+` (`ui/enhancedHelm.js helmButtons`),
+the pad's left and right step nothing and, held, only trim
+(`helmPadGesture`), and the prompt row says "Trim (hold)" or nothing
+(`helmPadPrompts`). ResetTimeScale itself is untouched - it is how a
+collision, a beaching, a stop, a fast travel or another mod's scale (a
+journey's, RATE-LAW's x60/x100) is put back, none of them the dial. The
+keys stay in the registry and in Controls (KB1: the list is never cut);
+offline the dial is the mod's, as before. Pins: `test/csa_time_audio.test.js`
+(HELM-TIME-ONLINE, 4 - AUDIT-A1: no key, no line, counted); `tools/mutants/helmtime.json` (10, all dead).
 
 THE HUD'S TWO MESSAGE CLOCKS count game time, as DFU's do - a correction
 the helm's messages showed: DaggerfallHUD.cs:262 and PopupText.cs:56-59
@@ -1413,18 +1540,23 @@ AWAY - USING BOAT PARTS!" (kept).
 
 ### The shelves
 
-RegisterCustomItem's group puts both on DFU's shelves: the second loop
-of StockShopShelf (DaggerfallLoot.cs:255-287) walks every custom row of
-a group the shop sells, rarity at or under the quality and
+The mod's RegisterCustomItem group puts both on DFU's shelves, and the
+port stocked them so until SHIPYARDS retired the two rows (below; AUDIT
+SHIPYARDS L6-14 put this in the past): the second loop of
+StockShopShelf (DaggerfallLoot.cs:255-287) walked every custom row of a
+group the shop sells, rarity at or under the quality and
 chanceMod x 5 x (21 - rarity) / 100 to stock it - for these, rarity 1,
 a General Store's UselessItems2 chance of 50 in a hundred each, a Pawn
-Shop's 20. The port's shelf already walks `customItemsForGroup`, which
+Shop's 20. The port's shelf already walked `customItemsForGroup`, which
 knew Roleplay Realism: Items' rows alone; it is one table across the
 loaded mods now (`rriItems.js` registerCustomItemGroup, as DFU's
 customItemGroups is), each row answering while its mod is loaded for the
 game - the load-time answer, never the switch as it stands now (AUDIT
 PRE-MERGE 0928 S4: a mod switched on mid-game had stocked bare "Parts of"
-rows).
+rows). With the rows retired, Come Sail Away's switch feeds its one effect
+kind alone (WaterWalkingSilent's, `effects.js` registerModEffectKind) -
+pinned off, on and latched off (`csa_items`, AUDIT SHIPYARDS L6-11: its
+mutant CSA-H-group-always had survived the retirement).
 
 FOUND ON THE WAY: Iliac Puddle No More's DeepWaters.Init registers each
 fish's row into the same group (a null class) - so DFU's shelf stocks
@@ -1441,6 +1573,16 @@ another hull's parts). The port runs it after Roleplay Realism's shelf
 subscribers at both of the shelf's doors (`worldModes.js`, the order the
 two mods subscribe in); DFU's house containers raise the same event but
 stock classic rows only, so a boat item never stands in one.
+
+SHIPYARDS (2026-10-11, Mac chose "Shipyard only - the shipyard sells
+every hull and buys them back; Come Sail Away's random shelf deeds and
+parts are retired"; `03-World/Shipyards.md`): RegisterCustomItem's group
+no longer stocks the two - no General Store or Pawn Shop shelves them,
+and no counter buys them back (`systems/shopStock.js` shopBuysItem). A
+port town's shipyard sells every hull at the mod's own prices (the
+Rowboat as her parts, every other as her deed) and buys them back. A
+DECLARED departure (Ledger A, SHIPYARDS). AssignVariantsToShopItems
+stands, ported: a shelf a save stocked before is still rewritten.
 
 ### Packing and the cargo
 
@@ -1846,10 +1988,11 @@ The player's own (`systems/onlineLane.js` ONLINE_PLAYERS_OWN_MODS): a boat
 is a possession in the player's save, placed and sailed by them - Horse
 Cart and Cargo's wagon's shape. Its wind is each machine's own roll
 (`UpdateWind` draws from UnityEngine.Random), as it is for each DFU
-player. The time scale (CSA-G) is Travel Options' journey's case
-(TO-ONLINE): the shared clock takes nothing from dt
-(`systems/worldTick.js`), so the helm's scale speeds the player's own
-world and spends no room's clock (OL2).
+player. The time scale (CSA-G) is offline's alone (HELM-TIME-ONLINE,
+2026-10-04, Mac: "Remove the time dial from ships online"): online the
+three keys say why and move nothing, and the helm draws no dial - it had
+been Travel Options' journey's case (TO-ONLINE, OL2), speeding the player's
+own world and, through WALK-CLOCK, their own clock.
 
 CSA-J: the others in a cell SEE a sailor's boats (DECLARED (36): the mod
 is single-player). `systems/comeSailAwayWire.js`: every active boat - its
@@ -1874,7 +2017,8 @@ boat of mine (FIELD BUGS 2026-10-01b, below), and a ray's hit and an activation
 only as CSA-K makes it one (its ladder and boxes pressed: below), because
 the host's loops read the pool's own `boats` - and posed every frame off the word,
 converted from the wire frame each frame (AUDIT HCC O1), eased toward it
-(a step past twenty metres snaps: `easeToward`, the team's law) and turned
+(a step past twenty metres snaps: `easeToward`, the team's law - AUDIT SHIPS
+A7: or past what her word's way runs in CSA_PEER_SNAP_S, if farther) and turned
 toward it by a slerp. A boat of the same hull is kept wherever the word
 moved it in its list, the nearest first, its variant set in place as
 SetBoatVariant sets it (AUDIT PRE-MERGE 0928 O3); the sails raise
@@ -1920,14 +2064,21 @@ nothing beached). A moored fleet says no `m` at all, so a reader of the
 older build - which reads `b` alone - reads the same record; a new reader
 of an old record leads nothing. The door takes the way whole or drops the
 record whole (aligned with `b`, three finite numbers, a boat's speed and
-turn). The change key carries it, so a boat brought up short is said at
+turn) - AUDIT SHIPS 2 XA6 (2026-10-06): its speed bound sized from the
+real ceiling (`CSA_WIRE_SPEED_MAX`, 2M natives a second: SAIL-FREE's
+fastest at the Handling dials' tenfold and x100), and the writer holds a
+way to it, where 64k - 27 m/s of way at an open journey's x60 - dropped a
+storm galleon's whole word from every screen. The change key carries it, so a boat brought up short is said at
 once. `scenes/comeSailAwayPeers.js` LEADS a boat under way instead of
 chasing it: each frame it is carried on by the way's share of the frame
 (what the lead grew by - none past CSA_PEER_LEAD_MAX, 0.6 s, so a late
 word leads no further and the boat holds where the way took it) and eased
 the rest of the way to the word led from its arrival; the turn the same,
-Rotate(up x turn) in the boat's own frame. A step past the snap (20 m) is a
-teleport. Each boat's frame keeps the pose before it (`moveOf`: none the
+Rotate(up x turn) in the boat's own frame. A step past the snap is a
+teleport: CSA_PEER_SNAP_M (20 m), or what her word's way runs in
+CSA_PEER_SNAP_S (2.5 s) if farther (`peerSnapM` - AUDIT SHIPS A7: at a fixed
+20 m a Carrack at 19 m/s snapped after a 1.75 s hitch of the wire, and a
+snap puts her passengers off). Each boat's frame keeps the pose before it (`moveOf`: none the
 frame it is built, none across a snap) and can be peeked a frame ahead
 (`poseAhead`).
 
@@ -2098,19 +2249,44 @@ on the mod's own states (`bible/10-UI/Controls.md` HELM-KEYS has the keys):
   `has('MoveLeft')` answers `TurnLeft` too, `horizontal()` swings the rudder
   with them), and the keyboard look leaves them be there.
 - **In irons** (`IRONS_TELL_DEG` of the wind's eye, under `IRONS_TELL_WAY` of her
-  own way through the water - `MoveVectorCurrent`, never the sea's current, which
-  under the mod's default waves is half the wind and kept the tell off: AUDIT NAV2
-  F15 - her sails up): the helm is told once how she comes out, again only after
-  she has been out of them - under the Classic helm `IRONS_TEXT` (strike sail and
-  row her round), under the Responsive one `IRONS_HELM_TEXT` (put the helm over, or
-  strike sail and row: her rudder answers at rest, and the helm alone brings her
-  40 deg off the wind's eye in about 10 s - AUDIT NAV2 F18);
-  `helmPanelState().inIrons` and `.responsive` put the right advice, with the
-  keys, on the panel's line while it lasts (`ui/enhancedHelm.js helmHint`).
-- **The panel teaches the arrows**: its line is the helm's hand at a glance,
-  and its sails' button presses More sail to raise and Less sail to stow (the
-  mod's own toggle where the square sails are the player's, which strikes all
-  her canvas as its label says) - so its key hint is the arrow.
+  own way AHEAD through the water - `MoveVectorCurrent`'s forward, so sternway counts
+  too (GALLEON), never the sea's current, which under the mod's default waves is half
+  the wind and kept the tell off: AUDIT NAV2 F15 - her sails up): the helm is told
+  once how she comes out, again only after
+  she has been out of them - `IRONS_TEXT` (strike sail and row her round), and
+  `helmPanelState().inIrons` puts it, with the keys, on the panel's line while it
+  lasts (`ui/enhancedHelm.js helmHint`). The Classic helm's alone: under the
+  Responsive one (SAIL-FREE, below) her canvas draws in the wind's eye and drives her
+  up into it, so she is never in irons.
+- **The panel teaches the arrows**: its line is the helm's hand at a glance.
+  HELM-LADDER (below) moved its sails' button to the mod's own toggle.
+
+## One ladder for W, S and the arrows (HELM-LADDER, 2026-10-04 - DECLARED)
+
+From the field: "WASD and Arrow keys should function the same when controlling. Allowing you to lower and raise
+sails" - the throttle ladder chosen over a tap-or-hold split. HELM-KEYS had put the sails on the up and down arrows and
+left W and S the mod's oars, held: two pairs that did different things, W and S inert once the sails were up. Now W and
+the up arrow (`MoveForwards`, `BoatSailUp`) climb ONE ladder a rung a press, S and the down arrow (`MoveBackwards`,
+`BoatSailDown`) come down it (`systems/comeSailAway.js` `ladderUp`, `ladderDown`):
+
+- **The rungs**: the oars backing water (-1), the oars at rest (0), the oars pulling ahead (1), her sails (RaiseSails),
+  and - where her square sails are the player's own (`squareHandled`) - all her canvas (MoreSail's step). Each rung is
+  said ("Oars: backing water.", "Oars: at rest.", "Oars: pulling ahead.", the mod's own "Sail raised!"); the foot says
+  "She is already backing water.", the top what MoreSail says, a rowboat's top what ToggleSails says ("Boat does not
+  have any sail."). Down from her sails is LessSail's step, and from the last of them she PULLS AHEAD on her oars.
+- **The oars are a rung, not a held key**: `oarThrottle` is kept until a press moves it, a sail goes up (RaiseSails
+  ships them) or she leaves the helm (StartSailing and StopSailing set it at rest); never saved. The oars' stroke, its
+  rudder's RowZ, the oar acceleration and the helm's answer astern (backing water turns her the other way) all read the
+  rung where the mod read the held keys (Update 4301-4768, moveAccel 538-551, HasInput 582-613). `Run` with a side key
+  still sidesteps. A press takes the frame it is made in (read before the stroke, as a held key was).
+- **Unchanged**: A, D and the side arrows steer (HELM-KEYS); End still toggles all her canvas from any rung, and the
+  helm panel's sails button is that toggle now (its key hint End) - "Raise sails" raises them, never a rung of oars;
+  a journey's oars pull as the autorun does (OWS2), and under the travel view W and S stand down with the sail keys
+  (AUDIT NAV2 F17's gate). The panel's line reads "Oars & sails W S ↑ ↓ · Steer A D ← →" as bound; in irons, "strike sail
+  (S ↓) and row her round" - one rung down does both.
+
+The test harnesses (`test/csa_sailing.test.js`, `test/csaScene.mjs`) take a key going down as the press it is - one held
+as the helm is taken is pressed at the helm. `tools/mutants/helmladder.json`.
 
 ## The responsive helm (HELM-WAY, 2026-09-29 - DECLARED)
 
@@ -2147,8 +2323,104 @@ and 8.32 deg/s at 9 m/s on 124 m (153 m at every way the mod's); two seconds fro
 10.5 deg/s four seconds from rest (none, the mod's). Head to wind with the helm held over she comes 40 deg off its eye
 in 10.1 s (the mod's stays in irons).
 The heave-to's brake (NAV1's `accelScale`, ten times her own coast) is its own number now - `brake`, HEAVE_TO_DECEL
-m/s^2 - so the handling choice never moves it. Pins: `test/helmway.test.js` (the harness `test/csaScene.mjs`, the
+m/s^2 - so the handling choice never moves it. AUDIT SHIPS A3 (2026-10-06): HEAVE_TO_DECEL at the least - a heave-to
+at a way past HELM-WAY's is braked by it (`scenes/navalHost.js` `heaveToDecel`), to BOARD_SPEED within HEAVE_TO_M (20 m):
+at SAIL-FREE's full way the fixed brake ran a galleon 50-64 m and a Carrack 73-93 m, out of BOARD_RANGE, the Carrack on
+her quarter past HEAVE_TO_S. Pins: `test/helmway.test.js` (the harness `test/csaScene.mjs`, the
 wind suite's scene, one module).
+
+GALLEON (2026-10-01): the Small Ship is Mac's galleon now (The new galleon, below) - five sails where the mod's galleon
+carried two lateens - and helmWay.js's header carries her figures, re-measured like for like (AUDIT NAV2 F20's pin
+holds them): under the mod's handling she takes 29.2 s to her full way of 8.75 m/s and 43.7 s (191 m) to lose it,
+0.75 deg/s at 1 m/s and 6.56 at her full way on the same 153 m circle; under the responsive helm 8.33 s to her full
+way and 14.6 s (64 m) to lose it, her rudder 8.49 deg/s at her full way on a 118 m circle (HELM-WAY's alone - SAIL-FREE,
+below, made her way 14.38 m/s on her beam in the same times: 105 m to lose it, a 194 m circle). AUDIT GALLEON T11, the rest
+of hers like for like - HELM-WAY's, measured before SAIL-FREE: to 95% of her way in 7.92 s (27.72 s the mod's handling),
+struck to 2.5 m/s in 10.42 s (31.25 s), head to wind with the helm held over 40 deg off its eye in 6.37 s (the mod's
+handling stays in irons: she swings to about 30 deg off it in a minute and lies there, no way on); her rudder at rest,
+at 4.5 and 9 m/s and two seconds from rest as the mod's galleon's above. Under SAIL-FREE (AUDIT SHIPS D4, measured the
+same way and pinned - `test/auditships_sail.test.js`): to 95% of her 14.38 m/s in 7.93 s, struck to 2.5 m/s in 12.05
+s, 40 deg off the wind's eye in 4.83 s (6.97 s HELM-WAY's in the same probe), her rudder 9.68 deg/s at 4.5 m/s and
+10.33 at 9 (10.50 and 8.32 HELM-WAY's) - her rudder reads her way over her gain. The
+mod's galleon's figures above stand for the record - she is hull 2 again whenever the new galleon's model will not
+load.
+
+## Her way under sail (SAIL-FREE, 2026-10-05 - DECLARED)
+
+Mac: *"Currently its too hard to sail against the wind, ships need more speed"*; Mac's calls: *"No tacking, Black Flag"*
+and, for the speed, *"nothing that breaks immersion"*. Measured first on the real runtime (a 1.5 m/s wind, waves off):
+the mod's GetSailPower gives a fore-and-aft sail a quarter to half of its pull close-hauled and drives it ASTERN within
+30 degrees of the wind's eye, and a square sail nothing forward of the beam - Mac's galleon made 10.2 m/s at her best,
+4.7 m/s 45 degrees off the eye, lay dead at 30 and went astern inside it, a Carrack 1.8 m/s close-hauled, a Large Galley nothing at all
+once the wind was ahead of her beam - while every captain on the Bay sails by `navalAI.js windFactor` (70% close-hauled,
+never astern); and the mod's speeds were set for its time dial, which online is gone (HELM-TIME-ONLINE).
+
+**The law** (`systems/helmWay.js` SAIL_FREE, POINT_OF_SAIL, `pointOfSail`, `seaWind`; `systems/comeSailAway.js`
+`canvasPull`, `sailDrive` - DECLARED, the Port-Ledger's own SAIL-FREE row), under the Responsive helm alone - Classic is
+the mod to the letter:
+- **Her canvas** is every sail she has set asked at the crest of its own curve in GetSailPower (`SAIL_CREST_DEG`, 135,
+  for a lateen, a gaff and a staysail; running dead before it for a square sail), kind for kind and size for size - the
+  mod's law draws a mixed rig's square and fore-and-aft sails at their best on different headings, so it never had all
+  of its canvas drawing at once. A lateen at its crest is on its good tack: the bad tack's 15% is a heading's, and read
+  off the wind it laid the Large Boat's lone lateen 15% short on one tack, where two legs made 10% more toward a mark
+  10 degrees off the eye than sailing straight for it.
+- **The point of sail** takes a share of it (`pointOfSail`): POINT_OF_SAIL.run (0.9) running dead before the wind, the
+  whole with it on her quarter, eased down to POINT_OF_SAIL.head (0.55) in the wind's eye - never nothing, never astern.
+  The fall is a cosine's, so the polar is convex: no two legs ever make more toward any mark than sailing straight for
+  it. There is no tack.
+- **The wind** is the captains' bounded share of the rated wind (`seaWind` - WIND_RATED, WIND_SHARE and `windShare`
+  have one home now, which navalAI.js re-exports): a fog's tenth no longer lays her becalmed (0.3 of her way), a storm
+  drives her at most twice; where none blows (a building's or a dungeon's water) nothing. DECLARED (AUDIT SHIPS A8): that
+  bound is below a thunderstorm's 4 m/s, so there a Carrack makes 38.9 m/s on her quarter and 35.0 running where
+  HELM-WAY's raw wind gave her 42.5 and 41.9, and a Large Galley 16.2 and 14.6 where it gave 18.0 - the galleon is faster
+  on every heading. Whether a storm drives her past the sea's bound is Mac's call, open.
+- **Her pace**: every way under sail a fifth again (SAIL_FREE.pace, 1.2).
+- **Her handling at her new way** - her rig's own gain (AUDIT SHIPS A5: `SAIL_FREE_GAINS`, `sailFreeGain` - her
+  SAIL-FREE drive on her beam in the rated wind over the mod's, measured for every hull and each of the Large Boat's
+  seven rigs; the galleon's is SAIL_FREE.gain, 1.643, her 14.38 m/s over the mod's 8.75): her way comes on and off at
+  HELM-WAY's rates times it, and her rudder reads her way over it (`steerage(way / gain)`), so every hull gathers her
+  way, loses it and swings at her full way as she did under HELM-WAY - on a wider circle, as a faster hull does. The
+  galleon's gain had been every hull's: a Large Boat gathered her way a third quicker, a Large Galley a third slower. A
+  coast takes the gain only for a way her canvas made: a way her oars made is lost at HELM-WAY's own coast (a rowboat had
+  stopped in 2 s where she took 3.3, a galley's oar coast from 8 m/s in 16 s against 27), and the journey's autorun oars
+  come on at the oars' own rate. AUDIT SHIPS 2 (2026-10-06): the gain is taken in her canvas's SHARE of the way she
+  carries (`sailWay` - gathered under canvas, lost in its share, saved with her way), where a flag of the arm that drove
+  her last coasted a ladder's step through the oars' rung and a load ungained; and under the oars a way above what they
+  make (her canvas's) comes off no slower than her coast - at the oars' rate both ways, a galleon struck and rowed took
+  48 s and 400 m to come down to their way. The mod's own helm keeps its rates.
+- **HELM-SPEED** (2026-10-06, Mac: "add a speed indicator for when you're sailing"): the helm panel says her way through
+  the water beside her name, the runtime's own, in knots to a tenth (`helmPanelState` `way`; ui/enhancedHelm.js
+  `helmSpeedText`).
+- **Her sails draw on every heading**: no fore-and-aft sail luffs in the wind's eye, no square sail is laid aback (its
+  Animator's Wind the wind's own), and the square-sail assist stows none upwind - raised there (RaiseSails) or brought
+  there (the update's assist).
+- **Her trim is the helm's own** (AUDIT SHIPS A6/D1): every sail draws at its crest, so the booms are trimmed as the
+  mod's assist trims them, to show it, and no manual trim is offered - the panel and the pad show none
+  (`helmPanelState`'s `manualTrim`) and the brackets move nothing. With the assist's AutoTrimming off, the trim had
+  stayed offered and moved her booms and nothing else. Under the Classic helm the trim is the player's, as it was.
+- **She is never in irons** (`inIrons` is the Classic helm's alone): her canvas drives her up into the wind's eye, and
+  with no way at all - her canvas shot away, a heave-to - the wind is not what holds her. AUDIT NAV2 F18's "put the helm
+  over" word (`IRONS_HELM_TEXT`) and the panel's responsive line went with its irons.
+- **The Overworld journey** sails her straight for a mark to windward (`systems/seaHelm.js`'s `free`, which the world
+  says from `csaRuntime.helmResponsive()`): no cone, no tack, and a fog's breath enough to sail on. AUDIT SHIPS A2: its
+  hand keeps her off land as far ahead as her way needs (`seaHelmReach` - `avoidM`, or what her way runs in `avoidS`,
+  13 s), keeps the reach it saw land at until she is clear of it (`seaHelmLook`), looks along her whole beam and the
+  mark's own lane (world.js `TV_SEA_LANE_M`), and holds the heading that cleared an islet while the mark's line still
+  runs onto it - looking 150 m along her centreline and turning back for the mark as her bow cleared, a galleon ran
+  aground on 7 legs in 60. AUDIT SHIPS A4: it weighs her sails against a crew's oars by the runtime's own word
+  (`sailWayOf`, `oarWayOf` - the mod's formula of the raw wind had a galleon row through a fog at 1 m/s).
+- **The captains are as they were** - their own point of sail and HELM-WAY's pace and rates: scaled to the player's
+  they broke some twenty of their tuned duels, boardings and berthings (AUDIT NAV2 F25, Mac's bar, among them). Whether
+  the Bay's ships sail faster too is Mac's call, open.
+
+Measured after (`test/sailfree.test.js`, a rated wind): the galleon makes 8.91 m/s dead into the wind (the mod's went
+astern), 14.38 on her beam (8.75) and 16.2 with the wind on her quarter; a Carrack 10.7, 17.3 and 19.4; a Large Galley
+4.5, 7.2 and 8.1; a Large Boat 3.0, 4.8 and 5.4 - the same on either tack. Her handling is HELM-WAY's: 8.35 s to her
+full way and 14.6 s (105 m) to lose it; her rudder 2.25 deg/s at rest, 10.50 at 7.4 m/s (an 81 m circle) and 8.49 at
+her full way (a 194 m circle); two seconds from rest with the helm over, 8.8 deg/s (helmWay.js's header - AUDIT NAV2
+F20's pin holds it). Pins: `test/sailfree.test.js`, and the HELM-WAY and AUDIT NAV2 pins it moved;
+`tools/mutants/sailfree.json` (25, all dead). AUDIT SHIPS (`01-Overview/Audit-Ships.md`): `test/auditships_sail.test.js`
+(9) and the pins it moved; `tools/mutants/auditships_sail.json` (24, all dead).
 
 ## The Overworld's crossing (OWS2, 2026-09-28)
 
@@ -2281,13 +2553,371 @@ packs every hull (`getBoatTransforms`: `Crewed` sets `packable` too), and makes 
   SHIP-CLAIM's OPEN, closed). A boat no item placed packs at her hull's price, as before.
 - **Her weight.** The ships' table weights (2,400, 48,000 and 240,000 kg) were never an item's in the mod. Packed, a hull
   weighs no more than the Large Boat's parts (120 kg, `packedHullWeight`), her hold's weight on top as ever: in the pack
-  the table's would hold the bearer under the water and sink any boat she sailed.
+  the table's would hold the bearer under the water and sink any boat she sailed. [HOLD-WEIGHT, FIELD BUGS 2026-10-05c:
+  her hold's weight on top made a ship packed off a plundered hold ONE item heavier than the bearer could ever carry -
+  set down in a chest, no take could lift it again. Parts heavier than the bearer's MaxEncumbrance are not made now
+  (`partsTooHeavy`): the pick-up and the menu say why, a fast travel and a landfall leave her where she lies; a lost
+  boat is packed whatever she weighs (`01-Overview/Field-Bugs-2026-10-05c.md`).]
 - The boat menu lists Pick up on every hull (`systems/csaBoatMenu.js`). The world host hands the runtime the pack
   (`items.player`) and the menu its word (`noDeed`); an Overworld landfall packs a ship only with her deed.
 - Pins: `test/shippack.test.js` (8) and `test/shipclaim.test.js`'s two; `test/boatmenu.test.js`, `test/csa_boats.test.js`,
   `test/csa_items.test.js` and `test/ows2_crossing.test.js` PIN MOVED. `tools/mutants/shippack.json` (24, all dead);
   boatmenu's, csa_items', csa_placing's, ows2's and audit0928_save's records re-aimed by content and killed again. Not
   seen in a browser.
+
+## The new galleon (GALLEON, 2026-10-01 - OURS)
+
+Mac: *"So this model is to replace the current ingame gallon model. The doors/hatches should open and close and we will
+need to give this a proper texture, along with a wheel at the helm, the sails and ropes, amd ensuring cannon fire shoots
+from the cannon holes properly."* Hull 2, the Small Ship (the pirate brig's, the merchant galleon's and the navy
+cutter's hull too), is Mac's own model now, fitted out round it. The Port-Ledger's GALLEON row carries the departures.
+
+**Her model.** Mac's export is committed - `src/assets/galleon/source/New_Ship.fbx`, his second since GALLEON-2 (the
+first came as three copies differing only in their creation stamps) - and `tools/bakeGalleon.mjs` bakes it to
+`src/assets/galleon/galleon.json`: each of the scene's objects named to its ROLE and refused unless it stands in the
+scene box it was read in, 2 cm let pass (the hull, her gun deck and main deck, two hatch covers, the castle with its
+parapet and rail, the bulkhead, the two flights up the castle, the balustrades, the masts with their partners and steps,
+the crow's nest and the bowsprit, her six deck beams - AUDIT GN-B5, which refuses a mirroring transform, an unread pivot
+or offset and an export's other axes as well); the scene's other stations, its spare pieces and her parts' twins
+skipped, each checked to be what it is said to be; the hull's five rudder faces split off to turn on their own post;
+every polygon cut as Blender cuts it (`tools/fbxMesh.mjs blenderTessellate`: a float32 port of Blender 5.1's
+mesh_tessellate projection and BLI_polyfill_calc - its precomputed point test and its kd-tree, node for node - on the
+mesh's own corners in their own order - AUDIT GN-B1, GN2-BK1; an export written by any Blender but 5.1.x is refused by
+name, since another version's fill may cut otherwise) and refused by object and
+polygon unless its triangles tile it exactly, then carried into the boat's frame (0.7 of the scene, the waterline and
+the midship taken off). The bake adds no vertex. Mac's faces are not all flat - his sides lean out of their planes by up
+to 0.55 m where he drew the bow in - so the cut decides their shape, and it is Blender's: the first bake's own ear clip
+cut her two sides unlike each other (a 22 m wedge 65 deg off its face on one, the sides 0.49 m apart) and its own fill
+laid two triangles over two of her ports from inside. Five faces still stand apart from their mirrors where Blender cuts
+them on other diagonals - the stern quarter's most, 0.37 m - as they do in his scene, and eleven of the cut's
+triangles lie on corners he drew on one line (no area: the drawing drops them). `test/galleon_model.test.js` re-bakes it
+to the byte; `test/auditgalleon_bake.test.js` and `auditgalleon2_bake` hold the cut to Blender 5.1.1's, compiled
+from its own source (the first port was 5.0's fill and cut her #2 and #34 otherwise, at most 1 mm apart).
+
+**Her prefab** (`world/galleonModel.js galleonPrefab`) is Come Sail Away's data shape built on the bake and stands in
+for prefab 112412 (`systems/comeSailAwayModels.js`: her components after the mod's, her meshes decoded already, her
+clips and overrides beside its own), so the mod's own SpawnBoat walks her as it walks any hull - her `NewGalleon` hull
+node the boat's frame (her MeshCollider her planking and her castle's), her triggers, her lanterns, her crew's flats,
+her sails, booms and rudder found by their names:
+- **Her hatches and doors open and close** - the two hatch covers (Mac's fore cover is both: his aft one he left propped
+  open) lift on their starboard edge and over to lie on her deck (`HATCH_OPEN_DEG`, -178, on battens 2 mm over it and
+  0.18 m outboard of the hatchway - AUDIT GALLEON P9: open at -105 the aft cover stood 2.5 m up in the gaff's sweep),
+  the castle's door and the bulkhead's swing aft, each on the mod's own Door Controller with a DoorTrigger the walk
+  sizes to its collider; TriggerDoor turns them over as it turns the mod's. A companion ladder stands under each hatch,
+  down to her gun deck, its manropes made fast under the cover (P2: they stood up through the shut covers).
+- **Her wheel** on the castle's roof before the helmsman's place - DrivePosition half a capsule over the roof (0.9 m),
+  where Come Sail Away pins the helmsman's capsule centre (AUDIT GALLEON P1: on the roof itself it stood his feet in the
+  great cabin and his eye under the hub), his eye at 12.72 clear over the wheel (its hub 0.72 m up) and the binnacle
+  (1.30) to the bow on every sight line - turned `WHEEL_TURNS` hard over each way and her rudder `RUDDER_DEG` on its
+  post at her sternpost (P8: it pivoted 0.62 m inside her stern and swung through her planking), both by the mod's
+  Rudder Wheel Controller's TurnAngle through her own ten clips.
+- **Her sails and ropes** (`world/galleonRig.js`) - a brigantine's five by the mod's own names, so its laws read them: a
+  fore course and a fore topsail and a main topsail (square, the two topsails small), a large main gaff sail and a large
+  jib; on four booms pivoting on her masts' own axes (the mod's trim turns them), each canvas a grid skinned a bone a
+  grid point, head row first, and baked as the mod bakes its own (FixDeformations), furled on its yard and set by the
+  wind's side through her own clips over the mod's Sail and Staysail Controllers (Stowed, or Unstowed blended by Wind) -
+  a square sail's head on its yard and its belly from nothing there, the topsails' half the course's; her shrouds with
+  their deadeyes and ratlines on channels flush on her side, her stays (the forestay over the fore topsail's yard, the
+  main stay from under the crow's nest to the fore mast's after face), backstays, bobstay (under the bowsprit to her
+  stem) and flagstaff (a mesh a piece, never one box round the whole rig), her braces and sheets skinned to the yards
+  and booms they work and belayed on her rails and bulwark, the mainsheet on her main deck at the castle's foot. AUDIT
+  GALLEON R1-R10: inside the auto-trim's 30 degrees nothing of her rig meets anything else or passes through her (the
+  least clearance 5 cm); the manual trim's extremes still cross in 19 named places, the gaff's sweep over the main
+  shrouds' sector the most (13 cm at 60-90 degrees) - the mod's trim limits stand.
+- **Her guns out of her ports.** Ten gunports (five a side, Mac's) carry a shutter each on the mod's Door Controller -
+  fitted to her side at its own port, hinged on her side at the lintel and bent to her at the knuckle (`LID_FIT`, AUDIT
+  GALLEON P6: a plumb board stood up to 47 cm off her), solid (P10: a crouching body crawled out of a shut port), swung
+  up `LID_OPEN_DEG` outboard, the port side's each the starboard's mirrored (G1) - and a gun behind it on her gun deck
+  (1.083 m); two chasers on swivels over her bow rail. HULL_BUILDS' Small Ship is measured off her
+  (`systems/naval/navalShips.js`, `GALLEON_BATTERIES`): each broadside muzzle at its port's middle a hair outside her
+  planking, so a ball leaves her through the hole it is fired from - the test shoots a line in through every port and
+  meets none of her hull, and her planking a port's width aside. `systems/naval/galleonGunDeck.js` works them for every
+  ship of hers in play: a battery laid (my look at the helm while it is loaded, a captain's run-out tell, another
+  player's word) opens that side's shutters and runs its guns out; each gun kicks `RECOIL` inboard as its own ball
+  leaves (the shot field's muzzle, its index the port's) and is hauled out over `HAUL_S`, a gun fired before it is out
+  stood out at its shot with its shutter snapped open (G2); `HOLD_S` past the last word the guns run in to load and the
+  shutters close. Each port's throat wears its own planking (R8: it wore the shutter's picture, iron straps and all).
+- **Her texture** (`world/galleonArt.js`): twenty-three pictures, each 64 x 64 (GALLEON-2, below), painted at the
+  boats' preload from numbers alone (her archive asked and her glass's glow cut before any boat stands - AUDIT
+  GN2-PF3; they had been painted at her first draw, a 100-440 ms stall) - the hull's painted livery and gilt bands, her bottom, her inner planking, her deck, the castle's
+  panels, the stern gallery (its glass glowing by night through the pool's emission mask), spars, iron, canvas, rope,
+  gilt, the hatch gratings, the shutters' red, the doors, the beams - registered as stand-ins of archive 38131 on the
+  vendor texture door, so a loose pack's `38131_<record>-0.png` would override one as it overrides any record. No file,
+  no ARENA2 pixel.
+- The mod's own small things are copied out of its galleon and stood in her, each clear of her (AUDIT GALLEON P3, P5,
+  P12): the anchor, weighed and let go, along her bow's flare outside her planking (it stood 1.6 m into her); her cargo
+  and its trigger; the stove, its flue carried to 0.14 m under her deckhead as the mod's is; the bed in the great cabin
+  0.262 over her deck, the mod's galleon's own; the lantern poles on her stern rail's cap (they stood buried in it) and
+  the hooks; her colours over the crow's nest, its masthead capped and its floor's underside built. Her six crew posts
+  (the officer and the coxswain on the castle's roof by the wheel, the boatswain and the quartermaster on her main deck,
+  the master-at-arms and the cook below). Her board triggers stand outside her side (P4: they reached into her gun
+  deck), and her stair wells and the cabin's casings wear her inner planking (P7).
+- **The loader never traps** (`loadComeSailAwayModels`): her model fetched beside the mod's five files
+  (`GALLEON_MODEL_URL`, never among them - AUDIT GN2-PF4: it had been asked only once they answered), and built once a
+  process (her bake's sha256, the same bake and mod tree - a second world's loader 0.8 ms, not 100-340); missing, or one that will not build, hull 2 is the mod's own galleon, said
+  once.
+
+**Her deck** (`systems/naval/navalDeck.js`, `systems/naval/crewLife.js`). Her castle's roof is her deck, up its two
+flights - each 1.4 m wide between its well's walls, its treads 0.385 m on 0.25 m risers: four of its fourteen gaps
+between two cells' centres cross two risers (0.51 m, over the motors' step), so each flight is cut three times, and the
+inset leaves a cell clear in the port well and two in the starboard. So a flight finer than a cell joins over the tread
+between (`linked`: a floor at the midpoint of the side two cells share, a step from each, within `FLIGHT_JOIN`), and a
+raised deck the inset parted from her open deck keeps every way up to it a cell wide (`keepFlights`) - the Carrack's
+forecastle up its stair joined with hers. The well's ramp under each flight is no collider of hers (it rose 2.3 cm
+through the top tread). Her hands work her main deck (`spots(n, level)`; AUDIT GALLEON D10: an idle hand goes back down
+to it, and a talk's place is on it), her officer and her coxswain stand at their posts on the castle (a flat on a raised
+deck a station), the crew's hatch post stands beside her fore hatchway (D7: the hatchways themselves are no deck - their
+covers open), and a boarding's musters stand on her main deck (T4); her castle is the walk's, up either flight - a
+boarder can reach the helm. The leash keeps a body on the piece it stood on (D1: the port flight dropped boarders into
+the great cabin, 192 of 1275 times), a landing comes down across from where it came from (D2), and her lookout keeps her
+main deck's bow (D4).
+
+**What it moved elsewhere.** Her guns are five a side where the mod's galleon had six, so every hull-2 class is a sixth
+lighter at the guns: a wary brig outguns no sound armed boat of the player's now (a crewless Large Galley 1.10 to one; a
+Small Ship hurt to four fifths and alone at her guns, 1.37), and the navy cutter's odds on the corsair galley fell to
+1.23 (fought four to four). Her low gun deck (1.08 m over the sea) brought the aboard reach to a step under her main
+deck, every hull's (`scenes/navalHost.js standsOn`: under it a capsule's reach of the feet - AUDIT GALLEON D3); her
+canvas aback in the wind's eye drives her astern, so the in-irons tell reads her way ahead
+(`systems/comeSailAway.js inIrons`); her narrower hull lies closer in to a boat she boards, so a boarding comes in on a
+sounded berth unswung by the lookout and sounds the berth as wide as its legs (`systems/naval/navalAI.js boardCourse`,
+`berthOpen`).
+
+Pins: `test/galleon_model.test.js` (13, GALLEON-2's two among them); the naval suites' PIN MOVED rows (`test/auditnav2_deck.test.js`,
+`auditnav2_crew`, `auditnav2_captains`, `auditnav2_helm`, `auditnav2_online`, `auditwatchkit_crew`, `deckwalk`,
+`livingcrew`, `nav_a_guns`, `nav_h_host`, `navaudit_captains`, `navaudit_guns`, `navaudit_helm`,
+`navaudit_presentation`, `fb1001b_peerboats`, `seapeace`); `test/csaScene.mjs` builds hull 2 on her as the game does.
+`tools/mutants/galleon.json` (25, all dead) and the naval lists' GALLEON records, all dead. Drawn offline with a
+scratch rasterizer over the real prefab and art (her livery, the castle and the stern gallery, the wheel, her sails
+stowed, set and trimmed, the hatches and shutters open, the guns run out, the gun deck and the cabin from inside); not
+seen in a browser.
+
+### Her second model, and her pictures at 64 (GALLEON-2, 2026-10-02 - OURS)
+
+Mac, sending `New_Ship_Even_EVEN_newer.fbx`: *"Replace it with this updated model and also textures should be 64x64."*
+
+**The model.** Committed over `New_Ship.fbx` and read against the first, part for part (`tools/bakeGalleon.mjs`'s
+header): the ship stands 36.25 m along the scene's Y now (`FRAME.centreline` - the hull object's own scene Y,
+36.24673828125 to the bit, AUDIT GN-B6 - is taken off as the waterline and the midship are); her hull is new on both
+sides of the wale - a deeper V on a keel 4.64 m under the sea where the first's was 3.89 (1.08 m lower in the scene),
+the wale's forward corners drawn in from 8.37 m to 7.48 m off her centreline, a finer entry and a forefoot swept up to
+the stem (95 faces where it was 87); six deck beams carry her main deck over the gun deck (`deckBeam`, six objects of
+one role); and every other part stands where the first's did to 3 µm in her frame - her decks, ports, castle, stairs,
+masts, hatch covers and shutter (cut as Blender cuts them since AUDIT GN-B1). The scene keeps a twin of most parts
+standing in the same place (a Shift+D never moved), skipped and checked vertex for vertex against the part it twins
+(`SKIP` `twin`), and, far along Y (`minY`), the first export's ship joined into one object with its fore hatch cover, a
+hull between the two exports with her parts and beams, her current parts joined twice over, and a spare aft cover, fore
+cover and gunport lid.
+
+**Her beams** are one node (`DeckBeams`), solid, in her oak with the grain along each (`MEASURED.beams`: 0.775 m fore
+and aft, their feet 5.22 m over the sea, their heads in the deck); none crosses a hatchway or a mast, and each companion
+passes under them a man's height clear. Her main deck's underside wears its planks alone now (`underDeck`) - the
+painted beams a metre apart stood in for the ones Mac has modelled, and stay only over the great cabin, where none of
+his stand. The gun deck's three lanterns hang from the second, third and fifth beams.
+
+**What the deeper hull moved.** HULL_BUILDS' Small Ship's keel is -4.64 (her box's floor - what a gun lays between to
+strike her). Two pins took their probes deeper: AUDIT NAV2 F36's swimmer under her keel (the floor inside her V lies
+within a step of -4.6; it is asked at -5.4) and FIELD BUGS 2026-09-29's frozen fish (from 2.5 m down its ray stopped
+17 cm short of her bottom; it hangs at 3 m). Nothing else moved.
+
+**Her pictures at 64** (`world/galleonArt.js`, `GALLEON_TEX_SIZE`). Every picture is 64 x 64, Daggerfall's own texture's
+size. The tiling ones were that or smaller - the smaller are painted at 64: the spar's, the iron's and the gilt's tiles
+doubled with them (the same texel over a face, halved round a prism), the rope's left as it was (64 texels round, where
+it had 16), and the dark's (record 16) repainted as each port's throat, oxblood planks at [2, 2] (AUDIT GALLEON R8/R11:
+worn by nothing, while the throats wore the shutter's picture); the whole-face ones (a sail's canvas, a door, a gunport
+lid) are painted at 64 over their face. The three liveries that ran one picture keel to rail - the hull's side (64 x
+256), the castle's and the stern's (64 x 128) - are painted as before and cut into 64-row slices by height (`BANDS`):
+the hull's side four slices of 2.9 m (`HULL_SIDE_Y0` down to -4.2 for her new forefoot), the castle's and the stern's
+two of 3.3 m, each slice a record of its own. Every face of a part a livery lies on is cut at its slices' heights,
+banded or not (`world/galleonModel.js slabs`, `bandPiece` - AUDIT GALLEON R14: cutting the banded faces alone left 28
+T-junctions at her ports and wells), every piece on the slice that holds it with its v that height up the slice - so the
+bands run round her as they did, at the density they had (her side's texels 4.4 x 4.5 cm, the castle's 4.1 x 5.2); every
+face lit flat on its polygon's own normal, as Blender draws it (B1); the stern's glass glows through both its slices.
+Twenty-three records: the seventeen, the five lower slices and the deck's underside.
+
+Pins: `test/galleon_model.test.js` THE BAKE (the six beams, the twins and stations skipped, her centreline), HER PARTS
+FACE OUT (the open-topped beams face by face), HER DECK BEAMS, HER PICTURES (each 64 x 64), HER LIVERY IN SLICES;
+`tools/mutants/galleon.json`'s GALLEON2 records. Drawn offline again, not seen in a browser.
+
+### Main merged in, and HOLDINGS on her (GALLEON-HOLDINGS, 2026-10-04 - OURS)
+
+The arc reached main by a pull request of its own, never opened before: it lived on
+`claude/enhanced-ai-feedback-ygvvj6` (TACT5's branch, #544, reused), and main had moved 324 commits past it
+(#547-#584). The merge: 85 files and 163 hunks, 143 of them cites alone - taken at main's line, then
+`tools/citeMerge.mjs origin/main 39b19e07b --apply --struck` (211 moved; 22 struck rows both sides carry word for
+word left as they stand, no gate reading them). The twenty real hunks kept both sides:
+
+- **TOUGHER-SHIPS** (#549) toughens her as every hull: `tough(420)` and `tough(160)` on her build and on the mod's
+  galleon kept as her stand-in (`MOD_SMALL_SHIP_BUILD`) alike - 672 / 256 - and `firstBuildOf` reads the build that
+  stands.
+- **HOLDINGS**' crew posts: a hand off her main deck walks back down first (AUDIT GN-D10), then keeps his post; a man
+  at his post is no man to talk to. The posts' extent fell back on the whole deck's `ext`, which this arc renamed to her
+  main deck's `mainExt` - that is what it reads.
+- `navalWire.js` carries this arc's laid broadsides (`g`) beside QUAYS' `w`; both F24 station pins stand.
+
+**HER GANGWAY** (`quays.js` `gangwaySide`). QUAYS measured where a gangway meets the Small Ship off the mod's galleon
+(`[7.65, 4.14]`), and the merge left Mac's galleon's plank there: its head 2.3 m off her side and 2.6 m under her main
+deck, hanging over the quay. Read off her own colliders, her waist's bulwark stands 5.33 m out to some 6.9 m up, her
+entry port open in it from z -0.5 to 1.5 over 6.25 m; her main deck is 6.20 m up. So her `GANGWAY_SIDE` is
+`[5.45, 6.7]` - 0.12 m off her side, half a metre over her main deck as the Carrack's and the galley's are - and
+`gangwaySide(hull)` answers the mod's galleon's (`MOD_SMALL_SHIP_GANGWAY`) while hers is the build that stands (AUDIT
+GN-G4); `navalHost.js` `gangwayOf` reads it. A plank from 6.7 m wants 8.8 m of quay to climb at GANGWAY_SLOPE, and a
+quay is 4.5 m deep: hers stops GANGWAY_BACK short of its back, as `gangwayFoot` always had it, and climbs 47.3 degrees
+over 6.94 m (the Carrack's 30 over 5.08). AUDIT HOLDINGS Q1 and QUAYS THE GANGWAY, which held every ship's at 30, are
+PIN MOVED to that stop; QUAYS ALONGSIDE, which held the Small Ship at the berth's point as wide as the Carrack, to hers
+2.57 m in (5.86 m a side to 8.43) and the mod's galleon at it. Steeper than any plank but the Rowboat's (49, down): a
+deeper quay where she berths, or a stair at her side, is the decision it leaves.
+
+**HER CARPENTER** (`crewLife.js` `rolePosts`). HOLDINGS stands him 1.1 m to starboard of her hatch; hers stands to port
+of her open fore hatchway (AUDIT GN-D7), so the post asked in the hole found her deck across it, 3.5 m off (CREW-ROLES'
+"by her hatch" failed on the merge). Where her deck lies to port of the hatch and not to starboard he stands to port,
+facing it; on every other hull his post is where HOLDINGS put it.
+
+Pins: `test/galleonholdings.test.js` (4) - every docking hull's head within 0.25 m of her side at her main deck, a
+ship's half a metre over it (the mod's galleon's numbers on hers fail by 2.3 m); hers in her entry port, her bulwark
+either side; the host's plank from the build that stands; the Carpenter on all four hulls with a deck.
+`tools/mutants/galleonholdings.json` (13, all dead). Measured over Come Sail Away's real pool; not seen in a browser.
+
+## The new carrack and the new large boat (SHIPS-2, 2026-10-07 - OURS)
+
+Mac, sending `Tiny_Ship.fbx`, `New_Ship_2.fbx` and `New_Ship_2_Shutter.fbx`: *"implement both of these new ship placement
+models, UV Map/Texture, and ensure it matches the love we gave the other new ship model we implemented."* Hull 4, the
+Carrack (the pirate flagship's and the merchant carrack's hull), is his New Ship 2 now, and hull 1, the Large Boat (the
+pirate sloop's and the coasting trader's), his Tiny Ship - each fitted out round his model as the galleon is (above). The
+Port-Ledger's SHIPS-2 row carries the departures.
+
+**Their model.** The three exports are one scene: read object for object, the newest (`Tiny_Ship.fbx`) holds New Ship 2
+whole, her shutter in its place against her port side, and the Tiny Ship beside her - so it alone is committed
+(`src/assets/ships/source/Tiny_Ship.fbx`) and both ships bake out of it. The galleon's bake is every ship's now
+(`tools/shipBake.mjs`: each object named to its role and refused unless it stands in the scene box it was read in, the
+scene's other objects skipped and checked to be what they are said to be - the other ship's band of the scene, a spare
+piece, a face-less node - Blender 5.1's own cut, the boat's frame); `tools/bakeCarrack.mjs` (0.8 of the scene) and
+`tools/bakeLargeBoat.mjs` (0.72) are its specs. `test/ships2_bake.test.js` re-bakes both to the byte, and holds the scene
+split between them: nothing read twice, nothing unread.
+
+**Their prefabs** are Come Sail Away's data shape on one bench (`world/shipKit.js prefabBench` - the galleon's builder
+made every ship's, ONE CONSTRUCTION SEAM) and stand in for prefabs 112414 and 112411 (`systems/comeSailAwayModels.js
+PORT_SHIPS`: each fetched beside the mod's five files, built once a process, its components after the galleon's in the
+shared table; one that will not load or build leaves its hull the mod's own and says so once, every other ship as it
+would stand). The mod's own SpawnBoat walks each by name.
+
+- **The carrack** (`world/carrackModel.js`, her hull `NewCarrack`): her main deck at 7.81 m, her gun deck at 1.96 under
+  it; three houses on her deck (the middle one over her aft hatchway, its doorway a pair of leaves - the port on the
+  mod's Door Controller, the starboard on its mirror's clips - so a boarder and a player go down her companion to her gun
+  deck); ten gunports, each shutter fitted to its own side of her (`lidFitOf`: 13 rows from its hinge over her knuckle to
+  its foot under the chine, by 17 stations along her - the widest gap 2.6 cm, the deepest bite 2.4) and solid down to
+  the sill; a gun behind each on a platform a step (0.38 m) over her gun deck - under the deck lens's DECK_STEP, so her
+  gun deck round each platform stays her floor (at the port's own middle, 0.445 m, its ends read a body ashore) - each
+  gun on its own GunCarriage (`systems/naval/galleonGunDeck.js` reads its stations: her ports stand wider than the
+  galleon's) and its muzzle 9 cm out of her planking in the port; two chasers on her bow's deck, the barrels over her
+  quarter rail; her wheel and its pedestal before the helmsman's place, her rudder on her sternpost (1.9 cm clear of her
+  stern at 35 degrees); the mod's anchor along her bow's flare, weighed and let go, every edge of it clear of her (let go
+  at 4.094 m its shank crossed her bow's swell under the water - 4.244 now); her rope ladders plumb from her entry port
+  down her knuckle; her cargo on her gun deck; seven lanterns (her quarter's two poles and her taffrail's, a hanging one
+  in her aft house, three on her beams) - so a carrack at sea is lit by night now (AUDIT WK-N4's `carriesLanterns`).
+- **Her rig** (`world/carrackRig.js`): a spritsail (small square), a fore course and a main course (large square), a main
+  topsail and a lateen mizzen, by the mod's own names - its GetSailPower, its trim's arms and its first square sail read
+  them as they read its carrack's; her fore and main shrouds on channels outside her rail (their feet led aft, so a
+  course braced sharp clears them), no shrouds on her mizzen (her lateen sweeps them), her stays, her braces and sheets
+  belayed on her rails. Every canvas at every Wind and stowed, the yards braced to the auto-trim's 45 and the lateen
+  swung to 90 either way: nothing meets but where it is made fast (`test/shipSweep.mjs`, shared with the large boat; her
+  lateen's halyard is led to her mizzen's masthead's face - to its axis it went into the mast half way up).
+- **The large boat** (`world/largeBoatModel.js`, her hull `NewLargeBoat`): her deck at 0.90 m, her gunwale's cap at 2.25;
+  her rudder hung on her sternpost and turned about its rake (10.6 degrees), its tiller level over her stern rail to the
+  helmsman's hand, him on a step at her stern (1.55) with her stern rail his guard rail; six swivels on her caps and one on
+  the cap at her port bow (her stem is her bowsprit's heel: there it stood in the spar); the mod's anchor stowed on her
+  foredeck inside her ceiling, its cargo forward of her mast, its tall lantern pole at her starboard bow (on her stem it
+  stood through her forestay and her staysails) and the galleon's short one at her port quarter, each lantern hung
+  outboard as the mod hangs its own.
+- **Her seven plans** (`world/largeBoatRig.js PLANS`): the mod's large boat's seven, each its sails by the mod's own names
+  in the mod's order, so the walk reads each plan as it read the mod's (`test/ships2_largeboat.test.js` walks both); the
+  four larger set their upper canvas on a topmast over Mac's masthead. A sail's parts are keyed without its name's
+  `Sail` (`sailKey`): the walk takes every node whose name holds it for a sail, and a yard, a brace or a belay named for
+  its sail would have been counted in her Sails. Every plan swept clear (the topsail's yard lowered under the topmast
+  stay, the forestay set up on the bowsprit short of its end so the topmast stay comes down over it, the gaff topsail's
+  luff clear of the masthead's cap, plan 5's large gaff with no peak halyard - a square topsail braced round sweeps any
+  line from the topmast to its peak).
+- **Their pictures** (`world/carrackArt.js`, archive 38141; `world/largeBoatArt.js`, 38171 - it was 38151, the Shattered Hour's, AUDIT SD IV): painted at load from
+  numbers alone, each 64 x 64, the galleon's numbers for every picture the fleet shares and each ship's livery her own,
+  cut into slices by height; the carrack's stern windows glow by night through the pool's emission mask
+  (`scenes/comeSailAwayPool.js PORT_ART`).
+
+**HULL_BUILDS** (`systems/naval/navalShips.js`): each hull measured off her own model - her box her MeshCollider's
+bounds, her deck, her muzzles at her guns' own muzzles, her rig boxes each a sail's canvas set in any wind on its boom
+(the large boat's each of her plan's: `variant`, `scenes/navalHost.js rigBoxesOf`). The mod's own builds stand while its
+hulls do (`MOD_CARRACK_BUILD`, `MOD_LARGE_BOAT_BUILD`, `setShipStanding`), with their gangways (`systems/naval/quays.js`).
+
+**What it moved elsewhere.** The carrack's five guns a side throw the mod's seven's weight, a player's and a captain's
+alike (`shipBatteryWeight`: the duels were tuned with seven; the captains' galleons keep their five's), so the pirate
+flagship stands to the navy as she did. The Tiny Ship stands a metre higher than the mod's boat: a ball finds her 0.70
+as often as a Small Ship (the mod's boat 0.49), and the war galley's broadside lays on her from 53 m - so the pirate
+sloop closes to 50 where she closed to 55, inside it as before (her duels and her prey as they stood). The berths,
+quays and footprints are sized off the mod's Carrack still (`systems/naval/shipLife.js BERTH_TEMPLATE`), every harbour
+as it stood; Mac's carrack, narrower, lies in toward a quay by the difference, and her draft is her keel's (4.65, under
+the galleon's 4.7). Her open deck is one level at 7.81 (the deck lens's 1087 cells), her lookout's bow abaft her fore
+mast's partner.
+
+Pins: `test/ships2_carrack.test.js` (11), `test/ships2_largeboat.test.js` (11), `test/ships2_bake.test.js` (2); the naval
+suites' PIN MOVED rows, and the laws found on the mod's own Carrack and Large Boat (their cargo doors, forecastle stair,
+five doors, thwarts, sail bakes, colours' graft and dark hull) held on them as the game's fallback
+(`test/navalSea.mjs modShipsPool`, `test/csaScene.mjs MOD_MODELS`). Drawn offline with a scratch rasterizer over the
+real prefabs and art (every plan of the large boat, the carrack's sides, stern, bow, gun deck and helm); not seen in a
+browser.
+
+## A foe in the water reaches no one aboard (WATER-FOES, 2026-10-04 - DEPARTURE)
+
+From the field: "Enemies in the water on a boat shouldn't slow down your ship or prevent you from resting when on
+board." Every "enemies nearby" the port asks is GameManager.AreEnemiesNearby (`systems/encounters.js`
+`areEnemiesNearby`): a hostile foe that sees the player, or stands in the classic spawn band - and outdoors that band has
+no height test (`enemyMotor.js` wouldBeSpawnedInClassic: 102.4 m flat). Deep Waters' foes are the street's
+(`exteriorFoes`), so a slaughterfish or a dreugh anywhere under the sea within it put the helm's time scale back to one
+and refused a step up ("There are enemies nearby...", above), stopped a Travel Options journey, slowed the Overworld's
+travel (OW6's threats), refused the travel view, a camp's placing and every rest aboard - though no foe in the water
+comes up onto a deck (Deep Waters even freezes its swimmers while the player is on a boat). The hull's own sweep never
+met them (`csaSphereCastAll` returns no entity): the "slowdown" was these gates.
+
+So the world host latches each foe's reach every exterior frame, once the street's foes, its watch and its raids have
+had their frame (`systems/foeReach.js` `markFoeReach`): ABOARD - `playerAfloat` (a helm, a deck, another player's boat, a sea ship's deck)
+and not swimming - a foe IN THE WATER (an aquatic one, EnemyMotor's `swims`, or one whose controller centre stands under
+the sea's top, `tvSeaY`) is `ai.unreachable`; else none is. `areEnemiesNearby` passes an unreachable foe over, strict
+and resting alike, so the one sweep answers the time scale, rest and its channel, a journey, the travel view, fast
+travel and a camp the same; the Overworld's threats (`travelThreat`'s list) skip it too. A boarder on her deck, a foe on
+the shore, and every foe while the player swims count as before. A departure: the mod asks AreEnemiesNearby(false,
+false) at its helm as ashore (Port-Ledger A, WATER-FOES). THE FOUR HOSTS: `scenes/world.js` latches it; a building
+(`worldModes.js`, a ship's cabin included) has no foe in the water, a dungeon's (`dungeonContext.js`) flooded halls carry
+no boat of the port's rest gate yet - FLAGGED - and the standalone street (`exterior.js`) no sea. `test/waterfoes.test.js`.
+
+## A camp on her deck rides her (DECK-CAMP, 2026-10-04 - OURS)
+
+From the field: "Campfires placed on a boat dont attach to a boat." A Campfire or a tent placed on a boat's deck carries
+her number and its point in her deck's frame, and is posed off her every frame - hidden with her, packed back into its
+owner's pack once she is gone, saved and said on the wire by its place on her. The whole law is the Rest arc's
+(`06-Systems/Rest-Arc.md`, As built, DECK-CAMP); the seams here are `world.js campDeckAt` (the boat under a spot, off
+her collider bucket) and `campDeckResolve` (where she is now), and `comeSailAwayPeers.js hasBoat` (whether another
+player's word still names her).
+
+## A jump leaves the helm (HELM-JUMP, 2026-10-11 - DEPARTURE)
+
+From the field: "If you recall from the helm of a ship, you get sent to the void." The helm is let go by the events the
+mod hears - a load's start, a fast travel, a death - and of a teleport it hears only OnTeleportToCoordinates, its waves.
+A Recall, a guild's teleport, an unstuck, a quest's respawn and the staff's jumps raise nothing else, so `updateSailing`
+stood the jumper back at the drive position of the boat the jump had left at sea and hidden. The runtime's `OnPreJump`
+(the port's own event) ends a disembark in flight, as OnStartLoad does, and lets the helm go as OnPreFastTravel does -
+the sail stopped, a packable boat packed - and `world.js` `_teleportToPixel` raises it for every jump that names no
+event of its own, before anything it awaits (Port-Ledger A, HELM-JUMP; `01-Overview/Field-Bugs-2026-10-11.md`). An
+anchor set on a deck is still the deck's world point. `test/csa_sailing.test.js`, `test/fb1011_helmjump.test.js`.
+
+## A boat's Animators found once (SEA-TOWN, 2026-10-11 - OURS)
+
+From the field: frames fell in a crowded inland town with "The sea & ships" on, and came back with them off. With no boat
+owned the mods cost nothing there; with boats owned, `animate` (the Animators' step at the head of LateUpdate, (19) of
+the Port-Ledger row) found every boat's Animators by walking her whole tree - a galleon's 1,228 nodes - every frame, for
+every boat the player had placed wherever it lay, and the peers' pose did the same for every other player's boat
+(`scenes/comeSailAwayPeers.js`). `boatAnimators` keeps a tree's list while every tree's shape stands
+(`world/prefabNode.js` `prefabShapeStamp`, the stamp `world/prefabColliders.js` keeps a tree's colliders by): the same
+Animators, in the same order. The step itself is unchanged - a boat standing nowhere is still asked, because that ask is
+how an Animator starts over from its default state when she stands again ((18)). The naval HUD and the helm panel stopped
+making their keys' names for windows they were not showing. Measured, before and after, in
+`01-Overview/Field-Bugs-2026-10-11c.md`; `test/fb1011c_seatown.test.js`.
 
 ## What was already waiting in the port
 
@@ -2533,4 +3163,4 @@ mounted with the foes stream, the receiver, the glue, the owner's boat a
 frame ahead; the press, the ladder, the plaque, the pack guard); the motor's
 carry; the helm's buttons; the panel on a page; the Plus dress; the pad's
 gestures and prompts; the pad layer at the helm; the host's helm seam,
-mounted. `tools/mutants/csa_together.json`: 93 mutants, all dead.
+mounted. `tools/mutants/csa_together.json`: 95 mutants, all dead (two of them FIELD BUGS 2026-10-09 #7, `01-Overview/Field-Bugs-2026-10-09.md`).

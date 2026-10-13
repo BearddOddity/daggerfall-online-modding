@@ -97,7 +97,12 @@ test('AUDIT 28 M2: a kept sale is asked again only under the account that made i
   assert.equal(store._m.has(MARKS_PENDING_KEY), false);
   assert.deepEqual(MARKS_FINAL, ['bad-marks', 'marks-short', 'marks-bank-cap', 'marks-rate', 'marks-rid', 'marks-closed'], 'the refusals that let a sale go - each given after the line was looked for');
   const x = src('server-account/src/marks.js');
-  assert.ok(x.indexOf('const prior = await lineOf(db, player.id, rid);\n  if (prior) return repeat(prior);') < x.indexOf('const closed = shut(player, env);'), 'the exchange looks for the line before the switch');
+  // PIN MOVED (SILVER-FINDS): read inside each act's own body - findMarks stands above the exchange now, with the same law
+  const body = (name) => { const at = x.indexOf(`export async function ${name}(`); return x.slice(at, x.indexOf('\n}\n', at)); };
+  const ex = body('exchangeMarks');
+  assert.ok(ex.indexOf('const prior = await lineOf(db, player.id, rid);\n  if (prior) return repeat(prior);') >= 0 && ex.indexOf('const prior = await lineOf(db, player.id, rid);\n  if (prior) return repeat(prior);') < ex.indexOf('const closed = shut(player, env);'), 'the exchange looks for the line before the switch');
+  const fm = body('findMarks');
+  assert.ok(fm.indexOf('const prior = await lineOf(db, player.id, rid);') >= 0 && fm.indexOf('const prior = await lineOf(db, player.id, rid);') < fm.indexOf('const closed = shut(player, env);'), 'SILVER-FINDS: a loot find looks for its line before the switch too');
 });
 
 test('AUDIT 28 M3: a lone guildmaster\'s Leave takes no Marks with the guild - they go to the guildmaster, and the ledger still adds up', async (t) => {
@@ -124,7 +129,7 @@ test('AUDIT 28 M3: a guild whose Marks would pass its guildmaster\'s cap does no
   await svc.found(g, { name: 'Full Hands', tag: 'FHD' });
   await svc.call('/v1/marks/guild/deposit', { character: g.character, marks: 400, rid: rid() }, g.secret);
   svc.seedMarks(g, 10_000_000 - 100, 'fill');
-  assert.deepEqual(await svc.call('/v1/guilds/disband', { character: g.character }, g.secret), { status: 409, body: { error: 'marks-full' } });
+  assert.deepEqual(await svc.call('/v1/guilds/disband', { character: g.character }, g.secret), { status: 409, body: { error: 'marks-full', keeps: ['marks-full'] } });   // PIN MOVED: GUILD3c (bible/11-Multiplayer/Guilds-Made-Plain.md) - the refusal names everything that holds the guild, its first the error as ever
   assert.equal(svc.env.DB._raw.prepare('SELECT balance FROM guild_marks').get().balance, 400, 'the treasury holds them still');
 });
 
@@ -137,7 +142,7 @@ test('AUDIT 28 M3: a disband refused for the gold still in its treasury moves no
   assert.equal((await svc.call('/v1/guilds/deposit', { character: g.character, gold: 50, realm: g.at() }, g.secret)).status, 200, 'gold in the treasury');   // MERGE 2: paid on the realm character's record (REALM P2.2a)
   raw.prepare(`INSERT INTO marks_ledger (src_kind, src_id, dst_kind, dst_id, kind, amount, day, at, actor, who, rid)
     VALUES ('mint', NULL, 'guild', ?, 'test', 90, 1, 1, ?, NULL, 'seed-guild')`).run(guild.id, g.id);
-  assert.deepEqual(await svc.call('/v1/guilds/disband', { character: g.character }, g.secret), { status: 409, body: { error: 'guild-treasury' } });
+  assert.deepEqual(await svc.call('/v1/guilds/disband', { character: g.character }, g.secret), { status: 409, body: { error: 'guild-treasury', keeps: ['guild-treasury'] } });   // PIN MOVED: GUILD3c - and its whole list
   assert.equal(raw.prepare('SELECT balance FROM guild_marks WHERE guild_id = ?').get(guild.id).balance, 90, 'the Marks stay with the guild that stays');
   assert.equal(raw.prepare('SELECT COUNT(*) AS n FROM marks WHERE account = ?').get(g.id).n, 0, 'and none reached the guildmaster behind a shut switch');
 });
@@ -246,7 +251,8 @@ test('AUDIT 28 M10: the weekly report counts the ACCOUNTS at a cap, once each, w
   now = T0 + DAY;
   await svc.claim(a, 702, now); await svc.claim(a, 703, now); await svc.claim(a, 705, now);
   const r = (await svc.call('/v1/marks/report', {}, d.secret)).body;
-  assert.deepEqual([r.capped, r.cappedDays], [{ combat: 1, bank: 0 }, { combat: 2, bank: 0 }]);
+  // PIN MOVED (AUDIT 625 S6): and SILVER-FINDS' two faucets beside them (test/silverfinds_service.test.js)
+  assert.deepEqual([r.capped, r.cappedDays], [{ combat: 1, bank: 0, gather: 0, find: 0 }, { combat: 2, bank: 0, gather: 0, find: 0 }]);
 });
 
 test('AUDIT 28 M11: the service\'s own line ids carry a `:` no client id can - a client cannot take a gate\'s line', async (t) => {

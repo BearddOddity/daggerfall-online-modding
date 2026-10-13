@@ -32,6 +32,7 @@
 import { heldMapWorn } from './mapSkin.js';   // MAP-TOGGLE: the skin AND the player's switch
 import { AutomapWindow, preloadAutomapArt, automapArtLoaded } from './automapWindow.js';
 import { HeldMapWindow } from './heldMap.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export { preloadAutomapArt };
 
@@ -58,6 +59,7 @@ export function automapDoorReady() {
  * without its art - so the hosts' `if (win)` guards keep meaning.
  */
 export function createAutomapWindow(deps = {}) {
+  noteFirstUse('automap');   // TUT1
   // `document` for the reason every fork before this one gives: node
   // drives these hosts headless and keeps the canvas window rather than
   // getting a special case written for it.
@@ -74,6 +76,9 @@ export function createAutomapWindow(deps = {}) {
         title: deps.title ?? deps.dungeonName ?? '',
         party: deps.party ?? null,   // DISC23-A: the party members whose bodies stand in this level (the classic 3D arm ignores it)
         portals: deps.portals ?? null,   // TP-SEEN: every teleporter in the level (the classic 3D arm ignores it)
+        fires: deps.fires ?? null,   // REST3: the dungeon's own campfires (the classic 3D arm ignores them)
+        echoes: deps.echoes ?? null,   // ECHO1: where a chain moved something out of sight (the classic 3D arm ignores them)
+        quests: deps.quests ?? null,   // GUIDE8: the Exact tier's quest marks (the classic 3D arm ignores them)
       },
     });
   }

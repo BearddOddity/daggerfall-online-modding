@@ -32,7 +32,7 @@ import { registerPresenter } from '../src/systems/notify.js';
 import { setModSetting, _resetModSettings } from '../src/systems/modSettings.js';
 import { CLIMATES, LOCATION_TYPES } from '../src/formats/mapsFile.js';
 import { FATIGUE_MULTIPLIER } from '../src/systems/statMods.js';
-import { GATHER_HOW, STORES_EMPTY_LINE } from '../src/ui/profPages.js';
+import { GATHER_HOW, STORES_EMPTY_LINE, STORES_EMPTY_CARRY_LINE } from '../src/ui/profPages.js';
 import { createGatherHost, aimAt, ACT_STOPPED_LINE } from '../src/scenes/gatherHost.js';
 import { herbKind, SICKLE_HAND } from '../src/scenes/herbHost.js';
 import { mineKind, PICK_HAND } from '../src/scenes/mineHost.js';
@@ -95,7 +95,7 @@ async function stage({ online = true, open = true, world = {}, rank = 100, under
   S.e.items.push(...[...PROFESSION_TOOLS, FT.Spade].map((t) => S.tools[t]));
   const fresh = Object.fromEntries(PROFESSION_TOOLS.map((t) => [t, S.tools[t].currentCondition]));
   const book = S.book = {
-    state: { open: true, today: {}, hauls: 0, caps: { harvests: 60, stores: 5000, hauls: 40 } },
+    state: { open: true, today: {}, hauls: 0, caps: { stores: 5000 } },
     stale: () => false, refresh: async () => ({ ok: true }), pixel: () => ({ state: 'none' }), askPixels: async () => [], pump: () => {},
     dungeon: () => null, askDungeon: async () => false, held: () => 0,
     taken: (k, h) => S.taken.has(`${k}|${h}`), counting: (k, h) => S.counting.has(`${k}|${h}`),
@@ -456,17 +456,26 @@ test('TOOL-USE: the Professions page says a tool\'s Use at the node is the key\'
   assert.match(GATHER_HOW.herbalism, /herb patch/);
   assert.match(GATHER_HOW.mining, /ore vein or a boulder/);
   assert.match(GATHER_HOW.logging, /tree/);
-  assert.match(GATHER_HOW.herbalism, /Using the Sickle or the Basket from your hotbar or quick slot at the patch is the same as the key - the Sickle picks the herbs, the Basket searches for food\. Used from your pack, they only point the way\.$/);
-  assert.match(GATHER_HOW.mining, /Using the Pick-Axe from your hotbar or quick slot there is the same as the key\. Used from your pack, it only points the way\.$/);
-  assert.match(GATHER_HOW.logging, /Using the Wood-Axe from your hotbar or quick slot there is the same as the key\. Used from your pack, it only points the way\.$/);
+  assert.match(GATHER_HOW.herbalism, /The Sickle or Basket also works from your hotbar or a quick slot\. Used from your pack, a tool just tells you where it works\.$/);
+  assert.match(GATHER_HOW.mining, /It also works from your hotbar or a quick slot\. Used from your pack, a tool just tells you where it works\.$/);
+  assert.match(GATHER_HOW.logging, /It also works from your hotbar or a quick slot\. Used from your pack, a tool just tells you where it works\.$/);
   for (const k of ['herbalism', 'mining', 'logging']) assert.doesNotMatch(GATHER_HOW[k], /Foraging|earns no XP/);
   // PIN MOVED (2026-10-01 part four, TOUCH-HOLD): and the Skinning Knife's Use
-  assert.match(STORES_EMPTY_LINE, /or use the Sickle, Basket, Pick-Axe, Wood-Axe, Skinning Knife or Fishing-Net from your hotbar or quick slot there\. A tool used from your pack gathers nothing: it only points the way\.$/);
+  assert.match(STORES_EMPTY_LINE, /or use the matching tool from your hotbar or a quick slot\. Tools used from your pack gather nothing\.$/);
   const src = readFileSync(new URL('../src/ui/profPages.js', import.meta.url), 'utf8');
   assert.match(src, /if \(GATHER_HOW\[_sel\]\) pane\.append\(el\('p', 'px-note', gatherHow\(_sel\)\)\);/);   // PIN MOVED (L10N4): said through its reader
   assert.match(src, /: storesEmptyLine\(\)\)\);/);
   assert.match(src, /const gatherHow = \(id\) => \(id === 'herbalism' \? t\('prof\.page\.how\.herbalism', GATHER_HOW_HERBALISM\)/);
   assert.match(src, /const storesEmptyLine = \(\) => t\('prof\.page\.stores\.empty', STORES_EMPTY_LINE\);/);
+  // AUDIT (2026-10-04): PROF-MENU retired the act choice key's search - the patch's and the body's lists carry it now; and
+  // BAG1's page says where a carrying book's goods go (the bag or the pack), not the Stores
+  assert.doesNotMatch(GATHER_HOW.herbalism, /act choice key/);
+  assert.match(GATHER_HOW.herbalism, /the patch's list also lets you search it for food/);
+  assert.doesNotMatch(src, /act choice key searches/);
+  assert.match(src, /The body\\'s list also lets you search it\.'\)\)\);/);   // PIN MOVED (L10N4): said through t()
+  assert.match(STORES_EMPTY_CARRY_LINE, /goes into your Materials Bag or pack - put it in here in any town\.$/);
+  assert.match(src, /all\.size \? t\('prof\.page\.stores\.noMatch', 'Nothing in the Stores matches\.'\) : storesEmptyCarryLine\(\)\)\);/);   // PIN MOVED (L10N4): said through its reader
+  assert.match(src, /const storesEmptyCarryLine = \(\) => t\('prof\.page\.stores\.emptyCarry', STORES_EMPTY_CARRY_LINE\);/);
 });
 
 // ─── PROF-MENU (2026-10-01, Mac: "They should use the same menu the loot menu uses and not an interaction button") ───
@@ -594,7 +603,8 @@ test('PROF-MENU host by source: the street\'s plaque races the node over its own
   assert.match(w, /profClick: \(\) => profClickPress\(\),/);
   assert.match(w, /profHoverPick: \(ray\) => gatherHost\?\.hoverHit\?\.\(ray\) \?\? null,/);
   const m = readFileSync(new URL('../src/scenes/worldModes.js', import.meta.url), 'utf8');
-  assert.match(m, /if \(!interact && !pressCast && !actClick && !host\.profActing\?\.\(\) && host\.profClick\?\.\(\)\) return true;/);
+  // PIN MOVED (FIELD BUGS 2026-10-07 INDOOR-SKIN): the building's ladder carries the same arm, above - this pin is the dungeon's
+  assert.match(m.slice(m.indexOf('  function tryExitDungeon(')), /if \(!interact && !pressCast && !actClick && !host\.profActing\?\.\(\) && host\.profClick\?\.\(\)\) return true;/);
   assert.match(m, /profHoverPick: \(ray\) => host\.profHoverPick\?\.\(ray\) \?\? null,/);
   const d = readFileSync(new URL('../src/scenes/dungeonContext.js', import.meta.url), 'utf8');
   assert.match(d, /return opts\.profHoverPick\?\.\(ray\) \?\? ray;/);

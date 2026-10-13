@@ -319,7 +319,23 @@ test('U41: the world host mounts the art window and keeps performFastTravel\'s o
   // awaited, with its note, above the last needle
   // PIN MOVED (KEEP-PLUNDER, 2026-09-30), 10000 -> 10400: a jump's sea stowed before Come Sail Away's teleport, with its
   // note, above the needles
-  const core = src.slice(k, k + 10400);
+  // PIN MOVED (QUAYS, 2026-10-03), 10400 -> 10600: the harbours' quays come down with the old frame beside the farms,
+  // with their note, above the last needle
+  // PIN MOVED (FEUD's merge of main), 10600 -> 10800: both sides' additions above the last needle together (it stood at
+  // 10563 on main, 10533 on the arc's branch, 10685 merged)
+  // PIN MOVED (AUDIT ENVIRONS I2), 10800 -> 11600: the snow, the wind and the haze ride `state.initOffset` beside the
+  // boats, with their note, above the last needle (it stands at 11306)
+  // PIN MOVED (AUDIT LW-II-2 H9), 11600 -> 12000: the stood hideout let go beside the camps, with its note, above the last
+  // needle (it stands at 11702); WARDEN1's teardown line (`wardenShows?.destroyAll()`, the re-anchor ending a town watch's
+  // throw in flight) stands it at 11920, inside the same window
+  // PIN MOVED (HELM-JUMP, FIELD BUGS 2026-10-11), 12000 -> 12600: a jump lets go of Come Sail Away's helm first, with its
+  // note, above the needles (the last stands at 12333)
+  // PIN MOVED (SHIPYARDS' merge of main, 2026-10-11), 12600 -> 12800: both sides' additions above the last needle together -
+  // the port's shipyards and lighthouses taken down with the old frame (SHIPYARDS) and the raid's places let go (FIELD BUGS
+  // 2026-10-11g RAID-WORD); it stood at 12516 on main, 12421 on the branch, 12604 merged
+  // PIN MOVED (AUDIT CAPTAIN'S SEA G2/P7), 12600 -> 13000: a pixel this game does not stream landed where the world stands,
+  // with its note, above the needles (the last stood at 12608 on the branch; at the merge of SHIPYARDS, 12879 - inside it)
+  const core = src.slice(k, k + 13000);
   for (const needle of ['destroyPixel(bx, by)', 'state.init(px, py)', 'awaitedBuild(first.px']) {
     assert.ok(core.includes(needle), `the core carries ${needle}`);
   }

@@ -256,8 +256,8 @@ test('EC1: the world host consumes the shared law rather than a second copy of i
   // two pools, with world.js's own _encounter split
   const wm = read('src/scenes/worldModes.js');
   assert.match(wm, /insideFoeSinksFor\(foe, fromPlayer\) \{/, 'the interior host has a foeSinksFor of its own');   // AUDIT 68 X4: + the engine's provenance
-  assert.match(wm, /if \(foe\._encounter\) interiorFoes\?\.damageFoe\(foe, n, player\.pos, null, \{ fromPlayer: fp, kind: 'spell' \}\);\n\s+else interiorGuards\?\.hurtGuard\(foe, n, player\.pos, null, \{ fromPlayer: fp \}\);/,
-    'routed by pool, so the billboard dies in the pool that owns it');
+  assert.match(wm, /if \(foe\._encounter\) interiorFoes\?\.damageFoe\(foe, n, player\.pos, null, \{ fromPlayer: fp, kind: 'spell', whole: !!o\?\.whole, round: !!o\?\.round, element: o\?\.element \?\? null \}\);[^\n]*\n\s+else interiorGuards\?\.hurtGuard\(foe, n, player\.pos, null, \{ fromPlayer: fp, kind: 'spell', round: !!o\?\.round \}\);/,
+    'routed by pool, so the billboard dies in the pool that owns it');   // PIN MOVED (TELL1: the kind reaches the watch, and whether a tick is a later round)
   // every enchant-ctx site that reaches a foe's vitals goes through the
   // router - a bare foeSinks() there is the exterior assumption again.
   //
@@ -354,7 +354,7 @@ test('AUDIT 58 (f2/hosts): the EXTERIOR host mounts the same body over its own p
   assert.match(rf, /if \(cityGuards\.guards\.includes\(f\)\) cityGuards\.removeGuard\(f\);\n\s*else exteriorFoes\.removeFoe\(f\);/, 'the watch is named by MEMBERSHIP, not by pool identity');
   assert.match(rf, /exteriorFoes\.spawnFoe\(mobileType, feet, \{ replacing: true \}\)/, 'AUDIT 62 F12: the re-stand cannot be refused by the cap');
   // ROAD-G TAIL: the arm names the watch pool ONLY for the membership route
-  // (world.js:"so no corpse, no"'s shape) - the removal, never the re-stand
+  // (world.js:"const enchantFoeSinks = (f, fromPlayer = true)"'s shape) - the removal, never the re-stand
   assert.equal((rf.match(/cityGuards\./g) || []).length, 2, 'guards.includes + removeGuard, nothing else');
   assert.equal(/cityGuards\.spawn/.test(rf), false, 'the re-stand is the encounter pool\'s');
   // (PR #59 review) pin the ARM: after the inside arm nothing returns before

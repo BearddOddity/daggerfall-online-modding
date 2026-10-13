@@ -20,8 +20,8 @@
   {
     "name": "AINV-B-hidden-owner-wagon-drawn",
     "file": "src/scenes/horseCartPool.js",
-    "old": "&& !(p.hidden && p.wagon.kind !== HCC_WIRE_KIND.Deployed) && drawWagon(",
-    "new": "&& drawWagon(",
+    "old": "    if (!p?.wagon || !p.shownWagon || (p.hidden && p.wagon.kind !== HCC_WIRE_KIND.Deployed)) return null;",
+    "new": "    if (!p?.wagon || !p.shownWagon) return null;",
     "tests": [
       "test/disc20.test.js"
     ]
@@ -29,8 +29,8 @@
   {
     "name": "AINV-B-parked-wagon-hidden-too",
     "file": "src/scenes/horseCartPool.js",
-    "old": "&& !(p.hidden && p.wagon.kind !== HCC_WIRE_KIND.Deployed) && drawWagon(",
-    "new": "&& !(p.hidden) && drawWagon(",
+    "old": "    if (!p?.wagon || !p.shownWagon || (p.hidden && p.wagon.kind !== HCC_WIRE_KIND.Deployed)) return null;",
+    "new": "    if (!p?.wagon || !p.shownWagon || (p.hidden)) return null;",
     "tests": [
       "test/disc20.test.js"
     ]
@@ -38,8 +38,8 @@
   {
     "name": "AINV-B-horse-plain",
     "file": "src/scenes/horseCartPool.js",
-    "old": "b.conceal = p.look; } }",
-    "new": "} }",
+    "old": "if (owner) b.conceal = conceal; }",
+    "new": "}",
     "tests": [
       "test/disc20.test.js"
     ]
@@ -83,7 +83,7 @@
   {
     "name": "AINV-F-nearby-names-the-concealed",
     "file": "src/scenes/world.js",
-    "old": "localRosterSource(s, (peersNear() ?? []).filter((q) => !q.cv), player.feetAt())",
+    "old": "localRosterSource(s, openPeers(peersNear(), isPartyMate), player.feetAt())",
     "new": "localRosterSource(s, (peersNear() ?? []), player.feetAt())",
     "tests": [
       "test/invisnet.test.js"
@@ -92,7 +92,7 @@
   {
     "name": "AINV-F-page-to-the-concealed",
     "file": "src/scenes/world.js",
-    "old": "    return near.filter((p) => !p.cv).map((p) => ({ id: p.id, name: peerName(p.id) ?? 'Someone',",
+    "old": "    return openPeers(near, isPartyMate).map((p) => ({ id: p.id, name: peerName(p.id) ?? 'Someone',",
     "new": "    return near.map((p) => ({ id: p.id, name: peerName(p.id) ?? 'Someone',",
     "tests": [
       "test/invisnet.test.js"
@@ -110,7 +110,7 @@
   {
     "name": "AINV-G-hidden-silent",
     "file": "src/scenes/world.js",
-    "old": "remotePlayers.sync(drawable, onlineToScene,",
+    "old": "remotePlayers.sync(visiblePeers, onlineToScene,",
     "new": "remotePlayers.sync(seen, onlineToScene,",
     "tests": [
       "test/invisnet.test.js"

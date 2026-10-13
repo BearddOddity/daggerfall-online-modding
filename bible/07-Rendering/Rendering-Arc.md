@@ -1110,7 +1110,12 @@ did. `0.9999` would not have done: at near 0.2 and far 6000 that depth
 is 1,500 m out, and the streamed terrain runs past it. The far ring
 kept its law - "the streamed world repaints everything nearer" - by
 DEPTH instead of by ORDER: `gl_FragDepth = 1.0` under the same test,
-so it loses to any streamed pixel and paints over the sky. The three
+so it loses to any streamed pixel and paints over the sky. (AUDIT
+FAR-SEA1 P1, 2026-10-11: the depth is the pass's `depthRange(1, 1)` now -
+a shader that writes its depth runs before its depth test, so "shade
+only the pixels nothing nearer has claimed" was never true of the ring,
+which shaded every fragment the streamed world covered. Same law, same
+picture, the test before the shader; `07-Rendering/Water-Arc.md`.) The three
 `markForeignPass` seams moved with the block; glstate's count holds.
 
 **The grass field went to the GPU whole, every frame.** One instanced
@@ -2189,7 +2194,11 @@ COST, through `Performance.getMetrics` - and **refuted the fix**:
 | `transform`, font-size fixed | **0.000** | **0** |
 
 Moving to `transform` alone buys nothing, because the per-frame
-`font-size` dirties layout by itself. Only moving BOTH takes the layer
+`font-size` dirties layout by itself. (PERF-NAMES, 2026-10-10,
+`Performance-Priority.md`: in the layout's column. The main thread's
+whole task - the paint and the commit with it - is ten times the
+layout, and `transform` alone takes a quarter of it off while the names
+stand and the eye turns, the same pixels; taken.) Only moving BOTH takes the layer
 off the layout path entirely - and the prize is 0.12 ms a frame at 72
 names, which is under one per cent of a frame. **Recorded, not taken:
 the win is real, small, and costs a visual change to how a name is
@@ -2418,8 +2427,8 @@ beside them. Then the same shape turned up everywhere else:
 | `worldModes.js:"mountMachineryChild(r.parent, r.child, r.state.angle)"` | the dungeon's flats, camps, torches and peers |
 | `worldModes.js:"EVERY RANGED WEAPON"` | the interior's flats and peers |
 | `worldModes.js:"eyeDir(), { fromPlayer"` | blood, torches, drops, foes, guards - **five separate uncut calls** |
-| `exterior.js:"sky, which is the"`, `world.js:"state.pixelTranslation(farRing.baseX, farRing.baseY, _ringOrigin)"` | the spell missiles |
-| `exterior.js:"personBatches.push(batch)"` | the fixed city's townspeople |
+| `exterior.js:"renderer.drawTerrain"`, `world.js:"heightBytes: woods.heightMapBuffer"` | the spell missiles |
+| `exterior.js:"G1: the guards drive"` | the fixed city's townspeople |
 | `interior.js:"ctx.flatAnims.tick"`, `dungeon.js:"ctx.flatAnims.tick"` | the flats, the camps, the torches |
 
 Seven call sites, and an eighth waiting to be written next year. **Fixing

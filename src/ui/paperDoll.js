@@ -46,9 +46,10 @@ import { EQUIP_SLOTS, equipTableOf, getItemHands, ITEM_HANDS } from '../systems/
 import { getTemplate, paperdollOrder } from '../characters/paperdoll.js';
 import { applyDyeToIndex, DYE_TARGETS, DYE_COLORS, CLOTHING_DYES } from '../characters/dyes.js';
 import { decodedTextureTopDown, preloadTextureRecord, textureReplacementRect } from '../systems/textureReplacement.js';
-import { dfmodImgImage, dfmodCifRciImage, dfmodGeneration, resampleRgba, attachedDfmods } from '../systems/dfmodTextures.js';   // DFMOD1: an attached mod's backdrop, body, head and hi-res items   // DW3: GetItemImage's import arm, by the item's dye; AUDIT-DW F1: decoded when the doll asks
+import { dfmodImgImage, dfmodCifRciImage, dfmodCifRciRect, dfmodGeneration, resampleRgba, dfmodCarriesDollArt } from '../systems/dfmodTextures.js';   // DFMOD1: an attached mod's backdrop, body, head and hi-res items   // DW3: GetItemImage's import arm, by the item's dye; AUDIT-DW F1: decoded when the doll asks
 import { itemDyeColor } from '../systems/itemDye.js';   // DW3: DaggerfallUnityItem.dyeColor, as the port's items carry it
 import { customItemClass } from '../systems/rriItems.js';   // RRI1: a custom class's own archive and record on the doll
+import { ownItemImage } from '../systems/itemTemplates.js';   // THUNDERLOCK-ART: a weapon of the port's own wears its own doll layer
 import { clampArmorVariant, armorArchive, HUMAN_MORPHOLOGY, ARMOR_MATERIAL } from '../systems/armorMaterials.js';
 import { raceArt, FACES_PER_RACE, raceByKey } from '../systems/races.js';   // S3c/U9: all eight races
 
@@ -163,6 +164,9 @@ export function paperdollItemImage(item, { gender = 'male', race = 'Breton' } = 
     return { archive, record, dye, target: DYE_TARGETS.WeaponsAndArmor };
   }
   if (item.group === 'Weapons') {
+    // THUNDERLOCK-ART (systems/itemTemplates.js ownItemImage): a weapon of the port's own wears its own doll layer - a Gilded piece's gold one
+    const own = ownItemImage(item, { forPaperDoll: true });
+    if (own) return { archive: own.archive, record: own.record, dye: MATERIAL_DYES[item.material ?? 0] ?? DYE_COLORS.Unchanged, target: DYE_TARGETS.WeaponsAndArmor };
     let record = t.playerTextureRecord;
     // an Either-hand weapon worn RIGHT uses the +1 record
     if (item.equipSlot === EQUIP_SLOTS.RightHand && getItemHands(item) === ITEM_HANDS.Either) record += 1;
@@ -278,7 +282,7 @@ async function loadArtSet(deps, { race = 'Breton', gender = 'male', faceIndex = 
     })),
     nude: await loadImgBmp(unclothed),
     clothed: await loadImgBmp(clothed),
-    head: { bmp: headBmp, off: face.getOffset(fi), alt: await dfmodAlt(dfmodCifRciImage(art.heads, fi, 0), headBmp) },
+    head: { bmp: headBmp, off: face.getOffset(fi), alt: await dfmodAlt(dfmodCifRciImage(art.heads, fi, 0), headBmp), rect: dfmodCifRciRect(art.heads, fi, 0) },   // FACE-RECT: and its sidecar's <rect>
   };
 }
 
@@ -291,10 +295,18 @@ async function dfmodAlt(pending, bmp) {
     return img && bmp?.width ? img : null;
   } catch { return null; }
 }
+/** FACE-RECT (issue #639): the box a holder's mod picture is drawn into, in doll pixels - its xml's `<rect>` when it
+ *  has one (TextureReplacement.OverridePaperdollItemRect replaces DrawTexture's screen rect whole), else the classic
+ *  record's size at its classic offset. Paperdoll Enhanced's faces were squeezed into FACE*.CIF's box. */
+export function altBox(holder) {
+  const r = holder.rect;
+  return r ? { width: r.width, height: r.height, off: { x: r.x, y: r.y, paperdoll: true } } : { width: holder.bmp.width, height: holder.bmp.height, off: holder.off };
+}
 /** DFMOD4: a holder's (`{ bmp, alt }`) mod picture at `S` texels per doll pixel, box-filtered once per scale. */
 function altAt(holder, S) {
   holder._altFit ??= new Map();
-  if (!holder._altFit.has(S)) holder._altFit.set(S, resampleRgba(holder.alt, holder.bmp.width * S, holder.bmp.height * S).data);
+  const box = altBox(holder);
+  if (!holder._altFit.has(S)) holder._altFit.set(S, resampleRgba(holder.alt, Math.round(box.width * S), Math.round(box.height * S)).data);
   return holder._altFit.get(S);
 }
 
@@ -304,7 +316,7 @@ function altAt(holder, S) {
  *  nearest-scaled into it exactly as before, and the mod's layers keep four times the detail. Every rect, offset and
  *  click mask stays in the classic 110x184 space; only the pixels are denser. */
 export const PAPERDOLL_HD_SCALE = 4;
-const composeScale = () => (attachedDfmods().length ? PAPERDOLL_HD_SCALE : 1);
+const composeScale = () => (dfmodCarriesDollArt() ? PAPERDOLL_HD_SCALE : 1);   // AUDIT VE R13: a mod switched on carries doll art - not the lighting mod, a mod off, Vanilla Enhanced or a copy of it
 
 export async function preloadPaperDollArt(deps, ident = {}) {
   const { race = 'Breton', gender = 'male' } = ident;
@@ -367,8 +379,10 @@ export const paperDollArtLoaded = () => !!_art;
    ONLINE1) copies `under`'s alpha too, so its mask is a see-through. */
 function blit(out, img, palette, { rows = null, remap = null, atOffset = null, under = null, S = 1 } = {}) {
   if (img.alt) {   // DFMOD1: a mod's truecolor body/head, at the classic size and offset; DFMOD4: S times as dense
+    const box = altBox(img);   // FACE-RECT: or the box its xml's <rect> names
+    const k = box.height / img.bmp.height;   // the classic rows, carried into the box's
     const [y0, y1] = rows ?? [0, img.bmp.height];
-    blitRgba(out, { bmp: { width: img.bmp.width * S, height: img.bmp.height * S, rgba: altAt(img, S), scale: S }, off: img.off }, { atOffset, rows: [y0 * S, y1 * S], S });
+    blitRgba(out, { bmp: { width: Math.round(box.width * S), height: Math.round(box.height * S), rgba: altAt(img, S), scale: S }, off: box.off }, { atOffset: img.rect ? null : atOffset, rows: [Math.round(y0 * k * S), Math.round(y1 * k * S)], S });
     return;
   }
   const [orgX, orgY] = PAPERDOLL_ORIGIN;
@@ -487,6 +501,7 @@ async function loadOverrideArt(file, record, deps, palette) {
       cif.load(await deps.fetchBytes(file), file, palette);
       art = { bmp: cif.getDFBitmap(record, 0), off: cif.getOffset(record) };
       art.alt = await dfmodAlt(dfmodCifRciImage(file, record, 0), art.bmp);   // DFMOD1
+      art.rect = dfmodCifRciRect(file, record, 0);   // FACE-RECT: a racial override's head takes its sidecar's <rect> as the face does
     } else {
       const img = new ImgFile();
       img.load(await deps.fetchBytes(file), file, palette);

@@ -189,7 +189,7 @@ test('I3: the wiring - four hosts, one Escape door each, art preloaded', () => {
 // ── MAC1 J ON THE CLASSIC SKIN ───────────────────────────────────
 
 test('AUDIT 65 UI-2: the classic pause window relocks on RESUME, and only on resume', () => {
-  // MAC1 J's mechanism is the enhanced door's (ui/pauseDoor.js:"export function pauseMenuAct"):
+  // MAC1 J's mechanism is the enhanced door's (ui/pauseDoor.js:"return (action) =>"):
   // the close runs INSIDE the Resume click or the Escape keyup - the
   // transient activation requestPointerLock needs - while the hosts'
   // look gate relocks on the NEXT frame, outside any gesture, which the
@@ -238,7 +238,7 @@ test('AUDIT 65 UI-2: the classic pause window relocks on RESUME, and only on res
     assert.equal(esc.done, true);
     assert.equal(relocked, 1, 'the close on the keyup relocks inside that keyup');
 
-    // NOT the exit. There is no world to relock into - pauseDoor.js:"gesture; the exit"'s
+    // NOT the exit. There is no world to relock into - pauseDoor.js:"if (action !== 'exit')"'s
     // own `action !== 'exit'`.
     relocked = 0;
     const exit = open({ exitToMenu() {}, textLines: () => ['Are you sure?'] });
@@ -250,7 +250,7 @@ test('AUDIT 65 UI-2: the classic pause window relocks on RESUME, and only on res
     // NOT the save or load DOORS - and driven through the bag the
     // PRODUCER mints, which is the whole point of this arm. All three
     // shipping pause hosts hand over saveAs + loadKey + pushWindow
-    // (world.js:"on. Here routeAction's", worldModes.js:"lines: (id) => townTalk?.lines?.(id)",
+    // (world.js:"panel of the large", worldModes.js:"lines: (id) => townTalk?.lines?.(id)",
     // dungeonContext.js:"collider bucket,"), so `saveLoadPushes` is true and the
     // door PUSHES the slot window: the pause window rides UNDER it,
     // `done` stays false and `_closeWith` is never reached at all. A
@@ -279,7 +279,7 @@ test('AUDIT 65 UI-2: the classic pause window relocks on RESUME, and only on res
     // ...but the DRAIN when one COMPLETES is a resume. PopToHUD
     // (DaggerfallUI.cs:829-836) empties the whole stack back to the
     // world inside the slot window's own click, and the enhanced twin
-    // relocks on exactly it - pauseDoor.js:"gesture; the exit" fires for 'save' and
+    // relocks on exactly it - pauseDoor.js:"if (action !== 'exit')" fires for 'save' and
     // 'load', not only for 'resume'. saveWindow.js:"this.hooks.popToHUD?.();             //" and :349 are the
     // two callers of this hook.
     assert.equal(typeof pushed[1].hooks.popToHUD, 'function',
@@ -310,7 +310,7 @@ test('AUDIT 65 UI-2: the classic pause window relocks on RESUME, and only on res
     assert.equal(relocked, 0, 'the same on the load side');
 
     // THE QUICK-VERB FALLBACK is the other save/load shape, and it IS a
-    // resume: a host with no saveAs/loadKey seam (exterior.js:"toggleAutomap: ()"'s bag
+    // resume: a host with no saveAs/loadKey seam (exterior.js:"at: pauseAt,   //"'s bag
     // carries neither, so its LOAD rect runs this today) closes straight
     // back to the world and opens no window at all.
     relocked = 0;

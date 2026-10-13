@@ -1,13 +1,13 @@
 [
   {
-    "name": "PROF7-hides-per-day-31",
+    "name": "PROF7-hides-per-day-exported-again",
     "file": "src/net/professionLaw.js",
-    "old": "export const HIDES_PER_DAY = 30;",
-    "new": "export const HIDES_PER_DAY = 31;",
+    "old": "export const HIGH_HIDES_PER_DAY = 3;",
+    "new": "export const HIDES_PER_DAY = 30;\nexport const HIGH_HIDES_PER_DAY = 3;",
     "tests": [
-      "test/prof7_law.test.js",
-      "test/prof7_service.test.js"
-    ]
+      "test/cap_off.test.js"
+    ],
+    "note": "RETIRED by CAP-OFF (2026-10-07, Mac: \"Remove the cap on life skills\"): the law exports no day's thirty - the mutant exports it again. It was the mutant that made the day thirty-one."
   },
   {
     "name": "PROF7-high-hides-four",
@@ -280,35 +280,38 @@
     ]
   },
   {
-    "name": "PROF7-svc-hunt-cap-undecided",
+    "name": "PROF7-svc-hunt-cap-again",
     "file": "server-account/src/professions.js",
-    "old": "OR (${hunted} < ?21 AND",
-    "new": "OR (${hunted} < ?21 + 1 AND",
+    "old": "        AND (?9 <> 'hunting' OR ?19 < ?20 OR ${huntedHigh} < ?21)\n",
+    "new": "        AND (?9 <> 'hunting' OR (COALESCE((SELECT SUM(qty) FROM node_harvests WHERE player = ?1 AND profession = 'hunting' AND day = ?6), 0) < 30 AND (?19 < ?20 OR ${huntedHigh} < ?21)))\n",
     "tests": [
-      "test/prof7_service.test.js"
+      "test/prof7_service.test.js",
+      "test/audit32_service.test.js",
+      "test/cap_off.test.js"
     ],
-    "equivalent": true,
-    "why": "AUDIT 32 L2: the day's thirty is kept by the hide's own cut to the day's room - at the cap the decision's qty is 0, and node_harvests' CHECK (qty >= 1) refuses the row under the INSERT OR IGNORE, so the WHERE's bound is belt-and-braces (kept: it says the law in the statement that decides it)"
+    "note": "RETIRED by CAP-OFF (2026-10-07, Mac: \"Remove the cap on life skills\"): the day's thirty hides are gone and the pins turned (the thirty-first credited) - the mutant decides the thirty in the INSERT again. It was the mutant that let a thirty-first through. It was recorded equivalent (\"AUDIT 32 L2: the day's thirty is kept by the hide's own cut to the day's room - at the cap the decision's qty is 0, and node_harvests' CHECK (qty >= 1) refuses the row under the INSERT OR IGNORE, so the WHERE's bound is belt-and-braces (kept: it says the law in the statement that decides it)\"); the inverse is not - it dies."
   },
   {
     "name": "PROF7-svc-high-undecided",
     "file": "server-account/src/professions.js",
-    "old": "AND (?22 < ?23 OR ${huntedHigh} < ?24)",
-    "new": "AND (1 OR ${huntedHigh} < ?24)",
+    "old": "?9 <> 'hunting' OR ?19 < ?20 OR",
+    "new": "?9 <> 'hunting' OR 1 OR",
     "tests": [
       "test/prof7_service.test.js"
     ],
     "equivalent": true,
-    "why": "AUDIT 32 L2: the rare three the same - the qty cut to the rare hides' room is 0 at their cap, and the CHECK (qty >= 1) refuses the row under the OR IGNORE; the WHERE's bound is belt-and-braces"
+    "why": "AUDIT 32 L2: the rare three the same - the qty cut to the rare hides' room is 0 at their cap, and the CHECK (qty >= 1) refuses the row under the OR IGNORE; the WHERE's bound is belt-and-braces",
+    "note": "CAP-OFF (2026-10-07, Mac: \"Remove the cap on life skills\") (PIN MOVED, re-aimed by content): the rare hides' bound kept, ?19 to ?21 now."
   },
   {
     "name": "PROF7-svc-tier-unwritten",
     "file": "server-account/src/professions.js",
-    "old": "THEN ?20 END, ?22, CASE",
-    "new": "THEN ?20 END, 0, CASE",
+    "old": "THEN ?18 END, ?19, CASE",
+    "new": "THEN ?18 END, 0, CASE",
     "tests": [
       "test/prof7_service.test.js"
-    ]
+    ],
+    "note": "CAP-OFF (2026-10-07, Mac: \"Remove the cap on life skills\") (PIN MOVED, re-aimed by content): the tier is ?19 now."
   },
   {
     "name": "PROF7-svc-butchery-one",
@@ -386,13 +389,14 @@
     ]
   },
   {
-    "name": "PROF7-svc-hunt-post-check-gone",
+    "name": "PROF7-svc-high-post-check-gone",
     "file": "server-account/src/professions.js",
-    "old": "    if (hunt.hides >= HIDES_PER_DAY) return { error: 'prof-hunt-cap' };\n",
+    "old": "    if (tier >= HIGH_HIDE_TIER && hunt.high >= HIGH_HIDES_PER_DAY) return { error: 'prof-hunt-high' };\n",
     "new": "",
     "tests": [
       "test/prof7_service.test.js"
-    ]
+    ],
+    "note": "CAP-OFF (2026-10-07, Mac: \"Remove the cap on life skills\") (re-aimed by content): the post-check that named the day's thirty is gone with it; the one that stands names the rare hides - without it a fourth rare hide's refusal says `stores-full`."
   },
   {
     "name": "PROF7-svc-dye-unchecked",
@@ -433,21 +437,23 @@
   {
     "name": "PROF7-svc-state-no-hunt",
     "file": "server-account/src/professions.js",
-    "old": "    hunt: await huntToday(db, player.id, day),   // PROF7: the account's hides today (PROF0 6)\n",
+    "old": "    hunt: huntFrom(hunt[0]),   // PROF7: the account's hides today (PROF0 6)\n",
     "new": "",
     "tests": [
       "test/prof7_service.test.js",
       "test/prof1_service.test.js"
-    ]
+    ],
+    "note": "GATHER-SPEED/MARKET-SPEED (PIN MOVED): re-aimed by content - the reads batched."
   },
   {
     "name": "PROF7-svc-answer-no-hunt",
     "file": "server-account/src/professions.js",
-    "old": "    ...(row.profession === 'hunting' ? { hunt: await huntToday(db, row.player, Number(row.day)) } : {}),",
+    "old": "    ...(row.profession === 'hunting' ? { hunt: huntFrom(r.get('hunt')?.[0]) } : {}),",
     "new": "",
     "tests": [
       "test/prof7_service.test.js"
-    ]
+    ],
+    "note": "GATHER-SPEED/MARKET-SPEED (PIN MOVED): re-aimed by content - the reads batched."
   },
   {
     "name": "PROF7-svc-high-counts-all",
@@ -490,11 +496,12 @@
   {
     "name": "PROF7-index-hunt-cap-400",
     "file": "server-account/src/index.js",
-    "old": "'prof-hunt-cap': 409, 'prof-hunt-high': 409,",
-    "new": "'prof-hunt-cap': 400, 'prof-hunt-high': 400,",
+    "old": "'prof-hunt-high': 409, 'prof-foe': 400,",
+    "new": "'prof-hunt-high': 400, 'prof-foe': 400,",
     "tests": [
       "test/prof7_service.test.js"
-    ]
+    ],
+    "note": "CAP-OFF (2026-10-07, Mac: \"Remove the cap on life skills\") (PIN MOVED, re-aimed by content): `prof-hunt-cap` has no status now - the rare hides' refusal alone."
   },
   {
     "name": "PROF7-leatherworker-armour",
@@ -567,8 +574,8 @@
   {
     "name": "PROF7-rugs-two-wool",
     "file": "src/net/recipeLaw.js",
-    "old": "tier: WOOL.tier, inputs: [[WOOL.key, 3]] })",
-    "new": "tier: WOOL.tier, inputs: [[WOOL.key, 2]] })",
+    "old": "tier: WOOL.tier, inputs: [[WOOL.key, 3]], madeOf: 'Wool' })",
+    "new": "tier: WOOL.tier, inputs: [[WOOL.key, 2]], madeOf: 'Wool' })",
     "tests": [
       "test/prof7_law.test.js"
     ]
@@ -585,8 +592,8 @@
   {
     "name": "PROF7-net-one-linen",
     "file": "src/net/recipeLaw.js",
-    "old": "tier: LINEN.tier, inputs: [[LINEN.key, 2]] })",
-    "new": "tier: LINEN.tier, inputs: [[LINEN.key, 1]] })",
+    "old": "tier: LINEN.tier, inputs: [[LINEN.key, 2]], madeOf: 'Linen' })",
+    "new": "tier: LINEN.tier, inputs: [[LINEN.key, 1]], madeOf: 'Linen' })",
     "tests": [
       "test/prof7_law.test.js"
     ]
@@ -603,8 +610,8 @@
   {
     "name": "PROF7-harpy-four",
     "file": "src/net/recipeLaw.js",
-    "old": "['ingot:iron', 1], ['hide:harpy', 1]] }),",
-    "new": "['ingot:iron', 1], ['hide:harpy', 4]] }),",
+    "old": "['ingot:iron', 1], ['hide:harpy', 1]], pattern: 'Arrows', madeOf: 'Harpy Feathers' }),",
+    "new": "['ingot:iron', 1], ['hide:harpy', 4]], pattern: 'Arrows', madeOf: 'Harpy Feathers' }),",
     "tests": [
       "test/prof7_law.test.js"
     ]
@@ -1005,12 +1012,12 @@
   {
     "name": "PROF7-pages-hunting-unpractised",
     "file": "src/ui/profPages.js",
-    "old": "const PRACTISED = Object.freeze(['herbalism', 'mining', 'hunting', 'fishing', 'logging', 'smithing', 'outfitting', 'carpentry', 'masonry', 'cooking', 'jewelcrafting', 'alchemy', 'enchanting']);",
-    "new": "const PRACTISED = Object.freeze(['herbalism', 'mining', 'fishing', 'logging', 'smithing', 'outfitting', 'carpentry', 'masonry', 'cooking', 'jewelcrafting', 'alchemy', 'enchanting']);",
+    "old": "const PRACTISED = Object.freeze(['herbalism', 'mining', 'hunting', 'fishing', 'logging', 'smithing', 'building', 'outfitting', 'provisioning', 'enchanting']);",
+    "new": "const PRACTISED = Object.freeze(['herbalism', 'mining', 'fishing', 'logging', 'smithing', 'building', 'outfitting', 'provisioning', 'enchanting']);",
     "tests": [
       "test/prof7_client.test.js"
     ],
-    "note": "PROF9 (RE-AIMED by content): the fire's code beside it. PROF12 (PIN MOVED): re-aimed by content."
+    "note": "PROF9 (RE-AIMED by content): the fire's code beside it. PROF12 (PIN MOVED): re-aimed by content. CRAFT3: re-aimed by content."
   },
   {
     "name": "PROF7-pages-smithing-unlocks-swallowed",
@@ -1053,17 +1060,18 @@
   {
     "name": "PROF7-pages-hunt-day-characters",
     "file": "src/ui/profPages.js",
-    "old": "{ hides: h.hides, cap:",
-    "new": "{ hides: 0, cap:",
+    "old": "{ hides: h.hides, high:",
+    "new": "{ hides: 0, high:",
     "tests": [
       "test/prof7_client.test.js"
-    ]
+    ],
+    "note": "CAP-OFF (2026-10-07, Mac: \"Remove the cap on life skills\") (PIN MOVED, re-aimed by content): the day's hides a count, no 'of 30'."
   },
   {
     "name": "PROF7-no-loom-station",
     "file": "src/net/decorLaw.js",
-    "old": "export const DECOR_STATIONS = Object.freeze(['alchemy', 'spells', 'enchant', 'forge', 'workbench', 'loom', 'mason', 'jeweller']);",
-    "new": "export const DECOR_STATIONS = Object.freeze(['alchemy', 'spells', 'enchant', 'forge', 'workbench', 'mason', 'jeweller']);",
+    "old": "export const DECOR_STATIONS = Object.freeze(['alchemy', 'spells', 'enchant', 'forge', 'workbench', 'loom', 'mason', 'jeweller', 'vendor']);",
+    "new": "export const DECOR_STATIONS = Object.freeze(['alchemy', 'spells', 'enchant', 'forge', 'workbench', 'mason', 'jeweller', 'vendor']);",
     "tests": [
       "test/prof7_law.test.js",
       "test/homestations.test.js"
@@ -1072,8 +1080,8 @@
   {
     "name": "PROF7-loom-licence-cheap",
     "file": "src/net/decorLaw.js",
-    "old": "workbench: 50_000, loom: 50_000, mason: 50_000, jeweller: 50_000 });",
-    "new": "workbench: 50_000, loom: 5_000, mason: 50_000, jeweller: 50_000 });",
+    "old": "workbench: 50_000, loom: 50_000, mason: 50_000, jeweller: 50_000, vendor: 25_000 });",
+    "new": "workbench: 50_000, loom: 5_000, mason: 50_000, jeweller: 50_000, vendor: 25_000 });",
     "tests": [
       "test/prof7_law.test.js",
       "test/homestations.test.js"
@@ -1101,8 +1109,8 @@
   {
     "name": "PROF7-world-dungeon-bodies-street",
     "file": "src/scenes/world.js",
-    "old": "? bodiesOf(modes?.dungeonCtx?.foes, bodyStamps, (f) => modes?.dungeonCtx?.corpseAt?.(f),",
-    "new": "? bodiesOf(exteriorFoes.foes, bodyStamps, (f) => modes?.dungeonCtx?.corpseAt?.(f),",
+    "old": "{ street: exteriorFoes, dungeon: modes?.dungeonCtx, interior: modes?.interiorFoes }, bodyStamps);",
+    "new": "{ street: exteriorFoes, dungeon: exteriorFoes, interior: modes?.interiorFoes }, bodyStamps);",
     "tests": [
       "test/prof7_client.test.js"
     ]

@@ -117,7 +117,9 @@ test('PERF-SUN2: the sun’s shadow is not read where the sun cannot reach', () 
   // where uSunScale is zero cannot move a pixel. Found by looking for
   // them all rather than by assuming there was one.
   const shadowUses = water.split('\n').filter((l) => /\bshadow\b/.test(l) && !/float shadow =/.test(l));
-  assert.equal(shadowUses.length, 2, `the water has ${shadowUses.length} consumers of shadow - every one must be under uSunScale`);
+  // PIN MOVED (WATER-NEXT 3): a third - the foam, lit by the sun it lies in, uSunScale on its own line too
+  assert.equal(shadowUses.length, 3, `the water has ${shadowUses.length} consumers of shadow - every one must be under uSunScale`);
+  assert.ok(shadowUses.some((l) => /vec3 foamLit = .*uSunScale \* shadow/.test(l)), 'the foam is the third, and it carries uSunScale itself');
   assert.ok(shadowUses.some((l) => /spec .*uSunScale \* shadow/.test(l)), 'the sun specular is one of them, and it carries uSunScale itself');
   assert.ok(shadowUses.some((l) => /float diff = max\(dot\(n, uLightDir\), 0\.0\) \* shadow;/.test(l)), 'the diffuse term is the other');
   assert.equal((water.match(/\buSunScale\s*\*\s*diff\b/g) ?? []).length, 1, 'and the diffuse term reaches the light exactly once');
@@ -137,7 +139,7 @@ test('PERF-SUN2: a FLAT has no normal, so its gate is the sun’s own share of t
   // LA-COST3 (2026-09-27): the map is read by the lane's billboard VERTEX shader now, once a quad - and the gate went
   // with it: at night that stage reads nothing either, and the fragment's cloud read stays behind the same gate
   assert.match(bb, /vec3 sunLit = dot\(uBBSun, uBBSun\) > 0\.0 \? uBBSun \* cloudShadowAt\(vBBWorld\) \* vBBSunVis : vec3\(0\.0\);/);
-  assert.match(EL_LANE.bbVs.main, /vBBSunVis = dot\(uBBSun, uBBSun\) > 0\.0 \? sunShadowSoftAt\(vBBBase \+ vec3\(0\.0, 0\.5, 0\.0\), vec3\(0\.0, 1\.0, 0\.0\), uSize\.y\) : 1\.0;/, 'the vertex stage takes the same gate');
+  assert.match(EL_LANE.bbVs.main, /vBBSunVis = dot\(uBBSun, uBBSun\) > 0\.0 \? \(uMesh > 0\.5 \? sunShadowAt\(vBBBase \+ vec3\(0\.0, 0\.5, 0\.0\), vec3\(0\.0, 1\.0, 0\.0\)\) : sunShadowSoftAt\(vBBBase \+ vec3\(0\.0, 0\.5, 0\.0\), vec3\(0\.0, 1\.0, 0\.0\), uSize\.y\)\) : 1\.0;/, 'the vertex stage takes the same gate');
   assert.match(bb, /uTint \+ sunLit \+ elPointFlat/, 'and it enters the sum exactly where the product did');
   assert.doesNotMatch(bb, /uBBSun \* cloudShadowAt\(vBBWorld\) \* (?:sunShadowSoftAt\(base[^)]*\)\)|vBBSunVis) \+ elPointFlat/, 'the inline product is gone');
   // the shadow is still read at the flat's BASE, once for the whole
@@ -157,7 +159,8 @@ test('PERF-SUN: the tree sway is CLEARED as a suspect - the lean is baked at bui
   assert.equal(floraSwayOf(210, 500, 3), 0, 'and anything that is not the climate’s flora does not lean at all');
   const w = read('src/scenes/world.js'), ex = read('src/scenes/exterior.js');
   for (const [name, src] of [['world', w], ['exterior', ex]]) {
-    assert.match(src, /batch\.sway = floraSwayOf\(archive, natureArchive, size\.h\);/, `${name}: set at BUILD`);
+    // PIN MOVED (ECOTONE1, 2026-10-07): the streaming host's pixel asks by its nature set (its climate's and a border's)
+    assert.match(src, name === 'world' ? /batch\.sway = floraSwayOf\(archive, natureSet, size\.h\);/ : /batch\.sway = floraSwayOf\(archive, natureArchive, size\.h\);/, `${name}: set at BUILD`);
     assert.equal((src.match(/renderer\.setFlatWind\(/g) ?? []).length, 1, `${name}: one wind upload a frame, for every flat there is`);
   }
   assert.doesNotMatch(w, /floraSwayOf\([^)]*\)[^\n]*\n[^\n]*for \(const b of p\.batches\)/, 'nothing recomputes a lean inside the draw walk');
@@ -279,7 +282,11 @@ test('TREES1: a FLAT keeps the kernel at every distance, because it samples once
   // LA-COST3 (2026-09-27): the flat's read is its vertex shader's now (once a quad, EL_BB_VS_EXT) - the soft one there
   const bbVs = body(EL_LANE.bbVs.head + EL_LANE.bbVs.main);
   assert.match(bbVs, /sunShadowSoftAt\(vBBBase \+ vec3\(0\.0, 0\.5, 0\.0\), vec3\(0\.0, 1\.0, 0\.0\), uSize\.y\)/, 'the flat reads the soft one');
-  assert.ok(!/[^t]sunShadowAt\(/.test(bbVs), 'and never the cheap one, at the vertex either');
+  // LPT1 (AUDIT LPT B4): a low-poly tree in the billboard program's mesh mode is no flat - its every VERTEX would run
+  // the kernel, so it takes one tap at its root; the flat's path is what is left without that arm
+  const meshArm = 'uMesh > 0.5 ? sunShadowAt(vBBBase + vec3(0.0, 0.5, 0.0), vec3(0.0, 1.0, 0.0)) : ';
+  assert.ok(bbVs.includes(meshArm), 'the tree\'s arm, gated on the mesh mode');
+  assert.ok(!/[^t]sunShadowAt\(/.test(bbVs.replace(meshArm, '')), 'and never the cheap one, at the vertex either');
   assert.ok(!/sunShadow(?:Soft)?At\(/.test(bb), 'the flat’s fragment reads no sun map at all');
   assert.doesNotMatch(bb, /(?<!Soft)At\(base[^)]*\)\s*:/, '...and never the cheap one');
   assert.ok(!/[^t]sunShadowAt\(/.test(bb), 'no call to the cheap lookup survives in the flat\u2019s own body');

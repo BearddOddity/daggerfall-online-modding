@@ -346,8 +346,8 @@
   {
     "name": "AUDITLIVED1B-F3-the-cap-walks-one",
     "file": "src/systems/worldTick.js",
-    "old": "for (let k = 0; k < Math.min(n, NORMALIZE_ACROSS_MAX); k++)",
-    "new": "for (let k = 0; k < Math.min(n, 1); k++)",
+    "old": "const steps = Math.min(n, NORMALIZE_ACROSS_MAX);",
+    "new": "const steps = Math.min(n, 1);",
     "tests": [
       "test/auditlived1b.test.js"
     ]
@@ -787,8 +787,8 @@
   {
     "name": "AUDITLIVED1B-T4-wm-enhanced-smith-jobs-on-the-worlds-clock",
     "file": "src/scenes/worldModes.js",
-    "old": "      repairItems: () => repairJobsAt(playerEntity, b.buildingKey ?? 0, Math.floor(ownMinutes())),\n      nowMinutes: () => Math.floor(ownMinutes()),",
-    "new": "      repairItems: () => repairJobsAt(playerEntity, b.buildingKey ?? 0, Math.floor(worldMinutes())),\n      nowMinutes: () => Math.floor(ownMinutes()),",
+    "old": "      repairItems: () => repairJobsAt(playerEntity, b.buildingKey ?? 0, Math.floor(ownMinutes()), homeTownOf(b)),\n      nowMinutes: () => Math.floor(ownMinutes()),",
+    "new": "      repairItems: () => repairJobsAt(playerEntity, b.buildingKey ?? 0, Math.floor(worldMinutes()), homeTownOf(b)),\n      nowMinutes: () => Math.floor(ownMinutes()),",
     "tests": [
       "test/auditlived1b_t.test.js"
     ]
@@ -796,8 +796,8 @@
   {
     "name": "AUDITLIVED1B-T4-wm-enhanced-smith-now-on-the-worlds-clock",
     "file": "src/scenes/worldModes.js",
-    "old": "      repairItems: () => repairJobsAt(playerEntity, b.buildingKey ?? 0, Math.floor(ownMinutes())),\n      nowMinutes: () => Math.floor(ownMinutes()),",
-    "new": "      repairItems: () => repairJobsAt(playerEntity, b.buildingKey ?? 0, Math.floor(ownMinutes())),\n      nowMinutes: () => Math.floor(worldMinutes()),",
+    "old": "      repairItems: () => repairJobsAt(playerEntity, b.buildingKey ?? 0, Math.floor(ownMinutes()), homeTownOf(b)),\n      nowMinutes: () => Math.floor(ownMinutes()),",
+    "new": "      repairItems: () => repairJobsAt(playerEntity, b.buildingKey ?? 0, Math.floor(ownMinutes()), homeTownOf(b)),\n      nowMinutes: () => Math.floor(worldMinutes()),",
     "tests": [
       "test/auditlived1b_t.test.js"
     ]
@@ -906,8 +906,8 @@
   {
     "name": "AUDITLIVED1B-T7-sv-clamp-feeding-uncapped",
     "file": "src/systems/save.js",
-    "old": "for (const k of ['lastKilledInnocent', 'lastCastMorphSelf', 'lastUrgeNotify', 'lastTimeFed']) cap(a, k, own);",
-    "new": "for (const k of ['lastKilledInnocent', 'lastCastMorphSelf', 'lastUrgeNotify']) cap(a, k, own);",
+    "old": "for (const k of ['lastKilledInnocent', 'lastCastMorphSelf', 'lastMorphHeal', 'lastUrgeNotify', 'lastTimeFed']) cap(a, k, own);",
+    "new": "for (const k of ['lastKilledInnocent', 'lastCastMorphSelf', 'lastMorphHeal', 'lastUrgeNotify']) cap(a, k, own);",
     "tests": [
       "test/auditlived1b_t.test.js"
     ]
@@ -924,8 +924,8 @@
   {
     "name": "AUDITLIVED1B-T7-sv-clamp-kill-uncapped",
     "file": "src/systems/save.js",
-    "old": "for (const k of ['lastKilledInnocent', 'lastCastMorphSelf', 'lastUrgeNotify', 'lastTimeFed']) cap(a, k, own);",
-    "new": "for (const k of ['lastCastMorphSelf', 'lastUrgeNotify', 'lastTimeFed']) cap(a, k, own);",
+    "old": "for (const k of ['lastKilledInnocent', 'lastCastMorphSelf', 'lastMorphHeal', 'lastUrgeNotify', 'lastTimeFed']) cap(a, k, own);",
+    "new": "for (const k of ['lastCastMorphSelf', 'lastMorphHeal', 'lastUrgeNotify', 'lastTimeFed']) cap(a, k, own);",
     "tests": [
       "test/auditlived1b_t.test.js"
     ]
@@ -978,8 +978,8 @@
   {
     "name": "AUDITLIVED1B-T8-ui-hud-needs-on-the-worlds-clock",
     "file": "src/ui/enhancedHud.js",
-    "old": "import { ownMinutes } from '../systems/worldTick.js';",
-    "new": "import { worldMinutes as ownMinutes } from '../systems/worldTick.js';",
+    "old": "import { ownMinutes, sharedClockOn } from '../systems/worldTick.js';",
+    "new": "import { worldMinutes as ownMinutes, sharedClockOn } from '../systems/worldTick.js';",
     "tests": [
       "test/auditlived1b_t.test.js"
     ]

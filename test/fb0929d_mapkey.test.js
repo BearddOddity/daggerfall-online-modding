@@ -95,7 +95,9 @@ const mkWin = (extra = {}) => new HeldMapWindow({
 /** The sheet rises (MAP-FIELD7) - the key's presses are the MAP phase's. */
 const open = (win) => { for (let i = 0; i < 20; i++) win.tick(0.05); return win; };
 
-const rows = (win) => win._chrome.key.children;
+/** The key's FILTER rows - each a toggle and its kinds' chips. WAYPOINTS (2026-10-06): the waypoints' row of switches
+ *  stands under them (as OW-WHO's players' row does while travellers are drawn) and is no kind of place. */
+const rows = (win) => [...win._chrome.key.children].filter((r) => r.children[0]?.dataset?.filter);
 const toggleOf = (win, f) => rows(win).map((r) => r.children[0]).find((b) => b.dataset.filter === f);
 const itemsOf = (win) => rows(win).flatMap((r) => r.children[1].children);
 const kindsOnSheet = (win) => [...new Set(win._sheets.get('world').ensure().marks.map((m) => m.kind))].sort();
@@ -272,7 +274,7 @@ test('MAP-KEY: the key holds none of the sheet\'s keys or presses - M and Escape
   assert.match(css, /\.hmkey \{ position: absolute; left: 0; bottom: calc\(100% \+ 4px\);/);
   assert.match(css, /\.hmkey \{[^}]*pointer-events: auto; \}/);
   assert.match(css, /\.hmkeyflt \{ pointer-events: auto;/);
-  assert.match(css, /@media \(max-width: 860px\) \{\s*\n\s*\.hmkey \{ max-width: calc\(100vw - 24px\); \}[\s\S]*?\.hmroot\.hmcardup \.hmkey \{ display: none; \}\s*\n\}/,
+  assert.match(css, /@media \(max-width: 860px\) \{\s*\n\s*\.hmkey \{ max-width: calc\(100vw \/ var\(--hm-ui, 1\) - 24px\); \}[\s\S]*?\.hmroot\.hmcardup \.hmkey \{ display: none; \}\s*\n\}/,
     'on a narrow screen the key steps aside for the card');
 });
 

@@ -122,7 +122,7 @@ test('AUDIT 39 #41: worldModes hands the dungeon the LIVE eye and capsule', () =
   const WM = read('src/scenes/worldModes.js');
   const at = WM.indexOf('const ctx = await buildDungeonContext(');
   const opts = WM.slice(at, WM.indexOf('dungeonCtx = ctx;', at));
-  assert.match(opts, /motorState: \(\) => \(\{ eyeLevel: player\.eye\[1\] - player\.pos\[1\], capsule: player\.height \}\),/);
+  assert.match(opts, /motorState: \(\) => \(\{ eyeLevel: player\.eye\[1\] - player\.pos\[1\], capsule: player\.height, fallFrom: player\.falling \? player\.fallStart : null \}\),/);   // AUDIT SD III (SD20g D1, PIN MOVED): and the fall under way, for the walked trail
   // and the presenter still reads it through the one seam
   assert.match(DC, /const _ms = opts\.motorState\?\.\(\) \?\? null;/);
 });
@@ -213,7 +213,7 @@ test('AUDIT 39 #160: every rAF host WAITS on the hold instead of drawing under t
       + String.raw`\s+frameBegin\(now\);[^\n]*\n`
       + String.raw`\s+beginInputFrame\([A-Za-z.]+\);[^\n]*\n`
       + String.raw`(?:\s*//[^\n]*\n)*`
-      + String.raw`\s+if \(frameHeld\(\)\) \{ frameAbort\(\); hideWorldPlaque\(\); last = now; requestAnimationFrame\(frame\); ${h.endsWith('world.js') ? String.raw`drawGateBanner\(null\); drawGateMarksCard\(null\); drawGateDamageChart\(null\); drawGateGround\(null\); travelView\?\.exit\('video', true\); ` : ''}return; \}\n`   // AUDIT DEEP X-1: and the travel view cut on the same return   // AUDIT WB C5: the world host's gate countdown is a DOM line too, and goes down on the same line as the plaque   // WB9a / WB9d: and so are the Warden's marks card and his ground's rim - DOM, down with it
+      + String.raw`\s+if \(frameHeld\(\)\) \{ frameAbort\(\); hideWorldPlaque\(\); last = now; requestAnimationFrame\(frame\); ${h.endsWith('world.js') ? String.raw`drawGateBanner\(null\); drawGateMarksCard\(null\); drawGateDamageChart\(null\); drawGateGround\(null\); travelView\?\.exit\('video', true\); if \(spyglass\.up\) lowerGlass\(\); ` : ''}return; \}[^\n]*\n`   // AUDIT DEEP X-1: and the travel view cut on the same return - PIN MOVED (AUDIT CAPTAIN'S SEA S15): and the captain's glass lowered on it   // AUDIT WB C5: the world host's gate countdown is a DOM line too, and goes down on the same line as the plaque   // WB9a / WB9d: and so are the Warden's marks card and his ground's rim - DOM, down with it
       + String.raw`\s+const dt =`),
     `${h} waits out the video and keeps its loop`);
   }

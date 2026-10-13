@@ -40,7 +40,7 @@ test('FT6: the switch - the enhanced skin, the pref, and ?water=off as the kill 
 test('FT6: both exterior hosts read the one composition and hold no copy of it; the indoor hosts have no water to switch', () => {
   for (const f of ['src/scenes/world.js', 'src/scenes/exterior.js']) {
     const s = read(f);
-    assert.match(s, /waterSwitchOn \} from '\.\.\/render\/waterSurface\.js';/, `${f} imports the switch`);
+    assert.match(s, /waterSwitchOn(, buildWaterIndices)? \} from '\.\.\/render\/waterSurface\.js';/, `${f} imports the switch`);   // PIN MOVED (WATER-NEXT 2): the town builds its own water quads beside it
     assert.match(s, /const waterOn = waterSwitchOn\(\)/, `${f} reads it`);
     assert.ok(!/getPref\('enhancedWater'\)/.test(s), `${f} holds no copy of the composition`);
   }
@@ -53,9 +53,9 @@ test('FT6: the registry row - Enhanced, over the pref, on by default, sound; the
   const f = FEATURES.find((x) => x.id === 'enhanced-water');
   assert.ok(f);
   assert.deepEqual(f.kinds, ['enhanced']);
-  assert.deepEqual(f.control, { store: 'prefs', key: 'enhancedWater', initial: true, online: true });   // RF4
+  assert.deepEqual(f.control, { store: 'prefs', key: 'enhancedWater', initial: true, online: 'player' });   // RF4; WATER-OFF: the player's online too
   assert.equal(PREF_DEFAULTS.enhancedWater, true, 'on by default like the other enhanced visuals');
-  assert.match(f.note, /Off brings back Daggerfall’s flat water/);
+  assert.match(f.note, /Off brings back the classic flat water/);   // PIN MOVED: BR5
   assert.equal(f.effect, 'Takes effect when the world next loads.');
   assert.deepEqual(checkFeature(f), []);
   assert.equal(featureForControl('prefs', 'enhancedWater'), f);

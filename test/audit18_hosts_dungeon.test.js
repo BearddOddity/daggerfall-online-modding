@@ -247,7 +247,7 @@ test('audit18 sweep: the player arrow recovers the swing mods and the backstab i
   const shared = readFileSync(new URL('../src/combat/arrowFlight.js', import.meta.url), 'utf8');
   const shot = shared.slice(shared.indexOf('export function playerArrowHitFoe'));
   assert.ok(/damageMod: swing\.damage, toHitMod: swing\.toHit/.test(shot));
-  assert.ok(/backstabChance: backstabChanceOf\(playerEntity, back\)/.test(shot));
+  assert.ok(/backstabChance: backstabChanceOf\(playerEntity, back, foe\)/.test(shot));   // PIN MOVED (RVN2: the foe rides along - a Watchful revenant takes no backstab)
   const src = hostSrc('dungeonContext.js');
   assert.ok(!src.includes('SWING_MODS[playerWeapon.machine.state]'),
     'the dungeon host no longer prices its own shot');
@@ -634,5 +634,5 @@ test('audit18: the three retired flags are DELETED, not rewritten', () => {
   assert.equal(/INTERIM \(loud\): the\n/.test(src), false);
   // the WORLD-state-is-FLAGGED quicksave note, false since collectWorld shipped
   assert.equal(/WORLD state \(foes, piles,/.test(src), false);
-  assert.ok(/world: collectWorld\(\)/.test(src));
+  assert.ok(/world: \{ \.\.\.collectWorld\(\),/.test(src));   // AUDIT REST II H6 (PIN MOVED): the record and the camps outside beside it
 });

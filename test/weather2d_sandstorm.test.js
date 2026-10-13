@@ -161,12 +161,13 @@ test('WEATHER2d the sand: the wisps\' program in the sand\'s look - tan, dense, 
 });
 
 test('WEATHER2d the hosts: the sand renderer built on the enhanced lane, the sand drawn before the rain\'s branch on the front\'s intensity as a foreign pass, and the rain program never built for it', () => {
-  for (const [name, s, eye] of [['world', rd('src/scenes/world.js'), 'wxEye'], ['exterior', rd('src/scenes/exterior.js'), 'eye']]) {   // PIN MOVED (OW-WEATHER, FIELD BUGS 2026-10-01 #9): the world host's eye is the view's (test/fb1001_overworld.test.js)
+  for (const [name, s, eye] of [['world', rd('src/scenes/world.js'), 'wxEye32'], ['exterior', rd('src/scenes/exterior.js'), 'eye32']]) {   // PIN MOVED (OW-WEATHER, FIELD BUGS 2026-10-01 #9): the world host's eye is the view's (test/fb1001_overworld.test.js)
     assert.match(s, /const sand = sky\.enhanced \? new WindWispsRenderer\(renderer\.gl, SAND_LOOK\) : null;/, `${name}: built at boot`);
     assert.match(s, /if \(precipMode && precipMode !== 'sand' && !precip\) precip = new PrecipitationRenderer\(renderer\.gl, precipOpts\);/, `${name}: the rain program is not the sand's`);
     const i = s.indexOf("if (precipShown === 'sand') {");
     assert.ok(i > 0, `${name}: the sand branch`);
-    assert.ok(s.slice(i, i + 600).includes(`sand.draw({ on: true, strength01: fx.intensity, windV: wd.windV, step: wd.step, gust: wd.gust }, proj, view, new Float32Array(${eye}), now / 1000);\n        renderer.markForeignPass();`), `${name}: the front's intensity, the one wind, a foreign pass`);
+    const draw = `sand.draw({ on: true, strength01: fx.intensity, windV: wd.windV, step: wd.step, gust: wd.gust }, proj, view, ${eye}, now / 1000);`;
+    assert.ok(new RegExp(`${draw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n\\s+renderer\\.markForeignPass\\(\\);`).test(s.slice(i, i + 600)), `${name}: the front's intensity, the one wind, a foreign pass`);   // RAIN-OVER-GRASS: the world host's falling weather is one closure, indented once more
     assert.ok(s.slice(i, i + 800).includes('} else if (precipShown && precip) {'), `${name}: the rain's branch after it`);
     assert.ok(s.includes("SAND_LOOK } from '../render/windWisps.js'"), `${name}: imported`);
   }
@@ -175,6 +176,6 @@ test('WEATHER2d the hosts: the sand renderer built on the enhanced lane, the san
 test('WEATHER2d records: the arc page\'s D and its close, the ledger row, Home\'s index and the testing row', () => {
   assert.match(rd('bible/07-Rendering/Weather-Arc.md'), /^## D - THE SANDSTORM \(WEATHER2d, 2026-09-14\)/m);
   assert.match(rd('bible/01-Overview/Port-Ledger.md'), /^\| \*\*THE SANDSTORM \(WEATHER2d, 2026-09-14\)\*\*/m);
-  assert.match(rd('bible/Home.md'), /D: the sandstorm/);
+  assert.match(rd('bible/01-Overview/Page-Index.md'), /D: the sandstorm/);   // PIN MOVED (WALLET1's merge of main, 2026-10-05): Home.md's page index moved, byte for byte, to its own page
   assert.match(rd('bible/09-Testing/Testing.md'), /^\| weather2d_sandstorm\.test\.js \| \d+ \| WEATHER2d/m);
 });

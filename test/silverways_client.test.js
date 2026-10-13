@@ -47,15 +47,16 @@ test('SILVER-WAYS the lines: a counted claim says its strike, a guild deed it co
     'A deed for The Hound: three of its members stood together. 25 silver struck to its treasury.',
     'The Silver Hand pays you 38 silver under its contract.',
   ]);
-  assert.deepEqual(b.claimLines({ marks: { struck: 0, balance: 150, why: 'cap' } }, 'raid'), ['No silver for this town. The counting-houses strike 150 silver a day for breaches closed and towns defended.']);
-  assert.deepEqual(b.claimLines({ marks: { struck: 0, balance: 150, why: 'cap' } }, 'gate'), ['No silver for this breach. The counting-houses strike 150 silver a day for breaches closed and towns defended.']);
+  assert.deepEqual(b.claimLines({ marks: { struck: 0, balance: 150, why: 'cap' } }, 'raid'), ['No silver for this town. The counting-houses strike 150 silver a day for breaches closed, towns defended and serpents slain.']);
+  assert.deepEqual(b.claimLines({ marks: { struck: 0, balance: 150, why: 'cap' } }, 'gate'), ['No silver for this breach. The counting-houses strike 150 silver a day for breaches closed, towns defended and serpents slain.']);
+  assert.deepEqual(b.claimLines({ marks: { struck: 0, balance: 150, why: 'cap' } }, 'serpent'), ['No silver for this serpent. The counting-houses strike 150 silver a day for breaches closed, towns defended and serpents slain.'], 'SERPENT-SET: a serpent\'s capped line names the serpent');
   assert.deepEqual(b.claimLines({ marks: { struck: 50, balance: 50 }, deed: null }), ['50 silver struck to your account. You hold 50 silver.']);
   assert.deepEqual(b.claimLines({ recorded: true }), [], 'a service from before them');
   assert.deepEqual(b.claimLines(null), []);
   assert.equal(b.state.balance, 50, 'the balance the last strike answered');
   b.claimLines({ marks: { struck: 30, balance: 80, combat: { earned: 130, max: 150 } } }, 'raid');
   assert.deepEqual([b.state.today.combat, b.state.today.combatMax], [130, 150], 'the day\'s combat silver as the strike said it');
-  assert.match(src('src/ui/enhancedPorts.js'), /\['From gates and raids today', `\$\{\(w\.hooks\.marks\.today\(\)\?\.combat \?\? 0\)\} of \$\{w\.hooks\.marks\.today\(\)\?\.combatMax \?\? MARKS_COMBAT\.perDay\}`\],/, 'the Bank\'s card says it');
+  assert.match(src('src/ui/enhancedPorts.js'), /\['From gates, raids and serpents today', `\$\{\(w\.hooks\.marks\.today\(\)\?\.combat \?\? 0\)\} of \$\{w\.hooks\.marks\.today\(\)\?\.combatMax \?\? MARKS_COMBAT\.perDay\}`\],/, 'the Bank\'s card says it (PIN MOVED, SERPENT-SET: the serpents\' under the same cap, named)');
   assert.equal(MARKS_TEXT.contract(12, null), 'A guild pays you 12 silver under its contract.');
 });
 
@@ -156,8 +157,8 @@ test('SILVER-WAYS the Work tab\'s contracts: each a card under its guild - what 
   assert.match(cards[0].textContent, /Guild contractThe Silver Hand \[SH\] pays the defenders of Daggerfall's towns against raiders/);
   assert.match(cards[0].textContent, /40 silver each - 7 defenders left of 10/);
   assert.match(cards[0].textContent, /5 days left/);
-  assert.match(cards[0].textContent, /Your guild's Officers and Guildmaster are not paid by its contracts\./, 'an Officer of the posting guild');
-  assert.match(cards[1].textContent, new RegExp(`paid as your raid is counted, less ${marksText(saleTax(20))} tax`));
+  assert.match(cards[0].textContent, /Officers and the Guildmaster are not paid by their own guild's contracts\./, 'an Officer of the posting guild');   // BOARD-UI (PIN MOVED)
+  assert.match(cards[1].textContent, new RegExp(`paid when the raid is counted, less ${marksText(saleTax(20))} tax`));
   assert.equal(byClass(cards[1], 'work-withdraw').length, 0, 'another guild\'s: no Withdraw');
   byClass(cards[0], 'work-withdraw')[0].click();
   await ticks();
@@ -171,7 +172,7 @@ test('SILVER-WAYS the Work tab\'s contracts: each a card under its guild - what 
   await ticks();
   const form = byClass(host, 'work-form')[0];
   assert.match(form.textContent, /Post a guild contract - The Silver Hand \[SH\]/);
-  assert.match(form.textContent, /Holds 200 silver from the guild's treasury \(it holds 5,000 silver\)/);
+  assert.match(form.textContent, /Holds 200 silver of the treasury's 5,000 silver for up to 7 days\./);   // BOARD-UI (PIN MOVED): the terms one line
   assert.match(form.textContent, /Your writ budget this week: 380 silver of 500 silver left\./);
   const deeds = form.querySelectorAll('input').find((i) => i.getAttribute('data-focus') === 'contract|deeds');
   deeds.value = '20'; deeds.oninput();
@@ -201,8 +202,11 @@ test('SILVER-WAYS the Guild tab\'s treasury lines: a deed, a contract put up and
 
 test('SILVER-WAYS the world host by source: the raid claims say the book\'s silver lines; the gate claim carries the claiming character whether or not the scan found the region; a guild with a contract standing is kept from going (mutants: each seam)', () => {
   const w = src('src/scenes/world.js');
-  assert.match(w, /onMarks: \(data\) => marksBook\?\.claimLines\(data, 'raid'\) \?\? null,/);
-  assert.match(w, /onMarks: \(marks, data\) => marksBook\?\.claimLines\(data \?\? \{ marks \}, 'gate'\) \?\? null,/);
+  // HAUL-CARDS (PIN MOVED): the silver as cards too (ui/haulCards.js claimHauls), the book's lines said as ever
+  assert.match(w, /onMarks: \(data\) => \{ showHaul\(claimHauls\(data, 'raid'\)\); return marksBook\?\.claimLines\(data, 'raid'\) \?\? null; \},/);
+  assert.match(w, /onMarks: \(marks, data\) => \{ showHaul\(claimHauls\(data \?\? \{ marks \}, 'gate'\)\); return marksBook\?\.claimLines\(data \?\? \{ marks \}, 'gate'\) \?\? null; \},/);
   assert.match(w, /return site \? \{ region: site\.region, character \} : character \? \{ character \} : null;/);
-  assert.match(src('server-account/src/guilds.js'), /OR EXISTS \(SELECT 1 FROM guild_contracts WHERE guild_id = \$\{p\} AND \(state = 'open' OR \(returned = 0 AND escrow > 0\)\)\)/);
+  // PIN MOVED: AUDIT GUILD3 T1 - one list of holds, the gate's and the view's: a contract standing, or a closed one's escrow not yet home
+  assert.match(src('server-account/src/guilds.js'), /\['guild-contracts', \(\/\*\* @type \{string\} \*\/ p\) => `EXISTS \(SELECT 1 FROM guild_contracts WHERE guild_id = \$\{p\} AND state = 'open'\)`\]/);
+  assert.match(src('server-account/src/guilds.js'), /\['guild-writ-escrow', \(\/\*\* @type \{string\} \*\/ p\) => `EXISTS \(SELECT 1 FROM guild_contracts WHERE guild_id = \$\{p\} AND state IN \('filled', 'withdrawn', 'expired'\) AND \+returned = 0 AND escrow > 0\)`\]/);
 });

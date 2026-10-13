@@ -59,7 +59,8 @@ const defaults = () => { const s = createBindings(); resetDefaults(s); return s;
 function v1File(edit = () => {}) {
   const s = createBindings();
   resetDefaults(s);
-  for (const code of ['KeyE', 'Tab', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'KeyO', 'KeyG', 'KeyX', 'KeyB', 'NumpadAdd', 'KeyK', 'Comma', 'Period', 'Backquote']) s.primary.delete(code);
+  // PIN MOVED (SPYGLASS, 2026-10-11): a port row's default share goes with its owner's key - a v1 file had neither (K's glass)
+  for (const code of ['KeyE', 'Tab', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'KeyO', 'KeyG', 'KeyX', 'KeyB', 'NumpadAdd', 'KeyK', 'Comma', 'Period', 'Backquote']) { s.primary.delete(code); s.sharedPrimary?.delete(code); }
   s.primary.set('KeyE', 'AbortSpell'); s.primary.set('Backquote', 'ToggleConsole'); s.primary.set('ControlLeft', 'Slide');
   edit(s);
   const file = serializeKeyBinds(s);
@@ -416,8 +417,8 @@ test('AUDIT KB1 (hosts 3): the screenshot\'s blob URL outlives the download\'s s
   globalThis.URL = { createObjectURL: () => 'blob:x', revokeObjectURL() {} };
   try {
     const doc = { createElement: () => ({ click() {}, remove() {} }), body: { appendChild() {} } };
-    const name = await takeScreenshot({ toBlob: (cb) => cb({}) }, { raf: null, doc, later: (fn, ms) => delays.push(ms) });
-    assert.match(name, /^daggerfall-\d{8}-\d{6}\.png$/);
+    const name = await takeScreenshot({ toBlob: (cb) => cb({}) }, { afterDraw: null, doc, later: (fn, ms) => delays.push(ms) });
+    assert.match(name, /^dfo-\d{8}-\d{6}\.png$/);   // PIN MOVED: BR5, the product's name
     assert.deepEqual(delays, [REVOKE_AFTER_MS]);
     assert.ok(REVOKE_AFTER_MS >= 30_000);
   } finally { globalThis.URL = prevURL; }

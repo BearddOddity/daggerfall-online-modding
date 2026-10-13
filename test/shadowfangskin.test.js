@@ -239,7 +239,11 @@ test('SHADOW-FANG on the rig: the wolf built with a skin hangs skinned copies on
   assert.equal(wolf.painted, true, 'every range\'s skin painted by the build, none left to the frame (AUDIT D2)');
   const entries = new Map([...wolf.res.textures, ...wolf.res.third.textures]);
   assert.equal(entries.size, 3, 'the body\'s texture, the head\'s own and the first-person hand\'s own');
-  assert.ok(wolf.uploads.length >= 4, `both views hung (${wolf.uploads.length})`);
+  // PIN MOVED (MWNPC3): a picture is uploaded ONCE a renderer (acquireCharacterTexture) - the body's fur both views wear
+  // hangs one copy, where each range hung its own. Three uploads of three pictures is both views hung: the head's is the
+  // third person's alone, the hand's the first's alone.
+  assert.equal(wolf.uploads.length, 3, `both views hung, each picture once (${wolf.uploads.length})`);
+  assert.equal(new Set(wolf.uploads).size, 3, 'three pictures');
   const own = new Set([...entries.values()].map((e) => e.image.mips));
   assert.ok(wolf.uploads.every((m) => !own.has(m)), 'a copy on every range of the wolf');
   const head = wolf.uploads.find((m) => m[0].width === 64);
@@ -307,7 +311,9 @@ test('SHADOW-FANG whose skin: my own is the account service\'s last word on this
   adoptIdentity(storage, { glyphs: [], secret: 'x' });
   assert.equal(ownWerewolfSkin(storage), null, 'a grant taken off is gone here too');
   assert.match(rd('src/ui/accountFlow.js'), /adoptIdentity\(storage, \{ name: r\.data\.account\?\.name, kind: r\.data\.account\?\.kind, glyphs: r\.data\.wardrobe\?\.glyphs, glyphsOff: r\.data\.wardrobe\?\.glyphsOff, aura: auraStated\(r\.data\.wardrobe\), secret: asked \}\);/, 'the wardrobe states them, for the session that asked (WB9g: and the aura worn beside them)');
-  assert.match(rd('src/net/accountClient.js'), /adoptIdentity\(storage, \{ \.\.\.who, secret: session\.secret \}\);/, 'and every mint');
+  // PIN MOVED (NAME-AS): the mint's answer still rides whole (`...who` - the glyphs with it); the stored session keeps
+  // the ACCOUNT's name beside them, the room's going to the live sessions
+  assert.match(rd('src/net/accountClient.js'), /adoptIdentity\(storage, \{ \.\.\.who, name: who\.accountName \?\? who\.name, secret: session\.secret \}\);/, 'and every mint');
   // my own werewolf, at the door - the value, off this device's stored session
   const me = { race: 'Breton', gender: 'male', faceIndex: 0, items: [], activeEffects: [{ kind: 'racialOverride', racial: 'lycanthropy', isTransformed: true, infectionType: 1 }] };
   const was = globalThis.localStorage;

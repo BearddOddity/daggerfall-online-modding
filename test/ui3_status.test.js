@@ -49,7 +49,7 @@ test('UI3 the tiles: a spell mine on me a buff and another\'s a debuff, its roun
     ],
     powers: [{ key: 'wrath', set: 'ruhn', name: 'Wrath', text: '45s', state: 'active' }, { key: 'unbroken', set: 'malacath', name: 'Unbroken', text: '1:05', state: 'recovering' }],
     afflictions: [{ key: 'poison', name: 'Poisoned', glyph: 'poison' }],
-    needs: [{ key: 'hunger', text: 'Hungry', level: 'warn' }, { key: 'thirst', text: 'Parched', level: 'danger' }, { key: 'temp', text: 'Freezing', level: 'danger' }],
+    needs: [{ key: 'hunger', text: 'Hungry', level: 'warn', tier: 2, of: 3 }, { key: 'thirst', text: 'Parched', level: 'danger', tier: 2, of: 3 }, { key: 'temp', text: 'Freezing', level: 'danger', tier: 2, of: 3 }],
   });
   assert.deepEqual(tiles.map((t) => [t.kind, t.name]), [
     ['buff', 'Shield'], ['debuff', 'Paralysis'], ['buff', 'Ring of Warmth'], ['buff', 'Odd'],
@@ -64,6 +64,8 @@ test('UI3 the tiles: a spell mine on me a buff and another\'s a debuff, its roun
   assert.deepEqual([wrath.foot, wrath.set, wrath.recovering, unbroken.recovering, unbroken.foot], ['45s', 'ruhn', false, true, '1:05']);
   assert.deepEqual([poison.glyph, poison.foot, poison.blink], ['poison', null, false]);
   assert.deepEqual([hungry.glyph, parched.glyph, freezing.glyph], ['hunger', 'thirst', 'cold']);
+  assert.deepEqual([hungry.foot, parched.foot, freezing.foot], ['2/3', '2/3', '2/3'], 'NEED-TIER: how bad, at its foot');
+  assert.equal(statusTiles({ needs: [{ key: 'stiff', text: 'Stiff', level: 'warn' }] })[0].foot, null, 'one stage, no foot');
   assert.equal(new Set(tiles.map((t) => t.key)).size, tiles.length, 'every tile its own key');
   assert.deepEqual(statusTiles(), [], 'nothing: no tiles');
 });
@@ -138,8 +140,8 @@ test('UI3 the diseases\' names are the seventeen the table carries, in its order
 
 // ── THE GLYPHS ──────────────────────────────────────────────────────
 
-test('UI3 the glyphs: ten, each on the 16px grid the classic\'s spell icons use, every letter in its palette, every lit pixel outlined in the kit\'s black (no lit pixel touches the empty), drawn as runs, one source a name (mutants: a pixel unoutlined; a letter with no colour; the runs one rect a pixel)', () => {
-  assert.deepEqual(Object.keys(STATUS_GLYPHS).sort(), ['cold', 'disease', 'drunk', 'hot', 'hunger', 'poison', 'sleep', 'stiff', 'thirst', 'wet']);
+test('UI3 the glyphs: thirteen (REST1 the Rested campfire; TELL9 the bleed\'s two drops; WILD1 the open zone\'s blades), each on the 16px grid the classic\'s spell icons use, every letter in its palette, every lit pixel outlined in the kit\'s black (no lit pixel touches the empty), drawn as runs, one source a name (mutants: a pixel unoutlined; a letter with no colour; the runs one rect a pixel)', () => {
+  assert.deepEqual(Object.keys(STATUS_GLYPHS).sort(), ['bleed', 'cold', 'disease', 'drunk', 'hot', 'hunger', 'poison', 'rested', 'sleep', 'stiff', 'thirst', 'wet', 'wild']);   // WILD1: and the open zone's crossed blades   // REST1: and the Rested campfire; PIN MOVED (TELL9: the bleed's own icon)
   for (const [name, g] of Object.entries(STATUS_GLYPHS)) {
     assert.equal(g.rows.length, 16, `${name}: 16 rows`);
     let lit = 0;
@@ -336,7 +338,7 @@ test('UI3 the HUD, executed: the widget is the quickslot block\'s first child, o
     assert.equal(find(stat.children[3], 'hst-pic').src, statusGlyphSrc('poison'));
     assert.equal(stat.children[4].dataset.glyph, 'disease');
     assert.equal(stat.style.gridTemplateRows, `repeat(5, ${STAT_TILE}px)`, 'five tiles in a band not yet measured (five rows): one column');
-    assert.equal(stat.classList.contains('tight'), false);
+    assert.equal(stat.classList.contains('stat-tight'), false);   // PIN MOVED (HUD-CLASS): the widget's states are its own words - the bare 'side' took the sheet's .side column
     // unchanged: not rebuilt
     const first = stat.children[0];
     drawEnhancedHud(entity, 0, 0, opts);
@@ -352,12 +354,12 @@ test('UI3 the HUD, executed: the widget is the quickslot block\'s first child, o
     chat = { getBoundingClientRect: () => ({ top: 44, bottom: 180, height: 136, left: 14, right: 454, width: 440 }) };
     for (let i = 0; i < 30; i++) drawEnhancedHud(entity, 0, 0, opts);
     assert.equal(stat.style.gridTemplateRows, `repeat(2, ${STAT_TILE}px)`, 'the chat bounds it: two rows, the rest in the next columns');
-    assert.equal(stat.classList.contains('tight'), true, 'under three rows: the names go');
+    assert.equal(stat.classList.contains('stat-tight'), true, 'under three rows: the names go');
     // the chat closed to a line: room again
     chat = { getBoundingClientRect: () => ({ top: 44, bottom: 62, height: 18, left: 14, right: 454, width: 440 }) };
     for (let i = 0; i < 30; i++) drawEnhancedHud(entity, 0, 0, opts);
     assert.equal(stat.style.gridTemplateRows, `repeat(5, ${STAT_TILE}px)`);
-    assert.equal(stat.classList.contains('tight'), false);
+    assert.equal(stat.classList.contains('stat-tight'), false);
     // AUDIT UI C1: offline, the HUD's own top block bounds it - the compass and a foe's bar reaching down to 220, across
     // the widget's half of the screen: (300 - 220 - 8) - 8 = 64, one row (a column climbed into the compass before)
     chat = null;
@@ -371,11 +373,11 @@ test('UI3 the HUD, executed: the widget is the quickslot block\'s first child, o
       find(root, 'hud-top').getBoundingClientRect = () => ({ top: 0, bottom: 0, height: 0, left: 0, right: 0, width: 0 });
       touchBtn = { getBoundingClientRect: () => ({ top: 75, bottom: 260, height: 185, left: 16, right: 64, width: 48 }) };
       for (let i = 0; i < 30; i++) drawEnhancedHud(entity, 0, 0, opts);
-      assert.equal(stat.classList.contains('noroom'), true, 'the press bounds it (no diamond measured beside: stepped aside)');
+      assert.equal(stat.classList.contains('stat-noroom'), true, 'the press bounds it (no diamond measured beside: stepped aside)');
       // ...and one wholly right of the middle is not above it
       touchBtn = { getBoundingClientRect: () => ({ top: 16, bottom: 290, height: 274, left: 600, right: 648, width: 48 }) };
       for (let i = 0; i < 30; i++) drawEnhancedHud(entity, 0, 0, opts);
-      assert.equal(stat.classList.contains('noroom'), false, 'a press past the middle stands over no part of it');
+      assert.equal(stat.classList.contains('stat-noroom'), false, 'a press past the middle stands over no part of it');
     } finally {
       touchBtn = null;
       if (hadIW) Object.defineProperty(globalThis, 'innerWidth', hadIW); else delete globalThis.innerWidth;
@@ -383,16 +385,16 @@ test('UI3 the HUD, executed: the widget is the quickslot block\'s first child, o
     find(root, 'hud-top').getBoundingClientRect = () => ({ top: 0, bottom: 0, height: 0, left: 0, right: 0, width: 0 });
     // an escort's face reaching down to 250: (300 - 250 - 8) - 8 = 34 - no row above, and no diamond measured beside
     for (let i = 0; i < 30; i++) drawEnhancedHud(entity, 0, 0, { ...opts, escortBottom: 250 });
-    assert.equal(stat.classList.contains('noroom'), true, 'the escort faces bound it too: no band anywhere, it steps aside');
+    assert.equal(stat.classList.contains('stat-noroom'), true, 'the escort faces bound it too: no band anywhere, it steps aside');
     // the diamond measured: beside it, from the caption (the escort ends above it) to the diamond's bottom - 180px, four rows
     find(quick, 'hud-qdiamond').getBoundingClientRect = () => ({ top: 338, bottom: 480, height: 142 });
     quick.getBoundingClientRect = () => ({ left: 24, right: 256, top: 300, bottom: 502 });
     for (let i = 0; i < 30; i++) drawEnhancedHud(entity, 0, 0, { ...opts, escortBottom: 250 });
-    assert.equal(stat.classList.contains('noroom'), false);
-    assert.equal(stat.classList.contains('side'), true, 'beside the diamond');
+    assert.equal(stat.classList.contains('stat-noroom'), false);
+    assert.equal(stat.classList.contains('stat-side'), true, 'beside the diamond');
     assert.equal(stat.style.top, '0px', 'from the caption\'s top');
     assert.equal(stat.style.gridTemplateRows, `repeat(4, ${STAT_TILE}px)`);
-    assert.equal(stat.classList.contains('tight'), true, 'beside: icons alone');
+    assert.equal(stat.classList.contains('stat-tight'), true, 'beside: icons alone');
     // an escort reaching below the caption, to 350: beside from under it (358) to 480 - 122px, two rows, 58px down
     for (let i = 0; i < 30; i++) drawEnhancedHud(entity, 0, 0, { ...opts, escortBottom: 350 });
     assert.equal(stat.style.top, '58px', 'beside, from under what stands above');
@@ -406,7 +408,7 @@ test('UI3 the HUD, executed: the widget is the quickslot block\'s first child, o
     chat = { getBoundingClientRect: () => ({ top: 310, bottom: 400, height: 90, left: 14, right: 454, width: 440 }) };
     try {
       for (let i = 0; i < 30; i++) drawEnhancedHud(entity, 0, 0, opts);
-      assert.equal(stat.classList.contains('side'), true, 'beside the diamond');
+      assert.equal(stat.classList.contains('stat-side'), true, 'beside the diamond');
       assert.equal(stat.style.top, '108px', 'from under the chat that crosses its rows (408 - 300)');
       assert.equal(stat.style.gridTemplateRows, `repeat(1, ${STAT_TILE}px)`);
     } finally {
@@ -520,7 +522,7 @@ test('UI3 the sheet: the tile, its picture, the rows\' gap and the lift are the 
   }
   assert.match(rule(C, '.hst-tile'), /border-color: var\(--hst-hi\) var\(--hst-lo\) var\(--hst-lo\) var\(--hst-hi\);/, 'lit from the top left');
   assert.match(C, /\n\.hst-cell\.item \.hst-tile \{ border-style: dashed; \}/);
-  assert.match(C, /\n\.hud-stat\.tight \.hst-name \{ display: none; \}/);
+  assert.match(C, /\n\.hud-stat\.stat-tight \.hst-name \{ display: none; \}/);   // PIN MOVED (HUD-CLASS): the widget's states are its own words, stat-<state>
   assert.match(rule(C, '.hst-name'), new RegExp(`max-width: ${STAT_NAME_MAX}px;`), 'the name\'s widest the module counts');
   assert.match(rule(C, '.hst-cell'), new RegExp(`gap: ${STAT_NAME_GAP}px;`), 'and the gap beside it');
   // a short screen: the sheet's numbers are the module's short metrics, under the module's own query
@@ -530,8 +532,8 @@ test('UI3 the sheet: the tile, its picture, the rows\' gap and the lift are the 
   assert.ok(C.includes(`@media (max-width: 640px), ${STAT_SHORT_QUERY} { .hud-stat .hst-name { display: none; } }`), 'the names go on a phone and a short screen');
   assert.match(rule(C, '.hud-stat'), new RegExp(`gap: ${STAT_GAP}px ${STAT_METRICS.full.colGap}px;`), 'the full column gap the module counts');
   // beside the diamond, stepped aside, the fold
-  assert.equal(rule(C, '.hud-stat.side'), '.hud-stat.side { position: absolute; left: 100%; top: 0; margin: 0 0 0 8px; }');
-  assert.equal(rule(C, '.hud-stat.noroom'), '.hud-stat.noroom { display: none; }');
+  assert.equal(rule(C, '.hud-stat.stat-side'), '.hud-stat.stat-side { position: absolute; left: 100%; top: 0; margin: 0 0 0 8px; }');   // PIN MOVED (HUD-CLASS)
+  assert.equal(rule(C, '.hud-stat.stat-noroom'), '.hud-stat.stat-noroom { display: none; }');   // PIN MOVED (HUD-CLASS)
   assert.match(C, /\n\.hst-cell\.more \.hst-foot \{ position: static; transform: none;/);
   assert.match(C, /\n@media \(max-width: 640px\), \(max-height: 500px\) \{ \.hud-stat \.hst-name \{ display: none; \} \}/);
   assert.match(C, new RegExp(`\\n\\.hst-cell\\.blink \\.hst-pic \\{ animation: hst-blink ${BLINK_INTERVAL * 2}s steps\\(1, end\\) infinite; \\}\\n@keyframes hst-blink \\{ 50% \\{ opacity: 0; \\} \\}`), 'a quarter second off, a quarter on');

@@ -273,7 +273,7 @@ test('ACC3c / TITLE-R: the roster REPAINTS when a glyph changes - it is keyed, a
   // sprout that aged out changes nothing else about the row - so
   // without the glyphs in the key the list is correct and never redrawn.
   const panel = src('src/ui/chatPanel.js');
-  const key = /const key = label \+ '\|' \+ total \+ '\|' \+ \(menuFor \?\? ''\) \+ '\|' \+ rows\.map\(\(r\) => [^\n]*\)\.join\(','\);/.exec(panel);   // CHAT-CHAN: the list's own word leads the key
+  const key = /const key = label \+ '\|' \+ total \+ '\|' \+ \(menuFor \?\? ''\) \+ '\|' \+ query \+ '\|' \+ rows\.map\(\(r\) => [^\n]*\)\.join\(','\);/.exec(panel);   // CHAT-CHAN: the list's own word leads the key
   assert.ok(key, 'the roster key moved');
   assert.match(key[0], /r\.glyphs/, 'a glyph that changes must repaint the row it is on');
   assert.doesNotMatch(key[0], /r\.title/, 'TITLE-R: the row draws no title, so a title changing repaints nothing');
@@ -281,6 +281,9 @@ test('ACC3c / TITLE-R: the roster REPAINTS when a glyph changes - it is keyed, a
   assert.doesNotMatch(row, /titleBadge|who-title/, 'TITLE-R: no title on the roster row');
   // CHAT-FIT: they sit in the row's one nowrap LINE (`line`), not on the row itself
   assert.ok(row.indexOf('line.append(nameEl)') >= 0 && row.indexOf('line.append(nameEl)') < row.indexOf('dfchat-who-glyph'), 'the glyphs after the name');
-  // the title stays where Mac kept it: over the name (ui/nameLayer.js, net/remotePlayers.js) and on a chat line
-  assert.match(panel, /const badgeNodes = \(peer, prefix\) => \{\s*const badge = titleBadge\(peer\);/, 'a chat line still wears its author\'s title');
+  // the title stays where Mac kept it: over the name (ui/nameLayer.js, net/remotePlayers.js) - TITLE-C (2026-10-12, Mac:
+  // "remove titles from appearing in the chat") took it off the chat line as TITLE-R took it off the roster
+  const nodes = /const badgeNodes = \(peer, prefix\) => \{[^]*?\n  \};/.exec(panel);
+  assert.ok(nodes, 'the line badge\'s builder moved');
+  assert.doesNotMatch(nodes[0].replace(/\/\/[^\n]*|\/\*[^]*?\*\//g, ''), /title/i, 'TITLE-C: a chat line wears no title (its comments stripped - a note saying so is not a title)');
 });

@@ -838,31 +838,66 @@
     ]
   },
   {
-    "name": "PROF9-cc-field-cook-any-camp",
-    "file": "src/systems/survival/camp.js",
-    "old": "(keep === true && kind === CAMP_KIND.Fire ? 0 : 1)",
-    "new": "(keep === true ? 0 : 1)",
-    "tests": [
-      "test/prof9_client.test.js"
-    ]
-  },
-  {
-    "name": "PROF9-cc-field-cook-spends",
-    "file": "src/systems/survival/camp.js",
-    "old": "(keep === true && kind === CAMP_KIND.Fire ? 0 : 1)",
-    "new": "(keep === true && kind === CAMP_KIND.Fire ? 1 : 1)",
-    "tests": [
-      "test/prof9_client.test.js"
-    ]
-  },
-  {
     "name": "PROF9-camps-field-cook-unasked",
     "file": "src/scenes/camps.js",
-    "old": "keep: fieldCook?.() === true,",
-    "new": "keep: false,",
+    "old": "const r = spendCampNight(best.rec, now(), fieldCook?.() === true);",
+    "new": "const r = spendCampNight(best.rec, now(), false);",
     "tests": [
       "test/prof9_client.test.js"
-    ]
+    ],
+    "note": "PIN MOVED - AUDIT REST-PARTY (the Field Cook given again): under REST2 a placing spends nothing, so the perk keeps a night's fuel at the Field Cook's own Campfire."
+  },
+  {
+    "name": "PROF9-camps-field-cook-kept-reads-unspent",
+    "file": "src/scenes/camps.js",
+    "old": "    if (r.kept) return true;\n",
+    "new": "",
+    "tests": [
+      "test/prof9_client.test.js"
+    ],
+    "note": "AUDIT REST-PARTY (the Field Cook given again): under REST2 a placing spends nothing, so the perk keeps a night's fuel at the Field Cook's own Campfire."
+  },
+  {
+    "name": "PROF9-field-cook-perk-unread",
+    "file": "src/systems/survival/camp.js",
+    "old": "  if (fieldCook && fieldCookKeeps(camp)) return",
+    "new": "  if (false && fieldCookKeeps(camp)) return",
+    "tests": [
+      "test/prof9_client.test.js"
+    ],
+    "note": "AUDIT REST-PARTY (the Field Cook given again): under REST2 a placing spends nothing, so the perk keeps a night's fuel at the Field Cook's own Campfire."
+  },
+  {
+    "name": "PROF9-field-cook-keeps-a-tent",
+    "file": "src/systems/survival/camp.js",
+    "old": "export const fieldCookKeeps = (camp) => camp?.kind === CAMP_KIND.Fire && !!camp.fuel && !camp.jar;",
+    "new": "export const fieldCookKeeps = (camp) => !!camp && !camp.jar;",
+    "tests": [
+      "test/prof9_client.test.js"
+    ],
+    "note": "AUDIT REST-PARTY (the Field Cook given again): under REST2 a placing spends nothing, so the perk keeps a night's fuel at the Field Cook's own Campfire."
+  },
+  {
+    "name": "PROF9-field-cook-keeps-a-jar",
+    "file": "src/systems/survival/camp.js",
+    "old": "camp?.kind === CAMP_KIND.Fire && !!camp.fuel && !camp.jar;",
+    "new": "camp?.kind === CAMP_KIND.Fire && !!camp.fuel;",
+    "tests": [
+      "test/prof9_client.test.js"
+    ],
+    "note": "AUDIT REST-PARTY (the Field Cook given again): under REST2 a placing spends nothing, so the perk keeps a night's fuel at the Field Cook's own Campfire.",
+    "equivalent": true,
+    "why": "An Ember Jar's record never carries `fuel` (placeCampItem returns before setting it on a jar - AUDITREST-F1-the-jar-comes-out-too and REST6-the-jar-picked-up are equivalent for the same reason), so `!!camp.fuel` already refuses it; `!camp.jar` names the intent. AUDIT REST II (L8-5): the test had killed it only with a hand-built {fuel, jar} record the game never writes."
+  },
+  {
+    "name": "PROF9-field-cook-keeps-a-kit-fire",
+    "file": "src/systems/survival/camp.js",
+    "old": "camp?.kind === CAMP_KIND.Fire && !!camp.fuel && !camp.jar;",
+    "new": "camp?.kind === CAMP_KIND.Fire && !camp.jar;",
+    "tests": [
+      "test/prof9_client.test.js"
+    ],
+    "note": "AUDIT REST-PARTY (the Field Cook given again): under REST2 a placing spends nothing, so the perk keeps a night's fuel at the Field Cook's own Campfire."
   },
   {
     "name": "PROF9-withdraw-noRot-on-herbs",
@@ -1002,12 +1037,12 @@
   {
     "name": "PROF9-pages-cooking-unpractised",
     "file": "src/ui/profPages.js",
-    "old": "'carpentry', 'masonry', 'cooking', 'jewelcrafting', 'alchemy', 'enchanting']);",
-    "new": "'carpentry', 'masonry', 'jewelcrafting', 'alchemy', 'enchanting']);",
+    "old": "  cooking: () => [[t('prof.page.unlocks.cooking1', 'Hunter\\'s Stew, Fisherman\\'s Supper'), 1],",
+    "new": "  cookery: () => [[t('prof.page.unlocks.cooking1', 'Hunter\\'s Stew, Fisherman\\'s Supper'), 1],",
     "tests": [
       "test/prof9_client.test.js"
     ],
-    "note": "PROF12 (PIN MOVED): re-aimed by content."
+    "note": "PROF12 (PIN MOVED): re-aimed by content. CRAFT3: re-aimed by content."
   },
   {
     "name": "PROF9-pages-feast-unlock-55",
@@ -1048,8 +1083,8 @@
   {
     "name": "PROF9-pages-hands-not-at-the-fire",
     "file": "src/ui/profPages.js",
-    "old": " : me !== _cook && _cook.act ? 'fire'\n",
-    "new": "\n",
+    "old": ": me !== _cook && (_cook.act || _cook.crafting) ? 'fire' : me !== _jewel",
+    "new": ": me !== _jewel",
     "tests": [
       "test/prof9_client.test.js"
     ]
@@ -1308,7 +1343,8 @@
     "new": "xp: cookXp(rank),",
     "tests": [
       "test/prof9_client.test.js"
-    ]
+    ],
+    "note": "CRAFT3: re-aimed by content."
   },
   {
     "name": "AUDIT-PROF-541-K7-steps-unread",
@@ -1484,8 +1520,8 @@
   {
     "name": "PROF541-R2-S7-dish-key",
     "file": "src/net/recipeLaw.js",
-    "old": "r.kind === 'dish' ? r.product : r.id);",
-    "new": "r.kind === 'dish' ? r.id : r.id);",
+    "old": "export const firstCraftKey = (r) => (!r ? null : `${r.product}@${r.tier}`);",
+    "new": "export const firstCraftKey = (r) => (!r ? null : r.kind === 'dish' ? r.id : `${r.product}@${r.tier}`);",
     "tests": [
       "test/prof9_law.test.js",
       "test/prof9_service.test.js"
@@ -1495,8 +1531,8 @@
   {
     "name": "PROF541-R2-S7-dish-prefix",
     "file": "server-account/src/professions.js",
-    "old": "  const keyed = r.kind === 'jewel' || r.kind === 'dish';",
-    "new": "  const keyed = r.kind === 'jewel';",
+    "old": "  const kin = firstCraftKin(r);",
+    "new": "  const kin = r.kind === 'dish' ? [r.id] : firstCraftKin(r);",
     "tests": [
       "test/prof9_service.test.js"
     ],
@@ -1505,8 +1541,8 @@
   {
     "name": "PROF541-R2-S7-plain-ring-prefix",
     "file": "server-account/src/professions.js",
-    "old": "  const keyed = r.kind === 'jewel' || r.kind === 'dish';",
-    "new": "  const keyed = firstCraftKey(r) !== r.id;",
+    "old": "  const kin = firstCraftKin(r);",
+    "new": "  const kin = r.kind === 'jewel' && !r.gem ? [r.id] : firstCraftKin(r);",
     "tests": [
       "test/prof10_service.test.js"
     ],

@@ -60,7 +60,7 @@ test('AUDIT WORLD7/8 A1/A2/A11: the Clock - a backward sample online charges not
   now.t += 60; nan.tick(q);
   assert.equal(nan.remainingTimeInSeconds, 3540, 'and the remainder is a number');
   const src = rd('src/systems/quest/clock.js');
-  assert.match(src, /const raw = now - this\._lastWorldTimeSample;\s*\n\s*const raised = Number\.isFinite\(step\) \? Math\.min\(raisedSince\(caller\.raisedSeconds\?\.\(\), this\._lastRaisedSample\), Math\.max\(raw, 0\)\) : 0;\s*\n\s*const difference = Number\.isFinite\(step\) \? Math\.min\(Math\.max\(raw - raised, 0\), step\) \+ raised : raw;/);
+  assert.match(src, /const raw = now - this\._lastWorldTimeSample;\s*\n\s*if \(!Number\.isFinite\(step\)\) return Math\.trunc\(raw\);\s*\n\s*const raised = raisedSince\(caller\.raisedSeconds\?\.\(\), this\._lastRaisedSample\);\s*\n\s*return Math\.trunc\(Math\.min\(Math\.max\(raw - raised, 0\), step\)\);/);
   assert.match(src, /this\._lastWorldTimeSample = Number\.isFinite\(dataIn\.lastWorldTimeSample\) \? dataIn\.lastWorldTimeSample : wholeSeconds\(this\.parentQuest\);/);
 });
 
@@ -115,13 +115,16 @@ test('AUDIT WORLD7/8 A3/A6: CreateFoe - a marker ahead of the world online is a 
   const src = rd('src/systems/quest/actions.js');
   assert.match(src, /else if \(this\._lastTick == null\) \{ if \(Number\.isFinite\(step\) && \(gameSeconds - this\.lastSpawnTime > step \|\| gameSeconds < this\.lastSpawnTime\)\) this\.lastSpawnTime = gameSeconds; this\._lastTick = gameSeconds; \}/);
   assert.match(src, /else if \(Number\.isFinite\(step\) && gameSeconds < this\._lastTick\) \{ this\.lastSpawnTime = gameSeconds; this\._lastTick = gameSeconds; \}/);
-  assert.match(src, /else \{ const raised = Number\.isFinite\(step\) \? Math\.min\(raisedSince\(raisedNow, this\._lastRaised\), gameSeconds - this\._lastTick\) : 0; const forgiven = Math\.max\(0, gameSeconds - this\._lastTick - raised - step\); if \(forgiven > 0\) this\.lastSpawnTime \+= forgiven; this\._lastTick = gameSeconds; \}/, 'the in-flight path forgives too (TIME3: the lived part past a step - never a raise)');
+  assert.match(src, /else \{ const raised = Number\.isFinite\(step\) \? Math\.min\(raisedSince\(raisedNow, this\._lastRaised\), gameSeconds - this\._lastTick\) : 0; const forgiven = Math\.max\(0, gameSeconds - this\._lastTick - raised - step\) \+ raised; if \(forgiven > 0\) this\.lastSpawnTime \+= forgiven; this\._lastTick = gameSeconds; \}/, 'the in-flight path forgives too (QCLOCK-WORLD: the lived part past a step, and the raise whole)');
 });
 
 test('AUDIT WORLD7/8 A4/A10/C7/C9: the records and the residue - the machine ticks off the frame loop (a hidden tab runs no frames and charges one step on return), the record and the constant say so; the stand-down wording is gone or stamped superseded; the pre-WORLD8 memory sentence and the Ledger\'s WORLD5 sentence corrected', () => {
   const w = rd('src/scenes/world.js');
   assert.match(w, /if \(!townTalk\.overlayActive && !worldMoveBusy\(\) && !hudFade\.fadeInProgress\) questBridge\.tick\(dt\);/, 'the quest tick is the frame\'s');   // WA1: and held while the world moves and the HUD fades (QuestMachine.Update :310-316) - worldMoveBusy() carries the load gate
-  assert.equal(/visibilitychange/.test(w), false, 'no hidden-tab timer drives it');
+  // PIN MOVED (AUDIT SCALE B1): world.js listens for one visibilitychange - the account heartbeat's, so a knock waiting
+  // as the page hides goes then - and it ticks the heartbeat alone, nothing of the quest machine's
+  assert.deepEqual((w.match(/^.*visibilitychange.*$/gm) ?? []).map((l) => l.trim()),
+    ["globalThis.document?.addEventListener?.('visibilitychange', () => { heartbeat.tick(); });"], 'no hidden-tab timer drives it');
   assert.match(rd('src/systems/quest/clock.js'), /a hidden tab runs no frames and charges one step\s*\n\s*\* {2}when it comes back/, 'the constant\'s note');
   const arc = rd('bible/06-Systems/Online-Arc.md');
   assert.match(arc, /the tab closed or hidden \(the\nmachine ticks off the frame loop, so a hidden tab runs no frames and\ncharges one step when it comes back\)/, 'the record');

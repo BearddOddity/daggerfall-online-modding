@@ -99,9 +99,14 @@ export function roomSigner(env, now = () => Date.now()) {
     if (who.lv !== undefined) claims.lv = who.lv;   // RENOWN1: the Renown level the service signed in
     if (who.gi !== undefined || who.gt !== undefined || who.gm !== undefined) Object.assign(claims, { gi: who.gi, gt: who.gt, gm: who.gm });   // GUILD1c: the character's guild the service signed in
     if (who.rc !== undefined) claims.rc = who.rc;   // REALM-DOOR: whether the service found the named character the realm's
+    if (who.ci !== undefined) claims.ci = who.ci;   // AUDIT LEGACY III O1: and which realm character it is
     if (who.au !== undefined) claims.au = who.au;   // WB9g: the aura worn
     if (who.rb !== undefined) claims.rb = who.rb;   // SEASON1 part two: a Season's banner ribbon
-    const key = `${claims.s}|${claims.n}|${claims.k}|${claims.t ?? ''}|${(claims.ts ?? []).join('/')}|${(claims.g ?? []).join('+')}|${claims.mu ?? ''}|${claims.lv ?? ''}|${claims.gi ?? ''}|${claims.gm ?? ''}|${claims.rc ?? ''}|${claims.au ?? ''}|${(claims.rb ?? []).join('/')}`;
+    if (who.ar !== undefined) claims.ar = who.ar;   // ARENA4: the season's arena rating the service signed in
+    if (who.cl !== undefined) claims.cl = who.cl;   // ARENA4b: the named character's level the service signed in
+    if (who.wa !== undefined) claims.wa = who.wa;   // INT7: the realm character's arms the service signed in (beside `rc` 1)
+    for (const k of ['hn', 'hc', 'hb', 'hg']) if (who[k] !== undefined) claims[k] = who[k];   // LEGACY7: the realm character's house the service signed in
+    const key = `${claims.s}|${claims.n}|${claims.k}|${claims.t ?? ''}|${(claims.ts ?? []).join('/')}|${(claims.g ?? []).join('+')}|${claims.mu ?? ''}|${claims.lv ?? ''}|${claims.gi ?? ''}|${claims.gm ?? ''}|${claims.rc ?? ''}|${claims.ci ?? ''}|${claims.au ?? ''}|${(claims.rb ?? []).join('/')}|${claims.ar ?? ''}|${claims.cl ?? ''}|${claims.hn ?? ''}|${claims.hc ?? ''}|${claims.hb ?? ''}|${claims.hg ?? ''}`;
     const nowS = Math.floor(now() / 1000);
     const kept = lastI.get(key) ?? { last: undefined, used: new Set() };
     let i = nowS - 1;
@@ -165,6 +170,7 @@ export function fakeRoom(key, { now = () => Date.now(), ROOMS = null } = {}) {
       close(code, reason) { this.closed = { code, reason }; const i = sockets.indexOf(ws); if (i >= 0) sockets.splice(i, 1); },
       serializeAttachment(a) { if (JSON.stringify(a).length > 2048) throw new Error('attachment too large'); this.att = JSON.parse(JSON.stringify(a)); }, deserializeAttachment() { return this.att; } };
     state.acceptWebSocket(ws);
+    room._adopt?.(ws, ws.att);   // SCALE2b: a socket comes in by the object's door (Room.fetch adopts it), as the runtime's do
     return ws;
   };
   const look = { race: 'Nord', gender: 'male', faceIndex: 0, items: [] };
@@ -183,10 +189,10 @@ export function fakeRoom(key, { now = () => Date.now(), ROOMS = null } = {}) {
     // never laid on the frame - the relay ignores what a client says
     // about its own badge, and a harness that could set one on the
     // frame would be testing the wrong half forever.
-    const tok = 'tok' in over ? over.tok : await token(id, { s: over.tokenSub ?? over.acct, n: over.name ?? String(id), t: over.title, ts: over.ts, g: over.glyphs, mu: over.mu, lv: over.lv, gi: over.gi, gt: over.gt, gm: over.gm, rc: over.rc, au: over.au, rb: over.rb });   // AUDIT HCC-PARK: `tokenSub` names the verified account the token carries (default acct-<id>; never a frame field - a social hello's own `acct` is the hub's) - one player in a second tab is one account under two ids
+    const tok = 'tok' in over ? over.tok : await token(id, { s: over.tokenSub ?? over.acct, n: over.name ?? String(id), k: over.kind, t: over.title, ts: over.ts, g: over.glyphs, mu: over.mu, lv: over.lv, gi: over.gi, gt: over.gt, gm: over.gm, rc: over.rc, ci: over.ci, au: over.au, rb: over.rb, ar: over.ar, cl: over.charLevel, wa: over.wa });   // INT7: `wa` the arms the token signs   // ARENA4b: `charLevel` the character's level the token signs as `cl` (never the frame's own `cl`, ONE-SEAT's claim of the seat)   // ARENA4: `kind` 'linked' for a registered account, `ar` its season's rating   // AUDIT HCC-PARK: `tokenSub` names the verified account the token carries (default acct-<id>; never a frame field - a social hello's own `acct` is the hub's) - one player in a second tab is one account under two ids
     // AUDIT FRIENDS-SYNC F5: a hello with an account is a current build's - it says `ps` - unless the pin asks for an old one (`ps: undefined`)
     const frame = { t: 'hello', id, secret: 'secret-of-' + id, name: id, look, pose, ...(over.acct && !('ps' in over) ? { ps: 1 } : {}), ...over };
-    delete frame.title; delete frame.ts; delete frame.glyphs; delete frame.mu; delete frame.lv; delete frame.tokenSub; delete frame.gi; delete frame.gt; delete frame.gm; delete frame.rc; delete frame.au; delete frame.rb;   // ACC3/MOD1/RENOWN1/GUILD1c/REALM-DOOR/WB9g/SEASON1: they went into the token above; the wire has no such hello field
+    delete frame.title; delete frame.ts; delete frame.glyphs; delete frame.mu; delete frame.lv; delete frame.tokenSub; delete frame.gi; delete frame.gt; delete frame.gm; delete frame.rc; delete frame.ci; delete frame.au; delete frame.rb; delete frame.kind; delete frame.ar; delete frame.charLevel; delete frame.wa;   // ACC3/MOD1/RENOWN1/GUILD1c/REALM-DOOR/WB9g/SEASON1/ARENA4/ARENA4b/INT7: they went into the token above; the wire has no such hello field
     if (tok == null) delete frame.tok; else frame.tok = tok;
     return room.webSocketMessage(ws, JSON.stringify(frame));
   };

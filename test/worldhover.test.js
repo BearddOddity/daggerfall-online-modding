@@ -24,13 +24,13 @@ import { readFileSync } from 'node:fs';
 
 import {
   resolveHover, frameSignature, hoverLines, keyItemises, ITEMISED_KEYS, HOVER_MAX,
-  composeActivationTargets,
+  composeActivationTargets, plaqueWindow,
 } from '../src/systems/worldHover.js';
 import {
   showWorldPlaque, destroyWorldPlaque, hideWorldPlaque, plaqueAnchor, worldPlaqueOn, worldHoverFrame,
   worldHoverFaults, PLAQUE_GAP, PLAQUE_WATCHDOG_MS, _plaqueSignatureForTests, _setPlaqueClockForTests,
 } from '../src/ui/worldPlaque.js';
-import { foldQuickLoot, quickLootWheel, resetQuickLoot } from '../src/systems/quickLoot.js';   // QUICK-LOOT B3: the two draw pins at the foot of this file drive the highlight through its own module
+import { foldQuickLoot, quickLootWheel, resetQuickLoot, quickLootRow, quickLootStats, quickLootTake } from '../src/systems/quickLoot.js';   // QUICK-LOOT B3: the two draw pins at the foot of this file drive the highlight through its own module
 import { PREF_DEFAULTS, setPref } from '../src/systems/uiPrefs.js';
 import { CROSSHAIR_ARM, crosshairCentreY } from '../src/ui/hudCrosshair.js';
 import { hudScale } from '../src/ui/hud.js';
@@ -175,8 +175,13 @@ test('WORLD-HOVER: an itemised frame carries the rows, the tail and the empty fl
   const f = resolveHover(hit('loot:1'), { contents: () => many, name: () => ({ title: 'Loot Pile' }) });
   assert.equal(f.kind, 'items');
   assert.equal(f.title, 'Loot Pile', 'the namer\'s title, not a kind label');
-  assert.equal(f.rows.length, HOVER_MAX);
-  assert.equal(f.rest, 3);
+  // PIN MOVED (FIELD BUGS 2026-10-11g LOOT-SCROLL): the frame carries EVERY row - the wheel and the take reach them all -
+  // and the plaque draws HOVER_MAX of them, the rest its tail
+  assert.equal(f.rows.length, HOVER_MAX + 3);
+  assert.equal(f.rest, 0);
+  const drawn = plaqueWindow(f).frame;
+  assert.equal(drawn.rows.length, HOVER_MAX);
+  assert.equal(drawn.rest, 3);
   assert.equal(f.empty, false);
   const e = resolveHover(hit('corpse:1'), { contents: () => [], name: PILE });
   assert.equal(e.empty, true);
@@ -241,8 +246,9 @@ test('WORLD-HOVER: the signature changes when the LIST does, under a constant ke
   }));
   const six = resolveHover(hit('loot:1'), { contents: () => Array.from({ length: HOVER_MAX + 1 }, (_, i) => ({ name: `Item${i}` })), name: PILE });
   const seven = resolveHover(hit('loot:1'), { contents: () => Array.from({ length: HOVER_MAX + 2 }, (_, i) => ({ name: `Item${i}` })), name: PILE });
-  assert.deepEqual(six.rows.map((r) => r.name), seven.rows.map((r) => r.name), 'the same six rows are visible');
-  assert.notEqual(six.rest, seven.rest, '...and the tails differ');
+  // PIN MOVED (LOOT-SCROLL): the visible rows are the plaque's window over the frame
+  assert.deepEqual(plaqueWindow(six).frame.rows.map((r) => r.name), plaqueWindow(seven).frame.rows.map((r) => r.name), 'the same six rows are visible');
+  assert.notEqual(plaqueWindow(six).frame.rest, plaqueWindow(seven).frame.rest, '...and the tails differ');
   assert.notEqual(many(HOVER_MAX + 1), many(HOVER_MAX + 2), 'a changed TAIL under the same visible rows repaints');
 });
 
@@ -670,8 +676,12 @@ test('WORLD-HOVER: the dungeon\'s target list has ONE builder, and the hover rea
   // AUDIT-SEATS: and a FIFTH, the Hall of Records' shelves in a seat's castle (`records:` - empty off a castle
   // that keeps them, so a dungeon without the Hall offers nothing)
   // CROWN-HALL (PIN MOVED): and a SIXTH, a crown's throne room's board and chest (`crown:` - empty off a held crown's castle)
-  assert.equal((wm.match(/ctx\.addActivationTargets\(/g) ?? []).length, 6,
-    'the exit doors, the quest stands, the Records shelves, the throne room\'s pieces and the static NPCs - five, named - and the court\'s spoils');
+  // ARENA5 (PIN MOVED): and a SEVENTH, the Hall of Champions' plaques in the arena's undercroft (`plaque:` - empty off the
+  // undercroft, and until its wall has stood), registered beside their namer (test/arena5_plaques.test.js)
+  // SD9e (PIN MOVED): and an EIGHTH, the Brass Remnant's spoils on the arena's floor, registered where the Hour is stood
+  // (standSdRealm) - the court's own family, answered by the same host hooks for the floor the player stands on
+  assert.equal((wm.match(/ctx\.addActivationTargets\(/g) ?? []).length, 8,
+    'the exit doors, the quest stands, the Records shelves, the throne room\'s pieces, the Hall\'s plaques and the static NPCs - six, named - and the court\'s spoils, and the Hour\'s');
   assert.match(wm, /ctx\.addActivationTargets\(\(\) => host\.spoilTargets\?\.\(\) \?\? NO_TARGETS\);\n\s*ctx\.addActivationNamer\(\(key\) => \(typeof key === 'string' && key\.startsWith\('spoil'\) \? host\.spoilName\?\.\(key\) \?\? null : null\)\);/,
     'the spoils stood with their words');
   assert.doesNotMatch(read('src/scenes/dungeon.js'), /addActivationTargets/,
@@ -893,7 +903,7 @@ test('AUDIT-WH H5: the location\'s name is read in the PORT\'s spelling, from ON
   assert.equal((wm.match(/currentLocationName\(\)/g) ?? []).length, 3,
     'the three above-ground arms that take it - the building exit, the city wall and (AUDIT-WH M7) the dungeon entrance');
   assert.match(wm, /staticDoorName\('buildingExit', \{ locationName: currentLocationName\(\) \}\)/, 'the building exit, from inside');
-  assert.match(wm, /staticDoorName\('dungeonEntrance', \{ locationName: currentLocationName\(\), elite: !!entry\.dfLocation\?\.elite \}\)/, 'the dungeon entrance, from outside');
+  assert.match(wm, /staticDoorName\('dungeonEntrance', \{ locationName: currentLocationName\(\), tier: label\?\.tier \?\? null, size: label\?\.size \?\? null \}\)/, 'the dungeon entrance, from outside (PIN MOVED, TIER1: with its tier and size online)');
   assert.match(wm, /locationName: currentLocationName\(\),\n\s+buildingType: bd\.buildingType,/, 'and the shopfront the city wall arm reads');
   // ...and the DUNGEON exit names the dungeon it is in, not the
   // location under the player, so it reads its own record - in the
@@ -1110,7 +1120,7 @@ test('AUDIT-WH C1: a namer is handed EVERY key the ray can win, including the do
     }
   }
   // ...and it still answers the keys it DOES own.
-  assert.deepEqual(camps.hoverName('hearth:0'), { title: 'Fire' });
+  assert.deepEqual(camps.hoverName('hearth:0'), { title: 'Fire', actions: [{ id: 'rest', label: 'Rest here' }, { id: 'cook', label: 'Cook food' }] }, 'REST2: with the plaque\'s rows');
   // the guard is the one `activate` has carried since HEARTH1
   assert.match(read('src/scenes/camps.js'), /function hoverName\(key\) \{[\s\S]{0,700}if \(typeof key !== 'string'\) return null;/);
 });
@@ -1295,8 +1305,14 @@ test('INTERIOR-BODIES: a body killed inside a building is stood, named, listed a
   // LOOT-STACK: the door is a named closure now, because the loot
   // window's pile tabs come back through it with the pile in hand - and
   // quick loot declines on a tab, which is a request for that window.
-  assert.match(wm, /if \(key\.startsWith\('foeCorpse:'\) \|\| key\.startsWith\('guardCorpse:'\)\) \{\n\s*const bodyPool = \(k\) => \(k\.startsWith\('foeCorpse:'\) \? interiorFoes : interiorGuards\);\n(?:\s*\/\/[^\n]*\n)*\s*const openBodyLoot = \(lootKey, pileKeys = null\) => \{\n\s*bodyPool\(lootKey\)\?\.takeLoot\(lootKey, \(l\) => say\(l\), \(loot\) => \{\n\s*if \(!pileKeys && quickLootTake\(lootKey, loot, playerEntity, \(l\) => say\(l\), \{ getQuest: [^}]*\}\)\) return;[^\n]*\n\s*const pile = lootPile\(lootKey, \{ keys: pileKeys, describe: \(k\) => bodyPool\(k\)\?\.pileBody\(k\) \?\? null, open: openBodyLoot \}\);\n\s*mountInterior\(interiorInventory\(\{ loot: pile \? \{ \.\.\.loot, pile \} : loot \}\)\);\n\s*\}\);\n\s*\};\n\s*openBodyLoot\(key\);\n\s*return true;\n\s*\}/,
+  // PIN MOVED (AUDIT 625 D6): and the door answers whether it opened - the quick take's `true`, the window's own (a
+  // refused pack is null) - which the corpse door rolls a body's silver on
+  // PIN MOVED (FIELD BUGS 2026-10-07 INDOOR-SKIN): the door is the host's own function now, `openInteriorBodyLoot` -
+  // one door for this ladder's press and the outer host's (a skinnable body's Search), where it was the ladder's closure
+  assert.match(wm, /if \(key\.startsWith\('foeCorpse:'\) \|\| key\.startsWith\('guardCorpse:'\)\) \{\n\s*openInteriorBodyLoot\(key\);\n\s*return true;\n\s*\}/,
     'the press arm the bodies never had');
+  assert.match(wm, /function openInteriorBodyLoot\(lootKey, pileKeys = null\) \{\n\s*const bodyPool = \(k\) => \(k\.startsWith\('foeCorpse:'\) \? interiorFoes : interiorGuards\);\n\s*bodyPool\(lootKey\)\?\.takeLoot\(lootKey, \(l\) => say\(l\), \(loot\) => \{\n\s*if \(!pileKeys && quickLootTake\(lootKey, loot, playerEntity, \(l\) => say\(l\), \{ getQuest: [^}]*\}\)\) return true;[^\n]*\n\s*const pile = lootPile\(lootKey, \{ keys: pileKeys, describe: \(k\) => bodyPool\(k\)\?\.pileBody\(k\) \?\? null, open: openInteriorBodyLoot \}\);\n\s*const w = interiorInventory\(\{ loot: pile \? \{ \.\.\.loot, pile \} : loot \}\);\n\s*mountInterior\(w\);\n\s*return !!w;[^\n]*\n\s*\}\);\n\s*\}/,
+    'its door: the pool\'s own takeLoot, the quick take, the pile\'s tabs back through it, whether it opened');
 
   // ...and it sits INSIDE the reach refusal, like every other family in
   // this ladder: the pick reaches as far as the whole ray, so a body
@@ -1334,7 +1350,8 @@ test('AUDIT-WH H3: both pools and both above-ground hosts are wired to that ladd
   // `isCorpse` in `corpseKeyOf`, a body's loot key for the knife's
   // search, the sixth; the watch's pool has neither, a guard's body is
   // never skinned.
-  for (const [f, readers] of [['src/scenes/exteriorFoes.js', 7], ['src/scenes/cityGuards.js', 5]]) {
+  // PI1 (PIN MOVED): and Physical Items' bodies (corpseMarker.js physicalCorpseSources), in both pools - one reader more each.
+  for (const [f, readers] of [['src/scenes/exteriorFoes.js', 8], ['src/scenes/cityGuards.js', 6]]) {
     const src = read(f);
     assert.match(src, /const corpseLens = \{/, `${f}: one identity, not three`);
     // AUDIT-WH2 L5: A COUNT IS NOT A LAW. This was `=== 4`, and four
@@ -1345,7 +1362,8 @@ test('AUDIT-WH H3: both pools and both above-ground hosts are wired to that ladd
     // and LOOT-STACK's pile tab (corpseMarker.js pileBody), the fourth.
     // A reader that stops passing it now fails here.
     assert.equal((src.match(/corpseLens\b/g) ?? []).length, readers,
-      `${f}: declared once, read by the targets, the namer, the contents and the pile tab${readers > 5 ? ', where a body lies and its loot\'s key' : ''}`);
+      `${f}: declared once, read by the targets, the namer, the contents, the pile tab and the physical items' bodies${readers > 6 ? ', where a body lies and its loot\'s key' : ''}`);
+    assert.match(src, /physicalCorpseSources\((?:foes|guards), '(?:foe|guard)Corpse', corpseLens\)/, `${f}: Physical Items' bodies walk the pool under the lens`);
     assert.match(src, /corpseLootTargets\((?:foes|guards), '(?:foe|guard)Corpse', corpseLens\)/,
       `${f}: the TARGETS walk the pool under the lens`);
     assert.equal((src.match(/corpseEntryFor\((?:foes|guards), key, '(?:foe|guard)Corpse', corpseLens\)/g) ?? []).length, 3,
@@ -1530,13 +1548,16 @@ test('AUDIT-WH H2: all four hosts race the mobile band, and none of them stands 
     assert.match(read(f), /\n    idOf,\n/, `${f}: ...and the corpse lens takes it`);
   }
   // The two above-ground hosts race the TOWNSFOLK too, off the press's
-  // own scan rather than a second one of their own.
+  // own scan rather than a second one of their own. LW3: the streaming
+  // host's press scans the road's travellers beside the town's people
+  // (`_talkPersons()` - the list its townTalk.tryActivate takes), so its
+  // hover scans that same list.
   for (const f of ['src/scenes/world.js', 'src/scenes/exterior.js']) {
     const src = read(f);
-    assert.match(src, /const n = nearestPerson\(eye, dir, _livePersons\);/, `${f}: townTalk's own scan`);
+    assert.match(src, /const n = nearestPerson\(eye, dir, (?:_livePersons|_talkPersons\(\))\);/, `${f}: townTalk's own scan`);
     assert.match(src, /key: `mobileNpc:\$\{n\.index\}`, distance: n\.distance, reach: MOBILE_NPC_ACTIVATION_DISTANCE/, `${f}: the ray, the mod's reach`);
     assert.match(src, /person: _hoverPersonPick\(cam\.pos, _hd\),/, `${f}: raced`);
-    assert.match(src, /mobilePersonName\(_livePersons\[Number\(key\.split\(':'\)\[1\]\)\]\?\.person\?\.nameNPC\)/, `${f}: and named`);
+    assert.match(src, /mobilePersonName\((?:_livePersons|_talkPersons\(\))\[Number\(key\.split\(':'\)\[1\]\)\]\?\.person\?\.nameNPC\)/, `${f}: and named`);
   }
   // ONE SCAN, TWO READERS: townTalk's press arm takes the same answer.
   const tt = read('src/scenes/townTalk.js');
@@ -1716,7 +1737,7 @@ test('AUDIT-WH H4/L2/L3/L4/L6: every host branch that returns above the hover sa
   // street. A PIN MUST FAIL: delete the `dropDoorCache()` from setMode
   // and the first dies; write `mode = 'whatever'` anywhere and the
   // second does.
-  assert.match(wm, /const setMode = \(next\) => \{ dropDoorCache\(\); if \(next !== mode\) interiorWeapon\.silenceTorch\(\);[^\n]*? mode = next; \};/,
+  assert.match(wm, /const setMode = \(next\) => \{ dropDoorCache\(\); if \(next !== mode\) interiorWeapon\.silenceTorch\(\);[^\n]*? mode = next; if \(next !== 'interior'\) \{ privateVisitRoom = null; privateVisitOwner = null; \} \};/,
     'the free rides the one write of mode');
   const rawModeWrites = (wm.match(/^\s*mode = (?!next;)/gm) ?? []);
   assert.equal(rawModeWrites.length, 0,
@@ -1880,7 +1901,7 @@ test('AUDIT-WH M5/M6/M7/M10: every family the press acts on has a word, and the 
   // cart - while the press has raced all three since SURV3/EOTB-IL.
   for (const f of ['src/scenes/world.js', 'src/scenes/exterior.js']) {
     const src = read(f);
-    assert.match(src, /\? \{ title: lootPileName\(droppedLoot\.contents\?\.\(key\) \?\? null\) \} : null\)/,
+    assert.match(src, /\? \{ title: (?:droppedLoot\.labelFor\?\.\(key\) \?\? )?lootPileName\(droppedLoot\.contents\?\.\(key\) \?\? null\) \} : null\)/,   // WILD1: a pile's own label first (the open zone's remains)
       `${f}: a dropped pile is named as the interior and the dungeon name one`);
     assert.match(src, /\? waterSourceHoverName\(/, `${f}: a water source has a word`);
     assert.match(src, /\(key\) => wagonHoverName\(key\),/, `${f}: and so has the cart`);
@@ -1892,9 +1913,9 @@ test('AUDIT-WH M5/M6/M7/M10: every family the press acts on has a word, and the 
   // the indoor arm the bug was measured against could be reverted to
   // `{ title: 'Loot' }` freely. All four hosts, one word.
   assert.match(read('src/scenes/worldModes.js'),
-    /if \(key\.startsWith\('droppedLoot:'\)\) return \{ title: lootPileName\(interiorDropped\.contents\?\.\(key\) \?\? null\) \};/,
+    /if \(key\.startsWith\('droppedLoot:'\)\) return \{ title: (?:interiorDropped\.labelFor\?\.\(key\) \?\? )?lootPileName\(interiorDropped\.contents\?\.\(key\) \?\? null\) \};/,
     'the interior names a pile from its contents too');
-  assert.match(read('src/scenes/dungeonContext.js'), /return \{ title: lootPileName\(api\.lootContents\(key\)\) \};/,
+  assert.match(read('src/scenes/dungeonContext.js'), /return \{ title: (?:\(key\.startsWith\('droppedLoot:'\) \? droppedLoot\.labelFor\?\.\(key\) : null\) \?\? )?lootPileName\(api\.lootContents\(key\)\) \};/,   // WILD1: a pile's own label first
     'and the dungeon, which is where the word came from');
   for (const f of ['src/scenes/world.js', 'src/scenes/exterior.js', 'src/scenes/worldModes.js', 'src/scenes/dungeonContext.js']) {
     assert.doesNotMatch(read(f).replace(/^\s*(?:\/\/|\*).*$/gm, ''), /title: 'Loot'/,
@@ -1909,7 +1930,7 @@ test('AUDIT-WH M5/M6/M7/M10: every family the press acts on has a word, and the 
   // so `staticDoorName('dungeonEntrance')` was written, pinned, and had
   // no caller in the tree: "To Privateer's Hold" never drew once.
   assert.match(read('src/scenes/worldModes.js'),
-    /if \(entry\?\.door\?\.doorType === DOOR_TYPE\.DUNGEON_ENTRANCE\) \{\n\s+return staticDoorName\('dungeonEntrance', \{ locationName: currentLocationName\(\), elite: !!entry\.dfLocation\?\.elite \}\);/);
+    /if \(entry\?\.door\?\.doorType === DOOR_TYPE\.DUNGEON_ENTRANCE\) \{\n(?:\s*\/\/[^\n]*\n)*\s+const label = tierShown\(host\.dungeonOnline\?\.\(\) \?\? false\) \? dungeonTierLabel\(entry\.dfLocation\) : null;\n\s+return staticDoorName\('dungeonEntrance', \{ locationName: currentLocationName\(\), tier: label\?\.tier \?\? null, size: label\?\.size \?\? null \}\);/);   // PIN MOVED (TIER1): the tier and size, online
 
   // AUDIT-WH2 L5-F13/F14: ...AND THE PREDICATE BEHIND `inTown`, which
   // nothing drove. `staticDoorName('dungeonExit', ...)` is exercised with
@@ -2275,5 +2296,35 @@ test('QUICK-LOOT B3: a moved highlight REPAINTS, though the frame is identical',
     assert.notEqual(_plaqueSignatureForTests(), first, 'the signature carries the lit row');
     assert.deepEqual(find(root(), 'wplaque-row').map((r) => r.classList.contains('sel')), [false, true],
       'and the paint followed the highlight');
+  } finally { resetQuickLoot(); setPref('quickLoot', PREF_DEFAULTS.quickLoot); }
+}));
+
+test('FIELD BUGS 2026-10-11g LOOT-SCROLL ("Can\'t scroll loot pile / corpse": "I can\'t scroll the item list with mouse wheel ... I can still take items from list one by one to get to the bottom of it"): the wheel walks a nine-item body past the old sixth row, the plaque\'s six rows follow it with what they leave above and below, the lit row drawn is the lit item, and the take takes it; back up, a notch inside the window moves the light and not the list (mutants: the frame capped again; the window still; the take bounded by the window; the light counted from the pile\'s top)', () => withPlaque((root) => {
+  setPref('quickLoot', true);
+  resetQuickLoot();
+  try {
+    const items = Array.from({ length: HOVER_MAX + 3 }, (_, i) => ({ name: `Thing ${i}`, group: 'Weapons', templateIndex: 121, material: 3, maxCondition: 200, currentCondition: 150 }));
+    const res = () => resolveHover(hit('corpse:1'), { contents: () => items, name: PILE });
+    const step = (d) => { if (d) quickLootWheel(d); const f = res(); foldQuickLoot(f); showWorldPlaque(f); return f; };
+    let f = step(0);
+    assert.deepEqual(textsOf(root(), 'wplaque-more'), ['and 3 more'], 'the first page: six rows and the tail');
+    assert.equal(find(root(), 'wplaque-row').length, HOVER_MAX + 1);
+    for (let i = 0; i < 20; i++) f = step(1);
+    assert.equal(quickLootRow(f), HOVER_MAX + 2, 'the light reaches the last item, not the sixth');
+    assert.deepEqual(textsOf(root(), 'wplaque-more'), ['3 more above'], 'the window moved down with it');
+    const lit = find(root(), 'sel');
+    assert.equal(lit.length, 1);
+    assert.equal(lit[0].textContent, `Thing ${HOVER_MAX + 2}`, 'the lit row drawn is the lit item');
+    assert.ok(quickLootStats(f).length > 0, 'and it describes itself');
+    const moved = quickLootTake('corpse:1', { items: () => items }, { items: [], goldPieces: 0, stats: { strength: 50 } });
+    assert.equal(moved?.name, `Thing ${HOVER_MAX + 2}`, 'the take takes the lit item past the old tail');
+    f = step(0);
+    assert.equal(quickLootRow(f), HOVER_MAX + 1, 'the shrunk pile pulls the light back to its new last row');
+    f = step(-1); f = step(-1);
+    assert.equal(quickLootRow(f), HOVER_MAX - 1);
+    assert.deepEqual(textsOf(root(), 'wplaque-more'), ['2 more above'], 'the window held while the light moved inside it');
+    for (let i = 0; i < 20; i++) f = step(-1);
+    assert.equal(quickLootRow(f), 0);
+    assert.deepEqual(textsOf(root(), 'wplaque-more'), ['and 2 more'], 'back at the top');
   } finally { resetQuickLoot(); setPref('quickLoot', PREF_DEFAULTS.quickLoot); }
 }));

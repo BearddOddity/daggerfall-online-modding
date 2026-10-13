@@ -813,7 +813,7 @@ function classIoCard() {
     const acts = el('div', 'acts');
     const copy = el('button', 'act primary', 'Copy to clipboard');
     copy.onclick = async () => {
-      try { await globalThis.navigator.clipboard.writeText(classDocText()); say('Copied. Paste it into Import on any Daggerfall Online character.'); }
+      try { await globalThis.navigator.clipboard.writeText(classDocText()); say('Copied. Paste it into Import on any DFO Online character.'); }
       catch { say('The browser would not let this page write the clipboard - save it as a file instead.'); }
     };
     const save = el('button', 'act', 'Save as a file');
@@ -1470,7 +1470,7 @@ function paintInto() {
   const side = el('aside', 'side');
   const brand = el('div', 'brand');
   brand.append(el('h1', null, 'New Character'));
-  brand.append(el('div', 'sub', 'Daggerfall'));
+  brand.append(el('div', 'sub', 'DFO Online'));
   side.append(brand);
 
   const here = stageOf(flow.state);
@@ -1666,13 +1666,13 @@ function releaseLock() {
  *
  * ChargenFlow times exactly one thing: the constellation CEL an
  * answered question lights, which locks the questions screen until
- * CEL_OnAnimEnd releases it (chargen.js:644-650, :637-645). The
+ * CEL_OnAnimEnd releases it (ui/chargen.js:"Input is LOCKED while", ui/chargen.js:"AnswerAndPlayAnim (:310-354)"). The
  * CLASSIC screen paints that chart and its host ticks the flow every
  * frame, so the lock is the animation you are watching. This view
  * paints no chart and its overlay ticks nothing, so the same lock is
  * three to seven seconds of dead buttons over a picture nobody drew.
  *
- * The seam is injectable for exactly this reason (chargen.js:276-280,
+ * The seam is injectable for exactly this reason (ui/chargen.js:"this.describeClass =",
  * "so the headless suite drives an animation with no renderer"), and
  * a start that reports 0 is the flow's own signal to run the anim-end
  * body AT ONCE - the same path a host with no art takes. Nothing else

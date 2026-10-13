@@ -34,9 +34,9 @@ matrix/draw path (GC spikes riding the beat).
 FOUND ON THE WAY, both real: a recenter injects 819.2 units into
 footsteps' stride accumulator (a spurious footstep at every map-pixel
 crossing, footsteps.js:"if (this.ignoreLostGrounding)".."const clip = this.alternate ? set[1] : set[0];"), and `_playerStill` reads one moving
-frame per crossing (world.js:"flatCaption: (archive, record)").
+frame per crossing (world.js:"getLocationByName:").
 
-frame per crossing (world.js:"renderer.setWindowEmission").
+frame per crossing (world.js:"INDIRECT_LIGHT_COLOR[0]").
 
 THE DISTANCE IS FOG-BOUND, NOT STREAM-BOUND. Linear fog ends at 2400
 units (weather.js:"export const FOG_SETTINGS", DFU's own number) while the default 7x7
@@ -70,7 +70,7 @@ tint term without a vertex-format change across ~20 call sites.
 
 ## Hard constraints (the tripwires, so no slice trips them)
 
-- Source-text pins count GLSL substrings (perlightcolors.test.js:"own, 'a host array".."// ---------------------------------------------------------------",
+- Source-text pins count GLSL substrings (perlightcolors.test.js:"all four fragment",
   handedness, the fparm studio borrow) and audit18_bible_docs pins
   Rendering.md's literal "directional light 0.45 + 0.55*diffuse" -
   shader math changes move the doc in the same commit.
@@ -79,7 +79,7 @@ tint term without a vertex-format change across ~20 call sites.
 - No sRGB anywhere; lighting happens on palette bytes; the enhanced
   sky's posterise pass and NEAREST/REPEAT cutout laws stay.
 - The CPU/GPU cloud twin is pinned line-for-line
-  (enhancedSky.test.js:"WIND2: the decks"); a light term reading the cloud field
+  (enhancedSky.test.js:"shadow: the sun dims"); a light term reading the cloud field
   reads THAT field.
 - streaming.test.js:"the grid radius is" pins the literal text of world.js's
   StreamingWorldState construction line; terrain.test.js:"sampler pins - Daggerfall" pins
@@ -90,7 +90,7 @@ tint term without a vertex-format change across ~20 call sites.
 - Three passes change programs behind the renderer's back (both
   skies, precipitation); any GL state shadowing resets at beginFrame
   and at those seams, or it recreates the recorded R9 bug.
-- The motor's fixed step is pinned (audit18_player.test.js:"player F1: the crouch".."const m = new PlayerMotor(floored());",
+- The motor's fixed step is pinned (audit18_player.test.js:"1/120 < FIXED_DT",
   motorStairs, enemymotor) - SIMULATION pins, not presentation.
   Interpolation adds a read-side accessor and changes no step.
 
@@ -410,8 +410,10 @@ central-difference normals so the ring takes the live sun and
 ambient. Placement is pixel-corner units relative to a BASE pixel +
 one pixelTranslation(base) per draw - recenters cost nothing, the law
 every hand-offset consumer in world.js exists for having broken. The
-HOLE: the index buffer skips exactly the streamed rect's cells,
-re-punched per crossing (indices only; the vertex grid re-centres
+HOLE: the index buffer skips exactly the streamed rect's cells
+(FAR-SEA1, 2026-10-10: the ring's range does - the flat sea's cells
+there are a range of their own, drawn only past the world's far plane,
+`07-Rendering/Water-Arc.md`), re-punched per crossing (indices only; the vertex grid re-centres
 when the player drifts past RING_REBUILD_DRIFT=12 pixels - painter's
 order hides every overlap, the hole exists for the coarse-peak-above-
 the-silhouette case it cannot). The FADE is the pass's own: the world

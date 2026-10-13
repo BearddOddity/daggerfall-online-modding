@@ -34,7 +34,7 @@
 //     shipped scene carries.
 // A third has no port equivalent yet rather than being unported here:
 // EnemyAttack.cs:332 is `ApplyDamageToNonPlayer`, foe-vs-foe melee,
-// which the port's pools do not do (documented at enemyCasting.js:"constructor(entity, rolls = Math.random) {".."}"
+// which the port's pools do not do (documented at enemyCasting.js:"the player only -"
 // and dungeonContext.js:"found four instances"). When friendly fire lands, its splash is
 // `showBloodSplash(targetBloodIndex, bloodCentre(...))`.
 
@@ -265,7 +265,7 @@ export function createHitEffects({
     bleedPlayer: (dt, feet, entity) => {
       if (!marks || !feet || !entity) return 0;
       const health = entity.health ?? 0, maxHealth = entity.maxHealth ?? 0;
-      const view = () => ({ feet, health, maxHealth, bloodIndex: 0, dead: !(health > 0), corpse: false, strides: false });
+      const view = () => ({ feet, health, maxHealth, bloodIndex: 0, dead: !(health > 0), corpse: false, strides: false, wound: !!entity.bleed });   // AUDIT TELL: a sweep's bleed drips (combat/bloodBleed.js WOUND_*)
       let n = 0;
       for (const a of bleeding.tick(dt, [PLAYER_WALKER], view)) {
         if (a.kind === 'drip' && marks.drip?.(a.bloodIndex, a.pos, a.count)) { n++; flashPlayerBleed(); }
@@ -295,7 +295,7 @@ export function createHitEffects({
      *  The flash ENDS on FlatAnim.done, which is DFU's OneShot
      *  self-destruct - not the missile's 0.6s lifetime, which governs
      *  the parent rather than the billboard. */
-    showImpactFlash: (archive, pos) => spawn(IMPACT_RECORD, pos, null, { archive, fps: IMPACT_FPS }),
+    showImpactFlash: (archive, pos, scale = 1) => spawn(IMPACT_RECORD, pos, null, { archive, fps: IMPACT_FPS, scale }),   // SUNBABY2: a sky fireball's flash is drawn larger (`scale`)
     /** WW1: Weapon Widget's DoClang / DoThud (FPSWeaponClone IL 0xe0c,
      *  0xf58): TEXTURE.380 record 2, one-shot at 20 fps, twice its size,
      *  at the point the widget worked out. The CLANG's emissive material

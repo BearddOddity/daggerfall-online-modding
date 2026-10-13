@@ -22,12 +22,12 @@
   {
     "name": "ACC1b-3-a-handle-is-ignored-for-the-displayed-name",
     "file": "server-account/src/accounts.js",
-    "old": "  if (typeof handle === 'string' && handle.length > 0) return handle;",
+    "old": "  if (typeof handle === 'string' && handle.length > 0 && !handleLooksLikeEmail(handle)) return handle;",
     "new": "  if (false) return handle;",
     "tests": [
       "test/accountworker.test.js"
     ],
-    "note": "A linked player would be shown, and TOKENED, under their guest name."
+    "note": "A linked player would be shown, and TOKENED, under their guest name. Re-aimed by content at YARD-RANGE / HANDLE-EMAIL (2026-10-11)."
   },
   {
     "name": "ACC1b-4-everybody-is-a-guest",
@@ -134,12 +134,12 @@
   {
     "name": "ACC1b-14-the-token-carries-a-name-the-client-sent",
     "file": "server-account/src/index.js",
-    "old": "          { s: who.player.id, n: displayName(who.player), k: accountKind(who.player), ...wardrobe, mu, lv, ...(guild ?? {}), rc },",
-    "new": "          { s: who.player.id, n: body.name ?? displayName(who.player), k: accountKind(who.player), ...wardrobe, mu, lv, ...(guild ?? {}), rc },",
+    "old": "const signed = { s: who.player.id, n: nameWorn.name, k: accountKind(who.player),",
+    "new": "const signed = { s: who.player.id, n: body.name ?? nameWorn.name, k: accountKind(who.player),",
     "tests": [
       "test/accountworker.test.js"
     ],
-    "note": "THE WHOLE POINT OF THE TOKEN, undone: the client asserts its own name again, only now it is signed."
+    "note": "THE WHOLE POINT OF THE TOKEN, undone: the client asserts its own name again, only now it is signed. The arena merge (re-aimed by content): the mint carries ARENA4's rating. ARENA4b (PIN MOVED, re-aimed by content): the mint carries a realm character's `cl`. LEGACY7 part two (PIN MOVED): re-aimed by content - the house rides beside it. NAME-AS (PIN MOVED): re-aimed by content - the name the mint signs is the one the account chose to wear (`nameWorn`), and still never the client's."
   },
   {
     "name": "ACC1b-15-a-service-with-no-key-mints-nothing-and-says-nothing",
@@ -195,12 +195,12 @@
   {
     "name": "ACC1b-20-an-authenticated-caller-is-unbounded",
     "file": "server-account/src/index.js",
-    "old": "      if (await overRate(ctx, `acct:${who.player.id}`, ACCOUNT_MAX, ACCOUNT_WINDOW_S)) {\n        return no('rate', 429, origin);\n      }",
-    "new": "      void ACCOUNT_MAX; void ACCOUNT_WINDOW_S;",
+    "old": "      if (overAccountRate(who.player.id, nowS, ACCOUNT_MAX, ACCOUNT_WINDOW_S)) {\n        return no('rate', 429, origin);\n      }",
+    "new": "      void overAccountRate; void ACCOUNT_MAX; void ACCOUNT_WINDOW_S;",
     "tests": [
       "test/accountworker.test.js"
     ],
-    "note": "AUDIT-ACC F12 put back: the shape that shipped, where only the open routes were bounded. One valid session could mint Ed25519 signatures and spend D1 without limit - a limit on strangers and not on members is a limit on the wrong axis."
+    "note": "AUDIT-ACC F12 put back: the shape that shipped, where only the open routes were bounded. One valid session could mint Ed25519 signatures and spend D1 without limit - a limit on strangers and not on members is a limit on the wrong axis. ACCT-RATE-MEM: re-aimed at the check as it stands - counted in the isolate's memory (accounts.js overAccountRate)."
   },
   {
     "name": "ACC1b-21-the-rate-limited-caller-is-told-their-secret-is-wrong",
@@ -235,11 +235,11 @@
   {
     "name": "ACC1b-24-the-preflight-forbids-the-header",
     "file": "server-account/src/index.js",
-    "old": "          'access-control-allow-headers': 'content-type, authorization, x-realm-lease, x-realm-seq, x-realm-summary',",
-    "new": "          'access-control-allow-headers': 'content-type, x-realm-lease, x-realm-seq, x-realm-summary',",
+    "old": "          'access-control-allow-headers': 'content-type, authorization, x-realm-lease, x-realm-seq, x-realm-summary, x-d1-bookmark',",
+    "new": "          'access-control-allow-headers': 'content-type, x-realm-lease, x-realm-seq, x-realm-summary, x-d1-bookmark',",
     "tests": [
       "test/accountworker.test.js"
     ],
-    "note": "The header the credential now rides in is one no browser will send unless the preflight allows it. Every cross-origin authenticated call would fail, and the failure would look like a CORS problem rather than the missing word it is."
+    "note": "The header the credential now rides in is one no browser will send unless the preflight allows it. Every cross-origin authenticated call would fail, and the failure would look like a CORS problem rather than the missing word it is. SCALE4g (2026-10-10) re-aimed it by content."
   }
 ]

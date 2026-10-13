@@ -46,7 +46,7 @@ test('DA10: the launcher waits for Play on every launch - held only while an upd
   const started = run(played, { type: 'launching' });
   assert.equal(L.nextStep(started), 'wait');
   const sv = L.viewOf(started);
-  assert.equal(sv.status, 'Starting Daggerfall Online');
+  assert.equal(sv.status, 'Starting DFO Online');
   assert.equal(sv.play.enabled, false, 'one press, one game');
   // "Play without updating" is Play past a download - when the game has files; otherwise it only lets the download run on
   const past = run(downloading, { type: 'play-now' });
@@ -161,7 +161,7 @@ test('DA10: the status bar says where the launcher stands - updated, up to date,
   assert.equal(v(run(fresh({ returning: true }), { type: 'check-none' }))[0], 'Updated to v0.1.4684');
   assert.equal(v(run(fresh(), { type: 'check-failed' }))[0], 'Could not check for updates');
   assert.equal(v(fresh({ checkEnabled: false }))[0], 'Update checks are off');
-  assert.equal(v(run(fresh(), { type: 'check-available', version: '0.1.4700' }, { type: 'play-now' }))[0], 'Starting Daggerfall Online');
+  assert.equal(v(run(fresh(), { type: 'check-available', version: '0.1.4700' }, { type: 'play-now' }))[0], 'Starting DFO Online');
   assert.equal(L.justUpdated(fresh({ lastPlayed: '0.1.4700' })), false, 'a copy older than the one last played (a reinstall) was not "updated"');
   assert.equal(L.viewOf(fresh()).busy, true, 'the gem breathes while it works');
   assert.equal(L.viewOf(run(fresh(), { type: 'check-none' })).busy, false, 'and holds still when it waits on the player');
@@ -223,7 +223,7 @@ test('DA10: the shell - Play is the only way in, the news is the check\'s own re
   assert.match(acts, /case 'open-saves': openSavesFolder\(\); break;/);
   assert.match(main, /\{ label: 'Open Saves Folder', click: \(\) => openSavesFolder\(\) \},/);
   // a dock click with no window opens the launcher, as a launch does
-  assert.match(main, /app\.on\('activate', \(\) => \{ if \(BrowserWindow\.getAllWindows\(\)\.length === 0\) runLauncher\(\); \}\);/);
+  assert.match(main, /app\.on\('activate', \(\) => \{ if \(BrowserWindow\.getAllWindows\(\)\.length === 0 && !directStarting\) runLauncher\(\); \}\);/);
   // File > Locate ARENA2 with the launcher open is the launcher's own door (macOS: the menu bar is the app's)
   assert.match(main, /if \(launcher\) \{ launcherChooseFolder\(\); return; \}/);
 });

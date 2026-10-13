@@ -506,7 +506,7 @@ test('WB9c the pass: nothing to draw touches nothing; the clusters opaque with t
 
 test('WB9c the seams, by source: the relay judges an `xhit` by applyCrystalHit and fans it; the world host hands the court the crystals and their door and sends `xhit`; the dungeon context meets them with the swing, the shaft and the spell by their surface and never in `foes`; hostMagic routes a crystal mark through its own door; the court draws them before its telegraph (mutants: each seam removed)', () => {
   const relay = read('server/src/index.js');
-  assert.match(relay, /if \(m\.k === 'xhit'\) this\._gateFan\(applyCrystalHit\(f, a\.sub, m\.c, m\.d, m\.r, a\.pose && !a\.pose\.dd \? this\._courtOf\(a\.pose\) : null, now, m\.q\)\);/);   // AUDIT WB11 W3: by its blow's sequence
+  assert.match(relay, /if \(m\.k === 'xhit'\) this\._gateFan\(applyCrystalHit\(f, a\.sub, m\.c, m\.d, m\.r, at, now, m\.q\)\);/);   // PIN MOVED (INT11): from `at` - its pose, alive by its word and the count's (test/wb11_gate_host.test.js pins it)   // AUDIT WB11 W3: by its blow's sequence
   const w = read('src/scenes/world.js');
   assert.match(w, /sendCrystal: \(hit\) => !!online\?\.sendGate\?\.\(\{ k: 'xhit', \.\.\.hit \}\),/);
   assert.match(w, /gateCrystals: \(\) => gateCourt\?\.crystalTargets\(\) \?\? null,/);
@@ -518,7 +518,7 @@ test('WB9c the seams, by source: the relay judges an `xhit` by applyCrystalHit a
   assert.match(dc, /if \(f\.crystal != null\) return bossSight\(eye, inViewFn, f\);/);
   assert.match(dc, /for \(const cr of gateCrystalBodies\(\)\) \{ cr\._backFacing = false; live\.push\(cr\); \}/);
   assert.match(dc, /if \(foe\.crystal != null\) \{ hitEnemy = true; swingOnCrystal\(foe, damage\); continue; \}/);
-  assert.match(dc, /const landOnCrystal = \(cr, damage, r\) => !!opts\.onCrystalHit\?\.\(\{ c: cr\.crystal, d: damage, r \}\);/);
+  assert.match(dc, /const landOnCrystal = \(cr, damage, r\) => \(sdRemnant \? sdRemnant\.heartHit\(\{ c: cr\.crystal, d: damage, r \}\) : !!opts\.onCrystalHit\?\.\(\{ c: cr\.crystal, d: damage, r \}\)\);/);   // PIN MOVED (SD8c): a Heart's of the Reset in the Hour
   assert.match(dc, /return landOnCrystal\(cr, dealt, HIT_KINDS\.Spell\);/);
   const hm = read('src/scenes/hostMagic.js');
   assert.match(hm, /if \(mark\?\.crystal != null\) \{ try \{ return !!castAtCrystal\?\.\(sp, mark\.crystal\); \} catch \{ return false; \} \}/);

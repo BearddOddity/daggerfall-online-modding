@@ -29,11 +29,12 @@
   {
     "name": "emit-no-occlusion",
     "file": "src/render/airPass.js",
-    "old": "  if (occluded()) discard;   // EL6\n  outColor = vec4(airDecode(texture(uEmissionTex, vUV).rgb * uEmissionColor), 1.0);",
-    "new": "  outColor = vec4(airDecode(texture(uEmissionTex, vUV).rgb * uEmissionColor), 1.0);",
+    "old": "  if (occluded()) discard;   // EL6\n  if (uRoomsLit > 0.5",
+    "new": "  if (uRoomsLit > 0.5",
     "tests": [
       "test/el6_field.test.js"
-    ]
+    ],
+    "note": "WAGONS2 (FINAL AUDIT, PIN MOVED): re-aimed by content."
   },
   {
     "name": "emit-slack-huge",
@@ -200,7 +201,7 @@
   {
     "name": "casters-five",
     "file": "src/render/shadowPass.js",
-    "old": "export const SHADOW_POINT_CASTERS = 8;   // EL6: six - a gate passage has that many lanterns in reach; HQ1: eight - SC1's cache made a still caster nearly free, so a tavern's every lamp throws its shadow",
+    "old": "export const SHADOW_POINT_CASTERS = 12;   // FLICKER-FIX (2026-10-02): twelve, not eight - a lamp past the eight read the lo map (static casters only), so the player's and the townsfolk's shadows vanished for it and came back when it swapped in (+48 MB of depth layers). EL6: six; HQ1: eight - SC1's cache made a still caster nearly free.",
     "new": "export const SHADOW_POINT_CASTERS = 5;   // EL6",
     "tests": [
       "test/el2_shadows.test.js"

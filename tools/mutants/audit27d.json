@@ -101,8 +101,8 @@
   {
     "name": "AUDIT-B1-duel-opponent-giftable",
     "file": "src/scenes/world.js",
-    "old": "!(duelMgr.fighting && p.id === duelMgr.opponent)\n    && ",
-    "new": "",
+    "old": "openPeers(list, isPartyMate).filter((p) => !(duelMgr.fighting && p.id === duelMgr.opponent) && crowdDrawnHere(p));",
+    "new": "openPeers(list, isPartyMate).filter((p) => crowdDrawnHere(p));",
     "tests": [
       "test/audit27d.test.js"
     ]
@@ -137,8 +137,8 @@
   {
     "name": "AUDIT-B3-concealed-stranger-giftable",
     "file": "src/scenes/world.js",
-    "old": "\n    && !(p.cv && !(social?.party && social.isPartyPeer(p.id))));",
-    "new": ");",
+    "old": "const giftablePeers = (list) => openPeers(list, isPartyMate).filter(",
+    "new": "const giftablePeers = (list) => (list ?? []).filter(",
     "tests": [
       "test/audit27d.test.js"
     ]
@@ -323,7 +323,7 @@
   {
     "name": "AUDIT-F4-in-settings",
     "file": "src/systems/partyRestLaw.js",
-    "old": "Turn on \"Rest with my party\" (Features, Other players) to rest with them.",
+    "old": "Turn on \"Rest with my party\" (${optionPath('card:peerSprites')}) to rest with them.",
     "new": "Turn on \"Rest with my party\" in Settings to rest with them.",
     "tests": [
       "test/audit27d.test.js"
@@ -432,20 +432,22 @@
   {
     "name": "AUDIT-S2-no-guard",
     "file": "src/scenes/decorTool.js",
-    "old": "    if (stationBusy.has(piece.id)) return false;\n",
-    "new": "",
+    "old": "    return pieceWrite(piece.id, () => stationNow(r, piece, want));\n",
+    "new": "    return stationNow(r, piece, want);\n",
     "tests": [
       "test/homestations.test.js"
-    ]
+    ],
+    "note": "AUDIT YARD-HEIGHT (PIN MOVED, re-aimed by content): the guard is the piece's one queue of writes (pieceWrite) - stationBusy, which it made redundant, is gone."
   },
   {
     "name": "AUDIT-S2-rollback-unsaid",
     "file": "src/scenes/decorTool.js",
-    "old": "        deps.say?.(DECOR_STATION_GOLD_WENT);\n",
+    "old": "    deps.say?.(DECOR_STATION_GOLD_WENT);\n",
     "new": "",
     "tests": [
       "test/homestations.test.js"
-    ]
+    ],
+    "note": "AUDIT YARD-HEIGHT (PIN MOVED, re-aimed by content: one write of a piece at a time)."
   },
   {
     "name": "AUDIT-S3-craft-out-of-signature",

@@ -76,12 +76,18 @@ export function createMotherlodeBook({ door, character, me, nowS, onChange = () 
   const turnMs = Math.floor(Math.max(0, Math.min(1, rand())) * MOTHERLODE_TURN_SPREAD_MS);
   /** AUDIT SILVER-WAYS D7: the account, read again once a MOTHERLODE_ME_MS; D6: another account's receipts let go */
   let meNowV = /** @type {string|null} */ (null), meAt = -Infinity;
-  function meNow() {
+  function meNow(force = false) {
     const t = nowMs();
-    if (t - meAt < MOTHERLODE_ME_MS) return meNowV;
+    if (!force && t - meAt < MOTHERLODE_ME_MS) return meNowV;
     meAt = t;
     const m = me() ?? null;
-    if (m !== meNowV) { meNowV = m; watches.clear(); }
+    if (m !== meNowV) {
+      meNowV = m;
+      watches.clear();
+      // Applied results belong to the old account even if its next read fails. The host hears of it from the
+      // frame's own settle (tick) - never from here: standingOn and found are asked inside the gather host's stand.
+      state.found = null;
+    }
     return meNowV;
   }
   /** the lines said this session, by `warn|key` and `risen|key`; the standing each lode was last stood with */
@@ -102,6 +108,7 @@ export function createMotherlodeBook({ door, character, me, nowS, onChange = () 
   }
 
   async function read() {
+    const m = meNow(true);
     const c = character();
     if (!c || busy) return null;
     busy = true;
@@ -109,7 +116,10 @@ export function createMotherlodeBook({ door, character, me, nowS, onChange = () 
     try {
       let r;
       try { r = await door.motherlodes(c); } catch { r = { ok: false, error: 'offline' }; }
-      readMe = meNow(); readChar = c;
+      // A request belongs to the account and character that started it. A late
+      // answer must not pin their found marker to whoever is signed in now.
+      if (meNow(true) !== m || character() !== c) return null;
+      readMe = m; readChar = c;
       if (!r?.ok) { readAt = nowMs() - MOTHERLODE_READ_MS + MOTHERLODE_RETRY_MS; return r; }
       readAt = nowMs();
       const d = r.data ?? {};
@@ -157,7 +167,7 @@ export function createMotherlodeBook({ door, character, me, nowS, onChange = () 
     /** A Watch receipt the relay handed this socket - kept, the newest for its pixel, where it is this account's. */
     watch(r) {
       const c = readWatchReceipt(r);
-      if (!c || !c.signed || c.s !== meNow()) return false;
+      if (!c || !c.signed || c.s !== meNow(true)) return false;
       const k = `${c.x},${c.y}`;
       if ((watches.get(k)?.i ?? -Infinity) >= c.i) return false;
       watches.delete(k);
@@ -170,17 +180,21 @@ export function createMotherlodeBook({ door, character, me, nowS, onChange = () 
      *  again at its end, so a receipt that arrived during a long act is the one sent) - or null: the relay has not seen
      *  this account there lately. AUDIT SILVER-WAYS D6: this account's alone, whoever signed in since. */
     watchFor(x, y, aheadS = MOTHERLODE_ACT_S) {
+      // Keep frame reads cached, but recheck identity at the actual action.
+      const m = meNow(true);
       const w = watches.get(`${x},${y}`);
-      return w && w.s === meNow() && motherlodeWatchOk(w.i, nowS() + Math.max(0, aheadS)) ? w.r : null;
+      return w && w.s === m && motherlodeWatchOk(w.i, nowS() + Math.max(0, aheadS)) ? w.r : null;
     },
     /** The Motherlodes standing on pixel (`px`, `py`) now, for this account - the host stands them. */
     standingOn(px, py) {
+      meNow(true);
       const t = nowS();
       return state.lodes.filter((l) => l.x === px && l.y === py && state.day === Math.floor(t / 86400) && standing(l, t));
     },
     /** Every Motherlode standing now, wherever it is - the compass's, every frame: AUDIT SILVER-WAYS D7, into `out` (the
      *  caller's own list, emptied first) where one is handed, so the frame makes none. */
     standingAll(out = []) {
+      meNow();
       out.length = 0;
       const t = nowS();
       if (state.day !== Math.floor(t / 86400)) return out;
@@ -190,7 +204,7 @@ export function createMotherlodeBook({ door, character, me, nowS, onChange = () 
     /** A lode by its node key. */
     lodeOf: (key) => state.lodes.find((l) => l.key === key) ?? null,
     /** Whether this account's Motherlode today is found. */
-    found: () => state.found,
+    found: () => { meNow(); return state.found; },   // AUDIT SILVER-WAYS D7: the gather host's marks ask it every frame
     /** A strike's answer heard: the find, the count - and the change of standing handed on; then read again. */
     heard(data) {
       if (!data?.motherlode) return;

@@ -23,7 +23,7 @@ import { createWeapon } from '../src/combat/enemyEquipment.js';
 import { validLootItem } from '../src/systems/loot.js';
 import { GUILD_FOUND_GOLD, GUILD_FOUND_RENOWN } from '../src/net/guildLaw.js';
 import { renownXpFor } from '../src/net/renown.js';
-import { homeSaleRefund } from '../src/net/homeLaw.js';
+import { homeSaleRefund, HOME_PRICE_MIN } from '../src/net/homeLaw.js';
 import { ACCEPTED } from '../src/net/legalLaw.js';   // TERMS1: a request that makes an account carries the versions ticked
 
 const src = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -141,7 +141,8 @@ test('AUDIT REALM2 S1: a character born online starts where chargen starts one -
   assert.equal(s.env.SAVES._map.size, 0);
   // chargen's own - level 1, the purse to the bound - lands; the NEXT checkpoint is no birth (the first is what the
   // realm's later checks measure from)
-  assert.deepEqual(Object.values(await first(freshSave({ goldPieces: REALM_BIRTH_WEALTH_MAX }))), [200, { ok: true, seq: 1 }]);
+  // INT2 (PIN MOVED): a checkpoint's answer says the judge's hold - none for chargen's own
+  assert.deepEqual(Object.values(await first(freshSave({ goldPieces: REALM_BIRTH_WEALTH_MAX }))), [200, { ok: true, seq: 1, tradeHeld: null }]);
   assert.equal((await s.put(made.id, JSON.stringify({ level: 2, goldPieces: REALM_BIRTH_WEALTH_MAX * 2 }), P.secret, { lease: made.lease, seq: 2 })).status, 200);
 });
 
@@ -162,7 +163,7 @@ test('AUDIT REALM2 S1: a customs character\'s first save carries no more than th
     ['no JSON', 'not a save'],
   ]) assert.deepEqual(Object.values(typeof save === 'string' ? await s.put(c.id, save, P.secret, { lease: c.lease, seq: 1 }) : await first(save)), [403, { error: 'customs-allowance' }], why);
   assert.equal(s.env.SAVES._map.size, 0);
-  assert.deepEqual(Object.values(await first({ name: 'Legacy', level: 3, goldPieces: allowance })), [200, { ok: true, seq: 1 }], 'the copy customs capped');
+  assert.deepEqual(Object.values(await first({ name: 'Legacy', level: 3, goldPieces: allowance })), [200, { ok: true, seq: 1, tradeHeld: null }], 'the copy customs capped');   // INT2 (PIN MOVED): the hold said
   // a customs asked with no level is held to a first level's allowance
   const origin2 = 'offline-legacy-04';
   s.exec('INSERT INTO realm_census (player, char_id) VALUES (?, ?)', P.id, origin2);
@@ -200,9 +201,10 @@ test('AUDIT REALM2 S1: the service measures a save as customs does - ONE law (ne
 test('AUDIT REALM2 S2: a house, a piece and a founding are a realm character\'s - any other id is refused and writes nothing (no building squatted at a price of 1, no free station, no free guild); customs carries the census\'s Renown track in - and, since CUSTOMS-CARRY (Mac 2026-09-29: "Carry them"), its home and its guild place from before the realm; a realm character claims, places and founds on its record', async () => {
   const s = await stand();
   const P = await s.account();
-  const house = { mapId: 12345, buildingKey: 777, region: 17 };
-  assert.deepEqual(Object.values(await s.call('/v1/homes/claim', { ...house, character: 'madeUpId01', price: 1 }, P.secret)), [400, { error: 'realm-only' }]);
-  for (let k = 1; k <= 3; k++) assert.equal((await s.call('/v1/homes/claim', { ...house, buildingKey: 1000 + k, character: `fake${k}0000`, price: 1 }, P.secret)).body.error, 'realm-only');
+  const house = { mapId: 12345, buildingKey: 777, region: 17, layout: null };
+  // HOME-PRICE (PIN MOVED): a price of 1 is no home's online now (refused before the id is read) - the cheapest one is
+  assert.deepEqual(Object.values(await s.call('/v1/homes/claim', { ...house, character: 'madeUpId01', price: HOME_PRICE_MIN }, P.secret)), [400, { error: 'realm-only' }]);
+  for (let k = 1; k <= 3; k++) assert.equal((await s.call('/v1/homes/claim', { ...house, buildingKey: 1000 + k, character: `fake${k}0000`, price: HOME_PRICE_MIN }, P.secret)).body.error, 'realm-only');
   assert.deepEqual(s.rows('SELECT COUNT(*) AS n FROM homes'), [{ n: 0 }], 'no building taken');
   // an offline character that played online before the realm: census'd, its home and its guild from before the realm
   const origin = 'offline-0001';
@@ -255,7 +257,7 @@ test('AUDIT REALM2 S3: every realm act whose batch COMMITS and then throws keeps
   const P = await s.account();
   const R = await s.character(P, 'Payer', { name: 'Payer', level: 9, goldPieces: 500_000, items: [], bankAccounts: new Array(20).fill(0).map(() => ({ accountGold: 0 })) });
   s.renown(P, R.id);
-  const house = { mapId: 7, buildingKey: 9, region: 17 };
+  const house = { mapId: 7, buildingKey: 9, region: 17, layout: null };
   const lost = async (path, body) => {
     const at = R.at();
     s.hooks.afterCommit = true;
@@ -264,14 +266,14 @@ test('AUDIT REALM2 S3: every realm act whose batch COMMITS and then throws keeps
     assert.ok(s.saveStands(R.id), `${path}: the save the row names stands`);
     assert.equal((await s.load(R.id, P.secret)).seq, at.seq + 1);
   };
-  await lost('/v1/homes/claim', { ...house, character: R.id, price: 1_000 });
+  await lost('/v1/homes/claim', { ...house, character: R.id, price: HOME_PRICE_MIN });   // HOME-PRICE (PIN MOVED): a price inside the online range, where it was 1,000
   await lost('/v1/homes/decor/place', { mapId: 7, buildingKey: 9, character: R.id, piece: { id: 'p1', model: 41000, flat: null, pos: [0, 0, 0], rot: [0, 0, 0], scale: 1, light: null, storage: false, paid: 40 } });
   await lost('/v1/homes/release', { mapId: 7, buildingKey: 9 });
   await lost('/v1/guilds/found', { character: R.id, name: 'Lost Answers', tag: 'LOST' });
   await lost('/v1/guilds/deposit', { character: R.id, gold: 1_000 });
   const save = (await s.load(R.id, P.secret)).save;
-  assert.deepEqual([save.goldPieces, save.bankAccounts[17].accountGold], [500_000 - 1_000 - 40 - GUILD_FOUND_GOLD - 1_000, homeSaleRefund(1_000) + 20],
-    'each landed once: the house, the piece, the founding and the deposit paid, the sale\'s share and the piece\'s half into the region\'s account');
+  assert.deepEqual([save.goldPieces, save.bankAccounts[17].accountGold], [500_000 - HOME_PRICE_MIN - 40 - GUILD_FOUND_GOLD - 1_000, homeSaleRefund(HOME_PRICE_MIN) + 20],
+    'each landed once: the house, the piece, the founding and the deposit paid, the sale\'s share and the piece\'s half into the Empire\'s account');   // AUDIT HOME-PRICE D7: index 17, EMPIRE-ACCOUNT's
   assert.deepEqual(s.rows('SELECT treasury FROM guilds'), [{ treasury: 1_000 }]);
 });
 
@@ -283,8 +285,8 @@ test('AUDIT REALM2 S4: an offer is its record BOTH ways - a record carrying what
   const wire = validLootItem(dagger);
   assert.ok(recordIsOffered(JSON.parse(JSON.stringify(dagger)), wire), 'an honest record is its wire projection');
   assert.ok(recordIsOffered({ ...dagger, equipSlot: null, questItem: false, stackCount: 3, value: 1 }, wire), 'its count, its price and the receiver\'s marks aside');
-  assert.deepEqual(TRADE_VOLATILE_FIELDS, ['stackCount', 'value', 'equipSlot', 'questItem']);
-  const minimal = validLootItem({ templateIndex: 113, material: 9 });
+  assert.deepEqual(TRADE_VOLATILE_FIELDS, ['stackCount', 'value', 'equipSlot', 'questItem', 'acquired', 'wagonEntry', 'horseBond', 'horseFed']);   // WAGONS2-VISIT (AUDIT): a caravan's door, its owner's word; STEED1: a horse's bond, its owner's
+  const minimal = validLootItem({ templateIndex: 113, group: 'Weapons', material: 9 });   // INT1 (PIN MOVED): a piece with no group is no piece the item law takes
   for (const [why, rec] of [
     ['a worn edge', { ...dagger, currentCondition: 1 }],
     ['an enchantment nobody was shown', { ...dagger, enchantments: [{ type: 9, param: 0 }] }],
@@ -366,16 +368,17 @@ test('AUDIT REALM2 S7: two checkpoints under one lease race to one sequence - th
   const c = await s.character(P, 'Racer', { name: 'Racer', goldPieces: 1 });
   const realPut = s.env.SAVES.put.bind(s.env.SAVES);
   s.env.SAVES.put = async (k, b) => { await new Promise((r) => { setTimeout(r, 20); }); return realPut(k, b); };
+  // INT2 (PIN MOVED): saves the judge reads clean, and the answer that says so
   const [x, y] = await Promise.all([
-    s.put(c.id, '{"v":"first"}', P.secret, { lease: c.lease, seq: 2 }),
-    s.put(c.id, '{"v":"retry"}', P.secret, { lease: c.lease, seq: 2 }),
+    s.put(c.id, JSON.stringify(freshSave({ name: 'Racer', v: 'first' })), P.secret, { lease: c.lease, seq: 2 }),
+    s.put(c.id, JSON.stringify(freshSave({ name: 'Racer', v: 'retry' })), P.secret, { lease: c.lease, seq: 2 }),
   ]);
-  assert.deepEqual([x, y].map((r) => [r.status, r.body]).sort((m, n) => m[0] - n[0]), [[200, { ok: true, seq: 2 }], [409, { error: 'seq', seq: 2 }]]);
+  assert.deepEqual([x, y].map((r) => [r.status, r.body]).sort((m, n) => m[0] - n[0]), [[200, { ok: true, seq: 2, tradeHeld: null }], [409, { error: 'seq', seq: 2 }]]);
   assert.equal(s.rows('SELECT lease FROM realm_characters')[0].lease, c.lease, 'the lease stands');
   // a join while the checkpoint's object is on its way
   let joined = null;
   s.env.SAVES.put = async (k, b) => { joined = await s.call('/v1/realm/join', { id: c.id }, P.secret); return realPut(k, b); };
-  assert.deepEqual(Object.values(await s.put(c.id, '{"v":"late"}', P.secret, { lease: c.lease, seq: 3 })), [409, { error: 'lease' }]);
+  assert.deepEqual(Object.values(await s.put(c.id, JSON.stringify(freshSave({ name: 'Racer', v: 'late' })), P.secret, { lease: c.lease, seq: 3 })), [409, { error: 'lease' }]);
   assert.equal(joined.status, 200);
 });
 
@@ -388,7 +391,7 @@ test('AUDIT REALM2 S8: a lone guildmaster is deleted only once its treasury is e
   s.renown(P, m.id);
   assert.equal((await s.call('/v1/guilds/found', { character: m.id, name: 'Rich Guild', tag: 'RICH', realm: m.at() }, P.secret)).status, 200);
   assert.equal((await s.call('/v1/guilds/deposit', { character: m.id, gold: 100_000, realm: m.at() }, P.secret)).body.treasury, 100_000);
-  assert.deepEqual(Object.values(await s.call('/v1/guilds/leave', { character: m.id }, P.secret)), [409, { error: 'guild-treasury' }], 'the guild\'s own law');
+  assert.deepEqual(Object.values(await s.call('/v1/guilds/leave', { character: m.id }, P.secret)), [409, { error: 'guild-treasury', keeps: ['guild-treasury'] }], 'the guild\'s own law');   // PIN MOVED: GUILD3c (bible/11-Multiplayer/Guilds-Made-Plain.md) - the whole list beside the first
   assert.deepEqual(Object.values(await s.call('/v1/realm/delete', { id: m.id }, P.secret)), [409, { error: 'guild-treasury' }]);
   assert.ok(s.saveStands(m.id), 'the character stands');
   assert.deepEqual(s.rows('SELECT treasury, (SELECT COUNT(*) FROM guild_members) AS members FROM guilds'), [{ treasury: 100_000, members: 1 }]);

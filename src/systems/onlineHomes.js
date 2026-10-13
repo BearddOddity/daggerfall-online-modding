@@ -39,13 +39,22 @@
 
 import {
   HOME_ENTRIES, HOME_ENTRY_DEFAULT, homeMapIdOk, homeBuildingKeyOk, homePriceOk, homeMayEnter, rentPriceOk, rentDaysLeft, homeLookOf,
+  homeInArenaCell,   // ARENA4b: the arena's cell, the service's own law
+  homeDeedOf,   // FIELD BUGS 2026-10-04d KNIGHT-HOUSE: the deed a save holds to a building, as the service's hold reads it
 } from '../net/homeLaw.js';
+import { ARENA_TEXT } from './arenaText.js';   // ARENA4b: the bank's letter for a home the arena displaced
 import { RENT_VERB, rentRowLabel, rentTenantLabel } from './homeRent.js';   // HOME-RENT: the door's rows for a room to rent
 import { BUILDING_TYPES, isResidence } from '../world/buildingNames.js';
-import { DEED_SELL_MULT, CROSSED_DEED_LINES } from './banking.js';
-import { guildTagText } from '../net/guildLaw.js';   // GUILD1d: a hall's tag, as a name wears it
+import { DEED_SELL_MULT, CROSSED_DEED_LINES, deedStands } from './banking.js';   // FIELD BUGS 2026-10-04d KNIGHT-HOUSE: a deed names its building only where it stands
+import { guildTagText, GUILD_MOVE_MAX } from '../net/guildLaw.js';   // GUILD1d: a hall's tag, as a name wears it; HALL-GOLD: a deposit's cap, said
 import { GUILD_HALL_ENTRIES, GUILD_HALL_ENTRY_WORDS, guildHallPrice } from '../net/hallLaw.js';   // GUILD1d: a guild's hall
 import { heraldryOf } from '../net/heraldryLaw.js';   // GUILD1d: a hall's heraldry, off the town's answer
+import { layoutStampOfMapId, CLASSIC_LAYOUT } from './layoutPins.js';   // WD3: a home is bought in its town's layout
+import { goldSum as gold, EMPIRE_ACCOUNT_WORDS } from './homeWords.js';   // HOME-PRICE: every sum with its thousands; online, the Empire's account (EMPIRE-ACCOUNT)
+import { walletReserve } from '../net/realmGoldLaw.js';   // MARKET-AUDIT: a refusal gives back exactly what the payment took
+import {
+  HOME_VOTE_UP, HOME_VOTE_DOWN, homeScoreOf, homeMyVoteOf, homeShunned, homeShunnedInsiderLine, homeVotesLine, HOME_SHUNNED_LINE,
+} from '../net/homeVoteLaw.js';   // HOME-VOTE: a town's word on a player's house
 
 /** How long a town's answer is believed before a door asks again. */
 export const HOME_TOWN_TTL_MS = 60_000;
@@ -73,15 +82,40 @@ export function homeCandidate(bd) {
   return t === BUILDING_TYPES.HouseForSale || isResidence(t) || t === BUILDING_TYPES.House5 || t === BUILDING_TYPES.House6;
 }
 
-/** ...and whether one can be BOUGHT: a candidate no active quest is using (GetHousesForSale's own exclusion). */
+/** ...and whether one can be BOUGHT: a candidate no active quest is using (GetHousesForSale's own exclusion).
+ *  FIELD BUGS 2026-10-05 CRYPT-SALE (Discord: "I bought a house and only get the following message This house has
+ *  nothing of value"; "the house inside the graveyard in Wayrest"; "Wickcroft Tombs"): and one with a room to enter.
+ *  HOME2's House5 is the graveyard's crypt - six GRVE blocks, 67 buildings in 67 places - and its interior holds no
+ *  model, so DFU's AssignBlockData refuses it (DaggerfallInterior.cs:388-389); DFU never sells one (GetHousesForSale
+ *  takes HouseForSale and House1-4, BuildingDirectory.cs:156-184). The producers stamp `hasInterior`
+ *  (talkTopics.js); a record without the stamp is not refused. Not in homeCandidate: a crypt already bought stays its
+ *  owner's home, plaque and "Sell it" row with it. */
 export const homePurchasable = (bd, { isActiveQuestBuilding = null } = {}) =>
-  homeCandidate(bd) && !(isActiveQuestBuilding?.(bd) ?? false);
+  homeCandidate(bd) && bd.hasInterior !== false && !(isActiveQuestBuilding?.(bd) ?? false);
 
 /** The scene an online home's things are kept under - its own, never the building's (the header). */
 export const homeSceneName = (mapId, buildingKey) => `OnlineHome [MapID=${Number(mapId) >>> 0}, BuildingKey=${buildingKey}]`;
 
 /** What a home sells back for: Daggerfall's deed share (DEED_SELL_MULT) of what was paid. */
 export const homeRefund = (price) => Math.trunc((Number.isSafeInteger(price) && price > 0 ? price : 0) * DEED_SELL_MULT);
+
+/** HOME-PRICE (net/homeLaw.js homeOnlinePrice): a town's size in RMB blocks, off its MAPS.BSA exterior - the door's
+ *  building record carries it (`townBlocks`, scenes/world.js and scenes/exterior.js buildingDataForDoor). 0 unknown. */
+export const homeTownBlocks = (dfLoc) => {
+  const ext = dfLoc?.exterior?.exteriorData;
+  const n = (ext?.width ?? 0) * (ext?.height ?? 0);
+  return Number.isSafeInteger(n) && n > 0 ? n : 0;
+};
+/** HOME-PRICE: the ground a model stands on, in square metres - its box's width times its depth (arch3dFile.js
+ *  `size`, model units) at `scale` metres a unit (world/meshReader.js GLOBAL_SCALE). 0 for none. */
+export const homeFootprintM2 = (size, scale) => {
+  const m2 = (size?.x ?? 0) * (size?.z ?? 0) * scale * scale;
+  return Number.isFinite(m2) && m2 > 0 ? m2 : 0;
+};
+/** HOME-PRICE: WHAT SELLING MY HOME GIVES BACK, as the door asks it: the service's own sum (the town's answer's
+ *  `refund` - the deed share of what was paid for it, which is what the sale pays), else the deed share of `price`, the
+ *  house's price now. */
+export const homeSaleOffer = (home, price) => (Number.isSafeInteger(home?.refund) && home.refund >= 0 ? home.refund : homeRefund(price));
 
 /**
  * WHAT A HOME'S DOOR DOES FOR THIS PLAYER, the one answer every door reads. `home` is `homeAt`'s view or null.
@@ -143,11 +177,11 @@ export const homeLockedLine = (home) => (home.hall ? `This is the hall of ${home
 /** What a visitor reads at a home's cupboard. */
 export const homeBelongsLine = (home) => `This belongs to ${home.hall ? home.hall.name : home.owner}.`;
 /** The hover's line under a house anyone may buy. */
-export const homeForSaleLine = (price) => `Can be your home: ${price} gold`;
+export const homeForSaleLine = (price) => `Can be your home: ${gold(price)} gold`;
 /** The offer at the door. */
-export const homeOfferLines = (price) => ['This house can be your home.', `It costs ${price} gold, from your purse and this region's bank account.`, 'Buy it?'];
+export const homeOfferLines = (price) => ['This house can be your home.', `It costs ${gold(price)} gold, from your purse and ${EMPIRE_ACCOUNT_WORDS}.`, 'Buy it?'];
 export const HOME_BOUGHT_LINE = 'This house is your home now. Only you can enter it until you say otherwise.';
-export const homeShortLine = (price) => `You need ${price} gold, in your purse and this region's bank account together.`;
+export const homeShortLine = (price) => `You need ${gold(price)} gold, in your purse and ${EMPIRE_ACCOUNT_WORDS} together.`;
 /**
  * HOME2 (Mac: "We need to ensure any house can be bought"; offered the door's offer on any click but Steal, with "our
  * tooltip implementation"): THE DOOR'S VERBS ON THE PLAQUE. HOME1 offered a house only to a click in Info mode, a
@@ -162,12 +196,16 @@ export const homeShortLine = (price) => `You need ${price} gold, in your purse a
  */
 export const HOME_BUY_ARM_MS = 5_000;
 export const HOME_VERB = Object.freeze({ enter: 'home-enter', buy: 'home-buy', entry: 'home-entry', sell: 'home-sell', rent: RENT_VERB });   // HOME-RENT: a room rented at the door
+/** HOME-VOTE: the town's word on another's home - the vote's own verbs beside a home's, as a hall's are. AUDIT B3: taking
+ *  one's vote back is a verb of its own, so a press sends what the row it pressed says - two quick presses on Vote up are
+ *  two votes up, never a vote and its taking back. */
+export const HOME_VOTE_VERB = Object.freeze({ up: 'home-vote-up', down: 'home-vote-down', clear: 'home-vote-clear' });
 /** GUILD1d: a house bought as its guild's hall, and who may walk into a hall - the hall's own verbs beside a home's. */
 export const HALL_VERB = Object.freeze({ buy: 'home-hall', entry: 'home-hall-entry' });
 /** The rows over a house anyone may buy, at `price`; `armed` after its first press. */
 export const homeBuyRows = (price, armed = false) => [
   { id: HOME_VERB.enter, label: 'Go in' },
-  { id: HOME_VERB.buy, label: armed ? `Click again to buy: ${price} gold` : `Buy it: ${price} gold` },
+  { id: HOME_VERB.buy, label: armed ? `Click again to buy: ${gold(price)} gold` : `Buy it: ${gold(price)} gold` },
 ];
 /** The rows over my own home: go in, who may enter (a press moves it on), sell it (its own window - the warning
  *  that what is inside is lost is not a row's to say). */
@@ -190,6 +228,58 @@ export function homeVisitorRows(home, door, nowS = Math.floor(Date.now() / 1000)
   if (!home.rent || home.mine) return null;
   return [...(door === 'enter' ? [{ id: HOME_VERB.enter, label: 'Go in' }] : []), { id: HOME_VERB.rent, label: rentRowLabel(home.rent.from) }];
 }
+// ═══ HOME-VOTE (2026-10-10) - THE TOWN'S WORD ON A PLAYER'S HOUSE, AT ITS DOOR ═════════════════════════════════════════
+// The owner: "a house voting system within vicinity of player houses. If the house votes run negative, the exterior
+// decorations/interior decorations should not be shown to other players" (net/homeVoteLaw.js). A vote is cast standing
+// at the house - its door's plaque lists "Vote up" and "Vote down" under whatever else the door does (worldModes.js),
+// and where the plaque draws no rows an Info press asks (openHomeVoteMenu).
+
+/** HOME-VOTE: whether the player looking may vote on this home (`homeAt`'s view) - anybody's but their own account's
+ *  (`mine`: any of its characters'), and never a hall of their own guild - any character of their account's in it
+ *  (`insider`, AUDIT A5; `member`, the playing character's); never a knight's deed house (AUDIT HOME-VOTE II B5: its
+ *  room, yard and paint are its save's - a vote hid nothing). The service holds the same line (server-account/src/
+ *  homeVotes.js VOTABLE). */
+export const homeVotable = (home) => !!home && !home.own && home.mine !== true && home.deed !== true && !(home.hall && (home.member === true || home.insider === true));
+/** HOME-VOTE: the vote a row's verb sends - up, down, or (its own verb, AUDIT B3) the one standing taken back; null for a
+ *  verb that is no vote's. */
+export const homeVoteOfVerb = (id) => (id === HOME_VOTE_VERB.up ? HOME_VOTE_UP : id === HOME_VOTE_VERB.down ? HOME_VOTE_DOWN : id === HOME_VOTE_VERB.clear ? 0 : null);
+/** HOME-VOTE: the door's two vote rows, to a player who may vote on it - each saying what its press does: the vote
+ *  standing is taken back by its own row. AUDIT HOME-VOTE II A3: to one who may not (a hall's member now) but has a
+ *  vote standing on it - cast before they joined - the take-back alone, which the service never refuses. */
+export function homeVoteRows(home) {
+  const mine = homeMyVoteOf(home?.myVote);
+  if (!homeVotable(home)) return mine ? [{ id: HOME_VOTE_VERB.clear, label: `Take back your vote ${mine === HOME_VOTE_UP ? 'up' : 'down'}` }] : [];
+  return [
+    mine === HOME_VOTE_UP ? { id: HOME_VOTE_VERB.clear, label: 'Take back your vote up' } : { id: HOME_VOTE_VERB.up, label: 'Vote up' },
+    mine === HOME_VOTE_DOWN ? { id: HOME_VOTE_VERB.clear, label: 'Take back your vote down' } : { id: HOME_VOTE_VERB.down, label: 'Vote down' },
+  ];
+}
+/** HOME-VOTE: whether a door row is a vote's. */
+export const isHomeVoteVerb = (id) => homeVoteOfVerb(id) !== null;
+/** AUDIT HOME-VOTE II A3: whether `vote` may be pressed at this home - any, where I may vote on it; the take-back (0) of
+ *  a vote I have standing, where I may not (a hall whose guild I joined since). */
+export const homeVotePressable = (home, vote) => homeVotable(home) || (vote === 0 && !!homeMyVoteOf(home?.myVote));
+/** HOME-VOTE: the Info press's box's two choices at a home I may vote on (where no plaque is drawn - worldModes.js
+ *  openHomeVoteMenu): U and D, each the door's own row - its label and the vote it sends. */
+export const homeVoteChoices = (home) => homeVoteRows(home).map((row) => {
+  // AUDIT HOME-VOTE II A3: D the row of the vote down - the down row, or the take-back of one - U the other's, whichever rows stand
+  const down = row.id === HOME_VOTE_VERB.down || (row.id === HOME_VOTE_VERB.clear && homeMyVoteOf(home.myVote) === HOME_VOTE_DOWN);
+  return { code: down ? 'KeyD' : 'KeyU', label: `${down ? 'D' : 'U'} - ${row.label}`, vote: homeVoteOfVerb(row.id) };
+});
+/** HOME-VOTE: the lines under a home's door - to a voter its score and their own vote (once there is either) and, shunned,
+ *  that its decorations are hidden; to its insiders (its owner's account, a hall's members) its score once it has one,
+ *  and, shunned, that the town no longer sees them. */
+export function homeVoteLines(home) {
+  if (!home) return [];
+  const score = homeScoreOf(home.score);
+  if (!homeVotable(home)) {
+    if (homeShunned(score)) return [homeShunnedInsiderLine(score, !!home.hall)];
+    return score !== 0 ? [homeVotesLine(score)] : [];
+  }
+  const lines = score !== 0 || homeMyVoteOf(home.myVote) ? [homeVotesLine(score, homeMyVoteOf(home.myVote))] : [];
+  return homeShunned(score) ? [...lines, HOME_SHUNNED_LINE] : lines;
+}
+
 /**
  * GUILD1d (Seats-Arc 8.2): THE HALL'S ROWS. A guildmaster whose guild holds no hall reads, under a house anyone may buy,
  * "Buy it for <guild>: N gold from the treasury" - the home's price and half again (hallLaw.js guildHallPrice), armed by
@@ -199,7 +289,7 @@ export function homeVisitorRows(home, door, nowS = Math.floor(Date.now() / 1000)
 export function homeHallBuyRow(price, guild, armed = false) {
   if (!guild || guild.rank !== 0 || guild.hall) return null;
   const cost = guildHallPrice(price);
-  return { id: HALL_VERB.buy, label: armed ? `Click again to buy it for ${guild.name}: ${cost} gold` : `Buy it for ${guild.name}: ${cost} gold from the treasury` };
+  return { id: HALL_VERB.buy, label: armed ? `Click again to buy it for ${guild.name}: ${gold(cost)} gold` : `Buy it for ${guild.name}: ${gold(cost)} gold from the treasury` };
 }
 /** AUDIT PROF-541 G2, R2-H1: WHETHER I MAY TURN A HALL'S DOOR ("Who may enter") - a hall whose `hallEntry` the service
  *  lets me set (setHallEntry: the rank alone), never `keeper` (a realm character's too). The row's gate and the press's
@@ -211,12 +301,19 @@ export function homeHallRows(home, door) {
   return [{ id: HOME_VERB.enter, label: 'Go in' }, ...(hallEntryTurnable(home) ? [{ id: HALL_VERB.entry, label: `Who may enter: ${GUILD_HALL_ENTRY_WORDS[home.entry] ?? GUILD_HALL_ENTRY_WORDS.guild}` }] : [])];
 }
 /** AUDIT GUILD1d A3: the offer box's hall choice (the plaque-less click's), for a guildmaster whose guild holds no hall. */
-export const hallOfferLabel = (price, guild) => `G - buy it for ${guild?.name ?? 'your guild'}: ${guildHallPrice(price)} gold from the treasury`;
+export const hallOfferLabel = (price, guild) => `G - buy it for ${guild?.name ?? 'your guild'}: ${gold(guildHallPrice(price))} gold from the treasury`;
 /** GUILD1d: who may walk into a hall after `entry`, a press on the row: members, anyone, and round again. */
 export const hallNextEntry = (entry) => GUILD_HALL_ENTRIES[(Math.max(0, GUILD_HALL_ENTRIES.indexOf(entry)) + 1) % GUILD_HALL_ENTRIES.length];
 /** GUILD1d: the hall bought and refused at its door, in words. */
 export const hallBoughtLine = (name) => `This house is the hall of ${name} now. Its members may walk in; its Officers may furnish it.`;
-export const hallShortLine = (cost) => `The treasury needs ${cost} gold put in by realm characters to buy this hall.`;
+/** HALL-GOLD (FIELD BUGS 2026-10-03, from the Patreon chat: "we have the cash, began with putting it all in guild bank,
+ *  but then when we went to buy it says whats above ... so went and took all out and put in in bank thinking it meant it
+ *  had to be within the realm ... that took all night to figure out"): THE TWO REFUSALS, EACH ITS OWN WORDS. Both read
+ *  "The treasury needs N gold put in by realm characters" - "the realm" read as a place, so the gold went to a bank
+ *  account, which never pays for a hall - and neither said which guard held. A treasury short of the price, and one that
+ *  holds it but not enough of it counted (halls.js buyHall: `treasury` and `realm_gold`, guild-treasury-short and -old). */
+export const hallShortLine = (cost) => `The guild's treasury holds less than ${gold(cost)} gold. Put it in at the Guild tab's Treasury (Social, then Guild), at most ${gold(GUILD_MOVE_MAX)} at a time - gold in a bank account does not pay for a hall.`;
+export const hallOldGoldLine = (cost) => `The treasury holds less than ${gold(cost)} gold that realm characters put in - only that gold buys a hall. Gold put in before the realm, or by a character outside it, stays in the treasury but does not count.`;
 /** AUDIT GUILD1d A6/A7: a hall's cupboard to its members, and a hall's own words for a drop (anyone's) and a spell (a
  *  visitor's - its members cast in it). */
 export const HALL_CHEST_TITLE = "The Guild's Chest";
@@ -230,8 +327,8 @@ export const HALL_BOARD_COLD = "The guild's board cannot be read now.";
  *  cannot be read (offline, the seats shut). */
 export const HALL_OF_RECORDS_TEXT = 'Hall of Records';
 export const HALL_OF_RECORDS_SHUT = 'The Hall of Records cannot be read now.';
-/** GUILD1d: a hall's chest pressed where the Guild tab cannot open. */
-export const HALL_CHEST_SHUT = "The guild's chest holds the guild Stores - open the Guild tab of the Social panel to reach them.";
+/** GUILD1d: a hall's chest pressed where the Guild tab cannot open. GUILD2b: the chest is the guild's vault now. */
+export const HALL_CHEST_SHUT = "The guild's chest is the guild's vault - open the Guild tab of the Social panel to reach it.";
 
 /** Who may enter after `entry`, a press on the row: only me, my party, anyone, my guild, and round again. */
 export const homeNextEntry = (entry) => HOME_ENTRIES[(Math.max(0, HOME_ENTRIES.indexOf(entry)) + 1) % HOME_ENTRIES.length];
@@ -242,14 +339,15 @@ export const HOME_OFFER_PASS = 'N - just go in';
 /** The owner's menu at their own door. */
 export const homeOwnerLines = (home) => ['This is your home.', homeEntryLine(home.entry)];
 export const homeEntryLine = (entry) => `Who may enter: ${HOME_ENTRY_WORDS[entry] ?? HOME_ENTRY_WORDS[HOME_ENTRY_DEFAULT]}.`;
-export const homeSaleLines = (refund) => [`Sell your home for ${refund} gold?`, "The gold goes to this region's bank account. Anything left inside is lost.",
+export const homeSaleLines = (refund, rentDue = 0) => [rentDue > 0 ? `Sell your home for ${gold(refund)} gold, and the ${gold(rentDue)} gold of rent you have not collected?` : `Sell your home for ${gold(refund)} gold?`,   // AUDIT HOME-PRICE C3: the held rent the sale pays with it
+  `The gold goes to ${EMPIRE_ACCOUNT_WORDS}. Anything left inside is lost.`,
   'Its placed pieces go too, for half of what they cost; your own things come back to your pack.'];   // DECOR1e; DECOR2a
 /** HOME-CROSSED (FIELD BUGS 2026-09-30): a home customs carried in is never bought back online - the bank's own words for
  *  a crossed deed (RESTORE), and that it stays a home. The door says them and asks no price. */
 export const HOME_CROSSED_LINES = Object.freeze([...CROSSED_DEED_LINES, 'It stays your home.']);
-/** The sale said: the home's share, and (DECOR1e) its pieces' half, both into the region's account. */
-export const homeSoldLine = (refund, piecesBack = 0, rent = 0) => `You sold your home. ${refund + piecesBack + rent} gold went to this region's bank account`
-  + ([piecesBack > 0 ? `${piecesBack} of it for its placed pieces` : null, rent > 0 ? `${rent} of it rent you had not collected` : null].filter(Boolean).map((t, i) => (i ? ` and ${t}` : `, ${t}`)).join('')) + '.';   // HOME-RENT: the held rent named
+/** The sale said: the home's share, and (DECOR1e) its pieces' half, both into the Empire's account (EMPIRE-ACCOUNT). */
+export const homeSoldLine = (refund, piecesBack = 0, rent = 0) => `You sold your home. ${gold(refund + piecesBack + rent)} gold went to ${EMPIRE_ACCOUNT_WORDS}`
+  + ([piecesBack > 0 ? `${gold(piecesBack)} of it for its placed pieces` : null, rent > 0 ? `${gold(rent)} of it rent you had not collected` : null].filter(Boolean).map((t, i) => (i ? ` and ${t}` : `, ${t}`)).join('')) + '.';   // HOME-RENT: the held rent named
 /** The bank's answer to Buy House online (Mac chose the door, not the bank - its list is the offline house). */
 export const HOME_BANK_LINES = Object.freeze(['Online, a home is bought', 'at its own front door.']);
 
@@ -257,10 +355,11 @@ export const HOME_BANK_LINES = Object.freeze(['Online, a home is bought', 'at it
  * THE CLIENT'S REGISTRY over `api` (net/accountClient.js accountHomes: every answer `{ ok, data }` or
  * `{ ok: false, error }`, never a throw). `character()` is the character playing - a home is ONE character's
  * (`own`), though its account may always walk in (`mine`). Answers `{ ensure, waitFor, known, homeAt, claim,
- * release, setEntry, version }`; `version` moves on every change a door would show.
- * @param {{ api: any, character?: () => (string|null), now?: () => number, ttlMs?: number }} opts
+ * release, setEntry, version }`; `version` moves on every change a door would show. LEGACY7 part five: `onWrote(mapId,
+ * buildingKey)` told of each change of mine (a claim, a release, an entry) - the line's houses read again.
+ * @param {{ api: any, character?: () => (string|null), now?: () => number, ttlMs?: number, onWrote?: ((mapId: number, buildingKey: number) => void) | null }} opts
  */
-export function createOnlineHomes({ api, character = () => null, now = () => Date.now(), ttlMs = HOME_TOWN_TTL_MS }) {
+export function createOnlineHomes({ api, character = () => null, now = () => Date.now(), ttlMs = HOME_TOWN_TTL_MS, onWrote = null }) {
   /** @type {Map<number, {at: number, homes: Map<number, any>}>} */
   const towns = new Map();
   /** @type {Map<number, Promise<boolean>>} */
@@ -309,6 +408,8 @@ export function createOnlineHomes({ api, character = () => null, now = () => Dat
             entry: HOME_ENTRIES.includes(h.entry) ? h.entry : HOME_ENTRY_DEFAULT,
             mine: h.mine === true, character: typeof h.character === 'string' ? h.character : null,
             crossed: h.crossed === true,   // HOME-CROSSED: mine, carried in through customs - no sale
+            refund: Number.isSafeInteger(h.refund) && h.refund >= 0 ? h.refund : null,   // HOME-PRICE: mine, what its sale pays back
+            rentDue: Number.isSafeInteger(h.rentDue) && h.rentDue > 0 ? h.rentDue : 0,   // AUDIT HOME-PRICE C3: and the rent held on it
             // HOME-RENT: rooms free to rent (how many, from what a day), and the playing character's tenancy's end
             rent: Number.isSafeInteger(h.rent?.vacant) && h.rent.vacant > 0 && rentPriceOk(h.rent.from) ? { vacant: h.rent.vacant, from: h.rent.from } : null,
             tenant: Number.isSafeInteger(h.tenant) && h.tenant > 0 ? h.tenant : null,
@@ -319,6 +420,9 @@ export function createOnlineHomes({ api, character = () => null, now = () => Dat
             hall: h.hall && typeof h.hall.name === 'string' ? Object.freeze({ name: h.hall.name, tag: typeof h.hall.tag === 'string' ? h.hall.tag : '', heraldry: heraldryOf(h.hall.heraldry ?? null) }) : null,
             member: h.member === true, keeper: h.keeper === true,
             hallEntry: h.hallEntry === true,   // AUDIT PROF-541 G2: may say who walks in - the rank's, no realm record asked
+            deed: h.deed === true,   // FIELD BUGS 2026-10-04d KNIGHT-HOUSE: a deed the service holds for its knight, never bought
+            score: homeScoreOf(h.score), myVote: homeMyVoteOf(h.vote),   // HOME-VOTE: its votes summed, and this account's own
+            insider: h.insider === true,   // AUDIT HOME-VOTE A5: a hall of a guild this account has any character in
           });
         }
         towns.set(id, { at: now(), homes });
@@ -358,12 +462,22 @@ export function createOnlineHomes({ api, character = () => null, now = () => Dat
     const row = towns.get(idOf(mapId))?.homes.get(buildingKey) ?? null;
     if (!row) return null;
     const me = character();
-    return Object.freeze({ ...row, own: row.mine && typeof me === 'string' && row.character === me });
+    const own = row.mine && typeof me === 'string' && row.character === me;
+    // FIELD BUGS 2026-10-04d KNIGHT-HOUSE: a deed held for the character playing is no online home to it - its door, storage
+    // and bed are Daggerfall's, off the deed in its save (the service leaves it out of the answer to it; one read before
+    // the character was known still names it)
+    if (own && row.deed) return null;
+    return Object.freeze({ ...row, own });
   }
 
-  /** A change I made, shown now and read back from the service after (the owner's name, the others' doors). */
-  function wrote(id, buildingKey, row) {
+  /** A change I made, shown now and read back from the service after (the owner's name, the others' doors).
+   *  LEGACY7 part five: and told (`onWrote`) - a home of mine bought, sold or changed is the line's to learn again.
+   *  HOME-VOTE: a vote on another's home (`mine` false) is no home of the line's - shown and read back, never told. */
+  function wrote(id, buildingKey, row, { mine = true } = {}) {
     writes.set(id, writesTo(id) + 1);   // FB1001 LOOK-STALE: an ask already out answers the town from before this
+    if (mine) {
+      try { onWrote?.(id, buildingKey); } catch { /* a listener's fault is never the registry's */ }
+    }
     const t = towns.get(id);
     if (t) {
       if (row) t.homes.set(buildingKey, row);
@@ -378,13 +492,18 @@ export function createOnlineHomes({ api, character = () => null, now = () => Dat
   const refused = (r) => ({ ok: false, error: r?.error ?? 'server', ...(Number.isSafeInteger(r?.seq) ? { seq: r.seq } : {}) });
   const realmOf = (r) => (r?.data?.realm ? { data: { realm: r.data.realm } } : {});
 
-  async function claim({ mapId, buildingKey, region, price, realm = null }) {
+  async function claim({ mapId, buildingKey, region, price, realm = null, layout = null }) {
     const id = idOf(mapId);
     const me = character();
-    const r = await api.claim({ mapId: id, buildingKey, region, character: me, price, ...(realm ? { realm } : {}) });
+    const r = await api.claim({ mapId: id, buildingKey, region, character: me, price, ...(realm ? { realm } : {}), layout: layout || null });   // WD3 (AUDIT WD3 B2): always said - null is Daggerfall's own
     if (r?.ok) {
       const had = towns.get(id)?.homes.get(buildingKey);
-      wrote(id, buildingKey, { buildingKey, owner: had?.owner ?? '', entry: r.data?.home?.entry ?? HOME_ENTRY_DEFAULT, mine: true, character: me });
+      // HOME-PRICE: and what its sale pays back, as the service answers it (AUDIT HOME-PRICE C2: a claim answered as mine
+      // already says the first one's - or that customs carried it in, `crossed`); an older service's answer says neither,
+      // and the price this claim named stands for it until the town is read again
+      const crossed = r.data?.crossed === true;
+      const refund = crossed ? null : Number.isSafeInteger(r.data?.refund) && r.data.refund >= 0 ? r.data.refund : homeRefund(price);
+      wrote(id, buildingKey, { buildingKey, owner: had?.owner ?? '', entry: r.data?.home?.entry ?? HOME_ENTRY_DEFAULT, mine: true, character: me, crossed, refund, rentDue: 0 });
       return { ok: true, repeat: r.data?.repeat === true, ...realmOf(r) };   // REALM P2.2b: the record's new sequence, in data.realm
     }
     if (r?.error === 'home-taken' || r?.error === 'seq') ensure(id, { force: true });   // somebody's now, or mine already: the door should say whose
@@ -404,6 +523,25 @@ export function createOnlineHomes({ api, character = () => null, now = () => Dat
     }
     if (r?.error === 'no-home' || r?.error === 'seq') ensure(id, { force: true });
     return refused(r);
+  }
+
+  /**
+   * FIELD BUGS 2026-10-04d KNIGHT-HOUSE: A DEED THE REALM GAVE, HELD by the service from anyone else's claim (server-account/
+   * src/homes.js holdDeed - read off the character's record, so the save holding the deed must be the record's first). To
+   * this character it stays Daggerfall's house, so no door here moves; a building somebody else holds is read again, and
+   * the door says whose. `{ ok, repeat? }` or a refusal.
+   */
+  async function holdDeed({ mapId, buildingKey, region, layout = null }) {
+    const id = idOf(mapId);
+    const r = await api.deed({ mapId: id, buildingKey, region, character: character(), layout: layout || null });
+    if (r?.ok) return { ok: true, repeat: r.data?.repeat === true };
+    if (r?.error === 'home-taken') ensure(id, { force: true });
+    return refused(r);
+  }
+  /** FIELD BUGS 2026-10-04d KNIGHT-HOUSE: that hold given up, as the deed sells at the bank - `no-home` where none stood. */
+  async function releaseDeed(mapId, buildingKey) {
+    const r = await api.releaseDeed(idOf(mapId), buildingKey);
+    return r?.ok ? { ok: true } : refused(r);
   }
 
   async function setEntry(mapId, buildingKey, entry) {
@@ -432,6 +570,27 @@ export function createOnlineHomes({ api, character = () => null, now = () => Dat
     if (r?.error === 'no-home') ensure(id, { force: true });
     return { ok: false, error: r?.error ?? 'server' };
   }
+  /** HOME-VOTE: THIS ACCOUNT'S VOTE ON ANOTHER'S HOME - up (1), down (-1), or taken back (0); shown at once (the door's
+   *  rows, and whether its decor stands) and read back. `{ ok, vote, score }` or a refusal. */
+  async function vote(mapId, buildingKey, v) {
+    const id = idOf(mapId);
+    // AUDIT HOME-VOTE II A4: a vote cast names the owner this door read - it lands on their house, never the next owner's;
+    // a house this page holds no owner of is asked again, and no vote sent (a take-back names nobody: its row is mine)
+    const owner = v !== 0 ? towns.get(id)?.homes.get(buildingKey)?.owner : undefined;
+    if (v !== 0 && !owner) { ensure(id, { force: true }); return { ok: false, error: 'no-home' }; }
+    const r = await api.vote?.({ mapId: id, buildingKey, vote: v, ...(owner ? { owner } : {}) });
+    if (r?.ok) {
+      const score = homeScoreOf(r.data?.score);
+      const mine = homeMyVoteOf(r.data?.vote);
+      const row = towns.get(id)?.homes.get(buildingKey);
+      if (row) wrote(id, buildingKey, { ...row, score, myVote: mine }, { mine: false });
+      else ensure(id, { force: true });
+      return { ok: true, vote: mine, score };
+    }
+    if (r?.error === 'no-home' || r?.error === 'vote-own') ensure(id, { force: true });   // nobody's now, or mine: the door should say so
+    return { ok: false, error: r?.error ?? 'server' };
+  }
+
   /** HOME-LOOK: every home of a town this page has heard from, by its building key - the pixel's painter reads it. */
   function homesIn(mapId) {
     const t = towns.get(idOf(mapId));
@@ -441,12 +600,52 @@ export function createOnlineHomes({ api, character = () => null, now = () => Dat
   /** AUDIT GUILD1d A5: something a door shows moved outside the registry (the guild book's look - whether this character
    *  may buy a hall): the doors are read again. */
   const bump = () => { version++; };
-  return { ensure, waitFor, known, homeAt, claim, release, setEntry, setLook, homesIn, bump, version: () => version };
+  return { ensure, waitFor, known, homeAt, claim, release, setEntry, setLook, vote, homesIn, bump, holdDeed, releaseDeed, version: () => version };
+}
+
+// ═══ FIELD BUGS 2026-10-04d KNIGHT-HOUSE - A HOUSE THE REALM GAVE IS ITS KNIGHT'S, ON EVERY DOOR ═══════════════════════
+//
+// The Discord: "Houses earned through Knightly Orders still possibly purchaseable? ... I don't want to risk my Knight
+// House being bought out from under me" - and its plaque, at the knight's own door: "To Arde's residence", "Go in", "Buy
+// it: 554330 gold". A Knightly Order's ReceiveHouse writes Daggerfall's deed into the save (banking.js
+// allocateHouseToPlayer), and the door's offer read only the service's list (worldModes.js homeOfferPrice), which never
+// heard of it: the knight was offered their own house, and every other player the same - whose claim then took it. Online
+// the bank sells no house (HOME1), so a deed the realm gave is the order's gift. Now a building such a deed names is never
+// for sale to its owner (realmDeedAt, at the door), and the service holds it from everyone else (holdDeed - at the grant,
+// and at every boot for a deed from before). A deed customs carried in is an offline house and stays HOME1's.
+
+/** Whether the character's own deed - one the realm gave (homeDeedOf), standing (banking.js deedStands: its town in the
+ *  layout it was given in) - names this town's building: it is that character's house, never for sale to it. */
+export const realmDeedAt = (houses, regionIndex, mapId, buildingKey) => {
+  const slot = homeDeedOf(houses, regionIndex, mapId, buildingKey);
+  return !!slot && deedStands(slot);
+};
+/** Every deed of `houses` the realm gave that stands - `{ region, mapId, buildingKey }`, the map id unsigned - the buildings
+ *  the service holds for the character. */
+export const realmDeedsOf = (houses) => (Array.isArray(houses) ? houses : []).flatMap((slot, region) => {
+  const mapId = Number(slot?.mapId) >>> 0;
+  return slot?.buildingKey > 0 && realmDeedAt(houses, region, mapId, slot.buildingKey) ? [{ region, mapId, buildingKey: slot.buildingKey }] : [];
+});
+/** Every deed the realm gave the character, held (the registry's holdDeed), each in the layout its town stands in now -
+ *  answers each deed with the service's word, `r`. A hold already made answers `repeat`; a refusal moves nothing.
+ *  @param {any} homes @param {{ houses: any, layoutOf?: (mapId: number) => (string|null) }} o */
+export async function holdRealmDeeds(homes, { houses, layoutOf = homeClaimLayout }) {
+  const out = [];
+  for (const d of realmDeedsOf(houses)) out.push({ ...d, r: await homes.holdDeed({ ...d, layout: layoutOf(d.mapId) }) });
+  return out;
+}
+
+/** WD3: the layout this town stands in for the room - the service keeps it for the town's first home, and every client
+ *  stands the town so from then on (net/homeLaw.js); Daggerfall's own sends none. AUDIT PRE-MERGE 1003 WD1: a guild's
+ *  hall is a home, and says it too (scenes/worldModes.js buyHallAt). */
+export function homeClaimLayout(mapId) {
+  const stamp = layoutStampOfMapId(mapId);
+  return stamp && stamp !== CLASSIC_LAYOUT ? stamp : null;
 }
 
 /**
  * BUY ONE AT ITS DOOR. The claim first - the service's one answer decides whether the building can be mine at all -
- * and the gold only once it is. `afford(price)` asks the purse and the region's bank account together, before the
+ * and the gold only once it is. `afford(price)` asks the purse and the Empire's account together, before the
  * claim and again after it (the purse can change while the answer is out); a claim the player can no longer pay for
  * is given back rather than kept unpaid. `pay(price)` takes it, purse first, as Daggerfall's own purchase does.
  * Answers `{ ok: true }` or `{ ok: false, error }` - `gold` for the purse, else the service's word.
@@ -464,19 +663,22 @@ export async function buyOnlineHome(homes, { mapId, buildingKey, region, price, 
   out.add(key);
   try {
     if (!afford(price)) return { ok: false, error: 'gold' };
+    const layout = homeClaimLayout(mapId);
     if (realm) {
       // REALM P2.2b: the claim and the record's payment are one write on the service - the purse pays at once and gets it
       // back on a refusal (systems/realmSaves.js realmGoldAct); there is no claim to give back
+      // MARKET-AUDIT: a refusal and a repeat give back exactly what the payment took (purse, letters, account)
+      const paid = walletReserve({ pay, credit: (n) => refund?.(n) }, price);
       const r = await realm.act({
-        reserve: () => { pay(price); return () => refund?.(price); },
+        reserve: paid.reserve,
         // AUDIT REALM: a claim answered as the house already this character's (`repeat`) moved no gold on the record - the
         // purse's reserve comes back, or the next checkpoint would write the price paid twice
-        apply: (/** @type {any} */ res) => { if (res?.repeat) refund?.(price); },
-        call: (/** @type {any} */ at) => homes.claim({ mapId, buildingKey, region, price, realm: at }),
+        apply: (/** @type {any} */ res) => { if (res?.repeat) paid.back(); },
+        call: (/** @type {any} */ at) => homes.claim({ mapId, buildingKey, region, price, realm: at, layout }),
       });
       return r?.ok ? { ok: true } : { ok: false, error: r?.error ?? 'server' };
     }
-    const r = await homes.claim({ mapId, buildingKey, region, price });
+    const r = await homes.claim({ mapId, buildingKey, region, price, layout });
     if (!r.ok) return r;
     if (!afford(price)) {
       await homes.release(mapId, buildingKey);
@@ -543,4 +745,122 @@ async function sellOut(homes, { mapId, buildingKey, credit, realm }) {
   const decorBack = r.decorBack ?? 0;   // DECOR1e: its placed pieces' half, as the service summed it
   credit(refund + decorBack);
   return { ok: true, refund, decorBack };
+}
+
+// ═══ ARENA4b (2026-10-03) - A HOME THE ARENA DISPLACED, MOVED BY ITS OWNER'S CLIENT ════════════════════════════════
+//
+// Mac (ARENA1): "Move them to a new house". Online, the account service carries the home's row to the new key
+// (server-account/src/homes.js arenaMoveHome); this is the client's half, the offline move's own steps (world.js
+// moveArenaDeed) for a home the service keeps. Online, in Daggerfall, once the homes' towns stand in their layouts:
+//   1. the moves this character made and never read (an answer lost, the page gone before the letter) - the old scene
+//      emptied into the new again (harmless: a scene emptied once is gone - FIELD BUGS 2026-10-07 HOME-WIPE: only since
+//      emptyArenaScene never writes over the new home's own record; it wrote an empty one over it at each such boot) and
+//      the letter said; never a refund, which the move's own batch paid onto the record;
+//   2. every home of the town that is this character's (or a hall it keeps) and stands in the arena's cell - the new
+//      house PICKED here (`pick`, systems/arenaMove.js arenaHomeFor over the town's buildings, every key a home holds
+//      left out - asked again past one taken meanwhile), POSTED (inside a realm act for a home: the pieces' refund comes
+//      onto the record in the move's batch), and on its answer the old scene EMPTIED into the new INSIDE the act's apply
+//      (the act's closing checkpoint holds it - worldModes.js sellHomeAt's law): the owner's own things back to the pack
+//      or the furnishings, the chests and the floor into the new house's chest, the refund into the Daggerfall bank;
+//   3. the Daggerfall Bank's letter (ARENA_TEXT.deedMoved, a hall's its own), the notebook's line, the lines for a
+//      refund and a carried tenancy - and the move said read (`seen_at`) once a checkpoint holds the emptied scene: a
+//      hall's move and a move read again empty it outside any realm act, so a page gone before the next checkpoint would
+//      have left the record's old scene full and the move read - its things in a scene nothing opens. A checkpoint
+//      refused leaves the move unread, and the next boot empties the record's scene again (1.).
+// Offline is unchanged (arenaMove.js moveArenaRecords).
+
+/** How many houses a move is posted to before it waits for the next boot (one taken under each pick). */
+export const ARENA_MOVE_TRIES = 3;
+/** AUDIT PRE-MERGE 1003 O10: whether a checkpoint's answer (awaited) says the save landed: a slot's `true`, a realm put's
+ *  `{ ok: true }`; no hook at all (`undefined`) asks no checkpoint. Pure. */
+export const checkpointLanded = (c) => c === undefined || c === true || c?.ok === true;
+
+/**
+ * THE MOVES, made and read (above). `homes` the registry (createOnlineHomes), `api` net/accountClient.js accountHomes,
+ * `mapId` Daggerfall's, `character` the one playing; `pick(fromKey, held)` the new house's summary (`{ buildingKey,
+ * name }`) or null; `nameOf(key)` a building's name; `realm` the host's realm act (`{ act }`) or null; `emptyScene(from,
+ * to)` empties the old home's scene into the new one's and answers arenaMove.js emptyArenaScene's `{ own, crate, ... }`;
+ * the hooks the host's, each optional: `giveOwn(items)`, `credit(gold)` (the Daggerfall bank account), `discover(key, hall)`,
+ * `notice(lines)`, `note(text)`, `say(line)`, `checkpoint()` (the save written now - false when refused; AUDIT PRE-MERGE
+ * 1003 O10: or a promise of the realm's answer to its put, `{ ok }`). Answers every move handled, `{ from, to, refund,
+ * hall, made }`.
+ * @param {{ homes: any, api: any, mapId: number, character: string|null, pick: (from: number, held: Set<number>) => ({ buildingKey: number }|null),
+ *   nameOf?: (key: number) => string, realm?: { act: (o: any) => Promise<any> }|null, emptyScene?: (from: number, to: number) => any,
+ *   hooks?: { giveOwn?: (items: any[]) => void, credit?: (gold: number) => void, discover?: (key: number, hall: boolean) => void,
+ *     notice?: (lines: readonly string[]) => void, note?: (text: string) => void, say?: (line: string) => void,
+ *     checkpoint?: () => (boolean | Promise<any>) } }} o
+ */
+export async function moveArenaHomes({ homes, api, mapId, character, pick, nameOf = () => '', realm = null, emptyScene, hooks = {} }) {
+  const out = [];
+  if (!api?.arenaMove || typeof character !== 'string' || !character || !homeMapIdOk(mapId)) return out;
+  const said = new Set();
+  /** The old scene emptied into the new - the owner's own things given back, a home's refund credited when this move made
+   *  it now (never a move read again: its batch paid the record, which the join read). */
+  const empty = (m, credit) => {
+    const e = emptyScene?.(m.from, m.to) ?? null;
+    if (e?.own?.length) hooks.giveOwn?.(e.own);
+    if (credit && !m.hall && m.refund > 0) hooks.credit?.(m.refund);
+    return e;
+  };
+  /** The letter, the notebook, the lines - once a move - and the move said read once the save holds it (3.). */
+  const announce = async (m, made) => {
+    if (said.has(m.from)) return;
+    said.add(m.from);
+    hooks.discover?.(m.to, m.hall);   // a hall is its guild's, never discovered as anyone's residence
+    const name = nameOf(m.to) || ARENA_TEXT.homeMove.aHouse;
+    hooks.notice?.(m.hall ? ARENA_TEXT.homeMove.hallMoved : ARENA_TEXT.deedMoved);
+    hooks.note?.((m.hall ? ARENA_TEXT.homeMove.hallNote : ARENA_TEXT.deedMovedNote).replace('%s', name));
+    if (made && !m.hall && m.refund > 0) hooks.say?.(ARENA_TEXT.homeMove.refund(m.refund));
+    if (made && m.tenancies > 0) hooks.say?.(ARENA_TEXT.homeMove.tenants(m.tenancies));
+    // AUDIT PRE-MERGE 1003 O10: read only once the save holding the emptied scene LANDED - the host's checkpoint answers
+    // the realm's word on its put (a promise of `{ ok }`), and the move was said read as the save was handed over: a put
+    // refused, or the page gone first, left the record's old scene full and the move read
+    if (checkpointLanded(await hooks.checkpoint?.())) await api.arenaSeen(mapId, m.from);
+    out.push({ from: m.from, to: m.to, refund: m.refund, hall: m.hall, made });
+  };
+  const moveOf = (d) => ({ from: d.from, to: d.to, refund: Number.isSafeInteger(d.refund) && d.refund > 0 ? d.refund : 0, hall: d.hall === true, tenancies: Number.isSafeInteger(d.tenancies) ? d.tenancies : 0 });
+  // 1. what was moved before and never read
+  const unread = await api.arenaMoves(character);
+  for (const d of unread?.ok && Array.isArray(unread.data?.moves) ? unread.data.moves : []) {
+    if (d?.mapId !== mapId || !homeInArenaCell(mapId, d.from) || !homeBuildingKeyOk(d.to) || homeInArenaCell(mapId, d.to)) continue;
+    const m = moveOf(d);
+    empty(m, false);
+    await announce(m, false);
+  }
+  // 2. what stands in the arena's cell still
+  if (!(await homes.ensure(mapId, { force: true }))) return out;
+  const mine = [...(homes.homesIn(mapId)?.values() ?? [])]
+    .filter((h) => homeInArenaCell(mapId, h.buildingKey) && ((h.mine && h.character === character) || (h.hall && h.keeper)));
+  for (const h of mine) {
+    const held = new Set(homes.homesIn(mapId)?.keys() ?? []);
+    for (let tries = 0; tries < ARENA_MOVE_TRIES; tries++) {
+      const to = pick(h.buildingKey, held);
+      if (!to || !homeBuildingKeyOk(to.buildingKey)) break;
+      const body = { mapId, from: h.buildingKey, to: to.buildingKey, character };
+      /** @type {any} */
+      let m = null;
+      let r;
+      if (realm?.act && !h.hall) {
+        // a home's move is a realm act: its record takes the refund in the move's batch - the scene emptied in `apply`,
+        // so the act's closing checkpoint holds both; an answer that landed but never came back ends the session
+        // (`needsAnswer`), and the next join reads the move as unread (1.)
+        r = await realm.act({
+          needsAnswer: true,
+          apply: (/** @type {any} */ res) => { const d = res?.data; if (d?.to) { m = moveOf(d); empty(m, d.repeat !== true); } },
+          call: (/** @type {any} */ at) => api.arenaMove({ ...body, realm: at }),
+        });
+      } else {
+        r = await api.arenaMove(body);
+        if (r?.ok && r.data?.to) { m = moveOf(r.data); empty(m, r.data.repeat !== true); }   // a hall's refund was its treasury's (`empty` credits no hall)
+      }
+      if (r?.ok && m) { await announce(m, r.data?.repeat !== true); break; }
+      if (r?.error !== 'home-taken') { if (r?.error === 'home-changed') hooks.say?.(ARENA_TEXT.homeMove.changed); break; }
+      // taken meanwhile: the town read again, every key it holds left out, and picked again
+      held.add(to.buildingKey);
+      await homes.ensure(mapId, { force: true });
+      for (const k of homes.homesIn(mapId)?.keys() ?? []) held.add(k);
+    }
+  }
+  if (out.length) void homes.ensure(mapId, { force: true });   // the doors read the town again - the new house is the owner's now
+  return out;
 }

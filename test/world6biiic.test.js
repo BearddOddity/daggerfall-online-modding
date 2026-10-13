@@ -125,7 +125,7 @@ test('WORLD6b-iii(c): a pile larger than one frame is granted in parts - the fir
   const rat = await bob.spawnFoe(0, [12, 0, 12], { feetGiven: true });
   const one = generateItems('M', { level: 10, gender: 'male' }, () => 0.99)[0];
   const fat = { ...one, customEnchantments: [], name: 'x'.repeat(120) };
-  rat.entity.items = Array.from({ length: 60 }, () => ({ ...fat, notes: 'y'.repeat(120) }));
+  rat.entity.items = Array.from({ length: 60 }, () => ({ ...fat, notes: 'y'.repeat(120) })); delete rat.entity.lootCap;   // FOE-CAP: a body with no cap (a boss's) - a plain rat's would carry three
   bob.damageFoe(rat, 9999, [10, 0, 10]);
   assert.equal(bob.applyHit('mac-0001', { to: 'bob-0002', k: 'world:3,12', i: rat.seq, take: 1 }), true);
   const g = bobHits[0];
@@ -137,7 +137,7 @@ test('WORLD6b-iii(c): a pile larger than one frame is granted in parts - the fir
 
 test('WORLD6b-iii(c): by source - the record and the reader, the target, the ask, the grant emptied only once the frame left, the record', () => {
   const x = rd('src/scenes/exteriorFoes.js');
-  assert.match(x, /o: onWatch \|\| _questLike\(f\) \? 0 : \(f\.corpse \? Math\.min\(255, f\.entity\?\.items\?\.length \| 0\) : 0\)(?:, \.\.\.\(f\.entity\?\.eliteFoe \? \{ z: 1 \} : \{\}\))?(?:, \.\.\.\(!onWatch && typeof f\.entity\?\.revenant\?\.name === 'string'[^;]*\} : \{\}\))? \};/, 'the record (AUDIT WATCH1 A3: a watch body advertises no pile; ELITE FOES: an elite\'s `z` after it)');
+  assert.match(x, /o: onWatch \|\| _questLike\(f\) \? 0 : \(f\.corpse \? Math\.min\(255, peerHanded\(f\.entity\?\.items \?\? \[\]\)\.length\) : 0\)(?:, \.\.\.\(f\.entity\?\.eliteFoe \? \{ z: 1 \} : \{\}\))?(?:, \.\.\.\(!onWatch && typeof f\.entity\?\.revenant\?\.name === 'string'[^;]*\} : \{\}\))? \};/, 'the record (AUDIT WATCH1 A3: a watch body advertises no pile; ELITE FOES: an elite\'s `z` after it)');   // PIN MOVED (HACKED-GOLD): the body counts what a peer may take - a letter of credit and a bound piece stay its owner's (systems/peerWord.js)
   assert.match(x, /if \(r\.o !== undefined\) \{ p\.o = r\.o; if \(r\.o > 0 && !\(f\._closedN != null && \(_owners\.get\(f\.puppet\)\?\.n \?\? 0\) <= f\._closedN\)\) f\.corpseDisabled = false; \}/, 'the reader (AUDIT WORLD6b-iii(c) A7: a word older than the grant that closed it re-opens nothing)');
   assert.match(x, /isCorpse: \(f\) => !!f\.corpse && !!f\.entity && \(!f\.puppet \|\| \(f\._pup\?\.o \| 0\) > 0\),/, 'the target');
   assert.match(x, /_net\?\.onPeerHit\?\.\(\{ to: f\.puppet, k: _owners\.get\(f\.puppet\)\?\.k \?\? _net\.room\?\.\(\) \?\? null, i: f\.seq, take: 1 \},\s*\{ sent: \(\) => \{ f\._takeAsked = _now\(\); \} \}\);/, 'the ask, keyed to the owner\'s cell, latched when the frame left (AUDIT WORLD6b-iii(c) B1; LOOT-DUP: and left is THIS frame\'s word, not the hit queue\'s)');

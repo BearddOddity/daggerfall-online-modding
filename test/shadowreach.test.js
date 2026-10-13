@@ -13,7 +13,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Renderer, WORLD_FRAME } from '../src/render/renderer.js';
 import { EL_LANE } from '../src/render/enhancedLighting.js';
-import { SHADOW_CASCADES, SHADOW_SUN_DEPTH, shadowFarFor, SHADOW_SWAY_STILL, SHADOW_SWAY_EVERY, swayLean } from '../src/render/shadowPass.js';
+import { SHADOW_CASCADES, SHADOW_SUN_DEPTH, shadowFarFor, SHADOW_SWAY_STILL, SHADOW_SWAY_EVERY, swayLean, SHADOW_TUNING } from '../src/render/shadowPass.js';
+SHADOW_TUNING.override = false;   // FLICKER-FIX: these tests pin the old schedule (the sway's own cadence)
 
 const rd = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const I = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
@@ -39,7 +40,9 @@ function recordingGl() {
   const canvas = { getContext: () => gl, clientWidth: 320, clientHeight: 200, width: 320, height: 200 };
   return { gl, calls, canvas };
 }
-const count = (calls, name) => calls.filter((c) => c[0] === name).length;
+/** CACHE-COPY: the faces of the cache copied into the live layers - one triangle each, drawn with the copy program (SC1's
+ *  blit until 2026-10-07: on Direct3D a depth blit out of a layer of an array was no copy - render/shadowPass.js _blitSlot) */
+const copies = (calls, sp) => { let n = 0, prog = null; for (const c of calls) { if (c[0] === 'useProgram') prog = c[1]; else if (c[0] === 'drawArrays' && prog === sp.programs.copy.p) n++; } return n; };
 
 /** the lane, a room, a tile; the sun on or off */
 function stand({ sun = 0 } = {}) {
@@ -57,7 +60,7 @@ function stand({ sun = 0 } = {}) {
     r.setPointLights(lights, new Float32Array([1, 1, 1]));
     calls.length = 0;
     r.beginFrame(I, I, lightDir, WORLD_FRAME);
-    const st = { ...sp.stats, casters: sp.casters, blit: count(calls, 'blitFramebuffer') };
+    const st = { ...sp.stats, casters: sp.casters, blit: copies(calls, sp) };
     draw();
     r.drawScreenQuad({ id: 'ui' }, { x: 0, y: 0, w: 10, h: 10 });
     return st;
@@ -202,14 +205,14 @@ test('SHADOW-REACH: the hosts ask at every cull gate, by source - world.js (the 
   // DW-C: a pure-ocean pixel's ground is not drawn (the cap hides it) and a clipped one casts as it draws
   assert.match(w, /\} else if \(pixelCasts\) \{\n(?:\s*\/\/[^\n]*\n)*\s*(?:if \(!p\.deepWaters\?\.hide\) )?renderer\.recordShadowTerrain\((?:p\.dwTerrain \?\? )?p\.terrain, pixelMatrix, renderer\.tileArrays\.get\(p\.groundArchive\), p\.tilemapTex, 6\.4\);[^\n]*\n\s*if \(p\.staticBatch\) renderer\.recordShadowMesh\(p\.staticBatch, pixelMatrix, null\);/, 'an off-screen pixel in reach: its ground and its merged statics');
   assert.match(w, /else if \(pixelCasts\) renderer\.recordShadowMesh\(millParts\.rotor,/, 'the sail');
-  assert.match(w, /if \(pixelVisible \|\| pixelCasts\) for \(const b of p\.batches\) \{\n\s*const off = !pixelVisible \|\| \(cullOn && aabbOutside\(_planes, b\._box, t\[0\], t\[1\], t\[2\]\)\);[^\n]*\n\s*if \(off && !renderer\.shadowReach\(b\._box, t\[0\], t\[1\], t\[2\]\)\) continue;[^\n]*\n\s*if \(!farFlatVisibleAt\([^\n]*\n\s*b\.origin = t;\n\s*\(off \? castBatches : allBatches\)\.push\(b\);/, 'a flat batch (AUDIT REACH: a pixel neither seen nor reached walks none)');
-  assert.match(w, /if \(cullOn && billboardOutside\(b\)\) \{ if \(renderer\.shadowReachBatch\(b\)\) castBatches\.push\(b\); continue; \}/, 'a peer (AUDIT REACH)');
+  assert.match(w, /if \(pixelVisible \|\| pixelCasts\) for \(const b of p\.batches\) \{\n\s*if \(!farFlatVisibleAt\([^\n]*\n\s*const off = !pixelVisible \|\| \(cullOn && aabbOutside\(_planes, b\._box, t\[0\], t\[1\], t\[2\]\)\);[^\n]*\n\s*if \(off && !renderer\.shadowReach\(b\._box, t\[0\], t\[1\], t\[2\]\)\) continue;[^\n]*\n\s*b\.origin = t;\n\s*\(off \? castBatches : allBatches\)\.push\(b\);/, 'a flat batch (AUDIT REACH: a pixel neither seen nor reached walks none) - PIN MOVED (PERF-ORDER): the far-flat rule asked first, the same batches kept');
+  assert.match(w, /for \(const b of remotePlayers\.batches\(\)\) \{[^\n]*\n\s*if \(cullOn && billboardOutside\(b\)\) \{ if \(renderer\.shadowReachBatch\(b\)\) castBatches\.push\(b\); continue; \}/, 'a peer (AUDIT REACH) - AUDIT PERF-ARENA O8: at the peers\' own loop (the riders\', walkers\', bands\' and yards\' lines say the same words, and the bare pattern found theirs)');
   assert.match(w, /\} else if \(pixelCasts\) \{[\s\S]{0,700}?for \(const m of p\.models\) \{\n\s*if \(m\._batched \|\| !renderer\.shadowReach\(m\._box, t\[0\], t\[1\], t\[2\]\)\) continue;[\s\S]{0,300}?renderer\.recordShadowMesh\(m\.gpu, m\._world, m\.texRemap \?\? p\.texRemap\);/, 'an off-screen pixel in reach: its odd models, each by its own reach');
-  assert.match(rd('src/render/renderer.js'), /recordShadowBillboards\(batches, camRight, camUp\) \{ if \(this\._casting && batches\?\.length\) this\._shadows\.recordBillboards\(batches, this\._flatWind, camRight, camUp\); \}/, 'the seam records with the FRAME\'s wind (an off-screen wood casts a sun shadow that leans as the wood does)');
+  assert.match(rd('src/render/renderer.js'), /recordShadowBillboards\(batches, camRight, camUp\) \{ if \(this\._casting && batches\?\.length\) this\._shadows\.recordBillboards\(batches, this\._flatWind, camRight, camUp, this\._windfall\); \}/, 'the seam records with the FRAME\'s wind (an off-screen wood casts a sun shadow that leans as the wood does) - PIN MOVED (WINDFALL1): and its Windfall law');
   assert.match(w, /else if \(renderer\.shadowReachBatch\(b\)\) castBatches\.push\(b\);/, 'a townsman');
   assert.match(w, /renderer\.drawBillboards\(livePersonBatches, camRight, bbUp\);\n\s*if \(castBatches\.length\) renderer\.recordShadowBillboards\(castBatches, camRight, UP_Y\);/, 'recorded after the crowd, on the frame\'s wind');   // TV1: drawn leaned to the travel view (bbUp), recorded upright
   const e = rd('src/scenes/exterior.js');
-  assert.match(e, /if \(cullOn && aabbOutside\(_planes, d\.box\)\) \{[^\n]*\n\s*if \(renderer\.shadowReach\(d\.box\)\) renderer\.recordShadowMesh\(d\.mesh, d\.matrix, texRemap\);/, 'the draw list');
+  assert.match(e, /if \(cullOn && aabbOutside\(_planes, d\.box\)\) \{[^\n]*\n\s*if \(renderer\.shadowReach\(d\.box\)\) renderer\.recordShadowMesh\(d\.mesh, d\.matrix, d\.texRemap \?\? texRemap\);/, 'the draw list');   // ARENA1 re-aim: a climate-free model's own table
   assert.match(e, /if \(renderer\.shadowReach\(w\.box\)\) renderer\.recordShadowMesh\(millParts\.rotor, mountRotor\(w\.matrix, ROTOR_HUB, w\.state\.angle\), texRemap\);/, 'the sails');
   assert.match(e, /if \(renderer\.shadowReach\(b\._box\)\) _castBatches\.push\(b\);/, 'the flat batches');
   assert.match(e, /renderer\.drawBillboards\(_visBatches, camRight, UP_Y\);\n\s*if \(_castBatches\.length\) renderer\.recordShadowBillboards\(_castBatches, camRight, UP_Y\);/);

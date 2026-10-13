@@ -5,8 +5,10 @@ import { waterSurfaceFs } from '../src/render/waterSurface.js';
 
 test('WATER-LIT1: the point lights\' diffuse share of the water texel is a quarter, and each light adds a highlight on the waves', () => {
   const fs = waterSurfaceFs('', '');
-  assert.match(fs, /pointAcc \*= 0\.25;\n\s+lit \+= tex \* pointAcc;/, 'the flame no longer paints the ripples brown');
-  assert.match(fs, /pointSpec \+= ap \* pow\(max\(dot\(n, Hp\), 0\.0\), 90\.0\) \* uPointColors\[i\];/);
-  assert.match(fs, /col \+= pointSpec \* 1\.2;/, 'the glint joins the sun\'s and the moon\'s');
-  assert.ok(fs.indexOf('vec3 V = toEye') < fs.indexOf('vec3 pointSpec'), 'the view vector exists before the glint reads it');
+  // PIN MOVED (WATER-NEXT 2): one loop for the lamps' two terms, the water's colour where the classic texel was
+  assert.match(fs, /lit \+= body \* pointAcc \* 0\.25;/, 'the flame no longer paints the ripples brown');
+  assert.match(fs, /pointSpec \+= att \* pow\(max\(dot\(n, normalize\(Ld \+ V\)\), 0\.0\), 90\.0\) \* uPointColors\[i\];/);
+  assert.match(fs, /own \+= seaGlints\(uSunColor, spec, uMoonColor, mspec\) \+ pointSpec \* 1\.2;/, 'the glint joins the sun\'s and the moon\'s');   // PIN MOVED (AUDIT WATER-NEXT G3): added to the water's own light, at full strength; PIN MOVED (AUDIT FAR-SEA1 C12): the sun's and the moon's through the open sea's one text
+  assert.ok(fs.includes('vec3 seaGlints(vec3 sunColor, float sun, vec3 moonColor, float moon) { return sunColor * (1.6 * sun) + moonColor * (0.7 * moon); }'), '...at their weights');
+  assert.ok(fs.indexOf('vec3 V = toEye') < fs.indexOf('pointSpec += '), 'the view vector exists before the glint reads it');
 });

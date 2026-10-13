@@ -20,8 +20,8 @@
   {
     "name": "LOOT5-any-tier-wakes-it",
     "file": "src/systems/lootPowers.js",
-    "old": "const powerIds = (it) => [it?.rarity === 'legendary' ? it.legendary : null, it?.rarity === 'rare' ? it.imprint : null];",
-    "new": "const powerIds = (it) => [it?.legendary, it?.rarity === 'rare' ? it.imprint : null];",
+    "old": "const powerIds = (it) => [it?.rarity === 'legendary' ? it.legendary : null, it?.rarity === 'rare' ? it.imprint : null, it?.rarity === 'gilded' ? it.gilded : null];",
+    "new": "const powerIds = (it) => [it?.legendary, it?.rarity === 'rare' ? it.imprint : null, it?.rarity === 'gilded' ? it.gilded : null];",
     "tests": [
       "test/loot5_powers.test.js"
     ]
@@ -137,8 +137,8 @@
   {
     "name": "LOOT5-open-hand-on-a-sword",
     "file": "src/systems/lootPowers.js",
-    "old": "      case 'fists': if (!weapon) again(target, damage); break;",
-    "new": "      case 'fists': again(target, damage); break;",
+    "old": "      case 'fists': if (!weapon) again(target, (damage * p.share) / 100); break;   // BAL7: for half (the record's share)",
+    "new": "      case 'fists': again(target, (damage * p.share) / 100); break;   // BAL7: for half (the record's share)",
     "tests": [
       "test/loot5_powers.test.js"
     ]
@@ -299,8 +299,8 @@
   {
     "name": "LOOT5-the-find-ignored",
     "file": "src/systems/lootRarity.js",
-    "old": "  const legendary = Math.min(rare, at(RARITY_WEIGHTS.legendary) * (Number.isFinite(find) && find > 0 ? find : 1));",
-    "new": "  const legendary = Math.min(rare, at(RARITY_WEIGHTS.legendary));",
+    "old": "  const legendary = Math.min(rare, legAt(W.legendary) * (Number.isFinite(find) && find > 0 ? find : 1));",
+    "new": "  const legendary = Math.min(rare, legAt(W.legendary));",
     "tests": [
       "test/loot5_powers.test.js"
     ]
@@ -308,8 +308,8 @@
   {
     "name": "LOOT5-the-find-past-the-rare",
     "file": "src/systems/lootRarity.js",
-    "old": "  const legendary = Math.min(rare, at(RARITY_WEIGHTS.legendary) * (Number.isFinite(find) && find > 0 ? find : 1));",
-    "new": "  const legendary = at(RARITY_WEIGHTS.legendary) * (Number.isFinite(find) && find > 0 ? find : 1);",
+    "old": "  const legendary = Math.min(rare, legAt(W.legendary) * (Number.isFinite(find) && find > 0 ? find : 1));",
+    "new": "  const legendary = legAt(W.legendary) * (Number.isFinite(find) && find > 0 ? find : 1);",
     "tests": [
       "test/loot5_powers.test.js"
     ]
@@ -317,7 +317,7 @@
   {
     "name": "LOOT5-the-card-silent",
     "file": "src/systems/lootRarity.js",
-    "old": "  { const p = item.legendary ? powerOf(item.legendary) : null; if (p) out.push(powerLine(p)); }   // LOOT5: its power, by name and brief\n",
+    "old": "  { const p = item.legendary ? powerOf(item.legendary) : item.gilded ? powerOf(item.gilded) : null; if (p) out.push(powerLine(p)); }   // LOOT5: its power, by name and brief - GILDED1: a Gilded record's too\n",
     "new": "\n",
     "tests": [
       "test/loot5_powers.test.js"

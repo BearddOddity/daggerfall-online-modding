@@ -67,18 +67,64 @@
 import { createFpArm } from '../combat/fpArm.js';
 import { dfWornEquipment } from '../formats/mwItemMap.js';
 import { werewolfSkinOf } from '../characters/werewolfSkin.js';   // SHADOW-FANG: a peer's wolf in the skin their signed glyphs name
+import { npcHintOf, npcKeyOf, withNpcPicks, npcFaceOf, beastWorn } from '../characters/wardrobe.js';   // MWNPC17: an NPC's own garments, head and hair
 import { ARMOR_ENUM } from '../combat/enemyEquipment.js';
 import { EQUIP_SLOTS } from '../systems/equip.js';
 import { mwRaceId } from '../formats/mwNpc.js';
 import { CAPSULE_HEIGHT } from '../player/motor.js';
+import { dissolveShadowless } from '../systems/dissolve.js';   // AUDIT MWNPC16-18 R1: a body burnt more than half away casts none
 import { peerStubEntity, lookKey } from './remotePlayers.js';
 import { POSE_STRIKES } from './wire.js';   // MAC7 #1: the swing's kind, by the wire's index
+import { HIT_FRAME_MELEE, MELEE_NUM_FRAMES } from '../characters/weaponStates.js';   // MW-PACE1: where in a blow its hit lands
 import { wrapAngle } from '../world/mat4.js';   // ONCRASH1: the port's one angle wrap, which cannot loop
+import { seatTopOf, SEAT_PELVIS_HEIGHT } from '../player/seatPose.js';   // CARDS2b: the table's top the pose names; COATS3D: a standing pelvis, for a rider's lift
+import { POSE_RIDE } from './wire.js';   // COATS3D: a peer on a horse
+import { HORSE_SEAT } from '../world/horseRig.js';   // COATS3D: the 3D horse's seat, over the rider's feet
+import { gaitShare } from '../world/horseModel.js';
 import { JUMP_UNITS, stepPeerPace } from './peerPace.js'; import { peerBodyYaw, peerClimbing, peerMoving, PeerClimbTrack } from './peerClimb.js';   // HT-WAIST-BACK: the pace law, lifted - the walkers' lanterns swing off it too; CLIMB5: the climb's facing and pose
 
 
 /** The most peers in a Morrowind body at once; the rest keep the paperdoll. */
 export const BODIES_MAX = 8;
+/** AUDIT MW-NPC II L1: a build that has held the gate this long lets the next one go (it still lands, on its own) -
+ *  one that never answers held every lane's body behind it, the peers' too. */
+export const BODY_GATE_STALL_MS = 20000;
+/**
+ * A build queue: one build at a time, in TWO waiting lines - `high` (a peer's body, the family's, the card table's: a
+ * player waits on it) before `low` (an NPC lane's - characters/npcBodies.js, a lane that builds in range). AUDIT MW-NPC
+ * II L1: on one line a street's whole cut queued at once (24 builds at Near, 48 at All) and a peer arriving after it
+ * waited behind every one - 5 s to 48 s for a body it got in a build's time before MWNPC4.
+ * @returns {{ busy: boolean, high: Array<() => Promise<any>>, low: Array<() => Promise<any>> }}
+ */
+export function createBuildGate() { return { busy: false, high: [], low: [] }; }
+/** MWNPC4: THE PAGE'S ONE BUILD QUEUE - every body lane a host stands (the peers, the family, the card table, the NPCs)
+ *  passes it as `gate`, so the lanes' builds run one after another as one lane's always did. */
+export const BODY_BUILD_GATE = createBuildGate();
+/**
+ * `build` run through `gate` when its turn comes - `low` an NPC lane's, waiting behind every `high` one. Answers when it
+ * has run (its own result swallowed, as the lanes' queues always were).
+ * @param {{ busy: boolean, high: Array<() => Promise<any>>, low: Array<() => Promise<any>> }} gate
+ * @param {() => any} build @param {boolean} [low]
+ * @returns {Promise<void>}
+ */
+export function gateBuild(gate, build, low = false) {
+  return new Promise((resolve) => {
+    (low ? gate.low : gate.high).push(() => Promise.resolve().then(build).catch(() => null).then(() => resolve()));
+    pumpGate(gate);
+  });
+}
+/** @param {{ busy: boolean, high: Array<() => Promise<any>>, low: Array<() => Promise<any>> }} gate */
+function pumpGate(gate) {
+  if (gate.busy) return;
+  const next = gate.high.shift() ?? gate.low.shift();
+  if (!next) return;
+  gate.busy = true;
+  let done = false;
+  const release = () => { if (done) return; done = true; clearTimeout(stall); gate.busy = false; pumpGate(gate); };
+  const stall = setTimeout(release, BODY_GATE_STALL_MS);
+  /** @type {any} */ (stall)?.unref?.();
+  next().then(release, release);
+}
 /** A body that failed to build is not tried again before this. */
 export const BODY_RETRY_MS = 30000;
 /** A peer gone from the drawable set keeps its body this long before it is released. */
@@ -93,6 +139,24 @@ export const SWAP_MARGIN = 1.25;
 export const BODY_REBUILD_MS = 10000;
 /** A strike the rig refused (an equip in flight, a shot still releasing) is asked again this many frames, then dropped (AUDIT WORLD C3). */
 export const PENDING_FRAMES = 60;
+/** MW-PACE1 (Mac: "Morrowind attack animations don't scale with attack speed/multiple attacks when attack speed is
+ *  high"): A PEER'S BLOW, PACED BY ITS OWN GAPS. The wire carries a swing's count and kind, not the sender's Speed - but
+ *  a held button keeps swinging (WeaponSwingMode 2), and the sender's machine starts each blow the frame after the last
+ *  is done, so the gap between two counts IS the sender's blow. A burst's shortest gap paces its blows (a pause in a
+ *  fight only lengthens a gap), its hit two fifths in (the machine's HIT_FRAME_MELEE of MELEE_NUM_FRAMES); a gap past
+ *  PEER_BLOW_MAX_S (seconds) ends the burst, and its first blow keeps the record's pace. The bounds: the slowest blow
+ *  the swing law draws (characters/weaponStates.js SWING_FRAME_MAX, 2 s) with a pose's lag on top, and under the
+ *  fastest (0.45 s) by a pose's jitter. */
+export const PEER_BLOW_MIN_S = 0.3;
+export const PEER_BLOW_MAX_S = 2.2;
+/** The burst's pace after a gap of `gapS` seconds (null: none yet), and the schedule a blow is fitted into. Pure. */
+export function peerBlowPace(pace, gapS) {
+  if (!(gapS >= 0) || gapS > PEER_BLOW_MAX_S) return null;
+  const g = Math.max(PEER_BLOW_MIN_S, gapS);
+  return pace == null ? g : Math.min(pace, g);
+}
+export const peerBlow = (pace) => (pace == null ? null
+  : { seconds: pace, hitAt: (pace * HIT_FRAME_MELEE) / MELEE_NUM_FRAMES.StrikeDown });
 /** The drawn yaw eases toward the pose's at this rate (a second) - a turn the rig can see every frame, not one that stops between poses. */
 export const YAW_EASE = 12;
 /** PEER-CADENCE (2026-09-22, Mac: "look for ways to improve online performance"): how many frames apart a body's
@@ -176,38 +240,48 @@ function wolfLookKey(look) {
  *  equip table tore the standing wolf down and built it again ten seconds on (a second refusal and warning, where it
  *  was refused). */
 export function peerBodyKey(look, shown = null, glyphs = null) {
-  return peerIsWolf(shown) ? `wolf|${wolfLookKey(look)}|${werewolfSkinOf(glyphs) ?? ''}` : bodyLookKey(look);   // SHADOW-FANG: and the wolf's skin
+  if (look?.creature) return `crea|${look.creature}${look.flies ? '|flies' : ''}`;   // MWNPC9: a creature is its record - every one of a kind one body, never a person's; AUDIT MW-NPC II K5: one asked to fly another
+  if (look?.vampire && !peerIsWolf(shown)) return `vamp|${bodyLookKey(look)}`;   // MWNPC14: a vampire's face is its own body - never a living look's spare
+  return peerIsWolf(shown) ? `wolf|${wolfLookKey(look)}|${werewolfSkinOf(glyphs) ?? ''}` : bodyLookKey(look);   // SHADOW-FANG: and the wolf's skin; MWNPC17: and an NPC's own picks (bodyLookKey) - two people in one outfit are two bodies
 }
 
 /** MW-CROWD (FIELD BUGS 2026-10-01 #8): A PERSON'S BODY IS ITS LOOK LESS ITS WEAPONS. The weapon in hand is the arm's
  *  live door (`_arm` -> setWeapon, DISC12's hand swap), so a peer who drew another sword tore down a built body after
  *  BODY_REBUILD_MS and queued a whole build for it - the doll standing meanwhile - to hold what setWeapon had already put
- *  in the hand. The body key reads every other item as lookKey does; memoised by the look, as lookKey is. */
+ *  in the hand. The body key reads every other item as lookKey does; memoised by the look, as lookKey is.
+ *  MWNPC17: and an NPC's hint (wardrobe.js npcKeyOf) - in the memo (AUDIT MWNPC16-18 C F4: added after it, the key was
+ *  a new string per body per wanting peer every frame). */
 const _bodyLookKeys = new WeakMap();
 function bodyLookKey(look) {
   if (!look || typeof look !== 'object') return lookKey(look);
   let k = _bodyLookKeys.get(look);
   if (k === undefined) {
     const items = Array.isArray(look.items) ? look.items : [];
-    k = items.some((it) => it?.group === 'Weapons') ? lookKey({ ...look, items: items.filter((it) => it?.group !== 'Weapons') }) : lookKey(look);
+    k = (items.some((it) => it?.group === 'Weapons') ? lookKey({ ...look, items: items.filter((it) => it?.group !== 'Weapons') }) : lookKey(look)) + npcKeyOf(look);
     _bodyLookKeys.set(look, k);
   }
   return k;
 }
 
 export function peerBuildOpts(look, shown = null, glyphs = null) {
+  if (look?.creature) return { creature: look.creature, reachSweep: false, ...(look.flies ? { flies: true } : {}) };   // MWNPC9: its CREA record (fpArm buildCreatureBody) - nothing worn or held; AUDIT MW-NPC II K5: a flyer's must fly
   const stub = peerStubEntity(look);
   const wolf = peerIsWolf(shown);
   const skin = wolf ? werewolfSkinOf(glyphs) : null;   // SHADOW-FANG: the glyphs the relay read off the peer's own token
+  const npc = wolf ? null : npcHintOf(look);   // MWNPC17: a dressed NPC's seed and rung (characters/wardrobe.js) - a player's look carries none
+  const worn = dfWornEquipment(stub.equip.slots, EQUIP_SLOTS, ARMOR_ENUM);
   return {
     race: mwRaceId(stub.race),
     female: stub.gender === 'female',
     faceIndex: stub.faceIndex | 0,
-    armor: dfWornEquipment(stub.equip.slots, EQUIP_SLOTS, ARMOR_ENUM),
+    armor: npc ? withNpcPicks(beastWorn(worn, stub.race), npc) : worn,   // MWNPC17: each garment its rung and its pick; AUDIT MWNPC16-18: a beast NPC's feet and head bare
     // DISC12: the hand in use; WEREWOLF1: a wolf holds nothing (the build refuses the hand anyway)
     weapon: wolf ? null : stub.equip.slots[shown?.lh ? EQUIP_SLOTS.LeftHand : EQUIP_SLOTS.RightHand] ?? null,
     hasAmmo: false,
+    reachSweep: false,   // MWNPC3: a peer is never looked out of - no first-person reach sweep in its build
     ...(wolf ? { werewolf: true, ...(skin ? { skin } : {}) } : {}),   // WEREWOLF1: Bloodmoon's wolf - its skeleton, head, hair and robe; SHADOW-FANG: its skin
+    ...(look?.vampire && !wolf ? { vampire: true } : {}),   // MWNPC14: a vampire foe's face (an NPC's look - the wire's never carries it)
+    ...(npc ? { npcFace: npcFaceOf(npc) } : {}),   // MWNPC17: its head and hair walked off its seed
   };
 }
 
@@ -222,6 +296,15 @@ export function peerBuildOpts(look, shown = null, glyphs = null) {
  * written in place each frame. WB9h: `yaw` the body's own eased yaw
  * (the pose's when none), so no copy of the pose is made a frame.
  */
+/** CARDS2b: a seated peer's seat (`{ feet, yaw, top }` - the rig's thirdSeat poses it at the body's own race) at the
+ *  feet and facing the body is drawn at - kept while none of them moves (a sitter's pose stands still), rebuilt while
+ *  the arrival eases in or the seat changes. */
+export function seatFor(b, f, yaw, st) {
+  const key = `${f[0].toFixed(2)},${f[1].toFixed(2)},${f[2].toFixed(2)},${yaw.toFixed(3)},${st}`;
+  if (b.seatKey !== key) { b.seatKey = key; b.seatSpec = { feet: [f[0], f[1], f[2]], yaw, top: seatTopOf(st) }; }
+  return b.seatSpec;
+}
+
 export function peerCamera(shown, feet, speed = 0, cam = null, yaw = peerBodyYaw(shown)) {
   const c = cam ?? { pos: [0, 0, 0], yaw: 0, pitch: 0, sneaking: false, bob: [0, 0], move: { forward: 0, strafe: 0, running: false, speed: 0, grounded: true, jumping: false, swimming: false, levitating: false } };
   const moving = peerMoving(shown);   // CLIMB5: a shimmy along a lip is no walk
@@ -235,6 +318,13 @@ export function peerCamera(shown, feet, speed = 0, cam = null, yaw = peerBodyYaw
 }
 
 const dist2 = (a, b) => (a[0] - b[0]) ** 2 + (a[2] - b[2]) ** 2;
+/** COATS3D: a horse's feet under its rider's, its seat over them (player/mwView.js's own law), `grow` its size. */
+const horseFeetUnder = (feet, yaw, grow = 1) => [feet[0] - Math.sin(yaw) * HORSE_SEAT[1] * grow, feet[1], feet[2] - Math.cos(yaw) * HORSE_SEAT[1] * grow];
+/** COATS3D: how far a body astride stands over its feet's standing height - its hips on the seat, over a standing
+ *  pelvis (player/seatPose.js SEAT_PELVIS_HEIGHT, at the body's race) - so a rider's name rides over their head. */
+const saddleLift = (b) => { const s = b?.cam?.saddle; return s?.seat && b.feet ? Math.max(0, s.seat[1] - b.feet[1] - SEAT_PELVIS_HEIGHT * (b.rig.raceHeightScale?.() ?? 1)) : 0; };
+/** COATS3D: a peer's horse's own idle phase, off their id. */
+const seedOf = (id) => { let h = 0; for (const c of String(id)) h = (Math.imul(h, 31) + c.charCodeAt(0)) | 0; return (h >>> 0) % 65536 || 1; };
 
 /** WB9h: the rows of proj x view, and which row makes each side: left, right, bottom, top, near (the 4th row plus or
  *  minus the 1st, 2nd, 3rd). */
@@ -282,9 +372,27 @@ export class PeerBodies {
    * @param {() => number} [p.generation] HARD3: the Morrowind data's generation. Destructured since MWBODY1 and never documented, which is how a caller finds out a parameter exists - by reading the destructuring.
    * @param {(m: string) => void} [p.warn] HARD3: likewise - the injected warn a test reads instead of the console.
    * @param {() => any} [p.collider] CLIMB6: the scene's collider, for a peer's floor under its climb (climbPose.js floorGapAt).
+   * @param {{max?: number, range?: number, skinBudget?: number, spareMax?: number, buildInRange?: boolean, hysteresis?: number}} [p.limits] MWNPC3: this instance's own
+   *   caps - the most bodies, the range they stand to, the skins a frame, the spares kept. Every one defaults to the
+   *   module's constant, so the peers, the family and the card table read what they read; the NPC lane sets its own.
+   *   MWNPC11: `buildInRange` no rig for one past the range, `hysteresis` how far past it a standing body is held.
+   * @param {ReturnType<typeof createBuildGate>|null} [p.gate] MWNPC4: the build queue, SHARED - BODY_BUILD_GATE, which every
+   *   body lane the hosts stand passes, so one body builds at a time on the page however many lanes ask; none, the
+   *   instance's own. AUDIT MW-NPC II L1: an NPC lane's (`buildInRange`) waits behind every peer's and family's.
+   * @param {boolean} [p.casts] MWNPC16: the bodies cast their own shadows (fpArm.js drawThird's `cast`, castThird) - an NPC
+   *   lane's, whose billboard cast for them until then; the peers', the family's and the card table's cast none, as before.
+   * @param {() => any} [p.horses] COATS3D: the 3D horse rig (world/horseRig.js) a peer on a horse sits - null, none
    */
-  constructor({ renderer, enabled = () => true, createRig = createFpArm, buildOpts = peerBuildOpts, now = () => Date.now(), generation = () => 0, warn = (m) => console.warn(m), collider = () => null }) {
+  constructor({ renderer, enabled = () => true, createRig = createFpArm, buildOpts = peerBuildOpts, now = () => Date.now(), generation = () => 0, warn = (m) => console.warn(m), collider = () => null, limits = null, gate = null, casts = false, horses = () => null }) {
     this.renderer = renderer;
+    this._casts = !!casts;   // MWNPC16
+    this._horses = horses;   // COATS3D: the 3D horse rig (world/horseRig.js) a peer on a horse rides, or null - none, and no peer rides here
+    this._max = limits?.max ?? BODIES_MAX;   // MWNPC3: the instance's caps (limits)
+    this._range = limits?.range ?? BODY_RANGE;
+    this._skinBudget = limits?.skinBudget ?? SKIN_BUDGET;
+    this._spareMax = limits?.spareMax ?? SPARE_MAX;
+    this._buildInRange = !!limits?.buildInRange;   // MWNPC11: an NPC lane builds no body for one past its range (it keeps its sprite)
+    this._hyst = limits?.hysteresis > 1 ? limits.hysteresis : 1;   // MWNPC11: a standing body keeps its place this much past the range
     this._collider = collider;   // CLIMB6: the host's, for the floor under a hanging peer's feet
     this.enabled = enabled;
     this._generation = generation;   // the Morrowind data's generation: a re-attach releases every body built from the last (weaponRig's fpRecheck, for the peers)
@@ -299,6 +407,7 @@ export class PeerBodies {
     this._formWait = new Map();   // WEREWOLF1 (AUDIT E3): peer id -> the time its next body may be built, after a form flipped back too soon
     this._flipped = new Set();    // and the peers whose last body went for a change of form (their next is a form's body)
     this._queue = Promise.resolve();
+    this._gate = gate;   // MWNPC4: the page's one build queue (BODY_BUILD_GATE), or null - this instance's own
     this._phase = 0;   // PEER-CADENCE: each new body takes the next phase, so bodies on the same cadence pose on different frames
     this._frame = 0;   // AUDIT PEER-CADENCE F1: the frame the cadence counts on - the MODULE's, not each body's (see _place)
     this._cam = null;   // INVIS-LOOK: the camera the body pass drew with this frame - the late pass draws the concealed with it
@@ -316,17 +425,38 @@ export class PeerBodies {
   /** Is this body standing for its peer: built, in range, its peer present, the rig live? */
   _standing(b) { return !!(b && b.state === 'ok' && b.goneAt == null && !b.far && b.feet && (b.rig.thirdActive?.() ?? true)); }
 
+  /** MWNPC11: the frame's limits - the range a body stands within and the skins it may take - moved by the NPC lanes'
+   *  one frame budget (characters/npcBodies.js). @param {{ range?: number, skinBudget?: number }} o */
+  setLimits(o) { if (o.range >= 0) this._range = o.range; if (o.skinBudget >= 0) this._skinBudget = o.skinBudget; }
+
+  /** MWNPC11: does this peer hold a body within the range (built or building, not far, not leaving) - one the frame's
+   *  budget ranks by the hysteresis it is held to? @param {string} id */
+  holds(id) { const b = this._bodies.get(id); return !!b && b.goneAt == null && !b.far; }
+
   /** Does this peer stand in a body (so the doll is not drawn for it)? */
   has(id) { return this._standing(this._bodies.get(id)); }
 
   /** The body's height over its feet - the capsule scaled by the race's own (MW-D34) - or 0 without a standing body: the name pass's head. */
-  heightOf(id) { const b = this._bodies.get(id); return this._standing(b) ? CAPSULE_HEIGHT * (b.rig.raceHeightScale?.() ?? 1) * (this._cam?.grow && b.feet ? Math.max(1, this._cam.grow(b.feet)) : 1) : 0; }   // OW-PEERS: a grown body's head, for its name
+  heightOf(id) { const b = this._bodies.get(id); return this._standing(b) ? ((b.rig.bodyHeight?.() ?? CAPSULE_HEIGHT * (b.rig.raceHeightScale?.() ?? 1)) + saddleLift(b)) * (this._cam?.grow && b.feet ? Math.max(1, this._cam.grow(b.feet)) : 1) * this._scaleOf(b) : 0; }   // COATS3D: astride, the head as high as the saddle lifts it
+
+  /** MWNPC10: a body's own scale (the lane's `scaleOf`), 1 without one. */
+  _scaleOf(b) { const s = this._cam?.scaleOf ? this._cam.scaleOf(b.id) : 1; return s > 0 ? s : 1; }   // OW-PEERS: a grown body's head, for its name
 
   /** Why a look has no body - a person's, or (AUDIT E7) a wolf's by the pose and glyphs it is keyed on - or null. */
   failureOf(look, shown = null, glyphs = null) {
     if (peerIsWolf(shown) && this._wolfRefused) return this._wolfRefused.reason;
     const f = this._failed.get(peerBodyKey(look, shown, glyphs));
     return f ? f.reason : null;
+  }
+
+  /** SHADOW-CLOAK: a peer's body's named bones where they stand - { feet, yaw, bones }: the feet and the eased yaw the
+   *  body is drawn at and its bones in its own frame (the rig's thirdBones) - or null without a standing body. A body out
+   *  of view keeps its last pose, as its skin does. */
+  bonesOf(id, names) {
+    const b = this._bodies.get(id);
+    if (!this._standing(b)) return null;
+    let bones = null; try { bones = b.rig.thirdBones?.(names) ?? null; } catch (e) { console.error('[peerBodies] bonesOf', e); }   // as every rig call here (AUDIT MWBODY A1): a throw never ends the frame
+    return bones ? { feet: b.feet, yaw: b.yaw, bones } : null;
   }
 
   /** WEREWOLF1 (AUDIT E4): does this peer stand in a Morrowind WOLF here - the one body the rider layer yields a beast
@@ -361,7 +491,7 @@ export class PeerBodies {
     // the sweep first (the cap counts what stands, not what is leaving)
     for (const [id, b] of this._bodies) {
       if (live.has(id)) { b.goneAt = null; continue; }
-      if (b.goneAt == null) { b.goneAt = now; b.swing = null; b.pending = null; b.posed = false; }   // AUDIT WORLD C7: a body that lingers re-latches its counts on the way back - what happened out of sight is not replayed. AUDIT PEER-CADENCE F2: and its skin is stale on the way back - the first frame back poses
+      if (b.goneAt == null) { b.goneAt = now; b.hit = null; b.dead = null; b.swing = null; b.pending = null; b.posed = false; }   // AUDIT WORLD C7: a body that lingers re-latches its counts on the way back - what happened out of sight is not replayed. AUDIT PEER-CADENCE F2: and its skin is stale on the way back - the first frame back poses
       else if (now - b.goneAt > BODY_LINGER_MS) this._release(id);
     }
     // the peers with a body: their feet, pace and camera - and then (WB9h) their steps, the skins on the budget
@@ -388,8 +518,12 @@ export class PeerBodies {
       b.veil = conceal ? (conceal(id) ?? null) : null;   // INVIS-LOOK: a concealed peer's body keeps standing, drawn translucent (drawVeiled)
       this._place(b, peer, toScene, dt, near);
       if (b.state === 'ok' && !b.far && dt > 0) { b.peer = peer; due.push(b); } else {
-        b.posed = false; b.stale = false; b.owed = false;   // AUDIT PEER-CADENCE F2: far (or a frozen frame) - whatever skin stands is stale by the time it is stepped again
-        if (b.swing != null) { b.swing = peer.shown.an | 0; b.cast = peer.shown.cn | 0; b.pending = null; }   // AUDIT WORLD C7: not arming (far, or frozen) - the counts follow, so a blow out of sight is not replayed on waking
+        // AUDIT MW-NPC II L2: an NPC lane's frozen frame (a talk window holds the street - its hosts pass dt 0) keeps the
+        // skin: nothing moved under it, and forgotten, every standing body was owed a pose on the frame the window shut -
+        // 20 skins against the frame's 8 at Near, 37 against 16 at All. Far (or a peer's frozen frame), stale as ever.
+        if (b.far || dt > 0 || !this._buildInRange) { b.posed = false; b.stale = false; b.owed = false; }   // AUDIT PEER-CADENCE F2: far (or a frozen frame) - whatever skin stands is stale by the time it is stepped again
+        if (b.swing != null) { b.swing = peer.shown.an | 0; b.cast = peer.shown.cn | 0; b.pending = null; }
+        if (b.hit != null) { b.hit = peer.shown.ht | 0; if ((peer.shown.dd | 0) !== b.dead) b.dead = null; }   // MWNPC4: and the reactions - a recoil out of sight is not played, a death out of sight is a corpse on waking   // AUDIT WORLD C7: not arming (far, or frozen) - the counts follow, so a blow out of sight is not replayed on waking
       }
     }
     this._stepDue(dt);
@@ -411,8 +545,10 @@ export class PeerBodies {
       const f = this._failed.get(fkey);
       if (f) { if (now < f.until) continue; this._failed.delete(fkey); }
       const p = toScene(peer.shown);
+      const d2 = near ? dist2(p, near) : 0;
+      if (this._buildInRange && d2 > this._range * this._range) continue;   // MWNPC11: past the range, no rig built - its sprite stands
       const w = this._wantPool[n] ?? (this._wantPool[n] = { peer: null, key: '', d2: 0, pri: false, since: 0 });
-      w.peer = peer; w.key = fkey; w.d2 = near ? dist2(p, near) : 0; w.pri = priority ? !!priority(peer.id) : false;
+      w.peer = peer; w.key = fkey; w.d2 = d2; w.pri = priority ? !!priority(peer.id) : false;
       w.since = this._wanted(id, now);   // WB9h
       want[n++] = w;
     }
@@ -425,7 +561,7 @@ export class PeerBodies {
     want.sort((a, b) => (a.pri === b.pri ? a.d2 - b.d2 : a.pri ? -1 : 1));
     for (const [id, b] of this._bodies) b.pri = priority ? !!priority(id) : false;
     for (const w of want) {
-      if (this._bodies.size >= BODIES_MAX) {
+      if (this._bodies.size >= this._max) {
         if (!this._maySwap(w, now) || !this._yield(w.d2, w.pri, w.key)) break;
       }
       const peer = w.peer;
@@ -441,7 +577,14 @@ export class PeerBodies {
       this._wantSince.delete(peer.id);
       b.rig.attach(this.renderer, () => b.cam);
       this._place(b, peer, toScene, dt, near);
-      if (!spare) this._queue = this._queue.then(() => this._build(b, look, shown, glyphs)).catch(() => null);
+      if (!spare) {
+        const build = () => this._build(b, look, shown, glyphs);
+        // MWNPC4: through the page's gate when the host gave one - a peer's body, the family's and an NPC's wait their turn
+        // on ONE queue, so two lanes never build at once (a build's synchronous spans - the bind, the skin transfer -
+        // were one lane's stutter at a time; two lanes doubled it)
+        if (this._gate) this._queue = gateBuild(this._gate, build, this._buildInRange);   // AUDIT MW-NPC II L1: an NPC's behind a player's
+        else this._queue = this._queue.then(build).catch(() => null);
+      }
       else {
         // WB9h: a spare stands at once, its skin the last wearer's - stale, so it is posed for its new peer on its first
         // frame when seen, and otherwise the moment it is (as any body out of the view)
@@ -465,7 +608,7 @@ export class PeerBodies {
    *  it would wait on the one queue, the body it took already gone. */
   _maySwap(w, now) {
     if (w.pri) return true;
-    for (const b of this._bodies.values()) if (b.goneAt != null) return true;
+    for (const b of this._bodies.values()) if (b.goneAt != null || (this._buildInRange && b.far)) return true;   // AUDIT MW-NPC B3: an NPC lane's body past the cut is its sprite already - nothing is seen to go
     if (now - w.since < SWAP_DWELL_MS || now - this._swappedAt < SWAP_EVERY_MS) return false;
     if (this._hasSpare(w.key)) return true;
     for (const b of this._bodies.values()) if (b.state === 'building') return false;
@@ -478,18 +621,22 @@ export class PeerBodies {
   _yield(d2, pri = false, key = null) {
     let victim = null, stranger = null;
     for (const b of this._bodies.values()) {
-      if (b.goneAt != null) { victim = b; break; }
+      // AUDIT MW-NPC B3: in an NPC lane (`buildInRange`) a body past the cut stands as its sprite already - it gives its
+      // slot up first, as a lingering one does: kept, its twelve slots held a lane's nearer actors as sprites for good
+      if (b.goneAt != null || (this._buildInRange && b.far)) { victim = b; break; }
       if (b.pri && !pri) continue;   // AUDIT PARTY8: a stranger never takes a party mate's slot
       if (!victim || b.d2 > victim.d2) victim = b;
       if (!b.pri && (!stranger || b.d2 > stranger.d2)) stranger = b;
     }
     if (!victim) return false;
-    // AUDIT PARTY8: a party mate takes the farthest stranger's slot outright, margin or none
-    if (pri && stranger && victim.goneAt == null) { this._release(stranger.id, true, key); this._swappedAt = this._now(); return true; }
-    if (victim.goneAt == null && !(victim.d2 > d2 * SWAP_MARGIN * SWAP_MARGIN)) return false;
+    const unseen = victim.goneAt != null || (this._buildInRange && victim.far);
+    // AUDIT PARTY8: a party mate takes the farthest stranger's slot outright, margin or none - AUDIT MW-NPC II L3: unless an
+    // unseen body gives one up first (B3's law; `goneAt` alone let the living newcomer take a standing corpse's slot)
+    if (pri && stranger && !unseen) { this._release(stranger.id, true, key); this._swappedAt = this._now(); return true; }
+    if (!unseen && !(victim.d2 > d2 * SWAP_MARGIN * SWAP_MARGIN)) return false;
     // WB9h: a standing body given up is kept for its body's next wearer, and the hand-over is timed (a lingering one's
-    // peer is gone - nothing is seen to go)
-    if (victim.goneAt == null) this._swappedAt = this._now();
+    // peer is gone, a far one's is its sprite - nothing is seen to go)
+    if (!unseen) this._swappedAt = this._now();
     this._release(victim.id, true, key);   // MW-CROWD: a LINGERING body is kept too - its peer mounted or dropped out of the list a moment, and came back to a whole rebuild (_release spares only a built, skinned rig)
     return true;
   }
@@ -510,17 +657,39 @@ export class PeerBodies {
     // (see online.js lerpAngle), and a loop over a large one never falls.
     b.yaw += wrapAngle(peerBodyYaw(peer.shown) - b.yaw) * (dt > 0 ? Math.min(1, dt * YAW_EASE) : 1);   // CLIMB5: to the wall, on the climb
     b.d2 = near ? dist2(f, near) : 0;
-    b.far = !!near && b.d2 > BODY_RANGE * BODY_RANGE;
+    b.far = !!near && b.d2 > this._range * this._range * (b.far ? 1 : this._hyst * this._hyst);   // MWNPC11: a standing body held to the hysteresis past the range, a far one back within it
     b.cam = peerCamera(peer.shown, f, b.speed, b.cam, b.yaw);
     // CLIMB6: the climb the body's limbs take - the hold rebuilt from the pose, a move from its kind, lip and time
     b.cam.climb = (b.climbTrack ??= new PeerClimbTrack()).input(peer.shown, f, b.yaw, this._now(), this._collider());
+    // CARDS2b: seated at a card table - the same seated request the sitter's own body takes (player/seatPose.js), at the
+    // table's top the pose names; rebuilt only when the seat moves
+    b.cam.seat = peer.shown.st ? seatFor(b, f, b.yaw, peer.shown.st) : null;
+    b.cam.saddle = this._saddle(b, peer.shown, f, dt);   // COATS3D: on a horse - astride its 3D horse
     b.inView = !this._planesOk || this._sees(b, turnLeadMargin(Math.sqrt(b.d2), this._turn));   // WB9h: in the last pass's view, with the margin a turning eye needs - MW-CROWD: led by the turn
+  }
+
+  /** COATS3D: a peer on a HORSE (the pose's `rd`; never the cart, never a beast) sits the 3D horse - its own, in the look
+   *  the pose names (`rc`), stepped at the body's pace under its feet (HORSE-WALK: held under the gallop while the pose's
+   *  `hs` says a slow ride), its seat the body's saddle (player/seatPose.js) as the player's own is (player/mwView.js).
+   *  Null, and the horse let go, off one or where the rig is not up. */
+  _saddle(b, shown, f, dt) {
+    const rig = this._horses();
+    if (!rig?.ready() || shown.rd !== POSE_RIDE.Horse || peerIsWolf(shown) || shown.wb) { this._unhorse(b); return null; }
+    b.horse ??= rig.horse(seedOf(b.id));
+    if (!b.horse) return null;
+    rig.step(b.horse, { feet: horseFeetUnder(f, b.yaw), yaw: b.yaw, speed: b.speed ?? 0, dt, look: shown.rc | 0, gallops: !shown.hs });   // HORSE-WALK: the pose's slow ride (its `hs` - walked, or under half) never gallops
+    const seat = rig.seat(b.horse);
+    return seat ? { feet: [f[0], f[1], f[2]], seat, yaw: b.yaw, lean: gaitShare(b.horse.gait, 'gallop') } : null;
+  }
+  /** COATS3D: a body's horse let go (its palette). */
+  _unhorse(b) {
+    if (b?.horse) { this._horses()?.release(b.horse); b.horse = null; }
   }
 
   /** WB9h: does the view the last body pass drew (viewPlanes) reach this body - its sphere about its middle, BODY_SPHERE_SHARE of
    *  its height round, `margin` metres more? */
   _sees(b, margin, grow = 1) {
-    const h = CAPSULE_HEIGHT * (b.rig.raceHeightScale?.() ?? 1) * grow;   // OW-PEERS: a grown body reaches its grow times as far
+    const h = (b.rig.bodyHeight?.() ?? CAPSULE_HEIGHT * (b.rig.raceHeightScale?.() ?? 1)) * grow;   // OW-PEERS: a grown body reaches its grow times as far; MWNPC9: a creature its own height
     return sphereInView(this._planes, b.feet[0], b.feet[1] + h / 2, b.feet[2], h * BODY_SPHERE_SHARE + margin);
   }
 
@@ -548,7 +717,7 @@ export class PeerBodies {
     if (due.length > 1) due.sort(bySkinRank);
     let skins = 0;
     for (const b of due) {
-      const pose = b.rank === 3 || (b.rank > 0 && skins < SKIN_BUDGET);
+      const pose = b.rank === 3 || (b.rank > 0 && skins < this._skinBudget);
       if (pose) skins++;
       else if (b.rank > 0) b.owed = true;
       else if (!b.inView) b.stale = true;
@@ -579,12 +748,14 @@ export class PeerBodies {
    *  and the bow's hold - a swing that arrives with wd 2 is the draw (attack with hold), and release() waits while
    *  wd stays 2, exactly as weaponRig withholds it while the machine sits in StrikeUp. */
   _arm(b, shown, look = null) {
+    // MWNPC4: a dead body takes no weapon, no spell and no swing - its counts follow, so nothing is replayed if it stands
+    if (this._react(b, shown)) { b.swing = shown.an | 0; b.cast = shown.cn | 0; b.pending = null; b.held = false; return; }
     const drawn = !!shown.wd;
     b.rig.setSheathed?.(!drawn);
     // DISC12 (Discord: "Weapons when swapped into left hand dont work showing fists"): THE HAND IN USE. The body was
     // built holding the look's RIGHT hand, always, so a peer fighting left-handed stood with the wrong weapon or a fist.
     // The pose says the hand (`lh`); the weapon follows it through setWeapon, the arm's own door, when the arm is quiet.
-    if (look) {
+    if (look && !look.creature) {   // MWNPC9: a creature's claws are its body
       const want = b.wolf ? null : peerWeaponOf(look, shown);   // WEREWOLF1: the wolf's hands are its claws
       if (want !== b.weapon && (want?.templateIndex !== b.weapon?.templateIndex || want?.equipSlot !== b.weapon?.equipSlot)
         && (b.rig.upperBodyReady?.() ?? true) && b.rig.setWeapon?.(want, { hasAmmo: !!shown.am }) !== false) { b.weapon = want; b.ammo = shown.am ? 1 : 0; }
@@ -613,17 +784,36 @@ export class PeerBodies {
           if (shown.wd === 2) { b.rig.release?.(); b.held = false; b.pending = { strike: 'StrikeUp', hold: true, left: PENDING_FRAMES }; }
           else b.pending = null;
         } else {
+          // MW-PACE1: the gap since the last count, which paces the burst this blow belongs to
+          const at = this._now();
+          b.blowPace = peerBlowPace(b.swingAt == null ? null : b.blowPace, b.swingAt == null ? -1 : (at - b.swingAt) / 1000);
+          b.swingAt = at;
           // C3: the strike is KEPT until the rig takes it - the equip that setSheathed started this very frame
           // refuses it, and a consumed count was a blow never played - for PENDING_FRAMES and no more
-          b.pending = drawn ? { strike: POSE_STRIKES[shown.as | 0] ?? 'StrikeDown', hold: shown.wd === 2, left: PENDING_FRAMES } : null;
+          b.pending = drawn ? { strike: POSE_STRIKES[shown.as | 0] ?? 'StrikeDown', hold: shown.wd === 2, left: PENDING_FRAMES, blow: peerBlow(b.blowPace) } : null;
         }
       }
       if (b.pending && b.pending.left-- > 0) {
-        if (b.rig.attack?.(b.pending.strike, { hold: b.pending.hold })) { b.held = b.pending.hold; b.pending = null; }
+        if (b.rig.attack?.(b.pending.strike, { hold: b.pending.hold, blow: b.pending.blow ?? null, roll: b.swing })) { b.held = b.pending.hold; b.pending = null; }   // MWNPC9: the count rolls a creature's attack
       } else b.pending = null;
       if (cn !== b.cast) { b.cast = cn; b.rig.castSpell?.(shown.cr | 0); }
     }
     if (shown.wd !== 2) { b.rig.release?.(); b.held = false; }
+  }
+
+  /** MWNPC4: THE REACTIONS, off the two pose fields an NPC's carries (characters/npcBodies.js npcShown) and the wire's
+   *  peers never send: `ht`, a hit count - a new count is a recoil (the rig's `hurt`, its roll the count) - and `dd`, the
+   *  death: 0 standing, else the death's roll + 1 (`die`). Latched the first time a body meets them, as the swing count
+   *  is: a body that first meets an actor already dead stands in the death's last frame (the reference's startpoint, a
+   *  corpse it loads), and one handed to a living actor - a spare, a body back from its linger - is brought back
+   *  (`revive`, nothing on a living rig). A dead actor recoils from nothing. True while the actor is dead. */
+  _react(b, shown) {
+    const ht = shown.ht | 0, dd = shown.dd | 0;
+    if (b.dead == null) { b.dead = dd; if (dd) b.rig.die?.(dd - 1, { startPoint: 1 }); else b.rig.revive?.(); }
+    else if (dd !== b.dead) { b.dead = dd; b.posedAt = 0; if (dd) b.rig.die?.(dd - 1); else b.rig.revive?.(); }   // AUDIT MWNPC16-18 B F2: its pose no longer the one it stands in - no cast until posed again
+    if (b.hit == null || dd) b.hit = ht;
+    else if (ht !== b.hit) { b.hit = ht; b.rig.hurt?.(ht); }
+    return dd > 0;
   }
 
   /** A body that failed - refused, or threw - is released and its look waited out, the reason kept and said once. */
@@ -635,6 +825,10 @@ export class PeerBodies {
 
   async _build(b, look, shown = null, glyphs = null) {
     if (this._bodies.get(b.id) !== b) return;   // released before its turn: no parse for a body already gone
+    // AUDIT MW-NPC B4 (MWNPC11's NO RIG PAST THE RANGE): an NPC lane's body whose actor fell past the cut while it waited
+    // its turn on the one queue is let go unbuilt - it would stand as its sprite (a scene's first frame, a hitch's, cut
+    // before the other lanes had reported, queued more than the frame's bodies); offered within it again, it is queued again
+    if (this._buildInRange && b.far) { this._release(b.id); return; }
     let res = null, reason = 'threw';
     // WEREWOLF1: the form it was keyed on rides the build - a wolf's body is built as the wolf
     try { const opts = this._buildOpts(look, b.wolf ? { ...shown, wb: 1 } : null, glyphs); b.weapon = opts.weapon ?? null; res = await b.rig.build(opts); } catch (e) { res = null; reason = `threw: ${e?.message ?? e}`; }
@@ -649,9 +843,12 @@ export class PeerBodies {
 
   /** The bodies, after the local one (the same pass, MW-D24) - the standing ones. INVIS-LOOK: not a CONCEALED peer's -
    *  that one is drawn translucent after the world's opaque draws (drawVeiled), with the camera kept here. */
-  draw(canvas, { proj, view, eye, flashOf = null, grow = null, up = null }) {
-    const c = this._cam ?? (this._cam = { canvas: null, proj: null, view: null, eye: null, flashOf: null, grow: null, up: null });
+  draw(canvas, { proj, view, eye, flashOf = null, grow = null, up = null, fxOf = null, scaleOf = null, anchoredOf = null }) {
+    const c = this._cam ?? (this._cam = { canvas: null, proj: null, view: null, eye: null, flashOf: null, grow: null, up: null, fxOf: null, scaleOf: null, anchoredOf: null });
+    c.scaleOf = scaleOf;   // MWNPC10: a body drawn larger than itself, by its id (the lane's actor `scale`)
+    c.anchoredOf = anchoredOf;   // AUDIT MWNPC16-18 A3: a body that never walks, by its id (the lane's) - the lo tier's lamps take its shadow
     c.canvas = canvas; c.proj = proj; c.view = view; c.eye = eye; c.flashOf = flashOf;
+    c.fxOf = fxOf;   // MWNPC5: a body's tells by its id (a foe's glint, elite glow, dissolve - characters/npcBodies.js)
     c.grow = grow; c.up = up;   // OW-PEERS (FIELD BUGS 2026-10-01 #11): under the Overworld each body drawn its grow times about its feet, leaned as the traveller's own is (drawThird's OW-BIG and AUDIT OW3 J6)
     this._planesOk = !!viewPlanes(proj, view, this._planes);   // WB9h: this pass's view - and the next frame's skins
     // MW-CROWD: how far the view turned since the last pass - the angle between the two forwards (the view's third row)
@@ -671,7 +868,13 @@ export class PeerBodies {
    *  - the one `draw` was handed. Nothing before the body pass has drawn this frame: nothing. */
   drawVeiled() {
     const c = this._cam;
-    return c ? this._drawBodies(c.canvas, c.proj, c.view, c.eye, true, c.flashOf) : 0;
+    if (!c) return 0;
+    // AUDIT MW-NPC A1 (MWNPC2's law, for the veiled): every concealed or spectral body's picture in ONE bind of the
+    // sprite target - each quad still blends as its own veil says (drawCharacterSpriteQuad, per quad, in this order).
+    // Since MWNPC13 every ghost is veiled: a crypt's six took six binds a frame. A batch a host already holds is its own.
+    const r = this.renderer, own = !!r?.beginCharacterSpriteBatch && !r.characterSpriteBatchOpen;
+    if (own) r.beginCharacterSpriteBatch();
+    try { return this._drawBodies(c.canvas, c.proj, c.view, c.eye, true, c.flashOf); } finally { if (own) r.flushCharacterSpriteBatch(); }
   }
 
   /** The standing bodies of one kind - the open (`veiled` false) or the concealed. */
@@ -681,9 +884,24 @@ export class PeerBodies {
       if (!this._standing(b) || !b.veil !== !veiled) continue;
       // WB9h: out of the view (the frustum's sides and near, the body's own reach): nothing to draw - the sprite pass
       // has no such test. A view that is no lens (a stub's) keeps the old test alone: behind the eye.
-      const g = this._cam?.grow ? Math.max(1, this._cam.grow(b.feet)) : 1;   // OW-PEERS
-      if (this._planesOk) { if (!this._sees(b, 0, g)) continue; }
-      else if (view && view.length === 16) {
+      const ow = this._cam?.grow ? Math.max(1, this._cam.grow(b.feet)) : 1;   // OW-PEERS
+      const g = ow * this._scaleOf(b);   // MWNPC10: and its own scale
+      // MWNPC16: the body casts its own shape where this lane's do - an open body (a veiled one casts nothing), never one
+      // the travel view grows (OW-BIG: no giant's shadow), never one more burnt away than whole (AUDIT MWNPC16-18 R1: the
+      // dissolve's own law, as its flat keeps it - systems/dissolve.js dissolveShadowless)
+      const fx = this._cam?.fxOf ? this._cam.fxOf(b.id) : null;
+      const cast = this._casts && !veiled && !(ow > 1) && !dissolveShadowless(fx?.dissolve);
+      const anchored = cast && !!this._cam?.anchoredOf?.(b.id);   // AUDIT MWNPC16-18 A3
+      if (this._planesOk) {
+        if (!this._sees(b, 0, g)) {
+          // MWNPC16: out of the view it still casts into it (SHADOW-REACH, as its flat did), in the pose it last took -
+          // AUDIT MWNPC16-18 B F2: for ITS actor. A spare taken out of the view wears the last wearer's skin (a corpse's,
+          // a standing man's) until it is seen, and a life that flipped out of it is not yet posed: neither casts until
+          // posed for who it stands for now (posedAt, 0 until then)
+          if (cast && b.posedAt > 0) { try { b.rig.castThird?.({ feet: b.feet, yaw: b.yaw, grow: g, anchored }); } catch (e) { this._fail(b, `cast threw: ${e?.message ?? e}`); } }
+          continue;
+        }
+      } else if (view && view.length === 16) {
         const f = b.feet, vz = view[2] * f[0] + view[6] * f[1] + view[10] * f[2] + view[14];
         if (vz > CAPSULE_HEIGHT) continue;
       }
@@ -692,7 +910,8 @@ export class PeerBodies {
       if (b.stale) {
         try { b.rig.update(0, { pose: true, effectsDt: b.bank }); b.bank = 0; b.stale = false; b.owed = false; b.posedAt = this._frame; } catch (e) { this._fail(b, `update threw: ${e?.message ?? e}`); continue; }
       }
-      try { if (b.rig.drawThird(canvas, { proj, view, eye, feet: b.feet, yaw: b.yaw, hitFlash: flashOf ? flashOf(b.id) : 0, conceal: b.veil ?? null, grow: g, up: this._cam?.up ?? null })) drawn++; } catch (e) { this._fail(b, `draw threw: ${e?.message ?? e}`); }   // AUDIT MWBODY A1; HITFLASH1: a struck body flashes red; INVIS-LOOK: a concealed one blends; OW-PEERS: grown and leaned under the Overworld
+      const horse = b.horse && b.cam?.saddle ? this._horses()?.picture(b.horse, horseFeetUnder(b.feet, b.yaw, g), b.yaw, g) ?? null : null;   // COATS3D: astride, the horse in the body's picture
+      try { if (b.rig.drawThird(canvas, { proj, view, eye, feet: b.feet, yaw: b.yaw, hitFlash: flashOf ? flashOf(b.id) : 0, conceal: b.veil ?? null, grow: g, up: this._cam?.up ?? null, fx, cast, anchored, horse })) drawn++; } catch (e) { this._fail(b, `draw threw: ${e?.message ?? e}`); }   // AUDIT MWBODY A1; HITFLASH1: a struck body flashes red; INVIS-LOOK: a concealed one blends; OW-PEERS: grown and leaned under the Overworld; MWNPC16: its own shadow; COATS3D: astride, its horse
     }
     return drawn;
   }
@@ -710,6 +929,7 @@ export class PeerBodies {
     const b = this._bodies.get(id);
     if (!b) return;
     this._bodies.delete(id);
+    this._unhorse(b);   // COATS3D: the horse is the peer's, never the spare body's
     // WB9h: a body given up in a swap - built, skinned - is kept for the next peer who wears it
     if (spare && b.state === 'ok' && (b.rig.thirdActive?.() ?? false)) { this._keepSpare(b, keep); return; }
     try { b.rig.unload(); } catch { /* a rig mid-build unloads when the build lands */ }
@@ -720,7 +940,7 @@ export class PeerBodies {
   _keepSpare(b, keep = null) {
     b.rig.attach(this.renderer, null);
     this._spares.push({ key: b.key, rig: b.rig, weapon: b.weapon, ammo: b.ammo, at: this._now() });
-    while (this._spares.length > SPARE_MAX) {
+    while (this._spares.length > this._spareMax) {
       const i = this._spares.findIndex((x) => x.key !== keep);
       this._unloadSpare(this._spares.splice(Math.max(0, i), 1)[0]);
     }

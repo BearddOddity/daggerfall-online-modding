@@ -184,7 +184,7 @@ test('AUDIT MERGE-PLUS D7 a settings label is never cut for its value: in the se
   assert.ok(ctl && ctl.sels.includes('.px-setwrap .row > .ctl') && /flex-shrink: 1;/.test(ctl.body));
   assert.ok(atLeast(weight('.panes .row > .ctl'), weight('.ctl')) && ctl.i > ruleFor(list, '.ctl', 'flex').i, 'over the base cell\'s `flex: 0 0 auto`');
   assert.ok(!main.sels.some((s) => s.includes('wizard')) && !ctl.sels.some((s) => s.includes('wizard')));
-  assert.match(read('src/ui/enhancedMenu.js'), /const panes = el\('div', 'panes'\);[\s\S]{0,4000}?el\('div', 'list'\)/, 'the settings\' rows stand in .panes');
+  assert.match(read('src/ui/enhancedMenu.js'), /const panes = el\('div', 'panes opt'\);[\s\S]{0,4000}?el\('div', 'list'\)/, 'the settings\' rows stand in .panes (ORG2: .panes.opt)');
   assert.ok(SKIN_NAMES.enhanced.length > 'Enhanced'.length, 'the name that found it');
 });
 
@@ -194,7 +194,8 @@ test('AUDIT MERGE-PLUS D8 the Interface Style help that said the retired word is
   const ui = OVERHAUL_PANELS.find((p) => p.id === 'ui');
   const ids = ui.options.map((o) => o.id);
   assert.ok(ids.includes('enhanced-plus') && !ids.includes('enhanced'), `the UI panel's ids: ${ids.join(', ')}`);
-  assert.deepEqual(ui.options.map((o) => o.name), [SKIN_NAMES.classic, SKIN_NAMES.enhanced, 'GrimoireUI'], 'the three looks, by their own names');
+  // PIN MOVED (GRIM1, 2026-10-09): DFO Grimoire, the enhanced skin in GrimoireUI's dress, is the fourth look
+  assert.deepEqual(ui.options.map((o) => o.name), [SKIN_NAMES.classic, SKIN_NAMES.enhanced, 'GrimoireUI', 'DFO Grimoire'], 'the four looks, by their own names');
   const rule = ruleFor(rules(ENHANCED_CSS), '.look-pic[data-look="enhanced-plus"] .look-emblem', 'color');
   assert.ok(rule && rule.sels.includes('.look-pic[data-look="enhanced"] .look-emblem') && /var\(--verdigris\)/.test(rule.body), 'the sound panel\'s Enhanced keeps it too');
 });

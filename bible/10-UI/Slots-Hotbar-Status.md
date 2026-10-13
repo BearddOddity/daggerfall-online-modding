@@ -154,7 +154,10 @@ grows UP from the caption and can never meet the diamond. One tile an effect, in
   shade, its window or its recovery at its foot, a recovery dashed and dimmed;
 - a NEED (Climates & Calories, `survivalHudChips`): the port's own pixel glyph - a drumstick, a drop, a moon, a
   raincloud, a sun (warm, hot, scorching), a snowflake (cold, freezing, deadly cold), a bone, a tankard - framed amber
-  while it is felt and red while it costs (the chips' own two levels: red means it costs);
+  while it is felt and red while it costs (the chips' own two levels: red means it costs); how bad at its foot, its
+  stage of its own ladder - "2/3" for Hungry of Peckish, Hungry, Starving (NEED-TIER 2026-10-02, Mac: "the debuffs you
+  get from Climates and Calories no longer show the severity": the glyph is one picture for every stage and the name
+  goes where there is no room, so the foot says it there; Stiff, one stage, has none);
 - a POISON and a DISEASE, shown at last (a skull, a spore), on the Status box's own law (`systems/healthStatus.js`):
   ONE tile, "Poisoned", once any poison has left its waiting and until its damage has healed (the game names no poison:
   "You have been poisoned."); a tile a disease once its incubation is over, by the name its own contracted message
@@ -173,7 +176,7 @@ more than there are tiles); a longer list wraps into the next column rather than
 above holds one row or none - a phone on its side, where the diamond reaches the top; the chat opened tall on a
 laptop; an escort's face down to the caption - the widget stands BESIDE the diamond instead, from under what stands
 above to the diamond's foot; where neither holds a tile (the chat open over the whole left edge of a phone on its side)
-it steps aside until there is room again. Its columns stop short of the screen's middle, where the reticle is; what
+it steps aside until there is room again (the widget's own classes say which - `stat-side`, `stat-tight`, `stat-noroom`; as the bare `side` it wore the windows' `.side` column, a dark box behind its tiles - HUD-CLASS, `UI-Arc.md`). Its columns stop short of the screen's middle, where the reticle is; what
 does not fit folds into one more tile, "+N" (the Status box and the sheet say them all). The names go where there is no
 room for them: on a phone, on a short screen, in a band under three rows, past two columns, and beside the diamond. A
 short screen (a phone on its side) draws smaller tiles: 28px, the picture at one and a half (the diamond shrinks there

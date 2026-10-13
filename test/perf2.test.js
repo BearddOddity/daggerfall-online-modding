@@ -178,17 +178,20 @@ test('PERF2 pins: the sky passes, the clouds\' composite and the ring sit AT the
   assert.match(vc, /void main\(\) \{ vNdc = aPos; gl_Position = vec4\(aPos, 1\.0, 1\.0\); \}`;/, 'the clouds\' quad at the far plane');
   assert.match(vc, /gl\.useProgram\(this\.compositeProgram\);\n\s+gl\.enable\(gl\.DEPTH_TEST\); gl\.depthFunc\(gl\.LEQUAL\); gl\.depthMask\(false\);/, 'the composite tests');
   const ring = read('src/render/farRing.js');
-  assert.match(ring, /void main\(\) \{\n\s+gl_FragDepth = 1\.0;/, 'the ring\'s fragments at the far plane - the "streamed world repaints everything nearer" law, by depth');
+  // PIN MOVED (AUDIT FAR-SEA1 P1): at the far plane by the pass's depthRange(1, 1), not by a depth write - a shader that
+  // writes its depth runs before its depth test, for every fragment the streamed world already covers
+  assert.ok(!/gl_FragDepth/.test(ring), 'no depth write left in the ring');
+  assert.match(ring, /gl\.depthMask\(false\);\n\s+gl\.depthRange\(1, 1\);[\s\S]*?gl\.drawElements\([\s\S]*?gl\.depthRange\(0, 1\);/, 'the ring\'s fragments at the far plane - the "streamed world repaints everything nearer" law, by depth');
   assert.match(ring, /gl\.enable\(gl\.DEPTH_TEST\); gl\.depthFunc\(gl\.LEQUAL\);[^\n]*\n\s+gl\.depthMask\(false\);/);
   // the hosts: terrain, then the sky block, then the water
   const w = read('src/scenes/world.js');
   const terrainAt = w.indexOf('renderer.drawTerrain(p.dwTerrain ?? p.terrain, pixelMatrix,');   // DW-C: a pixel's clipped ground (Iliac Puddle No More's cap) draws in its place
-  const skyAt = w.indexOf('sky.draw(tvf ? tvf.yaw : cam.yaw, tvf ? tvf.pitch : cam.pitch + climbFeel.pitch(), fieldOfView() + climbFeel.fovRad(), worldAspect');   // CLIMB4: the climb's pitch and kick   // TV1: the sky turns to the travel view's eye
+  const skyAt = w.indexOf('sky.draw(tvf ? tvf.yaw : cam.yaw, tvf ? tvf.pitch : cam.pitch + climbFeel.pitch(), glassFov(fieldOfView() + climbFeel.fovRad(), spyglass.lens), worldAspect');   // PIN MOVED (SPYGLASS): the glass's lens   // CLIMB4: the climb's pitch and kick   // TV1: the sky turns to the travel view's eye
   const ringAt = w.indexOf('farRing.draw(view, {');
   const waterAt = w.indexOf('if (waterOn) {');
   const billAt = w.indexOf('renderer.drawBillboards(allBatches, camRight, bbUp);');   // TV1: the flats lean to the travel view's eye
   assert.ok(terrainAt > 0 && terrainAt < skyAt && skyAt < ringAt && ringAt < waterAt && waterAt < billAt, `world: terrain ${terrainAt} < sky ${skyAt} < ring ${ringAt} < water ${waterAt} < flats ${billAt}`);
-  assert.equal((w.match(/renderer\.markForeignPass\(\);/g) || []).length, 20, 'moved, not added (WB12d added the rite\'s smoke; LOOT11 added the loot lines\' two seams, the street\'s pass and the modes\' hook; UNDER-LOOK added the water\'s seam under the sea, GUILD1d added the halls\' banners\' seam, WB9g added the aura\'s seam, TV4 added the curtains\' seam under the travel view, DUEL1 added the ring wall\'s seam, WB2 the gate\'s fire, WB4a the court\'s telegraph, WB6a the Deadlands\' sea and sky, counted in glstate too): glstate counts the seams (WIND3 added the wisps\' seam, WEATHER2d the sand\'s, BOLT the bolts\', DW-C the sea surfaces\', OH-C the pit\'s core and miasma, counted there too)');   // CROWN-HALL: the banners' cloth in a castle's throne room (PIN MOVED)
+  assert.equal((w.match(/renderer\.markForeignPass\(\);/g) || []).length, 27, 'moved, not added (SD-LOOK added the Rift\'s window, its floor light and its halos - PIN MOVED; HAZE1 added the heat haze\'s grab and ring; WINDFALL1 Windfall\'s leaves and flakes; SD8d added the Brass Remnant\'s blows on the arena\'s floor - PIN MOVED; SD5b added the Shattered Hour\'s sky - PIN MOVED; SD2c added the Hollow\'s omen - PIN MOVED; HOTFIX 1003l added the arena floor\'s sky; WB12d added the rite\'s smoke; LOOT11 added the loot lines\' two seams, the street\'s pass and the modes\' hook; UNDER-LOOK added the water\'s seam under the sea, GUILD1d added the halls\' banners\' seam, WB9g added the aura\'s seam, TV4 added the curtains\' seam under the travel view, DUEL1 added the ring wall\'s seam, WB2 the gate\'s fire, WB4a the court\'s telegraph, WB6a the Deadlands\' sea and sky, counted in glstate too): glstate counts the seams (WIND3 added the wisps\' seam, WEATHER2d the sand\'s, BOLT the bolts\', DW-C the sea surfaces\', OH-C the pit\'s core and miasma, counted there too)');   // CROWN-HALL: the banners' cloth in a castle's throne room (PIN MOVED)
   const e = read('src/scenes/exterior.js');
   const eTerrain = e.indexOf('renderer.drawTerrain(groundSurface, identityMatrix,');
   const eSky = e.indexOf('sky.draw(Math.atan2(dx, dz), Math.atan2(dy, horiz)');
@@ -208,7 +211,7 @@ test('PERF2 pins: the sky passes, the clouds\' composite and the ring sit AT the
   assert.ok(wSort > 0 && wSort < wMesh && w.indexOf('for (const p of _pixelOrder) {') > wSort && w.indexOf('for (const p of _pixelOrder) {') < wMesh, 'the walk runs over the sorted order');
   assert.match(w, /p\._dist2 = \(p\.px - state\.current\.x\) \*\* 2 \+ \(p\.py - state\.current\.y\) \*\* 2/, 'by grid distance from the player\u2019s own pixel');
   assert.match(w, /^const _pixelOrder = \[\];/m, 'a scratch kept across frames, not a per-frame array');
-  const eMesh = e.lastIndexOf('renderer.drawMesh(d.mesh, d.matrix, texRemap);'), eArrows = e.indexOf('arrows.draw(renderer, texRemap);');
+  const eMesh = e.lastIndexOf('renderer.drawMesh(d.mesh, d.matrix, d.texRemap ?? texRemap);'), eArrows = e.indexOf('arrows.draw(renderer, texRemap);');
   assert.ok(eMesh > 0 && eArrows > eMesh && eTerrain > eArrows, 'exterior: the ground after the buildings, the mills and the arrows');
   assert.match(w, /window\.__grassStats = \(\) => \(\{ blades: labGrass\.count, drawn: labGrass\.drawn,/, 'the probe reports what was drawn');
   // PERF-URL (2026-09-29): the hook's `cells` and `slots` sat INSIDE a trailing comment on its first line, so it had

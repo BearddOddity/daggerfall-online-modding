@@ -59,6 +59,10 @@
 // contexts that own an ActionSystem, dungeonContext.js and
 // interiorContext.js. Neither exterior host owns doors. That is the
 // next slice, and those are its seams.
+// PVPFIX (the owner: "Undeniable Access/lockpicking should actually
+// work on locked crates"): ONE host call - dungeonContext.js's crate
+// search (activateSearchable) fires an armed Open on a crate's own lock;
+// a crate is no ActionSystem door. Lock stays a door's alone.
 import { EFFECT_FLAGS } from './spellcast.js';
 import { isSilencedEffect, BUFF_START_TEXT, WATER_WALKING_SILENT_KIND, BUFF_KINDS } from './effects.js';   // BUFF-END: the duration buffs are the kinds a player may end
 import { hasArtifactSubtype, ARTIFACTS } from './artifactEffects.js';   // ROAD-U: ContainsEnchantment, the way SoulTrap.cs asks
@@ -302,8 +306,9 @@ export function dispelBundle(entity, bundleId, { selfCast = false, roll01 = 0, c
  * BUFF-END (2026-09-27, Leafen on Discord: "Could there be a way to dispel magic for non-magic users? It's a bit of a
  * buzzkill just having something on me that will take irl months of game time to wear off" - a Shield Group at 11397
  * rounds, casts stacked the way DFU's Shield.AddState stacks them; Zerofyre: "An option to right click cancel buffs on
- * yourself like most RPGs"). NEVER DFU'S: its one way off is Dispel Magic, a spell a warrior has none of, and the
- * stacking law stands - ending one is the player's own choice, not a cap on anyone's cast.
+ * yourself like most RPGs"). NEVER DFU'S: its one way off is Dispel Magic, a spell a warrior has none of. STACK-CAP
+ * (2026-10-11) has since retired the stacking itself - a re-cast renews its incumbent and never adds to it
+ * (effects.js renewRounds) - and ending one stays the player's own choice.
  *
  * What may be ended is a SPELL of the kinds that only help: never a held item's magic (it is back the moment the item
  * is read again), a duel's, an armed Open or Lock, a disease or a poison (neither is a bundle), and never anything with

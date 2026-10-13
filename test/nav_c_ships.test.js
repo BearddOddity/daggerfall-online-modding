@@ -32,7 +32,10 @@ const player = (pos, o = {}) => ({ id: 'me', kind: 'player', pos, vel: [0, 0, 0]
 // ── the classes ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 test('NAV-C the classes: nine in three trades, each a hull with guns scaled off its build, one pirate flagship, the galleys fighting over the stem; classFor draws among the classes a level has reached by weight, the draw\'s edges exact (mutants: the level gate off, a weight ignored, the edge off by one)', () => {
-  assert.equal(SHIP_CLASSES.length, 9);
+  // PIN MOVED (ETHER-LEGENDS, bible/03-World/Etheric-Sea.md): the nine the sea draws, and the Etheric Sea's six legends
+  // after them - each her own class, never drawn (LEGEND_LEVEL), launched by name in her haunt
+  assert.equal(SHIP_CLASSES.filter((c) => !c.legend).length, 9);
+  assert.equal(SHIP_CLASSES.length, 15);
   assert.deepEqual(FACTION_IDS, ['pirate', 'merchant', 'navy']);
   for (const c of SHIP_CLASSES) {
     assert.ok(FACTION_IDS.includes(c.faction), c.id);
@@ -219,11 +222,15 @@ test('NAV-C a captain at sea: with no enemy she cruises for a waypoint on open w
 
 test('NAV-C how she fights: a broadside ship turns her side to an enemy off the bow, a galley her stem - her great guns laid on the lead (mutants: the tactic ignored, the side\'s sign)', () => {
   const at = [100 * Math.sin(20 * NAVAL_DEG), 0, 100 * Math.cos(20 * NAVAL_DEG)];   // 100 m, 20 degrees to starboard
-  const brig = createSeaShip({ id: 'b', seed: 1, classId: 'pirateBrig', pos: [0, 0, 0], yaw: 0 });
+  // SEA-EASE (PIN MOVED): both bold - seeds 1 and 2 draw wary, and a wary pirate never takes a boat she cannot size up:
+  // both CRUISED, and the turns read here were their waypoints'
+  const brig = createSeaShip({ id: 'b', seed: 1, classId: 'pirateBrig', pos: [0, 0, 0], yaw: 0, temper: 'bold' });
   stepCaptain(brig, world({ contacts: [player(at)] }));
+  assert.deepEqual([brig.mode, brig.present?.side], ['engage', 'starboard']);
   assert.ok(brig.turnNow < 0, `the brigantine wears to present her starboard side (${brig.turnNow})`);
-  const galley = createSeaShip({ id: 'g', seed: 2, classId: 'pirateGalley', pos: [0, 0, 0], yaw: 0 });
+  const galley = createSeaShip({ id: 'g', seed: 2, classId: 'pirateGalley', pos: [0, 0, 0], yaw: 0, temper: 'bold' });
   stepCaptain(galley, world({ contacts: [player(at)] }));
+  assert.deepEqual([galley.mode, galley.present], ['engage', null], 'over her stem: no side shown');
   assert.ok(galley.turnNow > 0, `the galley turns her bow on him (${galley.turnNow})`);
   // under oars a galley never makes less than OARS_FLOOR of her best, even in irons
   const irons = createSeaShip({ id: 'i', seed: 3, classId: 'navyGalley', pos: [0, 0, 0], yaw: Math.PI });

@@ -56,7 +56,7 @@
   {
     "name": "REALM4-marks-ride",
     "file": "src/net/realmTradeLaw.js",
-    "old": "    delete rec.equipSlot; delete rec.questItem;\n",
+    "old": "    for (const k of RECEIVER_MARKS) delete rec[k];\n",
     "new": "",
     "tests": [
       "test/realm4.test.js"
@@ -155,8 +155,8 @@
   {
     "name": "REALM4-lost-checkpoint-keeps-object",
     "file": "server-account/src/realm.js",
-    "old": "  if (!moved.meta.changes) {\n    await dropObjects(bucket, [key]);\n",
-    "new": "  if (!moved.meta.changes) {\n",
+    "old": "  await dropObjects(bucket, [key]);\n  return false;\n",
+    "new": "  return false;\n",
     "tests": [
       "test/realm4.test.js"
     ]
@@ -245,7 +245,7 @@
   {
     "name": "REALM4-host-hand-to-hand",
     "file": "src/scenes/world.js",
-    "old": "    escrow: realmSession ? realmTradeEscrow({ session: realmSession, checkpoint: () => onlineCheckpoint() }) : null,",
+    "old": "    escrow: realmSession ? realmTradeEscrow({ session: realmSession, checkpoint: () => onlineCheckpoint(), heldSaid: () => tradeHeldNotice(null, realmSession.tradeHeld, realmSession.tradeHeldWhy) }) : null,",
     "new": "    escrow: null,",
     "tests": [
       "test/realm4.test.js"
@@ -263,8 +263,8 @@
   {
     "name": "REALM4-hold-after-take",
     "file": "src/systems/realmSaves.js",
-    "old": "      const outcome = settleRealmTradeHalf({ session, half, wait, now });   // the session holds from this line\n      return {\n        settle: (/** @type {any} */ h) => { hand(h); return outcome; },",
-    "new": "      return {\n        settle: (/** @type {any} */ h) => { hand(h); return settleRealmTradeHalf({ session, half, wait, now }); },",
+    "old": "      const outcome = settleRealmTradeHalf({ session, half, wait, now, heldSaid });   // the session holds from this line\n      return {\n        settle: (/** @type {any} */ h) => { hand(h); return outcome; },",
+    "new": "      return {\n        settle: (/** @type {any} */ h) => { hand(h); return settleRealmTradeHalf({ session, half, wait, now, heldSaid }); },",
     "tests": [
       "test/realm4.test.js"
     ]

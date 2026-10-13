@@ -27,8 +27,46 @@ export const HOME_CAP = 3;
 export const HOME_ENTRIES = Object.freeze(['private', 'party', 'public', 'guild']);
 /** A home bought is its owner's alone until they say otherwise. */
 export const HOME_ENTRY_DEFAULT = 'private';
-/** The dearest price a claim may name (a Daggerfall house's is its model's radius x 1280 - tens of thousands). */
-export const HOME_PRICE_MAX = 10_000_000;
+// ═══ HOME-PRICE (2026-10-04) — WHAT A HOME COSTS ONLINE ════════════════════════════════════════════════════════════
+//
+// The ask: "We need to make house pricing make sense online"; offered three ways, the choice was to price a house "by
+// what you get (its footprint, scaled by town size) inside a fixed range the server enforces". Daggerfall prices a
+// house off its model's bounding RADIUS x 1280 (systems/banking.js housePrice, GetHousePrice) - a sphere that grows
+// with a roof's height and a wing's reach as much as with the rooms - so online a door asked anything from a few
+// thousand to over 800,000 (a hall at one door asked 1,274,880 from a treasury, half again a house of 849,920 - FIELD
+// BUGS 2026-10-03, HALL-GOLD), and a cottage could cost more than a manor. Online it is the GROUND the building stands on, in square metres of its
+// model's box, at HOME_PRICE_PER_M2, raised by the town's size (homeTownFactor), rounded to HOME_PRICE_STEP and held
+// to HOME_PRICE_MIN..HOME_PRICE_MAX.
+// Offline Daggerfall's own price stands (the bank's market and its buy-back). Online the bank buys a deed back at
+// this price too (AUDIT HOME-PRICE C1: a knightly order's free house); customs counts every deed at its own constant
+// (net/realmGoldLaw.js CUSTOMS_HOUSE_PRICE), never either price.
+//
+// THE SERVICE HOLDS THE RANGE (homePriceOk): it bundles no ARENA2, so it cannot measure a building, but no claim names
+// a price outside the range or off its hundreds - a build from before it, which still asks Daggerfall's, is asked to
+// update (all but about one house in a hundred: AUDIT HOME-PRICE L2).
+
+/** Gold a square metre of the ground a home stands on. */
+export const HOME_PRICE_PER_M2 = 300;
+/** The cheapest a home costs, and the dearest. */
+export const HOME_PRICE_MIN = 5_000;
+export const HOME_PRICE_MAX = 250_000;
+/** A home's price is a whole number of these. */
+export const HOME_PRICE_STEP = 100;
+/** The most RMB blocks a town has - 8 x 8 (MAPS.BSA's exterior width and height). */
+export const HOME_TOWN_BLOCKS_MAX = 64;
+/** How much a town's size raises what its homes cost: 1 in a one-block hamlet, farm or manor, rising with the town's
+ *  side (the square root of its blocks) - 1.5 at 3 x 3, 2 at 5 x 5, 2.75 at 8 x 8. An unknown size is one block. */
+export function homeTownFactor(blocks) {
+  const n = Number.isFinite(blocks) ? Math.min(HOME_TOWN_BLOCKS_MAX, Math.max(1, Math.trunc(blocks))) : 1;
+  return (3 + Math.sqrt(n)) / 4;
+}
+/** WHAT A HOME COSTS ONLINE: `footprintM2` the ground its model stands on (square metres), `townBlocks` its town's
+ *  blocks. 0 for a building nobody can measure - it is not for sale. */
+export function homeOnlinePrice(footprintM2, townBlocks) {
+  if (!(Number.isFinite(footprintM2) && footprintM2 > 0)) return 0;
+  const price = Math.round((footprintM2 * HOME_PRICE_PER_M2 * homeTownFactor(townBlocks)) / HOME_PRICE_STEP) * HOME_PRICE_STEP;
+  return Math.min(HOME_PRICE_MAX, Math.max(HOME_PRICE_MIN, price));
+}
 /** Claims an account may make an hour - a cap stops a hoard, this stops a claim-and-release churn. */
 export const HOME_CLAIMS_MAX = 20;
 export const HOME_CLAIMS_WINDOW_S = 3600;
@@ -43,13 +81,33 @@ export const HOME_KEY_MAX = 1 << 24;
 export const homeMapIdOk = (v) => Number.isSafeInteger(v) && v > 0 && v <= 0xffffffff;
 export const homeBuildingKeyOk = (v) => Number.isSafeInteger(v) && v > 0 && v <= HOME_KEY_MAX;
 export const homeRegionOk = (v) => Number.isSafeInteger(v) && v >= 0 && v <= HOME_REGION_MAX;
-export const homePriceOk = (v) => Number.isSafeInteger(v) && v > 0 && v <= HOME_PRICE_MAX;
+/** HOME-PRICE: a price inside the range a home costs online, in whole hundreds - the service's one check of a claim's
+ *  price. AUDIT HOME-PRICE L2: the hundreds are the law's (homeOnlinePrice rounds to HOME_PRICE_STEP), and a build from
+ *  before it asks Daggerfall's radius x 1280, a whole hundred about one house in a hundred - the range alone let it buy
+ *  any house whose old price fell inside it, at that price. */
+export const homePriceOk = (v) => Number.isSafeInteger(v) && v >= HOME_PRICE_MIN && v <= HOME_PRICE_MAX && v % HOME_PRICE_STEP === 0;
 export const homeEntryOk = (v) => typeof v === 'string' && HOME_ENTRIES.includes(v);
 /** REALM P2.2b: the share of what a home cost that selling it pays back - Daggerfall's deed share (systems/banking.js
  *  DEED_SELL_MULT, pinned equal) - so the service credits a realm character's record the sum its client credits. */
 export const HOME_SALE_SHARE = 0.85;
 /** What selling a home bought for `price` pays back (systems/onlineHomes.js homeRefund, pinned equal). */
 export const homeSaleRefund = (price) => Math.trunc((Number.isSafeInteger(price) && price > 0 ? price : 0) * HOME_SALE_SHARE);
+
+/**
+ * FIELD BUGS 2026-10-04d KNIGHT-HOUSE (the Discord: "Houses earned through Knightly Orders still possibly purchaseable?
+ * ... I don't want to risk my Knight House being bought out from under me"): THE DEED A SAVE HOLDS TO A BUILDING, THAT
+ * THE REALM GAVE IT - region `region`'s slot of the save's `houses` (systems/banking.js, Daggerfall's one house a region:
+ * a Knightly Order's ReceiveHouse writes it, AllocateHouseToPlayer) naming this town's building - or null. Never a deed
+ * customs carried in (`crossed`, systems/realmCustoms.js): that is an offline house, which stays offline only (HOME1, Mac:
+ * "Stay offline only" - the server's list decides it online). Both ends read it: the door, and the service's hold
+ * (server-account/src/homes.js holdDeed). Map ids compare unsigned (a save keeps the signed one MAPS.BSA reads).
+ */
+export function homeDeedOf(houses, region, mapId, buildingKey) {
+  const slot = Array.isArray(houses) && homeRegionOk(region) ? houses[region] : null;
+  if (!slot || typeof slot !== 'object' || slot.crossed || !homeBuildingKeyOk(buildingKey) || slot.buildingKey !== buildingKey) return null;
+  const id = Number(mapId) >>> 0;
+  return homeMapIdOk(id) && (Number(slot.mapId) >>> 0) === id ? slot : null;
+}
 
 const sameName = (a, b) => typeof a === 'string' && typeof b === 'string' && a.length > 0 && a.toLowerCase() === b.toLowerCase();
 
@@ -73,6 +131,77 @@ export function homeMayEnter(home, { partyNames = [], nowS = Math.floor(Date.now
   if (home.entry === 'guild') return home.guildmate === true;   // GUILD1d: the playing character shares the owner's character's guild (the service's word)
   return false;
 }
+
+// ═══ WD3 (2026-10-01) — THE LAYOUT A HOME'S TOWN WAS BOUGHT IN ═══════════
+//
+// Mac: "ensure this doesn't conflict or regress anything (For example
+// housing customization)". Beautiful Villages and Beautiful Cities lay
+// Daggerfall's towns out again, and a home is a building KEY - which names
+// a building only in one layout of its town. Online the two mods are the
+// room's (systems/onlineLane.js ONLINE_ROOM_MOD_KEYS), and every home
+// bought before them was bought in Daggerfall's own towns. So a home keeps
+// the layout its town was bought in, server-wide: NULL - Daggerfall's,
+// every home from before WD3 - or the stamp its first buyer's client sent
+// (systems/layoutPins.js layoutStampOf: `vendor@version`, joined by '+'). A
+// town's later homes take its first home's, whatever a client sends. Every
+// client reads the towns that hold homes, and their layouts, at its online
+// boot, and keeps each town in its layout - one town for the whole room.
+
+/** The layout mods a stamp may name (systems/layoutPins.js LAYOUT_MODS, pinned equal). */
+export const HOME_LAYOUT_MODS = Object.freeze(['beautiful-villages', 'beautiful-cities']);
+/** A stamp's longest spelling. */
+export const HOME_LAYOUT_MAX = 96;
+/** The most towns the layouts read answers (a town per home at the very most). */
+export const HOME_LAYOUTS_MAX = 20000;
+/** A home's layout stamp: null (Daggerfall's own town) or `vendor@version` of the layout mods, joined by '+', each
+ *  named once. */
+export function homeLayoutOk(v) {
+  if (v === null || v === undefined) return true;
+  if (typeof v !== 'string' || !v || v.length > HOME_LAYOUT_MAX) return false;
+  const seen = new Set();
+  for (const part of v.split('+')) {
+    const m = /^([a-z-]+)@([0-9A-Za-z.?-]{1,16})$/.exec(part);
+    if (!m || !HOME_LAYOUT_MODS.includes(m[1]) || seen.has(m[1])) return false;
+    seen.add(m[1]);
+  }
+  return true;
+}
+
+/** Whether two stamps are one layout - the same layout mods, whatever versions they name; null (or absent) is
+ *  Daggerfall's own (systems/layoutPins.js layoutsMatch, the same law where the service can read it). */
+export function homeLayoutsMatch(a, b) {
+  const mods = (v) => new Set(typeof v === 'string' && v ? v.split('+').map((p) => p.split('@')[0]).filter((m) => HOME_LAYOUT_MODS.includes(m)) : []);
+  const x = mods(a), y = mods(b);
+  return x.size === y.size && [...x].every((m) => y.has(m));
+}
+
+// ═══ ARENA4b (2026-10-03) — THE HOMES THE ARENA DISPLACED, MOVED ONLINE ══
+//
+// Mac (ARENA1): "Move them to a new house". The Arena of Daggerfall
+// stands in Daggerfall's cell (4,3) in every layout of the city
+// (world/arenaCity.js), so no building has a key there: an online home
+// keyed there names nothing. The OWNER'S CLIENT picks its new house by
+// the offline move's own rule (systems/arenaMove.js arenaHomeFor - the
+// service holds no town's records) and posts it; the service checks the
+// keys by the law below and carries the home's row whole to the new key
+// (server-account/src/homes.js arenaMoveHome). And no build may buy a
+// house there any more - a build from before the arena still stands
+// GEMSAL03 and would (`home-arena`: homes.js claimHome, halls.js buyHall).
+
+/** Daggerfall's map id, unsigned (world/actionSystem.js CASTLE_DAGGERFALL_MAP_ID - the city's, pinned equal). */
+export const HOME_ARENA_MAP_ID = 1291010263;
+/** The arena's cell of Daggerfall's grid (world/arenaCity.js ARENA_CELL, pinned equal): `[blockX, blockY]`. */
+export const HOME_ARENA_CELL = Object.freeze([4, 3]);
+/** Whether a building key of a town names a building of the arena's cell - read off the RAW key, as the tables keep it
+ *  and as world/arenaCity.js inArenaCell reads it (`key >> 16` the block's x, `(key >> 8) & 255` its y). */
+export const homeInArenaCell = (mapId, key) => mapId === HOME_ARENA_MAP_ID && homeBuildingKeyOk(key)
+  && (key >> 16) === HOME_ARENA_CELL[0] && ((key >> 8) & 0xff) === HOME_ARENA_CELL[1];
+/** A ROOM'S POINT CARRIED BY THE MOVE: the anchor column's text for a running tenancy the move carried to the new house
+ *  (JSON null - the column is NOT NULL). The old house's point names no room of the new one's walls, so the tenancy
+ *  runs on unlisted and anchorless: its tenant still walks in and rests (the door and the bed read the tenancy -
+ *  homesInTown's `tenant`, homeMayEnter, systems/homeRent.js homeBedIsMine - never the point), the door offers it to
+ *  nobody once its days run out (an offer of the same number writes a point again - rent.js offerRoom). */
+export const RENT_ANCHOR_MOVED = 'null';
 
 // ═══ HOME-RENT (2026-09-30) — A ROOM OF A HOME, RENTED TO ANOTHER PLAYER ══
 //

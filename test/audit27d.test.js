@@ -42,7 +42,7 @@ test('AUDIT SPELL-GIFT B6: a cure may leave an incubating infection be - the str
 });
 
 test('AUDIT SPELL-GIFT B1 + B3 + B5: a gift never lands on the opponent of the duel I fight (a duel\'s beneficial spell stays home), nor on a CONCEALED stranger (INVIS-NET: named aloud and given to), a concealed mate still a mate; the marks say who is a mate, mates first - a blast\'s burst went to the room\'s first strangers (mutants: each dropped)', () => {
-  assert.match(W, /const giftablePeers = \(list\) => \(list \?\? \[\]\)\.filter\(\(p\) => !\(duelMgr\.fighting && p\.id === duelMgr\.opponent\)\s*\n\s*&& !\(p\.cv && !\(social\?\.party && social\.isPartyPeer\(p\.id\)\)\)\);/);
+  assert.match(W, /const giftablePeers = \(list\) => openPeers\(list, isPartyMate\)\.filter\(\(p\) => !\(duelMgr\.fighting && p\.id === duelMgr\.opponent\) && crowdDrawnHere\(p\)\);/);   // CONCEAL-MATE: the concealed-stranger law is openPeers' now (test/concealmate.test.js); PIN MOVED (GATE-CROWD): nor a player a gate court's crowd leaves undrawn (test/gatecrowd.test.js)
   assert.match(W, /const hit = pickPeerInFront\(eye \?\? cam\.pos, dir \?\? socialFwd\(\), giftablePeers\(peersNear\(\)\), reach, rayPersonDistance\);/, 'the crosshair\'s pick');
   assert.match(W, /const marks = giftablePeers\(near\)\.filter\(\(p\) => online\.reachesPeer\?\.\(p\.id\) && \(mateOf\(p\.id\) \|\| strangers\)\)\s*\n\s*\.map\(\(p\) => \(\{ \.\.\.p, mate: mateOf\(p\.id\), name: [^\n]*\n\s*return \[\.\.\.marks\.filter\(\(m\) => m\.mate\), \.\.\.marks\.filter\(\(m\) => !m\.mate\)\];/, 'the marks, mates first');
   assert.match(src('src/scenes/hostMagic.js'), /out\.push\(\{ ally: true, mate: q\.mate !== false, id: q\.id,/, 'the engine keeps the word');
@@ -54,7 +54,8 @@ test('AUDIT SPELL-GIFT B1 + B7: the receiver refuses my duel opponent\'s gift wh
   assert.match(on, /if \(duelMgr\.fighting && id === duelMgr\.opponent\) return;/);
   assert.match(on, /if \(!mate && !\(peersNear\(\) \?\? \[\]\)\.some\(\(p\) => p\.id === id\)\) return;/);
   assert.match(on, /const loud = mate \|\| !\(t - \(_strangerCastSaid\.get\(id\) \?\? -Infinity\) < STRANGER_CAST_SAY_MS\);\s*\n\s*if \(loud && !mate\) _strangerCastSaid\.set\(id, t\);/);
-  assert.match(on, /if \(loud\) townTalk\.say\(allyCastTargetLine\(who, spell\.name\)\);/);
+  // PIN MOVED (GIFT-QUIET, 2026-10-04): a stranger's line still rides `loud`; a party mate's goes through the gift gate
+  assert.match(on, /const targetLine = allyCastTargetLine\(who, spell\.name\);\s*\n\s*if \(loud && \(!mate \|\| _mateGiftGate\(targetLine\)\)\) townTalk\.say\(targetLine\);/);
   assert.match(W, /const STRANGER_CAST_SAY_MS = 3000;/);
 });
 
@@ -82,12 +83,13 @@ test('AUDIT REST-OPT C2: a party mate\'s night beside mine that is not one with 
   assert.match(W, /const otherPartyCamp = \(peerId\) => restsApart\(social\?\.others\(\)\.find\(\(o\) => o\.peers\?\.includes\(peerId\)\) \?\? null, restTogether\(\)\);/);
 });
 
-test('AUDIT REST-OPT C3 + F4: a night granted as my own stays my own to its end (`nr` while it runs) - a leader who turned the switch back on mid-night pulled the whole party into it; a followed night is the party\'s; and the switch is named where it is (Features, Other players - not Settings) (mutants: the grant\'s word never kept; a mirror left alone)', () => {
+test('AUDIT REST-OPT C3 + F4: a night granted as my own stays my own to its end (`nr` while it runs) - a leader who turned the switch back on mid-night pulled the whole party into it; a followed night is the party\'s; and the switch is named where it is (ORG2: Settings, Gameplay, Other players) (mutants: the grant\'s word never kept; a mirror left alone)', () => {
   assert.match(W, /\.\.\.\(!restsWithParty\(\) \|\| \(_restAloneNight && playerEntity\.isResting\) \? \{ nr: 1 \} : \{\}\),/);
   assert.match(W, /_cancelSeen = snapshotCancels\(social\.others\(\)\);[^\n]*\n\s*_restAloneNight = !restTogether\(\);/, 'the grant says whose night it is');
   assert.match(W, /_partyRestStartWaived = false;   \/\/ PARTY-REST29: a real \(mirrored\) rest cools down again\n\s*_restAloneNight = false;/, 'a mirror is the party\'s');
-  assert.equal(restAloneText(false), 'You rest on your own. Turn on "Rest with my party" (Features, Other players) to rest with them.');
-  assert.match(src('src/ui/enhancedMenu.js'), /function modsFooter\(body\) \{[\s\S]{0,300}body\.append\(peerSpritesCard\(\)\);/, 'the Other players card is the Features pane\'s');
+  // ORG2: the switch is named where the one Settings screen draws it - the Other players card, on the Gameplay tab
+  assert.equal(restAloneText(false), 'You rest on your own. Turn on "Rest with my party" (Settings \u203a Gameplay \u203a Other players) to rest with them.');
+  assert.match(src('src/ui/enhancedMenu.js'), /peerSprites: \(\) => peerSpritesCard\(\)/, 'the Other players card is drawn by the Settings screen');
 });
 
 test('AUDIT COMPASS-PARTY C4 + C6: a concealed mate is no compass mark (the leader\'s own feet followed them); out of a party the room\'s players are not walked each frame for it (mutants: the poses unfiltered; the walk first)', () => {

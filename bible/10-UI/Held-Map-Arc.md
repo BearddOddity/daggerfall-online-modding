@@ -162,10 +162,17 @@ skins cannot drift:
 - **The ports filter.** `portsFilterAllows` over `hasPort`, asked
   BEFORE DFU's own discovery test by the marks, the find box and the
   journal's click-through alike; a harbour glyph (an anchor) beside
-  every port's mark at the mid and near bands while the mod restricts
-  ship travel to ports; a Ports button in the foot row shown under the
-  same condition, and P as its key (the sheet's own spelling). Per-open,
-  as the classic one is (departure 6).
+  every port's mark ~~at the mid and near bands while the mod restricts
+  ship travel to ports~~ - PORT-MAP (2026-10-04, Mac: "Also ports don't
+  show on my map"): at EVERY band, beside the mark the band inks and ON
+  the place where it inks none (the map at rest is far, which inks the cities
+  alone), haloed then inked in the full pen (`HARBOUR_HALO`,
+  `HARBOUR_PEN`), whether or not the mod restricts ship travel - the
+  quays stand at every port (`03-World/Holdings.md` 7);
+  `test/portmap.test.js`, `tools/mutants/portmap.json`; a Ports button in
+  the foot row shown while the mod restricts ship travel to ports, and P
+  as its key (the sheet's own spelling). Per-open, as the classic one is
+  (departure 6).
 - **The mark.** The middle click marks the place under the cursor and a
   second clears it, through `travelMapMarkedMapId` in the shared store
   (AUDIT-TO1 G4), inked as a ring in `MarkLocationColor` at EVERY band -
@@ -1294,3 +1301,36 @@ Pins: `test/fb0929d_mapkey.test.js` (8; the last measures the player's own FMAP_
 the synthetic bay, at the near and the far band. `tools/heldMapProbe.mjs` was not extended: it fails six of its own
 checks on the base as well (the stage, the sprite and thumb keys, the open sea, the hover cursor), and its I/H checks
 still look for the box ENH-NOTICE3 moved onto the notice panel - its own repair, not this slice's.
+
+## OW-WHO, OW-KIN, OW-HUBS, SEAT-TIP on the travel map (FIELD BUGS 2026-10-04e)
+
+The region's travellers are filtered by the Overworld's own Players switches (the key gains a Players row while any are
+in the book) and drawn in their kin's colour (the legend names a friend's and a guild-mate's while one is drawn); a
+carriage town wears a wheel left of its mark, clear of its hub circle and seat ring, at every band, and names keep off
+it; a seat answers its hover with the EVENT-TIP card (who holds it, this week's battle - a seat's lines bounded at 160,
+not 80), and the I box names a held seat's holder - it read "unheld" whoever held it. The record:
+`01-Overview/Field-Bugs-2026-10-04e.md`.
+
+## TAMRIEL1 - the continent round the Bay (2026-10-08)
+
+The world sheet zooms out past the Bay's own fit onto the whole of Tamriel, inked in the same hand round the Bay's
+rectangle and joined to the Bay's own coast; a hover beyond the Bay names the province, a capital or the sea, and a
+press there picks nothing. The sheet's limits carry the continent's frame (`clampView` takes an origin), the home view
+stays the Bay's fit, and past CONTINENT_BELOW of it the Bay's own ink thins (CONTINENT_BAND). Built once, painted
+only when the view leaves the Bay. The record is `03-World/Tamriel.md`.
+
+## MAP-SCALE - the map's text and icons grow with the screen (FIELD BUGS 2026-10-09e)
+
+A 1440p player: "icons and text too small on high resolutions". The paper fits the screen, and its names, glyphs and
+marks were inked in fixed paper pixels, its chrome in fixed CSS pixels - at 1440p the paper grew by a third and nothing
+on it did. `ui/mapScale.js` mapUiScale is the map's scale: Auto is the screen's height over 1080 to the twentieth, held
+to 1-2 (1 at 1080p and under, as it was), or the player's own 0.75-2 on the Interface tab's Maps row, "Map text and
+icons" (prefs `mapScale`). `_layout` inks on the fitted paper over the scale at full device resolution, and the
+pointer, the hover card and the hands lane come back over it; the chrome is zoomed by `--hm-ui`, each of its
+viewport-relative bounds divided by it. The record: `01-Overview/Field-Bugs-2026-10-09e.md`.
+
+ORE-MAP (2026-10-11, the Discord's "Arbitrary mining conditions to 'unlock' higher nodes": "add something to the
+overworld map like 'this area is known for X ore'"): online, the professions open, bare ground answers with an ore
+card under the province's name - the pixel's veins, its dungeons', its kingdom's own ore and whether its ground is
+witnessed (`ui/oreMapTip.js`, the host's `oreAt`; its witnessed state asked once a pixel, after the pointer rests).
+A place keeps its own answer. The record: `01-Overview/Field-Bugs-2026-10-11d.md`.

@@ -13,7 +13,7 @@ import {
   createSeaShip, stepCaptain, outguns, lookoutOf, windShare, hostile, fightingPower, shipPower, classPower, strikeTime, odds, hitShare,
   velocityOf, layMin,
 } from '../src/systems/naval/navalAI.js';
-import { HULL, hullBuild, classById, batteryOf } from '../src/systems/naval/navalShips.js';
+import { HULL, hullBuild, classById, batteryOf, SHIP_TOUGHNESS } from '../src/systems/naval/navalShips.js';
 import { SHIP_STATES, STRUCK_AT } from '../src/systems/naval/navalDamage.js';
 import { NAVAL_DEG } from '../src/systems/naval/navalBallistics.js';
 import { DESPAWN_BEYOND, encounterClasses } from '../src/systems/naval/navalDirector.js';
@@ -21,6 +21,7 @@ import { mulberry32 } from '../src/combat/bloodArt.js';
 import { HOSTILE_NEAR_M, RAM_SPEED, SHIP_FADE_S } from '../src/scenes/navalHost.js';
 import { FIELD_QUIET_S } from '../src/systems/naval/navalYard.js';
 import { HANDLING } from '../src/systems/comeSailAway.js';
+import { sailFreeGain } from '../src/systems/helmWay.js';
 import { sea } from './navalSea.mjs';
 import { scene } from './csaScene.mjs';
 
@@ -318,7 +319,11 @@ test('AUDIT NAV2 F24 a galley turns her stem on a low hull only where her great 
 test('AUDIT NAV2 F24 a galley fights a low hull from outside her dead zone: a war galley and a bold pirate sloop, each the other\'s captain, in p04\'s eight geometries and winds - the sloop closing to her own 55 m, inside the galley\'s broadside\'s 57 - the galley opens the range hard, lays no gun inside it, and fires in every one within 90 s, lying inside it under a third of the time (mutants: the dead zone not opened, laid inside the dead zone)', () => {
   const WINDS = [[0.6, 0, 0.8], [-1.2, 0, 0.5], [0, 0, -1.5], [1.4, 0, -0.4]];
   const dz = layMin(HULL.LargeGalley, 'starboard', HULL.LargeBoat);
-  near(dz, 57, 2, 'the broadside\'s dead zone on a Large Boat');
+  // PIN MOVED (SHIPS-2, 2026-10-07): a Large Boat is Mac's Tiny Ship - her gunwale a metre over the mod's boat's - and
+  // the galley's broadside lays on her from 53 m (57 on the mod's boat): the sloop closes to her own 50 now
+  // (navalShips.js SHIP_CLASSES), inside it as her 55 was inside the 57
+  near(dz, 53, 2, 'the broadside\'s dead zone on a Large Boat');
+  assert.ok(classById('pirateSloop').range < dz, 'the sloop fights inside it');
   const T = 300, late = [];
   let inside = 0;
   for (let k = 0; k < 8; k++) {
@@ -338,6 +343,45 @@ test('AUDIT NAV2 F24 a galley fights a low hull from outside her dead zone: a wa
   }
   assert.deepEqual(late, [], 'she fires in every one within 90 s');
   assert.ok(inside < 8 * T / 3, `inside her dead zone ${inside.toFixed(0)} s of ${8 * T}`);
+});
+
+test('AUDIT NAV2 F24 a galley keeps her station on a low hull outside her great guns\' dead zone, past her own range: every gun reloading, a Large Boat lying still off her beam, she opens the range inside layMin of her bow guns (91 m - past her broadside\'s 57 and her class\'s 70) and closes it outside (mutants: the station inside the dead zones - AUDIT GALLEON-2 TS4: it lived on the F25 duels alone, and they no longer flip)', () => {
+  const bowDz = layMin(HULL.LargeGalley, 'bow', HULL.LargeBoat), sideDz = layMin(HULL.LargeGalley, 'starboard', HULL.LargeBoat);
+  const range = classById('navyGalley').range;
+  assert.ok(sideDz < range && range < bowDz - 10, `the bow's dead zone (${bowDz}) past her range (${range}), past her broadside's (${sideDz})`);
+  const wrong = [];
+  for (const wind of [[0, 0, 1.5], [1.2, 0, 0.6]]) {
+    for (let d = sideDz + 3; d <= bowDz + 40; d += 4) {
+      const g = createSeaShip({ id: 'g', seed: 1, classId: 'navyGalley', pos: [0, 0, 0], yaw: Math.PI / 2 });
+      for (const side of ['starboard', 'port', 'bow', 'stern']) g.guns.fired(side);
+      stepCaptain(g, { now: 0, dt: 0.1, seaY: 0, wind, isWater: open, random: () => 0.5, notoriety: () => 100, contacts: [player([0, 0, d], { hull: HULL.LargeBoat, hullShare: 1 })] });
+      const closing = Math.cos(g.wantPrev);   // the boat dead north of her: her course's share toward it
+      if (Math.abs(d - bowDz) > 2 && (closing > 0) !== (d > bowDz)) wrong.push(`${d} m: ${closing > 0 ? 'closes' : 'opens'} (${closing.toFixed(3)})`);
+    }
+  }
+  assert.deepEqual(wrong, [], `her station at her great guns' ${bowDz} m`);
+});
+
+// AUDIT TOUGHER-SHIPS (the station re-pinned): the duels below caught a galley stationed inside her great guns' dead zone
+// only by a stall - neither ship struck the other in 900 s - and with the ships toughened none of their eight stalls
+// whether she does or not. Her station itself, against a boat that lies still and leaves the range to her alone.
+test('AUDIT NAV2 F24 a war galley on a Large Boat lying still keeps her station off it - her fighting range never inside her great guns\' dead zone (91 m on a Large Boat), where at her class\'s own 70 m she sat inside it: from 75 m off, in eight bearings and four winds, she lies out past 70 m the minute through (mutants: the station inside the dead zones)', () => {
+  const winds = [[0.6, 0, 0.8], [-1.2, 0, 0.5], [0, 0, -1.5], [1.4, 0, -0.4]];
+  assert.ok(layMin(HULL.LargeGalley, 'bow', HULL.LargeBoat) > classById('navyGalley').range, 'her great guns\' dead zone past her class\'s range');
+  const close = [];
+  for (let k = 0; k < 8; k++) {
+    const a = k * 0.79;
+    const g = createSeaShip({ id: 'g', seed: 3 + k, classId: 'navyGalley', pos: [Math.sin(a) * 75, 0, Math.cos(a) * 75], yaw: a + (k % 2 ? 1.2 : -1.2) });
+    const ds = [];
+    for (let t = 0; t < 180; t += 0.1) {
+      stepCaptain(g, { now: t, dt: 0.1, seaY: 0, wind: winds[k % 4], isWater: open, random: () => 0.5, notoriety: () => 100,
+        contacts: [player([0, 0, 0], { hull: HULL.LargeBoat, hullShare: 1 })] });
+      if (t > 60) ds.push(Math.hypot(g.pos[0], g.pos[2]));
+    }
+    ds.sort((x, y) => x - y);
+    if (ds[ds.length >> 3] <= 70) close.push(`k ${k}: ${ds[ds.length >> 3].toFixed(0)} m`);
+  }
+  assert.deepEqual(close, [], 'she lies out past her class\'s range, toward her dead zone\'s edge');
 });
 
 // ── F26: a galley's ram and a prize ──────────────────────────────────────────────────────────────────────────────────
@@ -382,24 +426,28 @@ test('AUDIT NAV2 F27 a quarry is in the fight while she is chased: a merchantman
 
 // ── F28: the heavy hulls' way ────────────────────────────────────────────────────────────────────────────────────────
 
-test('AUDIT NAV2 F28 every hull\'s way comes and goes at the player\'s own rates: a captain gathers way as the player\'s hull of her kind does under the responsive helm at the rated wind, and loses it at that hull\'s coast - the Carrack as quick as a Small Ship, the Large Galley half as quick both ways (mutants: the old heavy half, the coast one rate)', () => {
+test('AUDIT NAV2 F28 every hull\'s way comes and goes at the player\'s own rates: a captain gathers way as the player\'s hull of her kind does under the responsive helm at the rated wind, and loses it at that hull\'s coast (SAIL-FREE\'s gain on the player\'s own way aside) - the Carrack as quick as a Small Ship, the Large Galley half as quick both ways (mutants: the old heavy half, the coast one rate)', () => {
   for (const [classId, hull] of [['pirateSloop', HULL.LargeBoat], ['pirateBrig', HULL.SmallShip], ['navyGalley', HULL.LargeGalley], ['pirateFlagship', HULL.Carrack]]) {
     const sc = scene();
     sc.deps.handling = () => 'responsive';
-    sc.helm(sc.place(hull, 0));
+    const boat = sc.helm(sc.place(hull, 0));
     sc.rt.RaiseSails();
     sc.rt.state.windVectorCurrent = [WIND_RATED, 0, 0];
     sc.rt.state.windVectorTarget = [WIND_RATED, 0, 0];
+    sc.frame();   // PIN MOVED (AUDIT SHIPS A5, 2026-10-06): her canvas drives her a beat - the coast's gain is a way it made
     const gain = sc.rt.properties.moveAccel();
     sc.rt.state.sailPosition = 0;
     const coast = sc.rt.properties.moveAccel();
     const s = ship(classId, { yaw: 90 * DEG });
     s.course = [1e6, 0];   // a course held
     stepCaptain(s, world({ dt: 0.1, wind: [0, 0, WIND_RATED] }));
-    near(s.speed / 0.1, gain, 0.06, `hull ${hull}: gathering way`);
+    // PIN MOVED (SAIL-FREE, 2026-10-05): the player's rates carry SAIL-FREE's gain with her way (helmWay.js) - hers alone;
+    // a captain sails at HELM-WAY's pace, so hers are the player's over it: each to her own way in the same time
+    // PIN MOVED (AUDIT SHIPS A5, 2026-10-06): her rig's own gain (sailFreeGain), the galleon's SAIL_FREE.gain hers alone
+    near(s.speed / 0.1, gain / sailFreeGain(boat), 0.06, `hull ${hull}: gathering way`);
     s.speed = 30;
     stepCaptain(s, world({ dt: 0.1, wind: [0, 0, WIND_RATED] }));
-    near((30 - s.speed) / 0.1, coast, 1e-6, `hull ${hull}: losing it`);
+    near((30 - s.speed) / 0.1, coast / sailFreeGain(boat), 1e-6, `hull ${hull}: losing it`);
   }
   assert.ok(ACCEL > 0 && DECEL > 0 && HANDLING.moveAccelSail > 0);
 });
@@ -463,7 +511,7 @@ async function duel(a, b, k) {
   A.ship.pos = [mid[0] - Math.sin(brg) * sep / 2, 0, mid[2] - Math.cos(brg) * sep / 2];
   B.ship.pos = [mid[0] + Math.sin(brg) * sep / 2, 0, mid[2] + Math.cos(brg) * sep / 2];
   A.ship.yaw = brg + (k % 2 ? 0.8 : -0.5); B.ship.yaw = brg + Math.PI + (k % 3 ? 0.4 : -0.9);
-  for (let t = 0; t < 900; t += 0.1) {
+  for (let t = 0; t < 900 * SHIP_TOUGHNESS; t += 0.1) {   // PIN MOVED (TOUGHER-SHIPS): a fight as much longer as her ships are tougher
     s.host.frame(0.1);
     if (s.host._sea.has(A.id) && s.host._sea.has(B.id)) s.view.feet = [(A.ship.pos[0] + B.ship.pos[0]) / 2 + 600, 0, (A.ship.pos[2] + B.ship.pos[2]) / 2];
     const sa = A.ship.damage.state, sb = B.ship.damage.state;
@@ -477,20 +525,23 @@ test('AUDIT NAV2 F25 the fighting power is the time each ship needs to make the 
   const sloop = C('pirateSloop'), cutter = C('navyCutter'), galley = C('navyGalley'), brig = C('pirateBrig');
   // her hits by the other's size: the same battery strikes a Small Ship far oftener than a Large Boat
   const long = batteryOf(HULL.SmallShip, 'starboard');
-  assert.ok(hitShare(long, 0.75, HULL.SmallShip) > 1.8 * hitShare(long, 0.75, HULL.LargeBoat), `${hitShare(long, 0.75, HULL.SmallShip).toFixed(2)} against ${hitShare(long, 0.75, HULL.LargeBoat).toFixed(2)}`);
+  // PIN MOVED (SHIPS-2, 2026-10-07): a Large Boat is Mac's Tiny Ship, a metre taller than the mod's boat - hit 0.70 as
+  // often as a Small Ship where the mod's was 0.49
+  assert.ok(hitShare(long, 0.75, HULL.SmallShip) > 1.3 * hitShare(long, 0.75, HULL.LargeBoat), `${hitShare(long, 0.75, HULL.SmallShip).toFixed(2)} against ${hitShare(long, 0.75, HULL.LargeBoat).toFixed(2)}`);
   assert.ok(hitShare(long, 0.75, HULL.LargeBoat) > hitShare(long, 0.3, HULL.LargeBoat), 'and a crack crew\'s oftener than a green one\'s');
   // by her men: the sloop's swivels take two a ball - she makes a cutter strike by her crew long before her hull
   const byMen = strikeTime(sloop, cutter);
   assert.ok(byMen < strikeTime(sloop, fightingPower({ ...cutter, strikes: false })) / 3, `the cutter's men first (${byMen.toFixed(0)} s)`);
   // a player's boat never strikes by her men: sized by her hull alone
-  const mine = fightingPower({ hull: HULL.SmallShip, hullHp: 420, crew: 24 });
+  const mine = fightingPower({ hull: HULL.SmallShip, hullHp: hullBuild(HULL.SmallShip).hullHp, crew: 24 });   // PIN MOVED (TOUGHER-SHIPS): her build's hull
   assert.equal(mine.strikes, false);
   assert.ok(strikeTime(sloop, mine) > 3 * byMen, 'my Small Ship is sized by her hull');
   // her fire slows as her men fall, and a boat without her crew loads single-handed
   assert.ok(strikeTime(fightingPower({ ...cutter, crewShare: 0.5 }), sloop) > strikeTime(cutter, sloop), 'her men thinned, her guns load slower');
   assert.ok(strikeTime(fightingPower({ ...mine, crewed: false }), sloop) > strikeTime(mine, sloop), 'single-handed, slower');
   // no fire from a battery that cannot lay where the other fights: a war galley's great guns (91 m) and broadside (57 m)
-  // on a Large Boat that fights at 55 m - none; one that stands off at 100 m, both
+  // on a Large Boat that fights at 55 m - none; one that stands off at 100 m, both. PIN MOVED (SHIPS-2, 2026-10-07): on
+  // Mac's Tiny Ship 85 m and 53 m, the sloop at her 50 (F24)
   assert.equal(strikeTime(galley, sloop), Infinity);
   assert.ok(Number.isFinite(strikeTime(galley, fightingPower({ ...sloop, range: 100 }))));
   // the odds: the sloop masters the war galley; the cutter is no longer the sloop's master fifteen to one
@@ -504,7 +555,7 @@ test('AUDIT NAV2 F25 the fighting power is the time each ship needs to make the 
   assert.equal(outguns(contactOf(ship('navyCutter', { id: 'n' })), ship('pirateBrig', { temper: 'wary' })), odds(cutter, brig) > 1);
   assert.equal(outguns(contactOf(ship('navyGalley', { id: 'n' })), ship('pirateSloop', { temper: 'wary' })), false, 'a wary sloop never runs from a war galley that cannot lay on her');
   // a peer's bare number (an older word's) is read off her hull as she stands; with no hull, she cannot be sized up
-  assert.equal(hostile(warySloop, player([0, 0, 0], { power: 12345, hull: HULL.LargeGalley, hullShare: 1 })), odds(sloop, fightingPower({ hull: HULL.LargeGalley, hullHp: 520 })) >= WARY_ODDS);
+  assert.equal(hostile(warySloop, player([0, 0, 0], { power: 12345, hull: HULL.LargeGalley, hullShare: 1 })), odds(sloop, fightingPower({ hull: HULL.LargeGalley, hullHp: hullBuild(HULL.LargeGalley).hullHp })) >= WARY_ODDS);
   assert.equal(hostile(warySloop, player([0, 0, 0], { power: 12345, hull: HULL.LargeGalley })), true, 'a galley that cannot lay on her is the sloop\'s prize');
   assert.equal(hostile(warySloop, player([0, 0, 0], { power: 12345, hull: undefined })), false, 'no hull: not sized');
   for (let i = 0; i < 60; i++) {
@@ -513,8 +564,10 @@ test('AUDIT NAV2 F25 the fighting power is the time each ship needs to make the 
   }
 });
 
+/** The odds within which a duel is a coin toss (TOUGHER-SHIPS). */
+const COIN_TOSS = 1.1;
 for (const navy of ['navyCutter', 'navyGalley']) {
-  test(`AUDIT NAV2 F25 the fighting power bears out (Mac's bar): a ${navy} against each pirate, eight duels each - wherever the model favours a side at WARY_ODDS or better she wins six of eight, and no side wins six of eight that the model does not lean to; and every duel is fought to a strike (AUDIT NAV2 F24: no galley held in her dead zone for 900 s) (mutants: the crew's line unread, the size unread, the dead zone unread, the station inside the dead zones)`, async () => {
+  test(`AUDIT NAV2 F25 the fighting power bears out (Mac's bar): a ${navy} against each pirate, eight duels each - wherever the model favours a side at WARY_ODDS or better she wins six of eight, and no side wins six of eight that the model does not lean to (seven, where the odds are a coin toss - COIN_TOSS); and every duel is fought to a strike (AUDIT NAV2 F24: no galley held in her dead zone for 900 s, TOUGHER-SHIPS: times SHIP_TOUGHNESS) (mutants: the crew's line unread, the size unread, the dead zone unread)`, async () => {
     const lines = [];
     let called = 0;
     for (const pirate of ['pirateSloop', 'pirateBrig', 'pirateGalley', 'pirateFlagship']) {
@@ -524,10 +577,19 @@ for (const navy of ['navyCutter', 'navyGalley']) {
       for (let k = 0; k < 8; k++) wins[(await duel(navy, pirate, k)) ?? 'none']++;
       const say = `${navy} v ${pirate}: the model's odds ${o.toFixed(2)}, the duels ${JSON.stringify(wins)}`;
       if (fav) { called++; if (wins[fav] < 6) lines.push(say); }
-      if ((wins[navy] >= 6 && !(o > 1)) || (wins[pirate] >= 6 && !(o < 1))) lines.push(say);
+      // PIN MOVED (TOUGHER-SHIPS): odds within COIN_TOSS of even are a coin toss the model cannot call either way - six of
+      // eight to one side is a fair coin's one time in seven, seven of eight one in thirty, so a toss still fails at
+      // seven. The cutter and the sloop (0.95) went 4-4 here before the ships were toughened and 6-2 after, where 32
+      // duels went 20-12 before and 16-16 after: as even as the model says
+      const toss = Math.abs(Math.log(o)) <= Math.log(COIN_TOSS), bar = toss ? 7 : 6;
+      if ((wins[navy] >= bar && !(o > 1)) || (wins[pirate] >= bar && !(o < 1))) lines.push(say);
       if (wins.none) lines.push(`${say} - not fought to a strike`);
     }
     assert.deepEqual(lines, []);
-    assert.ok(called >= 2, `the model calls two of the four at least (${called})`);
+    // PIN MOVED (GALLEON, 2026-10-01): the cutter is a Small Ship - Mac's galleon, five guns a side where the mod's had
+    // six - and her odds on the corsair galley 1.23 to one now (1.47 with six): fought four to four, which the model
+    // rightly leaves uncalled; she calls the flagship alone
+    const least = navy === 'navyCutter' ? 1 : 2;
+    assert.ok(called >= least, `the model calls ${least} of the four at least (${called})`);
   });
 }

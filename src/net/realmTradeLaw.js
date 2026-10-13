@@ -41,6 +41,8 @@
 
 import { canon } from './canon.js';
 import { TRADE_ITEMS_MAX, TRADE_GOLD_MAX } from './wire.js';
+import { isBagItem } from './bagLaw.js';   // BAG1
+import { activeWagonItem } from '../systems/wagonKinds.js';   // WAGONS2 (FINAL AUDIT): the loaded wagon stays (already in the account service's graph, by itemLaw.js)
 
 /** A trade's id: the peers' own sid (wire.js validTradeData's TRADE_SID_RE, which the wire keeps to itself). */
 export const REALM_TRADE_SID_RE = /^[A-Za-z0-9]{6,16}$/;
@@ -53,9 +55,16 @@ export const GOLD_PIECES_TEMPLATE = 276;
  *  LETTER_OF_CREDIT_TEMPLATE, pinned equal). Its price is no mere price: two letters differ in nothing else. The wire
  *  keeps it exactly (systems/loot.js validLootItem floors a value at the row's base price, and a letter's is 0). */
 export const VALUE_IS_IDENTITY_TEMPLATES = Object.freeze([275]);
+/** The marks that are the RECEIVER's - "worn by me", "bound to my quest", "it is mine already" (ACQUIRE1,
+ *  systems/acquireWatch.js) - never part of what an item IS, and never carried to its next owner. ONE list: the wire's
+ *  clamp (systems/loot.js validLootItem), a wild death's record (systems/wildDeath.js wildRecord) and this law all
+ *  read it. FIELD BUGS 2026-10-09b MARK-WIRE: ACQUIRE1 added `acquired` to the first two and not here, so every
+ *  marked piece - a weapon, armour, clothing, jewellery - carried it on its record and not on its offer, and the
+ *  market, a stall and a realm trade all refused it ("The realm does not hold that piece where your pack had it"). */
+export const RECEIVER_MARKS = Object.freeze(['equipSlot', 'questItem', 'acquired', 'wagonEntry', 'horseBond', 'horseFed']);   // WAGONS2-VISIT (AUDIT): who may enter a caravan is its owner's word - a buyer's caravan opens to its owner alone; STEED1: a horse's bond is with its owner - it comes to the next a stranger; AUDIT STEED1: and its food's clock is its owner's character's - it comes fed as a horse first seen (steedCare.js NEW_HORSE_FED), and an offer's record never mismatches its checkpoint for a minute's grazing
 /** The fields that are never part of what an item IS: its count and its price (the offer's own, which the wire floors),
- *  and the marks that are the RECEIVER's (systems/loot.js validLootItem strips them). */
-export const TRADE_VOLATILE_FIELDS = Object.freeze(['stackCount', 'value', 'equipSlot', 'questItem']);
+ *  and the RECEIVER's marks. */
+export const TRADE_VOLATILE_FIELDS = Object.freeze(['stackCount', 'value', ...RECEIVER_MARKS]);
 /** AUDIT REALM2 S4: the most a record a trade moves may be, in JSON characters - the JSON routes' own body (service.js
  *  MAX_BODY_BYTES). A piece the port mints is a few hundred; one with every string at the wire's 128 and ten
  *  enchantments, fifteen hundred. A price is volatile, so without it a million-character one rode along unseen. */
@@ -65,7 +74,7 @@ export const REALM_TRADE_RECORD_MAX = 4096;
  *  Stone's row (systems/gateSpoils.js SIGIL_STONE_TEMPLATES) is the one; test/auditrealm.test.js holds this list equal to
  *  every row the game registers with `bound`. The service read `rec.bound` alone, and a stone's record carries no mark
  *  of its own - so two halves naming a stone moved it between two realm characters. */
-export const BOUND_TEMPLATES = Object.freeze([570, 571]);   // LOOT9: the Welkynd Shard's row beside the Stone's
+export const BOUND_TEMPLATES = Object.freeze([570, 571, 572, 580, 582]);   // LOOT9: the Welkynd Shard's row beside the Stone's; PORTAL1: the Portal Stone's beside the shard's; WALLET1: the Wallet's (systems/walletItem.js); CARDS8: the Card Binder's (systems/iliacItems.js)
 /** A bound record, as systems/itemBound.js isBound reads a piece: its own mark (SS4), or its row's (SS1) - and no field
  *  on the record unbinds what the row binds. */
 export const boundRecord = (/** @type {any} */ rec) => rec?.bound === true || BOUND_TEMPLATES.includes(rec?.templateIndex);
@@ -125,6 +134,7 @@ export function tradeableRecord(/** @type {any} */ rec) {
   if (boundRecord(rec)) return false;                            // bound (itemBound.js isBound): its mark or its row's - AUDIT REALM F1
   if (rec.group === 'Currency' && rec.templateIndex === GOLD_PIECES_TEMPLATE) return false;   // gold (inventory.js isGoldPieces)
   if (BOAT_TEMPLATES.includes(rec.templateIndex)) return false;  // a boat's parts or deed: what it stands for stays in the giver's save - AUDIT REALM2 T1
+  if (isBagItem(rec)) return false;   // BAG1: a Materials Bag - its list stays in the giver's save (tradePack.js)
   return true;
 }
 
@@ -160,6 +170,12 @@ export function takeTradeGoods(save, side, pick) {
   const purse = Number.isSafeInteger(save.goldPieces) ? save.goldPieces : 0;
   if (side.gold > purse) return null;
   const left = items.map((rec) => (tradeableRecord(rec) ? recordCount(rec) : 0));   // what each record may still give
+  // WAGONS2 (FINAL AUDIT): and the wagon the save drives while its store holds goods gives nothing - the client's
+  // refusal (systems/tradePack.js wagonLoadedHeld) was the only one, so a modified client sold a loaded caravan and kept
+  // its 2000 kg in a 750 kg cart
+  const loaded = (Array.isArray(save.wagonItems) ? save.wagonItems.length : 0) > 0 ? activeWagonItem(items) : null;
+  if (loaded) left[items.indexOf(loaded)] = 0;
+  const had = left.slice();   // what each record could give - a record that gave none of it is untouched, below
   /** @type {{ at: number, n: number }[]} */
   const picks = [];
   for (let k = 0; k < side.items.length; k++) {
@@ -173,12 +189,12 @@ export function takeTradeGoods(save, side, pick) {
   const moved = picks.map(({ at, n }) => {
     const rec = JSON.parse(JSON.stringify(items[at]));
     if (items[at].stackCount !== undefined || n > 1) rec.stackCount = n;
-    delete rec.equipSlot; delete rec.questItem;
+    for (const k of RECEIVER_MARKS) delete rec[k];
     return rec;
   });
   const lit = items[save.lightSourceIndex];
   save.items = items.flatMap((rec, i) => {
-    if (left[i] === (tradeableRecord(rec) ? recordCount(rec) : 0)) return [rec];   // untouched
+    if (left[i] === had[i]) return [rec];   // untouched
     if (left[i] <= 0) return [];
     rec.stackCount = left[i];
     return [rec];
@@ -215,14 +231,48 @@ export function settleRealmTrade(saveA, saveB, halfA, halfB) {
   return { ok: true, a, b, toA: { items: fromB, gold: halfB.give.gold }, toB: { items: fromA, gold: halfA.give.gold } };
 }
 
-/** A refusal's words, for the side whose trade did not happen. Nothing moved, on the service or here. */
-export function realmTradeRefusalText(/** @type {string} */ why) {
+/** INT3: the hold, as its player hears it (server-account/src/verdict.js holdOf's reasons) - systems/itemIds.js
+ *  tradeHeldNotice says it when a checkpoint moves it, and a trade it refused says it again (FIELD BUGS 2026-10-11g
+ *  HELD-SIDE). Here, a leaf both read: systems/itemIds.js re-exports it. */
+/** RING-WARN: a law hold's notice says the strikes are counting. Each hold counts (INT3: a strike a hold, never a
+ *  checkpoint), and the third stands for staff even once the piece is gone - so dropping it and taking it up again is
+ *  no way out, and the player who did exactly that (the Ring report) was told only "until it is gone". The rule is
+ *  kept: a piece parked on the ground while its carrier trades, then taken up again, is what the strikes are for. */
+export const TRADE_HELD_STRIKES = ' Each time the law holds it counts: the third time, trading stays frozen until staff have looked.';
+export const TRADE_HELD_NOTICES = Object.freeze({
+  law: `The realm is reviewing this character: something it carries is not as the game makes it. Trading is frozen until it is gone.${TRADE_HELD_STRIKES}`,
+  review: 'The realm is reviewing this character: the law has held it three times, and its trading stays frozen until staff have looked.',
+  dupe: 'The realm is reviewing this character: copies of an item were found. Trading is frozen until staff have looked.',
+  budget: 'The realm is reviewing this character: its wealth rose faster than play could earn it. Trading is frozen until play catches up.',
+  staff: 'The realm\'s staff have frozen this character\'s trading.',
+});
+
+/** A refusal's words, for the side whose trade did not happen. Nothing moved, on the service or here. FIELD BUGS
+ *  2026-10-11g HELD-SIDE ("Cant trade after yesterdays character lockout" - "It will just say something along the lines
+ *  of: 'character under review'"): a hold's refusal says WHOSE it was - `held`, the service's word ('mine' or 'theirs';
+ *  null from a service before it) - and, when it is mine, why (`reason`, the hold my last checkpoint was answered:
+ *  TRADE_HELD_NOTICES' key; null when that checkpoint held nothing). */
+export function realmTradeRefusalText(/** @type {string} */ why, /** @type {string | null} */ held = null, /** @type {string | null | undefined} */ reason = undefined, /** @type {string | null} */ said = null) {
+  if (why === 'trade-held' && held === 'mine') {
+    // `said`: the hold's notice as the session last said it (systems/itemIds.js tradeHeldNotice - the piece named, or
+    // staff's review) - the reason's generic words only without one
+    const notice = typeof said === 'string' && said ? said : typeof reason === 'string' ? /** @type {Record<string, string>} */ (TRADE_HELD_NOTICES)[reason] : undefined;
+    return `${notice ?? 'The realm is reviewing your character, and its trading is frozen.'} Nothing was traded.`;
+  }
+  if (why === 'trade-held' && held === 'theirs') return `The realm is reviewing the other character in this trade, and its trading is frozen - nothing was traded.${reason === null ? ' Your own trading is open.' : ''}`;
+  if (why === 'record-unjudged' && held === 'mine') return 'The realm has not read your latest save yet - nothing was traded. Try again in a moment.';
+  if (why === 'record-unjudged' && held === 'theirs') return 'The realm has not read the other character\'s latest save yet - nothing was traded. Try again in a moment.';
   switch (why) {
     case 'expired': return 'The other side never reached the realm - nothing was traded.';
     case 'mismatch': return 'The two offers did not agree - nothing was traded.';
     case 'goods': return 'The realm could not find the goods offered - nothing was traded.';
     case 'moved': return 'A character moved on before the trade was settled - nothing was traded.';
     case 'offline': return 'The realm could not be reached - nothing was traded.';
+    case 'trade-held': return 'The realm is reviewing a character in this trade, and its trading is frozen - nothing was traded.';   // INT3
+    case 'piece-dupe': return 'Copies of a piece in this trade were found in the realm - nothing was traded.';   // INT4
+    case 'piece-claimed': return 'Another character shows a piece in this trade too, and the realm is still settling whose it is - nothing was traded.';   // INT4 (its audit)
+    case 'piece-legacy': return 'A piece in this trade came into the realm from a classic save, and the realm does not trade it - nothing was traded.';   // INT1 (its audit)
+    case 'record-unjudged': return 'The realm has not read a character\'s latest save yet - nothing was traded. Try again in a moment.';   // INT3 (its audit)
     default: return 'The realm refused the trade - nothing was traded.';
   }
 }

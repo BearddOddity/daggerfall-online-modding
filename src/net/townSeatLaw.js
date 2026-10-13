@@ -378,9 +378,9 @@ export function seatMineLines(seat, mine, nameOf = () => null) {
   else if (here.held) out.push(`Your guild holds ${nameOf(here.key) ?? 'another seat'} in this region, and is pledged to it.`);
   else if (here.key === seat.key) out.push(`Your guild is pledged to ${seat.name}.`);
   else out.push(`Your guild is pledged to ${nameOf(here.key) ?? 'another seat'} in this region.`);
-  if (!mine.seasoned) out.push('You count for your guild\'s seats after 7 days in it.');
+  if (!mine.seasoned) out.push('You count for your guild after 7 days in it.');
   else if (mine.bound && mine.bound !== mine.guild) out.push('Your account fights for another guild this week.');
-  else if (here?.key === seat.key) out.push(`Your week here: ${mine.influence.toLocaleString('en-US')} of ${ACCOUNT_SEAT_WEEK_CAP.toLocaleString('en-US')}.`);
+  else if (here?.key === seat.key) out.push(`Your influence here this week: ${mine.influence.toLocaleString('en-US')} of ${ACCOUNT_SEAT_WEEK_CAP.toLocaleString('en-US')}.`);   // BOARD-UI: what the number is
   return out;
 }
 /** What the pledge buttons say. */
@@ -390,10 +390,10 @@ export const SEAT_PLEDGE_WORDS = Object.freeze({
   drop: 'Take the pledge down',
   full: `Your guild has pledged in ${SEAT_PLEDGE_REGIONS_MAX} regions this week.`,
 });
-/** Tribute's line for the guildmaster: its room in Drakes. */
+/** Tribute's line for the guildmaster: its room in silver. BOARD-UI: in plain words. */
 export const seatTributeLine = (room) => (room > 0
-  ? `Tribute: up to ${room.toLocaleString('en-US')} silver more this week (1 influence per ${TRIBUTE_MARKS_PER_INFLUENCE}, burnt).`
-  : 'Tribute: your guild has no room for more this week. Tribute is at most a fifth of a guild\'s week at a seat.');
+  ? `Tribute: up to ${room.toLocaleString('en-US')} silver more this week, 1 influence per ${TRIBUTE_MARKS_PER_INFLUENCE} silver (the silver is spent).`
+  : 'Tribute: no room left this week - it is at most a fifth of your guild\'s influence here.');
 
 // ═══ SEAT1c: THE TURNING (SEAT0 5.2, Appendix B) ════════════════════
 // The week settles the first time anything asks about any seat after its boundary - never a job that runs - in one
@@ -571,7 +571,7 @@ export function chronicleLine(row, seat, zero = null) {
     // AUDIT-SEATS S4 (16: "the Charter voids, the claim fee is refunded ... if struck within the Season"): a held seat's
     // strike names the Charter it voided and the fee it refunded
     case 'strike': return d.guild
-      ? `${when}, ${seat.name} was struck from the registry, and ${guildWords(d.guild)}'s Charter with it${Number(d.refund) > 0 ? ` - its claim fee of ${Number(d.refund).toLocaleString('en-US')} Marks refunded` : ''}.`
+      ? `${when}, ${seat.name} was struck from the registry, and ${guildWords(d.guild)}'s Charter with it${Number(d.refund) > 0 ? ` - its claim fee of ${marksText(Number(d.refund))} refunded` : ''}.`   // GUILD3a: silver, as every sentence says it
       : `${when}, ${seat.name} was struck from the registry.`;
     // AUDIT-SEATS S4: a Charter whose seat the registry no longer confirms, lapsed at the Turning
     case 'unregistered': return `${when}, ${c} lapsed - ${seat.name} is no longer confirmed in the registry.`;
@@ -622,7 +622,7 @@ export function chronicleLine(row, seat, zero = null) {
     // CROWN2: fealty (7.8)
     case 'fealty-sworn': return `${when}, ${guildWords(d.vassal)} swore fealty to ${guildWords(d.liege)}.`;
     case 'fealty-broken': return `${when}, ${guildWords(d.breaker)} broke the fealty between ${guildWords(d.vassal)} and ${guildWords(d.liege)}.`;
-    case 'fealty-tribute': return `${when}, ${guildWords(d.vassal)} paid ${marksText(Number(d.marks ?? 0))} of tribute to ${guildWords(d.liege)}.`;
+    case 'fealty-tribute': return `${when}, ${guildWords(d.vassal)} paid ${marksText(Number(d.marks ?? 0))} in fealty to ${guildWords(d.liege)}.`;   // AUDIT GUILD3 W5: "Tribute" is the seat's
     case 'fealty-lapsed': return `${when}, the fealty between ${guildWords(d.vassal)} and ${guildWords(d.liege)} lapsed.`;
     // SEAT2b (7.5): a fortification's project begun, and its tier standing
     case 'fort-begun': return `${when}, ${guildWords(d.guild)} began raising ${seat.name}'s ${fortWork(d.work)?.name ?? 'works'} to ${theirOf(d.work)} ${TIER_WORDS[d.tier] ?? 'next'} tier.`;
@@ -704,6 +704,26 @@ export function seatBattleLine(battle) {
   if (battle.kind === 'revolt') return `The town rises against ${guildWords(battle.against)} this week - a Rebel Captain holds the palace door.`;   // SEAT2b part two (c)
   if (battle.kind === 'tourney') return `${GuildWords(battle.guild)} and ${guildWords(battle.against)} meet in a Tourney for the Charter this week.`;
   return `${GuildWords(battle.guild)} has won a Right of Siege against ${guildWords(battle.against)} this week.`;
+}
+/**
+ * SEAT-TIP (FIELD BUGS 2026-10-04e: "We need a hover tooltips for capturable cities/towns that show occupation"): A
+ * SEAT'S CARD for a map's hover - the Overworld's plate and the held map's mark - `{ title, lines }` (the EVENT-TIP card,
+ * ui/eventMapMarks.js readTip): the town, then its Charter and who holds it ("The Charter of Anticlere: held by the
+ * Silver Hand <SH>"), how long and how firmly (seatHolderLine), the holder's rule (seatRuleLine), and this week's battle
+ * and a called siege. `seat` a DRESSED seat (net/townSeatBook.js dressed - `holder`, `battle`), or null. Pure.
+ */
+export function seatTipOf(seat, nowMs = Date.now()) {
+  if (!seat?.name) return null;
+  const holder = seat.holder ?? null;
+  const lines = [seatInfoLine(seat, holder?.guild ?? null)];
+  if (holder?.guild) lines.push(seatHolderLine(holder));
+  const rule = seatRuleLine(seat, holder);
+  if (rule) lines.push(rule);
+  const battle = seatBattleLine(seat.battle ?? null);
+  if (battle) lines.push(battle);
+  const siege = siegeCalledClause(seat.battle, nowMs).trim();
+  if (siege) lines.push(siege);
+  return { title: seat.name, lines };
 }
 /** What the relinquish button says - pressed once to arm, again to give the Charter up. */
 export const SEAT_RELINQUISH_WORDS = Object.freeze({ arm: 'Give up the Charter', sure: 'Press again to give up the Charter' });

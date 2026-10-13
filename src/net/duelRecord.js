@@ -3,9 +3,9 @@
 // per account, on the main menu's account card): THE DUELLING RECORD, AS WORDS AND AS ASKS. Pure - the account service
 // is handed in - so the pins drive it without a network.
 //
-// WHOSE WORD IT IS. The account service's (server-account/src/accounts.js reportDuelLoss): a duel that named a loser is
-// reported by the LOSER's own signed-in client naming the winner's account as the relay verified it, so nobody's record
-// is their own word. The main menu's card reads the player's own off `/v1/account`; the Inspect card reads another
+// WHOSE WORD IT IS. The account service's (server-account/src/accounts.js claimDuel) - INT8: off the receipt the relay
+// that refereed the bout signed (net/duelReceipt.js `d1`), carried by either fighter and counted once, so nobody's
+// record is their own word (DUEL1's loser's own report retired with the defender-resolved blow). The main menu's card reads the player's own off `/v1/account`; the Inspect card reads another
 // player's by the account the relay stamped on the card they answered with - never by anything the card claims.
 //
 // Not a DFU member: Daggerfall Unity has no other players. Ledger A (ONLINE).
@@ -28,8 +28,8 @@ export function duelRecordText(rec) {
   return `${w} won, ${l} lost (K/D ${duelKd(w, l).toFixed(2)})`;
 }
 
-/** AUDIT DUEL1: the line a loss the account service did not count says, by the service's `why`
- *  (server-account/src/accounts.js reportDuelLoss) - null for nothing to add: a draw was said by the duel itself. */
+/** AUDIT DUEL1: the line a bout the account service did not count says, by the service's `why`
+ *  (server-account/src/accounts.js claimDuel) - null for nothing to add: a draw was said by the duel itself. */
 export function duelUncountedText(why) {
   switch (why) {
     case 'draw': return null;
@@ -64,7 +64,14 @@ export function createDuelRecords({ read, now = () => Date.now(), onRecord = () 
       // WB5b: the gates closed ride the same answer (server-account/src/index.js `/v1/duel/record`) - absent from a
       // service before them
       const gates = Number.isSafeInteger(d?.gates?.closed) ? { gates: { closed: d.gates.closed } } : {};
-      const rec = d && Number.isSafeInteger(d.wins) && Number.isSafeInteger(d.losses) ? { wins: d.wins, losses: d.losses, ...gates } : null;
+      // AUDIT SD II (L5 F1): and the towns defended (RAID4), the serpents slain (SERPENT1) and the Hours broken (SD9b) -
+      // the same answer carried all three, and this kept none: the Inspect card never said them
+      const more = {
+        ...(Number.isSafeInteger(d?.raids?.defended) ? { raids: { defended: d.raids.defended } } : {}),
+        ...(Number.isSafeInteger(d?.serpents?.slain) ? { serpents: { slain: d.serpents.slain } } : {}),
+        ...(Number.isSafeInteger(d?.sds?.broken) ? { sds: { broken: d.sds.broken } } : {}),
+      };
+      const rec = d && Number.isSafeInteger(d.wins) && Number.isSafeInteger(d.losses) ? { wins: d.wins, losses: d.losses, ...gates, ...more } : null;
       e.rec = rec; e.at = now(); e.asking = false;
       onRecord(id, rec);
     }, () => { e.at = now(); e.asking = false; onRecord(id, e.rec); });

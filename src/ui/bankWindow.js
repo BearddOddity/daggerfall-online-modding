@@ -56,6 +56,7 @@ import {
 import { REGION_NAMES } from '../formats/mapsFile.js';   // REALM P0.3: the branch another loan or default stands in
 import { expandMacroValues } from '../systems/quest/questMacros.js';   // MH1: the ONE walk
 import { localizedText, getLocalizedRegionName } from '../systems/textManager.js';   // L10N3d: the TOO_HEAVY line; L10N3e: %reg's region shown
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** mainPanel.Size (:77) - and the size BANK00I0.IMG ships. */
 export const BANK_PANEL_W = 225, BANK_PANEL_H = 181;
@@ -137,6 +138,7 @@ const inRect = ([rx, ry, rw, rh], x, y) => x >= rx + BANK_PANEL_X && y >= ry + B
  */
 export class BankWindow {
   constructor(hooks) {
+    noteFirstUse('bank');   // TUT1
     this.hooks = hooks;
     this.done = false;
     this.isChoiceWindow = true;   // raw codes through the overlay seam

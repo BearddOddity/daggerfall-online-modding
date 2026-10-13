@@ -228,6 +228,11 @@ export function entryTarget(message, where = {}) {
     // the player in it) - the town's own name (`__p_`) never unlocks it
     regionName: onMap === true || here || said.has(MACRO_TYPES.NameMacro4) ? (REGION_NAMES[regionIndex] ?? site.regionName ?? null) : null,
     buildingName: said.has(MACRO_TYPES.NameMacro1) ? (site.buildingName ?? null) : null,
+    // GUIDE8's Town tier (AUDIT DELVE, systems/questGuidance.js): the building the entry NAMES (its `_p_`, as the name
+    // above), by its town's map id and its key - what the town map rings and the compass points at while the player is
+    // in that town; null where the entry does not name it, or the place is no building
+    building: said.has(MACRO_TYPES.NameMacro1) && site.siteType === SITE_TYPES.Building && site.buildingKey > 0
+      ? { mapId: site.mapId ?? 0, buildingKey: site.buildingKey } : null,
     onMap,
     here,
     find: onMap === true && !hereByName ? { regionIndex: site.regionIndex ?? 0, regionName: site.regionName ?? '', locationName: site.locationName } : null,
@@ -407,9 +412,14 @@ export class QuestLens {
 
     const events = this._last ? this._diff(quests, log.ended ?? []) : [];
     for (const q of quests) this._known.add(q.id);
+    // QUEST-SHELF's audit: a quest set aside is AWAY, not gone - what the lens last knew of it is kept, so its reclaim is
+    // no news (its whole journal again) and a deadline it told stays told
+    const away = new Set((log.shelved ?? []).map((q) => q.id));
     const live = new Set(quests.map((q) => q.id));
-    for (const id of this._namedBy.keys()) if (!live.has(id)) this._namedBy.delete(id);
-    this._last = new Map(quests.map((q) => [q.id, { title: q.title, main: q.main, clockSeconds: q.clockSeconds, newsKeys: q.entries.map((e) => newsKey(q.id, e)) }]));
+    for (const id of this._namedBy.keys()) if (!live.has(id) && !away.has(id)) this._namedBy.delete(id);
+    const last = new Map(quests.map((q) => [q.id, { title: q.title, main: q.main, clockSeconds: q.clockSeconds, newsKeys: q.entries.map((e) => newsKey(q.id, e)) }]));
+    for (const [id, was] of this._last ?? []) if (away.has(id) && !last.has(id)) last.set(id, was);
+    this._last = last;
     return { quests, events };
   }
 

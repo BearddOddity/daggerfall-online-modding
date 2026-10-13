@@ -31,6 +31,7 @@ import { duelRecordText } from '../net/duelRecord.js';   // DUEL1: the duelling 
 import { renownText } from '../net/renown.js';   // RENOWN1: Renown, left of the name
 import { guildTagText } from '../net/guildLaw.js';   // GUILD1c: the guild's tag, right of the name
 import { localizedStrings } from '../systems/textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language
+import { houseLine } from '../net/houseLaw.js';   // LEGACY7: the house, under the name
 
 export const PROFILE_STYLE_ID = 'dagger-profile-style';
 
@@ -68,8 +69,18 @@ export const GEAR_ROWS = Object.freeze([
   [EQUIP_SLOTS.Crystal0, 'Crystal'], [EQUIP_SLOTS.Crystal1, 'Crystal'],
 ]);
 
+/** PROFILE-UI (2026-10-07, Mac: "Lets only organize and polish the player profile. Its a mess"): WHAT THEY WEAR IN ITS
+ *  PARTS, in the order a reader looks for them - what is in their hands (a shield with the sword), their armour, their
+ *  clothes, their jewellery - each piece by its own group (net/wire.js LOOK_GROUPS: every piece the look carries names
+ *  one), a hand's piece in hand whatever it is. */
+export const GEAR_PARTS = Object.freeze([['hand', 'In hand'], ['armour', 'Armour'], ['clothing', 'Clothing'], ['jewellery', 'Jewellery']]);
+const HAND_SLOTS = new Set([EQUIP_SLOTS.RightHand, EQUIP_SLOTS.LeftHand]);
+/** The part a worn piece stands in. */
+export const gearPartOf = (slot, it) => (HAND_SLOTS.has(slot) || it?.group === 'Weapons' ? 'hand'
+  : it?.group === 'Armor' ? 'armour' : it?.group === 'Jewellery' ? 'jewellery' : 'clothing');
+
 /** A look's worn items as rows, slot by slot in GEAR_ROWS' order - the first item a slot names (a look projected by
- *  validLook carries no two, but a slot is one place, so the first stands). */
+ *  validLook carries no two, but a slot is one place, so the first stands) - each with its part (PROFILE-UI). */
 export function gearRows(look) {
   const bySlot = new Map();
   for (const it of Array.isArray(look?.items) ? look.items : []) {
@@ -78,9 +89,23 @@ export function gearRows(look) {
   const rows = [];
   for (const [slot, label] of GEAR_ROWS) {
     const it = bySlot.get(slot);
-    if (it) rows.push({ slot: label, name: itemLongName(it) });
+    if (it) rows.push({ slot: label, name: itemLongName(it), part: gearPartOf(slot, it) });
   }
   return rows;
+}
+
+/** PROFILE-UI: the rows in their parts (GEAR_PARTS' order, a part with nothing in it left out), each part's rows in
+ *  GEAR_ROWS' order - and a pair worn in two slots of one name, two rings, ONE row under the plural with both names: the
+ *  card said "Ring" twice down the column, ten such pairs to a full look. */
+export function gearGroups(rows) {
+  const parts = new Map(GEAR_PARTS.map(([key, head]) => [key, { head, rows: [] }]));
+  for (const r of Array.isArray(rows) ? rows : []) {
+    const part = parts.get(r?.part) ?? parts.get('clothing');
+    const last = part.rows[part.rows.length - 1];
+    if (last && last.one === r.slot) { last.names.push(r.name); last.slot = `${r.slot}s`; continue; }
+    part.rows.push({ one: r.slot, slot: r.slot, names: [r.name] });
+  }
+  return [...parts.values()].filter((p) => p.rows.length).map((p) => ({ head: p.head, rows: p.rows.map(({ slot, names }) => ({ slot, names })) }));
 }
 
 /** The states a profile can stand in: waiting on their card, drawn from it, or drawn without one - because they did not
@@ -116,6 +141,17 @@ export function profileRaidLine(record) {
   const n = record && typeof record === 'object' ? record.raids?.defended : null;
   return Number.isSafeInteger(n) && n > 0 ? `Towns defended: ${n}` : null;
 }
+/** AUDIT SERPENT D4 (SERPENT1): the sea serpents they helped slay, off the same record - said only once there is one. */
+export function profileSerpentLine(record) {
+  const n = record && typeof record === 'object' ? record.serpents?.slain : null;
+  return Number.isSafeInteger(n) && n > 0 ? `Serpents slain: ${n}` : null;
+}
+/** SD9b: the Hours they broke - each a Brass Remnant's fall the relay signed and the service counted once - off the same
+ *  record, said only once there is one. */
+export function profileSdLine(record) {
+  const n = record && typeof record === 'object' ? record.sds?.broken : null;
+  return Number.isSafeInteger(n) && n > 0 ? `Hours broken: ${n}` : null;
+}
 /** AUDIT RENOWN1 UI-3: a view with the peer's Renown as the session knows it NOW - the level rises on a renown frame
  *  while the card stands open, and the card showed the level it was opened with. A level the session does not know
  *  leaves the view's own. */
@@ -124,7 +160,7 @@ export function profileRenown(v, lv) {
   if (!v || !text || v.level === text) return v;
   return { ...v, level: text, levelTitle: `Renown ${lv}` };
 }
-export function profileView({ name = null, peer = null, look = null, card = null, state = 'asking', duel = null, record = null } = {}) {
+export function profileView({ name = null, peer = null, look = null, card = null, state = 'asking', duel = null, record = null, wed = null } = {}) {
   const who = (typeof name === 'string' && name) ? name : 'Someone';
   const worn = card?.look ?? look ?? null;
   const race = typeof worn?.race === 'string' ? raceDisplayName(worn.race) : null;
@@ -137,6 +173,7 @@ export function profileView({ name = null, peer = null, look = null, card = null
     level: renownText(lv),
     levelTitle: renownText(lv) ? `Renown ${lv}` : null,
     guild: guildTagText(peer?.gt),   // GUILD1c: the tag the relay stamped off their signed token - "<HND>", or null
+    house: houseLine(peer?.house),   // LEGACY7: the house the relay stamped - "☠ Ysolde II of House Hlaalu", or null
     title: titleBadge(peer),
     glyphs: glyphBadges(peer),
     line: [card ? `Level ${card.level}` : null, race, klass].filter(Boolean).join(' '),
@@ -150,9 +187,13 @@ export function profileView({ name = null, peer = null, look = null, card = null
     // - null: no button, offline or on a relay that cannot carry a duel), and their record's line - the account
     // service's count, read by the account the relay stamped on their card (net/duelRecord.js), never the card's word
     duel: duel && typeof duel.label === 'string' ? { label: duel.label, enabled: !!duel.enabled, why: duel.enabled ? null : (duel.why ?? null) } : null,
+    // LEGACY7 part three: the Propose button's state as the house's law says it - the duel's shape (null: no button)
+    wed: wed && typeof wed.label === 'string' ? { label: wed.label, enabled: !!wed.enabled, why: wed.enabled ? null : (wed.why ?? null) } : null,
     duels: profileDuelLine(record),
     gates: profileGateLine(record),
     raids: profileRaidLine(record),   // RAID4
+    serpents: profileSerpentLine(record),   // AUDIT SERPENT D4
+    hours: profileSdLine(record),   // SD9b
   };
 }
 
@@ -162,7 +203,7 @@ export function profileView({ name = null, peer = null, look = null, card = null
 export const PROFILE_CSS = `
 ${PIXELIFY_FIVE_FACE}
 .dfprofile { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 7; display: none;
-  width: min(480px, calc(100vw - 28px)); pointer-events: none; ${PIXEL_FONT_CSS} color: var(--bone, #e9e4d9); }
+  width: min(560px, calc(100vw - 28px)); pointer-events: none; ${PIXEL_FONT_CSS} color: var(--bone, #e9e4d9); }
 .dfprofile[data-state="open"] { display: block; }
 .dfprofile-card { pointer-events: auto; background: rgba(14, 16, 19, .94); border: 1px solid var(--iron, #2b323b); border-radius: 6px;
   backdrop-filter: blur(4px); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box;
@@ -171,12 +212,22 @@ ${PIXELIFY_FIVE_FACE}
 .dfprofile-head { text-align: center; padding-bottom: 8px; border-bottom: 1px solid var(--iron, #2b323b); }
 .dfprofile-title { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; line-height: 1.4;
   width: fit-content; max-width: 100%; margin-inline: auto; }   /* SHADOW-FANG (AUDIT A1): the word's own width - a gradient title's stops span the word, not the card */
-.dfprofile-name { display: inline-flex; align-items: center; gap: 6px; font-size: 19px; line-height: 1.3; overflow-wrap: anywhere; }
+/* PROFILE-UI: where the Renown, the name and the tag will not stand on one line, the line breaks BETWEEN them - the tag
+   under the name, never the name in two */
+.dfprofile-name { display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 6px; font-size: 19px; line-height: 1.3; overflow-wrap: anywhere; }
 .dfprofile-glyph { width: 16px; height: 16px; flex: none; }
+/* PROFILE-UI: the glyphs' own row under the name - centred, wrapping, never beside the name to squeeze it */
+.dfprofile-glyphs { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 6px; margin: 6px auto 0; max-width: 100%; }
+/* PROFILE-UI: the record's plaques - one row that wraps, each its own words */
+.dfprofile-facts { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px; }
+.dfprofile-fact { font-size: 12px; line-height: 1.35; padding: 3px 8px; color: var(--bone, #e9e4d9);
+  background: rgba(255, 255, 255, .03); border: 1px solid var(--iron, #2b323b); border-radius: 3px; }
 .dfprofile-renown { flex: none; font-size: 13px; line-height: 1.3; padding: 1px 5px; border-radius: 2px; min-width: 1.4em;
   text-align: center; font-variant-numeric: tabular-nums; color: #f2c46b;
   background: rgba(242, 196, 107, .1); border: 1px solid rgba(242, 196, 107, .8); }
 .dfprofile-renown:empty { display: none; }
+/* LEGACY7: the house under the name - the name layer's own parchment */
+.dfprofile-house { font-size: 12px; letter-spacing: .03em; color: #d8c79a; font-style: italic; margin-top: 2px; }
 /* GUILD1c: the guild's tag right of the name, before the glyphs - the name layer's own steel */
 .dfprofile-guild { flex: none; font-size: 13px; letter-spacing: .04em; color: #a9c4dd; }
 .dfprofile-line { font-size: 13px; color: var(--dim, #9a9486); line-height: 1.4; }
@@ -188,6 +239,10 @@ ${PIXELIFY_FIVE_FACE}
 .dfprofile-v { color: var(--bone, #e9e4d9); }
 .dfprofile-vitals { margin-top: 8px; }
 .dfprofile-row { display: flex; gap: 8px; font-size: 13px; line-height: 1.5; }
+/* PROFILE-UI: what they wear in its parts - a part's name over its rows; a pair's names one under the other */
+.dfprofile-sub { font-size: 11px; letter-spacing: .06em; color: var(--brass, #c08a3e); margin: 8px 0 2px; }
+.dfprofile-h + .dfprofile-sub { margin-top: 0; }
+.dfprofile-items { display: flex; flex-direction: column; min-width: 0; }
 .dfprofile-slot { flex: none; width: 6.5em; color: var(--dim, #9a9486); }
 .dfprofile-item { min-width: 0; overflow-wrap: anywhere; }
 .dfprofile-none { font-size: 13px; color: var(--dim, #9a9486); }
@@ -200,6 +255,10 @@ ${PIXELIFY_FIVE_FACE}
   border-radius: 3px; font: inherit; font-size: 14px; padding: 6px 12px; cursor: pointer; text-align: center; }
 .dfprofile-duel:hover:not([disabled]) { background: #b8483f; color: var(--ink, #0e1013); }
 .dfprofile-duel[disabled] { opacity: .55; cursor: default; }
+.dfprofile-wed { min-width: 120px; min-height: 44px; background: #2e2a1e; color: var(--bone, #e9e4d9); border: 1px solid #8a7440;
+  border-radius: 3px; font: inherit; font-size: 14px; padding: 6px 12px; cursor: pointer; text-align: center; }
+.dfprofile-wed:hover:not([disabled]) { background: var(--brass, #c08a3e); color: var(--ink, #0e1013); }
+.dfprofile-wed[disabled] { opacity: .55; cursor: default; }
 .dfprofile-why { font-size: 12px; color: var(--dim, #9a9486); text-align: center; }
 /* a phone's width: the sheet above what they wear, not beside it - and the name a size down, so the widest a name can
    be (NAME_MAX of the face's widest letter) stands on one line with its glyphs; breaking inside it is the last resort */
@@ -218,7 +277,7 @@ export function injectProfileStyle(doc = document) {
  * The card over the document. `canOpen()` is the host's word on whether a surface may stand (the F-menu's gate),
  * `onOpen`/`onClose` its pointer door, `above()` whether a surface stands over this one (then Escape is not ours).
  */
-export function createProfileWindow({ canOpen = () => true, onOpen = null, onClose = null, above = () => false, onDuel = null, doc = document, win = globalThis } = {}) {
+export function createProfileWindow({ canOpen = () => true, onOpen = null, onClose = null, above = () => false, onDuel = null, onWed = null, doc = document, win = globalThis } = {}) {
   injectProfileStyle(doc);
   const el = (tag, cls, text) => { const n = doc.createElement(tag); n.className = cls; if (text != null) n.textContent = text; return n; };
   const root = el('div', 'dfprofile');
@@ -242,14 +301,28 @@ export function createProfileWindow({ canOpen = () => true, onOpen = null, onClo
     nm.id = 'dfprofile-name-node';
     if (v.level) { const lv = el('span', 'dfprofile-renown', v.level); if (v.levelTitle) lv.title = v.levelTitle; nm.append(lv); }   // RENOWN1: left of the name
     nm.append(el('span', 'dfprofile-nametext', v.name));
-    if (v.guild) nm.append(el('span', 'dfprofile-guild', v.guild));   // GUILD1c: right of the name, before the glyphs
-    for (const g of v.glyphs) { const svg = glyphSvgNode(doc, g, 'dfprofile-glyph'); if (!svg) break; nm.append(svg); }
+    if (v.guild) nm.append(el('span', 'dfprofile-guild', v.guild));   // GUILD1c: right of the name
     head.append(nm);
+    // PROFILE-UI (Mac: "Its a mess"): the glyphs on a row of their own under the name, wrapping - beside it, a player's
+    // eighteen squeezed the name to a letter a line
+    if (v.glyphs.length) {
+      const glyphs = el('div', 'dfprofile-glyphs');
+      for (const g of v.glyphs) { const svg = glyphSvgNode(doc, g, 'dfprofile-glyph'); if (!svg) break; glyphs.append(svg); }
+      head.append(glyphs);
+    }
+    if (v.house) head.append(el('div', 'dfprofile-house', v.house));   // LEGACY7: under the name, as over the head
     if (v.line) head.append(el('div', 'dfprofile-line', v.line));
-    if (v.duels) head.append(el('div', 'dfprofile-line dfprofile-duels', v.duels));   // DUEL1: their duelling record
-    if (v.gates) head.append(el('div', 'dfprofile-line dfprofile-gates', v.gates));   // WB5b: the gates they closed
-    if (v.raids) head.append(el('div', 'dfprofile-line dfprofile-raids', v.raids));   // RAID4: the towns they defended
+    // PROFILE-UI: their record - the duels (DUEL1), the gates closed (WB5b), the towns defended (RAID4), the serpents slain
+    // (AUDIT SERPENT D4) - a row of plaques, each its own words, where four dim lines stood one under another
+    const facts = [['dfprofile-duels', v.duels], ['dfprofile-gates', v.gates], ['dfprofile-raids', v.raids], ['dfprofile-serpents', v.serpents], ['dfprofile-hours', v.hours]].filter(([, t]) => t);
+    if (facts.length) {
+      const record = el('div', 'dfprofile-facts');
+      for (const [cls, t] of facts) record.append(el('div', `dfprofile-fact ${cls}`, t));
+      head.append(record);
+    }
     card.append(head);
+    // PROFILE-UI: the waiting or the silence said under the head, before the gap it explains - not under the gear
+    if (v.note) card.append(el('div', 'dfprofile-note', v.note));
     const body = el('div', 'dfprofile-body');
     const sheet = el('div', 'dfprofile-sheet');
     sheet.append(el('div', 'dfprofile-h', 'Attributes'));
@@ -268,25 +341,48 @@ export function createProfileWindow({ canOpen = () => true, onOpen = null, onClo
     } else sheet.append(el('div', 'dfprofile-none', v.state === 'asking' ? '...' : 'Not shown.'));
     const gear = el('div', 'dfprofile-gear');
     gear.append(el('div', 'dfprofile-h', 'Worn'));
-    if (v.gear.length) for (const g of v.gear) { const r = el('div', 'dfprofile-row'); r.append(el('span', 'dfprofile-slot', g.slot), el('span', 'dfprofile-item', g.name)); gear.append(r); }
-    else gear.append(el('div', 'dfprofile-none', 'Nothing worn that shows.'));
+    // PROFILE-UI: in its parts (gearGroups), a pair one row under the plural - its names one under the other
+    if (v.gear.length) {
+      for (const part of gearGroups(v.gear)) {
+        gear.append(el('div', 'dfprofile-sub', part.head));
+        for (const g of part.rows) {
+          const r = el('div', 'dfprofile-row');
+          const names = el('span', 'dfprofile-items');
+          for (const n of g.names) names.append(el('span', 'dfprofile-item', n));
+          r.append(el('span', 'dfprofile-slot', g.slot), names);
+          gear.append(r);
+        }
+      }
+    } else gear.append(el('div', 'dfprofile-none', 'Nothing worn that shows.'));
     body.append(sheet, gear);
     card.append(body);
-    if (v.note) card.append(el('div', 'dfprofile-note', v.note));
     const close = el('button', 'dfprofile-close', 'Close');
     close.type = 'button';
     close.addEventListener('click', () => { hide(); });
     // DUEL1: the challenge beside Close - the host's word on whether one can go now (v.duel), its reason under a
-    // disabled one; the press is the host's (`onDuel`), which re-asks the duel law before anything is sent
-    if (v.duel && onDuel) {
+    // disabled one; the press is the host's (`onDuel`), which re-asks the duel law before anything is sent.
+    // LEGACY7 part three: and the proposal beside it, the same shape (v.wed, `onWed`)
+    const duelOn = !!(v.duel && onDuel), wedOn = !!(v.wed && onWed);
+    if (duelOn || wedOn) {
       const actions = el('div', 'dfprofile-actions');
-      const duel = el('button', 'dfprofile-duel', v.duel.label);
-      duel.type = 'button';
-      if (!v.duel.enabled) duel.disabled = true;
-      duel.addEventListener('click', () => { if (v.duel.enabled && shownPeer) onDuel(shownPeer); });
-      actions.append(duel, close);
+      if (duelOn) {
+        const duel = el('button', 'dfprofile-duel', v.duel.label);
+        duel.type = 'button';
+        if (!v.duel.enabled) duel.disabled = true;
+        duel.addEventListener('click', () => { if (v.duel.enabled && shownPeer) onDuel(shownPeer); });
+        actions.append(duel);
+      }
+      if (wedOn) {
+        const wed = el('button', 'dfprofile-wed', v.wed.label);
+        wed.type = 'button';
+        if (!v.wed.enabled) wed.disabled = true;
+        wed.addEventListener('click', () => { if (v.wed.enabled && shownPeer) onWed(shownPeer); });
+        actions.append(wed);
+      }
+      actions.append(close);
       card.append(actions);
-      if (v.duel.why) card.append(el('div', 'dfprofile-why', v.duel.why));
+      if (duelOn && v.duel.why) card.append(el('div', 'dfprofile-why', v.duel.why));
+      if (wedOn && v.wed.why) card.append(el('div', 'dfprofile-why', v.wed.why));
     } else card.append(close);
   };
 

@@ -25,7 +25,7 @@ import { telegraphAt } from '../net/gateStrike.js';
 import { countdownText } from '../net/gateLaw.js';
 import { attackColor, crystalColor, STUN_COLOR, WARD_COLOR } from '../world/gateBoss.js';
 import { GATE_RING_CSS } from './gateMapMark.js';
-import { marksViewOf, markIconSvg } from './gateMarksView.js';   // WB9a: the night's marks under his health, each its sign and name
+import { marksViewOf, markIconHtml } from './gateMarksView.js';   // WB9a: the night's marks under his health, each its sign and name
 import { stepGhost } from './barLoss.js';   // WB13c: the trailing damage segment, the vitals' own
 import { LOW_HEALTH } from '../world/gateBoss.js';   // WB13e: the bar pulses under his low health
 import { injectEnhancedFonts } from './enhancedStyle.js';   // WB13c: the classic face, loaded by the gate's own screens
@@ -119,6 +119,9 @@ export const BOSS_BAR_CSS = `
 .wb-boss-tag { padding: 0 6px; line-height: 16px; background: rgba(20,4,2,0.55); border: 1px solid rgba(255,120,60,0.22); opacity: 0.9; }
 .wb-boss-wrath { color: #ff9a7a; border-color: rgba(255,90,60,0.55); opacity: 1; }
 .wb-boss-wrath.near { color: #fff0e8; background: rgba(150,14,8,0.85); animation: wb-wrath-near 500ms ease-in-out infinite alternate; }
+.wb-boss-host.near { color: #fff6dc; animation: wb-wrath-near 500ms ease-in-out infinite alternate; }
+.wb-boss-bar.brass .wb-boss-host.near { animation-name: wb-brass-near; }
+@keyframes wb-brass-near { from { background: rgba(90,64,10,0.8); } to { background: rgba(170,128,30,0.95); } }
 @keyframes wb-wrath-near { from { background: rgba(110,8,6,0.8); } to { background: rgba(190,20,12,0.95); } }
 .wb-boss-bar.intro .wb-boss-fill { animation: wb-fill-in 700ms cubic-bezier(.2,.7,.3,1); }
 .wb-boss-bar.low .wb-boss-fill { animation: wb-low 650ms ease-in-out infinite alternate; }
@@ -126,6 +129,27 @@ export const BOSS_BAR_CSS = `
 .wb-boss-bar.intro .wb-boss-name { animation: wb-name-in 250ms ease-out; }
 @keyframes wb-fill-in { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 @keyframes wb-name-in { from { opacity: 0; letter-spacing: 0.3em; } }
+/* SD8c: the Brass Remnant's bar - the same readout in the Hour's brass (its model's \`theme\`, ui/sdRemnantBar.js) */
+.wb-boss-bar.brass { color: #f2e2bc; }
+.wb-boss-bar.brass .wb-boss-name { color: #e8c060; text-shadow: 0 0 3px #000, 0 0 10px rgba(230,180,70,0.5); }
+.wb-boss-bar.brass .wb-boss-sub { color: #d8c49a; }
+.wb-boss-bar.brass .wb-boss-track { border-color: rgba(230,190,90,0.55); background: rgba(16,12,4,0.75); }
+.wb-boss-bar.brass .wb-boss-fill { background: linear-gradient(180deg, #ffd977 0%, #b8862a 55%, #4a3208 100%); }
+.wb-boss-bar.brass .wb-boss-tag { background: rgba(16,12,4,0.55); border-color: rgba(230,190,90,0.25); }
+.wb-boss-bar.brass .wb-boss-wrath { color: #ffd2a0; border-color: rgba(255,160,80,0.55); }
+/* AUDIT SD IV (T6): the Hour's Reset and its End called on its own brass plate, in the call's own colour (the Mantella's
+   green, the End's red) - they stood on Dagon's pulsing blood in the gate's cream - and its last minute pulsing brass */
+.wb-boss-bar.brass .wb-boss-callout.dagon .wb-boss-callout-text { color: inherit; background: rgba(60,42,8,0.9); animation-name: wb-brass-plate; }
+@keyframes wb-brass-plate { from { background: rgba(40,28,6,0.88); } to { background: rgba(96,70,14,0.95); } }
+.wb-boss-bar.brass .wb-boss-wrath.near { color: #fff6dc; background: rgba(130,96,20,0.85); animation-name: wb-brass-near; }
+/* SERPENT1: the sea serpent's bar - the same readout in the sea's colours (its model's \`theme\`, ui/serpentBar.js) */
+.wb-boss-bar.sea { color: #d6efe8; }
+.wb-boss-bar.sea .wb-boss-name { color: #8fe3cf; text-shadow: 0 0 3px #000, 0 0 10px rgba(40,200,170,0.5); }
+.wb-boss-bar.sea .wb-boss-sub { color: #a9cfc4; }
+.wb-boss-bar.sea .wb-boss-track { border-color: rgba(90,210,190,0.55); background: rgba(2,14,18,0.75); }
+.wb-boss-bar.sea .wb-boss-fill { background: linear-gradient(180deg, #4fe0c0 0%, #1a8a86 55%, #0b3a4a 100%); }
+.wb-boss-bar.sea .wb-boss-tag { background: rgba(2,14,18,0.55); border-color: rgba(90,210,190,0.25); }
+.wb-boss-bar.sea .wb-boss-wrath { color: #ffd2a0; border-color: rgba(255,160,80,0.55); }
 @media (max-width: 640px) {
   .wb-boss-bar { top: 72px; }
   .wb-boss-marks { column-gap: 10px; }
@@ -194,10 +218,10 @@ export function bossBarModel(s, now, boss, aimed = null) {
 let root = null, parts = null;
 /** What the node shows, so each part is written only when it changes - every field unlike any model's, so a fight's
  *  first draw writes the whole bar (WB13c: a fight gone resets it, and the next fight's bar never shows the last's). */
-const SHOWN = () => ({ vis: '', name: null, sub: null, subColor: null, marks: null, spent: null, ticks: null, spentAt: null, spentNew: null,
+const SHOWN = () => ({ vis: '', name: null, sub: null, subColor: null, marks: null, marksTheme: null, spent: null, ticks: null, spentAt: null, spentNew: null, marksAt: null,
   frac: -1, ghost: -1, g: null, at: null, warded: null, breakAt: null, rootCls: null,
   callout: null, calloutColor: null, calloutCls: null, calloutT: -1, inAt: null, outAt: null, dagon: false, move: false,
-  tags: [null, null, null, null], wrathNear: null, alpha: -1, introAt: null });
+  tags: [null, null, null, null], wrathNear: null, hostNear: null, alpha: -1, introAt: null });
 let shown = SHOWN();
 
 function build(doc) {
@@ -243,7 +267,7 @@ function build(doc) {
   callout.append(calloutText, move, calloutLine);
   // WB13c: the foot's chips - the court's fighters, his host standing, the next Reckoning and the Wrath's countdown
   const foot = part('wb-boss-foot');
-  const tags = ['wb-boss-tag', 'wb-boss-tag', 'wb-boss-tag', 'wb-boss-tag wb-boss-wrath'].map((cls) => { const t = part(cls, 'span'); t.style.display = 'none'; return t; });
+  const tags = ['wb-boss-tag', 'wb-boss-tag wb-boss-host', 'wb-boss-tag', 'wb-boss-tag wb-boss-wrath'].map((cls) => { const t = part(cls, 'span'); t.style.display = 'none'; return t; });
   foot.append(...tags);
   root.append(name, sub, track, marks, callout, foot);
   (doc.body ?? doc.documentElement)?.append(root);
@@ -251,11 +275,11 @@ function build(doc) {
 }
 
 /** WB9a: one chip of the marks' row - a mark's sign and name (the aspect's in its colour) - or hidden (no mark for it). */
-function writeChip(c, m) {
+function writeChip(c, m, theme) {
   if (!m) { c.chip.style.display = 'none'; return; }
   c.chip.style.display = '';
-  c.icon.innerHTML = markIconSvg(m.id, 12);
-  c.icon.style.color = m.kind === 'aspect' ? m.color : '#ffb27a';
+  c.icon.innerHTML = markIconHtml(m, 12);   // SD18b: the Hour's own signs
+  c.icon.style.color = m.kind === 'aspect' ? m.color : theme === 'brass' ? '#e8c060' : '#ffb27a';   // AUDIT SD IV (T6): the omens' signs in the Hour's brass, as its card's (gateMarksView.js writeRow)
   c.label.textContent = m.name;
   c.label.style.color = m.kind === 'aspect' ? m.color : '';
 }
@@ -286,13 +310,18 @@ export function drawGateBossBar(model, { hidden = false, doc = globalThis.docume
   if (sub !== shown.sub) { shown.sub = sub; parts.sub.textContent = sub; }
   const subColor = model.epithet ? model.epithetColor ?? '' : '';
   if (subColor !== shown.subColor) { shown.subColor = subColor; parts.sub.style.color = subColor; }
-  const view = model.marksView ?? null, marksKey = view?.key ?? '';
-  if (marksKey !== shown.marks) {   // WB9a: written when the night's marks change - never a frame
-    shown.marks = marksKey;
+  const view = model.marksView ?? null, marksKey = view?.key ?? '', theme = model.theme ?? '';
+  if (marksKey !== shown.marks || theme !== shown.marksTheme) {   // WB9a: written when the night's marks change - never a frame; AUDIT SD IV (T6): or the bar's look (one node serves the gate and the Hour)
+    shown.marks = marksKey; shown.marksTheme = theme;
     parts.marks.style.display = view ? '' : 'none';
     const all = view ? [view.aspect, ...view.trials] : [];
-    parts.chips.forEach((c, i) => writeChip(c, all[i] ?? null));
+    parts.chips.forEach((c, i) => writeChip(c, all[i] ?? null, theme));
   }
+  // SD8c: THE PHASE MARKS WHERE THE MODEL CUTS THEM (the Brass Remnant turns at 70% and 35%, not the gate's thirds) -
+  // written when they change, never a frame
+  const at = Array.isArray(model.marks) && model.marks.length === parts.ticks.length ? model.marks : PHASE_AT;
+  const marksAt = at.join(',');
+  if (marksAt !== shown.marksAt) { shown.marksAt = marksAt; parts.ticks.forEach((tick, i) => { tick.style.left = `${(at[i] * 100).toFixed(1)}%`; }); }
   // WB13c: THE PHASE MARKS SPENT as he passes them - each flashes as it is crossed (never one spent before I came)
   const spent = (model.spent ?? []).map((x) => (x ? 1 : 0)).join('');
   if (spent !== shown.spent) {
@@ -315,13 +344,13 @@ export function drawGateBossBar(model, { hidden = false, doc = globalThis.docume
     if (shown.warded && !model.warded && !model.fallen) shown.breakAt = now;
     shown.warded = model.warded;
   }
-  const cls = `wb-boss-bar${model.warded ? ' warded' : ''}${flashing(shown.breakAt, now, FLASH_MS.wardBreak) ? ' wbreak' : ''}${flashing(shown.introAt, now, INTRO_MS) ? ' intro' : ''}${model.low ? ' low' : ''}`;
+  const cls = `wb-boss-bar${model.theme ? ` ${model.theme}` : ''}${model.warded ? ' warded' : ''}${flashing(shown.breakAt, now, FLASH_MS.wardBreak) ? ' wbreak' : ''}${flashing(shown.introAt, now, INTRO_MS) ? ' intro' : ''}${model.low ? ' low' : ''}`;
   if (cls !== shown.rootCls) { shown.rootCls = cls; root.className = cls; }
   const alpha = model.alpha ?? 1;
   if (alpha !== shown.alpha) { shown.alpha = alpha; root.style.opacity = alpha < 1 ? String(alpha) : ''; }
   // THE CALLOUT - WB13c: in on a change, out over CALLOUT_OUT_MS, a line filling to its landing, Dagon's on a plate
-  const text = model.fallen ? BOSS_BAR_TEXT.fallen : model.callout ? model.callout.text : model.warded ? BOSS_BAR_TEXT.warded : '';
-  const color = model.fallen ? GATE_RING_CSS : model.callout ? model.callout.color : model.warded ? WARD_CSS : GATE_RING_CSS;
+  const text = model.fallen ? model.fallenText ?? BOSS_BAR_TEXT.fallen : model.callout ? model.callout.text : model.warded ? BOSS_BAR_TEXT.warded : '';   // AUDIT SD III (T10): a fight's own word for its fall (the Hour's "Undone")
+  const color = model.fallen ? model.ringCss ?? GATE_RING_CSS : model.callout ? model.callout.color : model.warded ? WARD_CSS : model.ringCss ?? GATE_RING_CSS;   // SERPENT1: the sea's ring colour
   if (text) {
     shown.outAt = null;
     if (text !== shown.callout) {
@@ -341,7 +370,7 @@ export function drawGateBossBar(model, { hidden = false, doc = globalThis.docume
   if (t !== shown.calloutT) { shown.calloutT = t; parts.calloutLine.style.transform = `scaleX(${t})`; }
   // THE FOOT - WB13c: a chip each, the Wrath's pulsing in its last minute (WB9c: the next Reckoning; GATE-UX: no phase
   // line; WB11c: his host standing)
-  const tags = [BOSS_BAR_TEXT.fighters(model.fighters), model.fallen ? '' : model.host ?? '', model.fallen ? '' : model.reckonIn ?? '', model.wrath ?? ''];
+  const tags = [model.fightersLine ?? BOSS_BAR_TEXT.fighters(model.fighters), model.fallen ? '' : model.host ?? '', model.fallen ? '' : model.reckonIn ?? '', model.wrath ?? ''];   // SERPENT1: the sea's own count
   for (let i = 0; i < tags.length; i++) {
     if (tags[i] === shown.tags[i]) continue;
     shown.tags[i] = tags[i];
@@ -350,6 +379,9 @@ export function drawGateBossBar(model, { hidden = false, doc = globalThis.docume
   }
   const near = !!model.wrath && !!model.wrathNear;
   if (near !== shown.wrathNear) { shown.wrathNear = near; parts.tags[3].className = near ? 'wb-boss-tag wb-boss-wrath near' : 'wb-boss-tag wb-boss-wrath'; }
+  // AUDIT SD II (L6 F6): the host's chip pulses as its own clock runs out (the Hour's fallen Echo rising)
+  const hostNear = !!model.host && !!model.hostNear && !model.fallen;
+  if (hostNear !== shown.hostNear) { shown.hostNear = hostNear; parts.tags[1].className = hostNear ? 'wb-boss-tag wb-boss-host near' : 'wb-boss-tag wb-boss-host'; }
 }
 
 /** The page is going (a test's reset): the node leaves with it. */

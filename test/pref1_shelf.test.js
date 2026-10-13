@@ -84,15 +84,33 @@ test('PREF1: a player who presses the ladder OFF keeps it off, across any number
 
 test('PREF1: an UNSTAMPED shelf adopts the new default once - and never again', () => {
   // the shape every existing player has: the old default, materialised by some unrelated save
-  withShelf({ skin: 'enhanced', showFps: true, lootRarity: false, enhancedAI: false });
+  // PIN MOVED (BAL4, bible/05-Combat/Balance-Arc.md section 6): the Enhanced AI joined the list (it shipped Off the day
+  // before this stamp, and turned On); the control is a key the port did NOT change its mind about
+  withShelf({ skin: 'enhanced', showFps: true, lootRarity: false, enhancedAI: false, worldDungeonSizes: true });
   assert.equal(P.getPref('lootRarity'), true, 'LR5 reaches a player who never chose anything');
-  assert.equal(P.getPref('enhancedAI'), false, 'and a key the port did NOT change its mind about is left alone');
+  assert.equal(P.getPref('enhancedAI'), true, 'BAL4 does too');
+  assert.equal(P.getPref('worldDungeonSizes'), true, 'and a key the port did NOT change its mind about is left alone');
 
   P.setPref('showFps', false);                       // any save stamps the shelf
   assert.equal(shelf()._rev, 2, 'the shelf is stamped');   // HB-LYCFREE: rev 2 (PIN MOVED)
   P.setPref('lootRarity', false);                    // NOW the player really chooses
   reload();
   assert.equal(P.getPref('lootRarity'), false, 'the adoption does not run a second time over a real choice');
+});
+
+test('AUDIT BAL: ALL OFF STAYS ALL OFF - a shelf in the Features page\'s All off when the Enhanced AI\'s default turned On keeps it Off (and writes it on the next save); a shelf with its own word, or none in All off, takes the default', () => {
+  withShelf({ _rev: 2, featuresRestore: { blood: 'Heavy' } });
+  assert.equal(P.getPref('enhancedAI'), false, 'All off: the AI stays off');
+  P.setPref('showFps', true);   // any save
+  assert.equal(shelf().enhancedAI, false, 'written as the choice it is now');
+  reload();
+  assert.equal(P.getPref('enhancedAI'), false, 'and stays across loads');
+  withShelf({ _rev: 2, featuresRestore: { blood: 'Heavy' }, enhancedAI: true });
+  assert.equal(P.getPref('enhancedAI'), true, 'pressed On since All off: its own');
+  withShelf({ _rev: 2, featuresRestore: null });
+  assert.equal(P.getPref('enhancedAI'), true, 'the keep spent (Restore): the default');
+  withShelf({ _rev: 2 });
+  assert.equal(P.getPref('enhancedAI'), true, 'never in All off: the default');
 });
 
 test('PREF1: a shelf that predates the key entirely, and one already stamped, are both left to the defaults', () => {
@@ -113,4 +131,23 @@ test('PREF1: the open map and resetPrefs still work over the narrower shelf', ()
   assert.equal(P.getPref('skin'), P.PREF_DEFAULTS.skin, 'reset drops the override');
   assert.deepEqual(shelf().skin, undefined, 'and does not write the default back as one');
   assert.deepEqual(P.isOpen('video', 'stored'), false, 'reset clears the map too');
+});
+
+test('GRASS-ON (Mac: "Can you please turn grass on by default"): THE GRASS IS FULL BY DEFAULT AGAIN - nothing stored is Full, and AUDIT MEADOW1\'s adoption went with its Off: no shelf\'s value moves - an unstamped Full is the default again, and an Off, a Half or a Quarter anywhere was pressed while Full was the default, and stands, an Off written back as the choice it is (mutant: the grass off by default)', () => {
+  assert.equal(P.PREF_DEFAULTS.grassDensity, 1, 'Full by default');
+  withShelf({ skin: 'enhanced' });
+  assert.equal(P.getPref('grassDensity'), 1, 'nothing stored: Full');
+  for (const rev of [undefined, 1, 2]) {
+    for (const v of [1, 0.5, 0.25, 0]) {
+      withShelf(rev === undefined ? { grassDensity: v } : { grassDensity: v, _rev: rev });
+      assert.equal(P.getPref('grassDensity'), v, `${rev === undefined ? 'an unstamped' : `a rev ${rev}`} shelf's ${v} stands`);
+    }
+  }
+  withShelf({ grassDensity: 0, _rev: 2 });
+  P.setPref('showFps', true);
+  reload();
+  assert.equal(P.getPref('grassDensity'), 0, '...an Off is written back as the choice it is');
+  assert.equal(shelf().grassDensity, 0);
+  P.setPref('grassDensity', 1);
+  assert.equal(shelf().grassDensity, undefined, 'and a press back to Full is the default, which the shelf does not write');
 });

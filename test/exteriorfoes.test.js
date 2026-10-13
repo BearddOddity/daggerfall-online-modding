@@ -58,7 +58,7 @@ test('exteriorfoes: the pool laws - cull AFTER fresh senses, the alert raise, th
 
 test('exteriorfoes: the world host - the cadence loop, the travel reset, the facade and the melee order', () => {
   const s = src('world.js');
-  const i = s.indexOf('function runEncounterTick');
+  const i = s.search(/^[ \t]*function runEncounterTick\(/m);   // CITE-ANCHOR: the declaration, not a comment's anchor that quotes it
   assert.ok(i > 0);
   // ROAD-B WIDENED THIS WINDOW. It was a character count (i + 1800),
   // which is not a claim about anything - PlayerEntity.Update:513-516's
@@ -78,7 +78,7 @@ test('exteriorfoes: the world host - the cadence loop, the travel reset, the fac
     'fast travel suppresses the traveled window, as DFU does');
   // encounter foes are spell targets and the sinks route by pool
   assert.ok(s.includes('[...cityGuards.guards, ...exteriorFoes.foes]'), 'magic.foes() sees both pools');
-  assert.ok(s.includes("g._encounter ? exteriorFoes.damageFoe(g, n, player.pos, null, { fromPlayer: fp, kind: 'spell', whole: !!o?.whole }) : cityGuards.hurtGuard(g, n, player.pos, null, { fromPlayer: fp })"),   // AUDIT WORLD6b-iii(a) B2: with the engine's provenance; AUDIT PSCALE1 DOORS-1: and a kill's flag
+  assert.ok(s.includes("g._encounter ? exteriorFoes.damageFoe(g, n, player.pos, null, { fromPlayer: fp, kind: 'spell', whole: !!o?.whole, round: !!o?.round, element: o?.element ?? null }) : cityGuards.hurtGuard(g, n, player.pos, null, { fromPlayer: fp, kind: 'spell', round: !!o?.round })"),   // PIN MOVED (RVN3: a landing's element)   // PIN MOVED (TELL1: the kind reaches the watch, and whether a tick is a later round)   // AUDIT WORLD6b-iii(a) B2: with the engine's provenance; AUDIT PSCALE1 DOORS-1: and a kill's flag
     'the spell sink routes to the right damage door');
   // the melee chain: the watch, then encounters, then civilians
   const watch = s.indexOf('cityGuards.resolvePlayerHit(weaponRig.playerWeapon');
@@ -93,7 +93,8 @@ test('exteriorfoes: the world host - the cadence loop, the travel reset, the fac
   // ROAD-H tail (review): ...and the shaft carries `aimFoe`, the foe the
   // archer selected (null for the player) - the flight's damage gate
   // (DaggerfallMissile.cs:669) reads it at contact.
-  assert.ok(s.includes("arrows.fire(from, dir, { enemy: true, shooterFoe: f, weapon: f.entity.weapon, aimFoe })"),
+  // PIN MOVED (TELL6d, bible/12-Enhanced-AI/Feud-Arc.md 8.1): an aimed shot's word rides the same shaft
+  assert.ok(s.includes("arrows.fire(from, dir, { enemy: true, shooterFoe: f, weapon: f.entity.weapon, aimFoe, ...(extra ?? {}) })"),
     'the shoot frame looses a real hunting arrow');
   assert.ok(s.includes('audio.play3d(SOUND.ArrowShoot, from'), 'the loose rings from the archer');
   const imp = s.indexOf('onPlayerHit: (m) =>');
@@ -132,7 +133,7 @@ test('exteriorfoes X4: the PLAYER-side rolls are UNIFORM - DFRandom bytes never 
 test('exteriorfoes: the FIXED-CITY host carries the catch-up loop too, both hosts skip the roll while swimming, and the watch transforms', () => {
   const e = src('exterior.js');
   const w = src('world.js');
-  const i = e.indexOf('function runEncounterTick');
+  const i = e.search(/^[ \t]*function runEncounterTick\(/m);   // CITE-ANCHOR: the declaration, not a comment's anchor that quotes it
   assert.ok(i > 0, 'PlayerEntity.Update:479-525 has a caller on the ?town route');
   const fn = e.slice(i, e.indexOf('\n  }\n', i));
   assert.ok(fn.includes('intermittentEnemySpawn({'), 'the classic catch-up loop rolls per elapsed minute');
@@ -152,7 +153,7 @@ test('exteriorfoes: the FIXED-CITY host carries the catch-up loop too, both host
   // the HOST flag - outdoors levitateMotor.IsSwimming (`player.swimming`) is
   // cleared every frame by :421 and this arm would never fire off it.
   assert.ok(fn.includes('const hit = player.isPlayerSwimming ? null : intermittentEnemySpawn({'), 'the fixed city skips the roll while swimming');
-  const wi = w.indexOf('function runEncounterTick');
+  const wi = w.search(/^[ \t]*function runEncounterTick\(/m);   // CITE-ANCHOR: the declaration, not a comment's anchor that quotes it
   const wfn = w.slice(wi, w.indexOf('\n  }\n', wi));
   assert.ok(wfn.includes('const hit = (!spawns || (walkMode && playerSpawned && player.isPlayerSwimming)) ? null : intermittentEnemySpawn({'), 'the world host skips it too');   // AUDIT LIVED1b P1: and a mirror's night asks no wanderer
   // the placement: DFU's own ring with the arm's band, a FLYING foe lifted 1.5
@@ -165,7 +166,7 @@ test('exteriorfoes: the FIXED-CITY host carries the catch-up loop too, both host
   assert.match(e, /if \(!townTalk\.overlayActive\) runEncounterTick\(walkMode \? player\.pos : cam\.pos\);/);
   assert.ok(fn.includes("inside: _m !== 'exterior', inDungeon: _m === 'dungeon', isResting: false,"), 'the fixed city hands the mode to the roll');
   assert.ok(wfn.includes("inside: _m !== 'exterior', inDungeon: _m === 'dungeon', isResting: false,"), 'the world host too');
-  assert.match(w, /const _pf = walkMode && playerSpawned \? player\.pos : cam\.pos;\n\s*if \(!townTalk\.overlayActive\) runEncounterTick\(_pf\);\n\s*if \(\(modes\?\.mode \?\? 'exterior'\) === 'exterior'\) \{/, 'the world host rolls before its exterior-only pool update');
+  assert.match(w, /const _pf = walkMode && playerSpawned \? player\.pos : cam\.pos;\n\s*if \(!townTalk\.overlayActive\) runEncounterTick\(_pf\);\n\s*wildFoesFrame\(foeDt\);[^\n]*\n\s*(?:const frame\w+ = \(\) => \{   \/\/ PERF-V8\n\s*)?if \(\(modes\?\.mode \?\? 'exterior'\) === 'exterior'\) \{/, 'the world host rolls before its exterior-only pool update (WILD-ALERT: the gate\'s frame between the two)');   // PERF-V8 (PIN MOVED): the pool update a closure of its own
   // AUDIT 62 F11: EXTERIOR only - the population is inactive indoors
   // (PlayerEntity.cs:653-654, :776-777 over a disabled ExteriorParent)
   // and there is no location object underground (:768-770).

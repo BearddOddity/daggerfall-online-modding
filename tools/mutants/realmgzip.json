@@ -92,8 +92,8 @@
   {
     "name": "REALM-GZIP-the-first-save-read-unopened",
     "file": "server-account/src/realm.js",
-    "old": "    const refused = firstSaveRefusal(await saveTextOf(new Uint8Array(body), REALM_TEXT_MAX_BYTES), row);\n",
-    "new": "    const refused = firstSaveRefusal(new TextDecoder().decode(body), row);\n",
+    "old": "  const text = await saveTextOf(new Uint8Array(body), REALM_TEXT_MAX_BYTES);\n",
+    "new": "  const text = new TextDecoder().decode(body);\n",
     "tests": [
       "test/realm_gzip.test.js"
     ]
@@ -101,8 +101,8 @@
   {
     "name": "REALM-GZIP-the-first-save-opened-unbounded",
     "file": "server-account/src/realm.js",
-    "old": "    const refused = firstSaveRefusal(await saveTextOf(new Uint8Array(body), REALM_TEXT_MAX_BYTES), row);\n",
-    "new": "    const refused = firstSaveRefusal(await saveTextOf(new Uint8Array(body), Infinity), row);\n",
+    "old": "  const text = await saveTextOf(new Uint8Array(body), REALM_TEXT_MAX_BYTES);\n",
+    "new": "  const text = await saveTextOf(new Uint8Array(body), Infinity);\n",
     "tests": [
       "test/realm_gzip.test.js"
     ]
@@ -173,11 +173,12 @@
   {
     "name": "REALM-GZIP-the-birth-drops-the-word",
     "file": "src/scenes/world.js",
-    "old": "}, text, { gzip: made.data.gzip === true });   // REALM-GZIP",
-    "new": "}, text);   // REALM-GZIP",
+    "old": "  return realmPut(io, made.data.id, { lease: made.data.lease, seq: 1, summary: realmSummaryOf(playerEntity) }, text, { gzip: made.data.gzip === true });",
+    "new": "  return realmPut(io, made.data.id, { lease: made.data.lease, seq: 1, summary: realmSummaryOf(playerEntity) }, text);",
     "tests": [
       "test/realm_gzip.test.js"
-    ]
+    ],
+    "note": "LEGACY7 (PIN MOVED): re-aimed by content - the first save is realmFirstSave's (realmBirth's and an online member's birth alike)."
   },
   {
     "name": "REALM-GZIP-customs-drops-the-word",

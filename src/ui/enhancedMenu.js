@@ -91,21 +91,24 @@
 
 import { fpArm, hasDaggerfallArrows } from '../combat/fpArm.js';
 import { dressStanding } from '../systems/clothingStanding.js';   // DRESS1 (2026-09-30, Discord): the Standing page's Dress line
-import { questRail, journalLines, questTitleOf, QUEST_URGENT_SECONDS, remainWords } from './questRail.js';
+import { questRail, shelvedRail, journalLines, questTitleOf, QUEST_URGENT_SECONDS, remainWords } from './questRail.js';
 import { entryTarget, targetWords, WHERE_TEXT } from './questLens.js';   // GUIDE2: where a quest points, and the way there   // MAC-K2: the ONE quest walk, shared with the chronicle
 import { questTracker, followOn, trackButton } from './questTracker.js';   // GUIDE4: the HUD's card - the Track toggle, and the quest the journal opens on
 import { closeOnOutsideTap } from './enhancedOverlays.js';   // OT1: a tap on the scrim resumes
+import { drawTutorialsPane, releaseTutorialsPane } from './tutorialsPane.js';   // TUT1: the Tutorials tab and section - every tutorial page, to read again
+import { drawShotsPane, releaseShotsPane } from './shotsPane.js';   // LOAD1: the Screenshots pane - the gallery the PrintScreen key keeps
 import { TEST_PRESETS, TEST_RIDE, TEST_SEA, TEST_LOOT } from '../systems/testRoom.js';   // TR3: the one home the pane shows; TSR4: the ride; LR3: the loot ladder
 import { mwRaceId } from '../formats/mwNpc.js';
 import { EQUIP_SLOTS, equipTableOf } from '../systems/equip.js';
 import { dfWornEquipment } from '../formats/mwItemMap.js';
 import { ARMOR_ENUM } from '../combat/enemyEquipment.js';
-import { morrowindDataCount, morrowindDataCounted, countMorrowindArchives, assetPickerOpen } from '../scenes/dataSource.js';   // MAC1: the boot door counts the store itself; AUDIT 65 XL-6: by NAME - it never reads a stored file   // MW-IMPORT: the attach door; MWFIX: and the modal it opens owns the keyboard
-import { CATEGORIES, keysOf } from '../ui/settingsMap.js';
+import { morrowindDataCount, morrowindDataCounted, countMorrowindArchives, assetPickerOpen, textureStoreRegistered, textureStoreSettled } from '../scenes/dataSource.js';   // MAC1: the boot door counts the store itself; AUDIT 65 XL-6: by NAME - it never reads a stored file   // MW-IMPORT: the attach door; MWFIX: and the modal it opens owns the keyboard
+import { CATEGORIES, keysOf, isSettingItem, optionPath, whereIs } from '../ui/settingsMap.js';   // ORG2: the one map of every option
+import { GRAPHICS_PRESETS, PRESET_ROWS, presetNow } from '../systems/graphicsPresets.js';   // ORG2
 import { widgetFor, blockedReason, formatValue, stepValue, COLOUR_KEYS, ENUM_LAW, enumWords } from '../ui/settingsLaw.js';   // FT14: the enum's own values are the bar's segments
 import { labelOf, helpOf, INSTEAD, TIER_TEXT } from '../ui/settingsCopy.js';
 import {
-  effectiveSettings, setValue, saveSettings, resetToDefaults, tierOf, DEFAULTS,
+  effectiveSettings, setValue, saveSettings, resetToDefaults, tierOf, DEFAULTS, defaultOf,
 } from '../systems/settings.js';
 import { mostRecentRestorable, restorableSaves, firstRestorable, deleteSave, QUICK_SAVE_NAME, loadSlot, saveSlot } from '../systems/saveSlots.js';
 import { offlineCopyOf, onlineCopyOf } from '../systems/offlineCopy.js';   // AUDIT LIVED1 E/G: the doors between the lanes
@@ -116,26 +119,33 @@ import {
   sweepUnsent,
 } from '../systems/realmSaves.js';   // REALM P1.3: the Online door lists the realm's characters, the service's
 import { applyCustoms, customsLines, crossLeveling, LEVELING_CROSS_LINE } from '../systems/realmCustoms.js';   // REALM P1.5: an offline character comes in once, through customs
+import { createRealmLine } from '../systems/legacy/realmLine.js';   // HOUSE-WAITS (FIELD BUGS 2026-10-09f): the account's lines, read at the door
+import { loadFamily } from '../systems/legacy/store.js';
+import { waitingHouses, takeUpLine, houseWaitsTitle, houseWaitsLine, heirButtonLabel } from '../systems/legacy/waitingHouses.js';
 import { mintCharacterId } from '../systems/characterId.js';   // REALM P1.4: a copy to offline is a new offline character
 import { exportSavesZip, collectSlots, importSlots, entriesFromFiles, slotPathOf, TRANSFER_ZIP_NAME } from '../systems/saveTransfer.js';   // SP1: saves move between the website and the app
-import { appStorage } from '../systems/appStorage.js';   // SP1: the store under this build - the browser's on the site, the file store in the app   // SAV4: the slot store; SLOTS1: every slot
+import { appStorage, tabStorage } from '../systems/appStorage.js';   // SP1: the store under this build - the browser's on the site, the file store in the app   // SAV4: the slot store; SLOTS1: every slot
 import { uiSkin, SKIN_NAMES, isEnhanced } from '../systems/uiSkin.js';   // FD1: which boot rail
-import { getPref, setPref, isOpen, setOpen } from '../systems/uiPrefs.js';
+import { getPref, setPref, isOpen, setOpen, PREF_DEFAULTS } from '../systems/uiPrefs.js';
 import { TOUCH_BUTTON_SLOTS, touchButtonSlots, nextTouchButton, touchButtonChoices } from './touchButtons.js';   // TOUCH-BUTTONS: the corner's three slots
 import { DEFAULT_SERVER } from '../net/online.js';   // ONLINE1: the relay this port hosts, the field's placeholder   // R7: the port's own switches; SO1: the folded tiers' memory
+import { GATE_CROWD_TIERS } from '../net/gateCrowd.js';   // GATE-CROWD: how many other players a gate's court draws
+import { PEER_RANGE_TIERS, peerRangeOf } from '../net/peerRange.js';
+import { YARD_RANGE_TIERS, yardRangeOf } from '../net/yardRange.js';   // YARD-RANGE: how far other players' yards are drawn   // PEER-RANGE: how far out other players are drawn, and the distance a stored value stands for
 import { replacementCount } from '../systems/musicReplacement.js';   // M-EXT: the packs card reports what the pick covers
+import { midiOutSupported, midiOutDenied, midiOutName, midiOutputs, setMidiOut, nextMidiOut, MIDI_OUT_PREF } from '../systems/midiOut.js';   // MIDI-OUT1: the Audio tab's device row
 import { brandMark } from './brandMark.js';   // INTRO2: Mac's supplied logo, shared with the final splash
 import { soundReplacementCount } from '../systems/soundReplacer.js';   // SNDREP1: the sound pack's count
 import { textureReplacementCount, bundleTextureCount } from '../systems/textureReplacement.js';   // M-TEX: and the texture half; DFMOD1: and the bundles'
-import { attachedDfmods, DFMOD_DETAIL, dfmodMaxSize } from '../systems/dfmodTextures.js';
+import { attachedDfmods, DFMOD_DETAIL, dfmodMaxSize, setDfmodEnabled, unregisteredDfmods } from '../systems/dfmodTextures.js';   // VE3: a mod switched on or off; AUDIT VE R5: and one stored that did not register
 import { isIilMod } from '../systems/improvedInteriorLighting.js';   // IIL3: the lighting mod's own section   // DFMOD1: the attached texture mods, one row each; DFMOD2: the detail choice
 import { isTouchDevice } from './touch.js';   // TI2: the Touch card mounts only where a finger can reach it
 import { dateFromClassicMinutes, dateString } from '../systems/gameDate.js';
 // PX5: the pause clock reads THE ONE CLOCK directly (AUDIT 23 C2's
 // law - every host already reads this same module), so no host seam
 // is needed and no host can drift.
-import { worldMinutes, skyMinutes, trustedWorldMinutes } from '../systems/worldTick.js';
-import { BUILD_TAG } from '../buildTag.js';
+import { worldMinutes, skyMinutes, trustedWorldMinutes, worldSpanRealWords } from '../systems/worldTick.js';
+import { BUILD_TAG, UPDATE } from '../buildTag.js';
 import { injectEnhancedStyle, injectEnhancedFonts } from './enhancedStyle.js';
 import { repaintKeepingScroll } from './domRepaint.js';
 import { drawPixelGround } from './pixelGround.js';
@@ -145,17 +155,26 @@ import { drawPixelGround } from './pixelGround.js';
 // renders the tab, so the front door still reads no game state.
 import { sheetModel } from './enhancedCharSheet.js';
 import { profPagesShown, PROF_PAGE_SECTIONS, drawProfessionsPage, drawStoresPage, resetProfPages, profActUnderWay, setDownProfAct } from './profPages.js';   // PROF1: the Professions and Stores pages, online
+import { vendorPageShown, VENDOR_PAGE_SECTIONS, drawVendorPage } from './vendorPage.js';   // HOME-VENDOR: the Vendor page
 import { REVENANT_PAGE_SECTIONS, revenantPageShown, drawRevenantsPage } from './revenantPage.js';
 import { COMPANION_PAGE_SECTIONS, companionPageShown, drawCompanionsPage, resetCompanionRoster } from './companionRoster.js';   // COMPANION-ROSTER: the sworn and the slots
+import { STABLE_PAGE_SECTIONS, stablePageShown, drawStablePage, resetHoldingsPages } from './holdingsPages.js';   // HOLDINGS: the horse and the wagon
+import { FAMILY_PAGE_SECTIONS, drawTreePage, drawHousePage, drawHallPage, drawGuidePage, resetFamilyPages, disarmFamilyPages, sheetHouse } from './familyPages.js';   // LEGACY3: Project Legacy's Family tab; LEGACY-SHEET: the house on the Stats page
+import { legacyOn } from '../systems/legacy/settings.js';   // LEGACY3: ...drawn while the mod is on
+import { FLEET_PAGE_SECTIONS, fleetPageShown, drawFleetPage, resetFleetPage } from './fleetPage.js';   // HOLDINGS: the ships
+import { CAPTAIN_PAGE_SECTIONS, captainPageShown, drawCaptainPage } from './captainPage.js';   // CAPT-LOG: the captain's standing and log
+import { COLLECTION_PAGE_SECTIONS, collectionsPageShown, drawCollectionsPage, resetCollectionsPage, disarmCollectionsPage, setCollectionsPart } from './collectionsPage.js';   // COLLECTIONS: the codex and the cards
 import { swornBodyOf } from '../systems/revenantCompanions.js';   // COMPANION-ROSTER: a sworn one's live health
 import { enemyDisplayName } from '../characters/enemyBasics.js';   // REVENANT-PAGE: a revenant's kind   // REVENANT-PAGE: the foes that have earned your name
 import { affiliations } from '../systems/affiliations.js';
 import { legalRepOf } from '../systems/court.js';   // REP5: the law, region by region
-import { banishmentLeft, KNOWN_CRIMINAL_BELOW, pardonPrice, challengeFine } from '../systems/standing.js';
+import { banishmentLeft, banishmentDaysLeft, KNOWN_CRIMINAL_BELOW, pardonPrice, challengeFine } from '../systems/standing.js';
 import { legalStandingWord } from '../systems/legalBands.js';
 import { REGION_NAMES } from '../formats/mapsTables.js';   // GUILD-REP: the sheet's Affiliations box, on the Standing page
 import { hudLocked, setHudLocked, resetHudLayout, hudBarsSplit, setHudBarsSplit } from './hudLayout.js';   // HUD-MOVE: Lock UI and Reset UI
 import { enhancedHudScale as hudScaleNow, HUD_SCALE_MIN, HUD_SCALE_MAX } from './enhancedHud.js';   // PX30c
+import { mapScaleLabel, nextMapScale } from './mapScale.js';   // FIELD BUGS 2026-10-09e MAP-SCALE: the Maps row
+import { standingGroups } from '../systems/factionStanding.js';   // FIELD BUGS 2026-10-09e EVERY-STANDING: every organization's reputation
 import { playerEntity } from '../characters/playerEntity.js';
 // PX6: the Stats page's skill labels - the one home (systems/skills.js).
 import { SKILLS, SKILL_NAMES } from '../systems/skills.js';
@@ -173,6 +192,7 @@ import { keyCodeForDomCode, KEYCODE_NONE } from '../systems/keyCodes.js';   // H
 import { isOnlinePage, onlineForcedPref, onlineForcedModSetting, onlineForcedSetting, onlineWholeModKey, ONLINE_ROOM_MOD_KEYS } from '../systems/onlineLane.js';   // OL1: online is the enhanced lane, whole - a forced switch is shown locked   // ROADS 24; DS1: the integer keys; UL1: the choice keys
 import { onlineSyncPlan, applyOnlineSync, lastOnlineSync, undoOnlineSync } from '../systems/onlineSync.js';   // UXB1-E: the room's rules, copied home
 import { CREDITS, translationCredits } from './credits.js';   // CR1: who made what the port carries
+import { SUPPORT_ASKS } from './supportAsks.js';   // SUPPORT1: the project's asks - the website's corner and this door's
 import { t, tIn, currentLocale, localeInfo, localeTable, availableLocales, BASE_LOCALE, localizedText, formatText } from '../systems/textManager.js';   // L10N1b: the port's own strings, the language row and the first-run offer; L10N3d: DFU's Internal_Strings
 import { localeForBrowser, catalogLocale } from '../systems/localeCatalog.js';   // L10N1b
 // FIX-F (Mac: "changing keybinds in classic/enhanced do not work"): the
@@ -184,10 +204,16 @@ import { localeForBrowser, catalogLocale } from '../systems/localeCatalog.js';  
 import { paneControls, discardControlsStaging, captureArmed, controlsPromptOpen, dismissControlsPrompt } from './enhancedControls.js';
 // FT0: the features home - one list over the three stores, filtered by kind
 import { OVERHAUL_PANELS, currentOption } from '../systems/overhauls.js';
+import { setVeAddon } from '../systems/vanillaEnhanced.js';   // VE4: an add-on switched from the Texture Overhaul card
+import { installVanillaEnhancedPack } from '../systems/vanillaEnhancedPack.js';   // VE4: the shipped mods listed before any host boots
 import { PLUS_THEMES } from './enhancedFrame.js';   // PLUS2: Enhanced Plus's colours
-import { plusTheme, setPlusTheme } from './enhancedPlusStyle.js';  import { plusCursorOn, setPlusCursor } from './plusCursor.js';   // OVH1: the three looks
+import { plusTheme, setPlusTheme } from './enhancedPlusStyle.js';
+import { plusCursorOn, setPlusCursor } from './plusCursor.js';   // OVH1: the three looks
+import { CHAT_LANGS } from '../net/wire.js';   // CHAT-LANG: the language channels, for the Chat rows
+import { TEXT_FONTS, textFont, textFontSystem, setTextFont, setTextFontSystem, cleanFamily, canListFonts, installedFamilies } from './textFont.js';   // TEXT-FONT: the words' face
+import { GRIMOIRE_PAGES, GRIMOIRE_BACKDROPS, GRIMOIRE_VITALS, GRIMOIRE_SPELLBOOKS, GRIMOIRE_DIALS, grimoirePages, grimoireBackdrop, grimoireVitals, grimoireSpellbook, grimoireDial, setGrimoirePages, setGrimoireBackdrop, setGrimoireVitals, setGrimoireSpellbook, setGrimoireDial } from './grimoireDress.js';   // GRIM1: DFO Grimoire's own rows; GRIM3: and its spellbook
 import { UI_PACKS, packUrl } from '../systems/uiPack.js';   // OVH2: a pack's own picture on its card
-import { FEATURES, KINDS, KIND_ORDER, GROUPS, GROUP_ORDER, filterFeatures, featureCounts, featureForControl, resolveControl, modModules, modDials, matchesFeatureQuery } from '../systems/features.js';   // FT14: the groups and each mod's curated keys
+import { FEATURES, KINDS, KIND_ORDER, featureForControl, resolveControl, modModules, modDials, featureSearchText } from '../systems/features.js';   // FT14: each mod's curated keys (ORG2: the map places the rows, ui/settingsMap.js)
 import '../world/landView.js';   // RF4: the land-view lane registers itself with the registry
 import '../world/outdoors.js';   // RF4: the outdoors lane too
 import '../systems/featureLanes.js';   // FT18: the wind, the quick slots and the blood
@@ -199,10 +225,12 @@ import { skinCard } from './skinCard.js';   // DISC23-B2: the skin, on the profi
 import { saveTile, cloudStateOf, saveFromCard, newerBackup } from './saveTile.js';   // TILE1 (Mac: "a detailed tile based design for your saves... showing your portrait and character information"), and ACC2c's card-shaped save
 import { loadFace } from './facePortrait.js';
 import { timersMark, timersWindow, anchorBeside } from './enhancedTimers.js';   // TIMERS1: the hourglass beside the profile mark, and its window
-import { profileBadge, portraitSave, liveCharacter } from './profileBadge.js';   // PROFILE1: the mark is the last character's portrait   // TILE1: the character's face, the one home chargen also reads
+import { postMark, postWindow, watchPostMark, anchorPost } from './enhancedPost.js';   // SERVER-POST: the mailbox beside the hourglass, and its window
+import { profileBadge, portraitSave, liveCharacter, characterLine } from './profileBadge.js';   // PROFILE1: the mark is the last character's portrait   // TILE1: the character's face, the one home chargen also reads
 import { cloudIo, cloudList, pushSlot, pullSlot, removeCloudSlot, cloudOnly, slotKeyOf, cloudRefusalText } from '../systems/cloudSaves.js';   // ACC2: the backup a tile can offer, AUDIT-312 F1's delete, and ACC2c's download of a save that is only up there
 import { serviceBase, storedSession } from '../net/accountClient.js';
 import { isBountyQuestId, abandonBountyQuest, shareBountyQuest, bountyQuestShareable } from '../systems/bountyJournal.js';   // BOUNTY1: a bounty in the journal - its Abandon and its Share
+import { isHuntQuestId, abandonHuntQuest } from '../systems/huntJournal.js';   // RVN7c: a revenant's hunt in the journal - its Abandon
 import { liveBundles, canEndBundle, endBundle } from '../systems/mysticism.js';   // BUFF-END: the Stats page's Effects - the ONE bundle walk, and which the player may end
 import { maxRoundsRemaining } from './hudActiveSpells.js';   // BUFF-END: a bundle's rounds, as the HUD reads them
 
@@ -228,7 +256,7 @@ import { maxRoundsRemaining } from './hudActiveSpells.js';   // BUFF-END: a bund
 // by it. Empty at FT0; the Enhanced category of Settings and the Mods
 // section keep their rows until each one's slice moves it here
 // (bible/10-UI/Features-Arc.md).
-const SECTIONS_BOOT = ['Continue', 'New Game', 'Load Game', 'Online', 'Test Room', 'Settings', 'Features', 'Overhauls', 'About'];   // OVH1: the three looks   // FT16: Controls is a Settings CATEGORY, not a rail door   // FT14: Mods is gone - every mod is a tile on Features, and what the pane carried besides stands under them   // ONLINE1: the shared world's door
+const SECTIONS_BOOT = ['Continue', 'New Game', 'Load Game', 'Online', 'Test Room', 'Settings', 'Overhauls', 'Tutorials', 'Screenshots', 'About'];   // TUT1: the tutorials, to read before the game (ui/tutorialsPane.js)   // ORG2: Features is Settings' tabs now   // LOAD1: the gallery (ui/shotsPane.js)   // OVH1: the three looks   // FT16: Controls is a Settings CATEGORY, not a rail door   // FT14: Mods is gone - every mod is a tile on Features, and what the pane carried besides stands under them   // ONLINE1: the shared world's door
 // FD1 (Mac, 2026-09-11): the CLASSIC skin opens on this same door. Its
 // three game doors collapse into BEGIN, which leads into the classic
 // start sequence - the title, the film, Daggerfall's own start window -
@@ -237,7 +265,7 @@ const SECTIONS_BOOT = ['Continue', 'New Game', 'Load Game', 'Online', 'Test Room
 // SO1: ENHANCED left the rail for a category of Settings (settingsMap).
 // ONLINE1: ONLINE joins it - Mac: "if using classic, you'd see the
 // other user's paperdoll" - the same pane, the same save brought in.
-const SECTIONS_CLASSIC = ['Begin', 'Online', 'Settings', 'Features', 'Overhauls', 'About'];   // OVH1   // FT14; FT16: Controls is a Settings category
+const SECTIONS_CLASSIC = ['Begin', 'Online', 'Settings', 'Overhauls', 'Tutorials', 'Screenshots', 'About'];   // TUT1   // ORG2   // LOAD1: the key keeps its shots under either skin   // OVH1   // FT14; FT16: Controls is a Settings category
 
 // U51: the same rail with the boot-only questions swapped for the
 // in-game ones. Continue and New Game answer "which game", which is
@@ -250,7 +278,7 @@ const SECTIONS_CLASSIC = ['Begin', 'Online', 'Settings', 'Features', 'Overhauls'
 // mode's doors), and the pane says so in words. A rail that drops the
 // row instead teaches the player the door was never there - the same
 // argument the Mods section is built on.
-const SECTIONS_PAUSE = ['Resume', 'Save Game', 'Load Game', 'Settings', 'Features', 'Overhauls', 'About', 'Exit'];   // OVH1   // FT14; FT16: Controls is a Settings category
+const SECTIONS_PAUSE = ['Resume', 'Save Game', 'Load Game', 'Settings', 'Overhauls', 'Tutorials', 'Screenshots', 'About', 'Exit'];   // TUT1: a landing's shell (the window's own door is its Tutorials tab)   // ORG2   // LOAD1   // OVH1   // FT14; FT16: Controls is a Settings category
 
 const idOf = (label) => label.toLowerCase().split(' ')[0];
 
@@ -265,6 +293,8 @@ const RAIL_TEXT = Object.freeze({
   settings: () => t('menu.rail.settings', 'Settings'),
   features: () => t('menu.rail.features', 'Features'),
   overhauls: () => t('menu.rail.overhauls', 'Overhauls'),
+  tutorials: () => t('menu.rail.tutorials', 'Tutorials'),
+  screenshots: () => t('menu.rail.screenshots', 'Screenshots'),
   about: () => t('menu.rail.about', 'About'),
   begin: () => t('menu.rail.begin', 'Begin'),
   resume: () => t('menu.rail.resume', 'Resume'),
@@ -282,8 +312,6 @@ const RAIL_ACTS = Object.freeze({ resume: 'resume' });
 // could only be opened once; the game mounts and unmounts it, so a
 // second visit must not inherit the first one's open sheet.
 let section = 'continue';
-let featureKind = null;   // FT0: the chip - null is All, else a KINDS id; per mount like the rest
-let featureQuery = '';   // FT18: the Features search - what the player typed, per mount
 let category = CATEGORIES[0].id;
 let pickedKey = null;
 let sheetOpen = false;   // the help pane is a sheet on a phone
@@ -306,6 +334,27 @@ let timersView = null;
 let timersAnchor = null;      // AUDIT TIMERS1 UI-3: the hourglass's re-placing, disconnected with the face it stands in
 let timersFocusBack = false;  // AUDIT TIMERS1 UI-5: a closed window hands the focus back to the hourglass
 const stopTimers = () => { timersView?.stop(); timersView = null; timersAnchor?.(); timersAnchor = null; };
+/** SERVER-POST: the mailbox's window over the pause face, its live view, the envelope's count kept live and its placing. */
+let postOpen = false;
+let postView = null;
+let postWatch = null;
+let postAnchor = null;
+let postFocusBack = false;   // a closed window hands the focus back to the envelope, as the hourglass's does
+let postKeep = {};   // AUDIT SERVER-POST: what the window shows (the piece open, the line said) - a rebuild of the face keeps it
+const stopPost = () => { postView?.stop(); postView = null; postWatch?.(); postWatch = null; postAnchor?.(); postAnchor = null; };
+/** SERVER-POST (Mac: "an ingame server mailbox that goes next to the hourglass in the pause menu. It should show
+ *  notifications whenever players have a message"): THE ENVELOPE on the pause face - online, where the host hands its box
+ *  (hooks.post), left of the hourglass `glass` (or the profile mark); its count follows the box while the face stands
+ *  (the face draws itself only when asked). Answers the envelope, or null where there is no box. */
+function postEnvelope(home, glass) {
+  if (!hooks.post?.()) return null;
+  const envelope = postMark(document, { open: postOpen, count: hooks.post()?.waiting ?? 0, onOpen: () => { postOpen = true; render(); } });
+  home.append(envelope);
+  postAnchor = anchorPost(envelope, glass, home.querySelector?.('.px-profile'), home);
+  postWatch = watchPostMark(envelope, () => hooks.post?.() ?? null);
+  if (postFocusBack && !postOpen) { postFocusBack = false; globalThis.requestAnimationFrame?.(() => envelope.focus?.()); }
+  return envelope;
+}
 let accountOffered = false;
 // ═══ TILE2/ACC2: WHAT THE CLOUD HOLDS, ASKED ONCE PER VISIT ═══════
 //
@@ -329,7 +378,10 @@ let questSel = null;        // PX4: the journal's selected row - 'a:<uid>' | 'f:
 let bountyAbandonArmed = null;   // BOUNTY1: the bounty whose Abandon was pressed once - the second press gives it up
 let journalCleanArmed = null;   // JOURNAL-CLEAN: 'f:<index>' (Remove) | 'clear' (Clear archive) pressed once - the second press acts
 let questShowHidden = false;    // JOURNAL-CLEAN: the rail's "Show hidden" - whether the hidden quests are drawn, in their own section
+let questShelfSaid = null;      // QUEST-SHELF: the last Abandon / Reclaim's words, said under the quest until the next press
 let statsSec = 'character'; // PX6: the Stats page's rail - character | attributes | skills | standing
+let famSec = 'tree';       // LEGACY3: the Family page's rail - tree | house | hall | guide
+let holdSec = 'stable';     // HOLDINGS: the Holdings page's rail - stable | fleet | companions | revenants | stores | collections
 let statsAllSkills = false; // PX6: the Miscellaneous disclosure, the sheet's own gesture
 let sysSec = 'save';        // PX7: the System page's rail - which pane fills the detail
 
@@ -380,6 +432,10 @@ export function takePickedSaveKey() { const k = _pickedSaveKey; _pickedSaveKey =
 /** REALM P1.3: the realm character the Online door's Play pressed - its id rides the boot (main.js ?realm). */
 let _pickedRealmId = null;
 export function takePickedRealmId() { const id = _pickedRealmId; _pickedRealmId = null; return id; }
+/** HOUSE-WAITS (FIELD BUGS 2026-10-09f): the member the Online page's waiting house was answered with - `{ personId,
+ *  region, loc }` - taken once by the boot (main.js), which births them online through the world host's own door. */
+let _pickedLegacyBirth = null;
+export function takePickedLegacyBirth() { const b = _pickedLegacyBirth; _pickedLegacyBirth = null; return b; }
 /** REALM P1.3: the realm's characters as the service listed them this visit (null: not asked yet), its bound, what the
  *  last act said (a refusal, customs' report, a copy's word) and whether an act is running. Per VISIT, as the cloud's. */
 let realmRows = null;
@@ -387,6 +443,9 @@ let realmAsked = false;
 let realmMax = 0;
 let realmWords = [];
 let realmBusy = false;
+/** HOUSE-WAITS: the account's lines as this visit read them (their ids, once pulled into the device's store), or null. */
+let realmLineIds = null;
+let realmLinesAsked = false;
 export function takePickedSaveName() { const n = _pickedSaveName; _pickedSaveName = null; return n; }
 
 /** One slot as the cards draw it: the character's line and numbers, and the slot's own name. */
@@ -804,10 +863,10 @@ function acts(list) {
 }
 
 /** A section that is set up but not yet backed. Shown, never hidden. */
-function empty(title, line) {
+function empty(title, line = null) {
   const e = el('div', 'empty');
   e.append(el('h3', null, title));
-  e.append(el('p', null, line));
+  if (line) e.append(el('p', null, line));
   return e;
 }
 
@@ -892,8 +951,8 @@ function paneNew(body) {
 // enhanced screen stands between the player and it.
 function paneBegin(body) {
   const c = el('div', 'card');
-  c.append(el('h3', null, 'Daggerfall'));
-  c.append(el('p', 'meta', t('menu.begin.blurb', 'The classic start: the title, the intro and Daggerfall\u2019s original menu (Load Game, Start New Game, Exit).')));
+  c.append(el('h3', null, t('menu.begin.title', 'Classic')));
+  c.append(el('p', 'meta', t('menu.begin.blurb', 'The classic start: the original game\u2019s own title, intro and menu (Load Game, Start New Game, Exit).')));
   c.append(acts([{ label: t('menu.act.begin', 'Begin'), primary: true, onClick: () => onAction('begin') }]));
   body.append(c);
 }
@@ -981,7 +1040,14 @@ function accountBody() {
     storage: appStorage(),
     onChange: () => card?.paint(),
   });
-  card = accountCard(document, flow, { onClose: () => { accountOpen = false; render(); } });
+  // PROFILE-MENU: the card's plate wears the corner mark's portrait and says whose face it is - the same character
+  // the mark shows (profileCharacter), its face asked for as a COPY (the mark and a save tile may draw this very face)
+  const save = profileCharacter();
+  card = accountCard(document, flow, {
+    onClose: () => { accountOpen = false; render(); },
+    face: save ? loadFace(save, { scale: 2, copy: true }) : null,
+    character: save ? `Playing ${characterLine(save)}` : null,
+  });
   host.append(card.root);
   // Not awaited: the door must be on screen before the service is
   // asked anything, and `start` catches its own refusals. The guard is
@@ -1000,16 +1066,42 @@ const signedIn = () => !!storedSession(appStorage());
  *  it does not. PROFILE1 (Mac: "more like a profile icon less like a
  *  button"): a PORTRAIT - the last character's face (ui/profileBadge.js),
  *  asked for as a promise so the door never waits on a CIF read. */
+/** PROFILE2: the character the profile shows - paused, the one being PLAYED (the newest save may be another's); at the
+ *  door, the newest finished save. PROFILE-MENU: one answer for the mark and the card it opens. */
+function profileCharacter() {
+  return mode === 'pause' ? liveCharacter(playerEntity) : newestPortraitSave();
+}
+
 function profileMark() {
   const who = storedSession(appStorage());
-  // PROFILE2: paused, the portrait is the character being PLAYED (the newest save may be another's)
-  const save = mode === 'pause' ? liveCharacter(playerEntity) : newestPortraitSave();
+  const save = profileCharacter();
   return profileBadge(document, {
     session: who,
     save,
     face: save ? loadFace(save, { scale: 2, copy: true }) : null,   // a COPY: the Continue pane's tile may draw this very face
     onOpen: () => { accountOpen = true; render(); },
   });
+}
+
+/** SUPPORT1 (Mac, 2026-10-05: "add the patron/kofi ingame on the main menu as 2 icons"): THE ASKS, top-left of the
+ *  door - the one corner it had free. An icon a platform, its mark drawn by ui/supportAsks.js exactly as the website's
+ *  corner draws it, its name on the pointer's tooltip and in what a screen reader says. Each is a LINK out of the game,
+ *  never a press the door acts on: a new tab on the web, the system browser from the desktop app (app/main.cjs hands
+ *  http(s) there), as the credits' links and TERMS1's documents open. */
+function supportMarks() {
+  const nav = el('nav', 'px-support');
+  nav.setAttribute('aria-label', 'Support');
+  for (const ask of SUPPORT_ASKS) {
+    const a = el('a', `px-supportlink px-support-${ask.id}`);
+    a.href = ask.url; a.target = '_blank'; a.rel = 'noopener';
+    a.title = ask.label;
+    a.setAttribute('aria-label', ask.label);
+    const mark = el('i', `supmark supmark-${ask.id}`);
+    mark.setAttribute('aria-hidden', 'true');
+    a.append(mark);
+    nav.append(a);
+  }
+  return nav;
 }
 
 /** The window itself, wearing the pause window's own frame. */
@@ -1121,7 +1213,7 @@ function paneOnline(body) {
   // page in the bible cannot reach them.
   const foot = el('div', 'card svonlinefoot');
   // L10N4: ONE pattern, the sky's sentence an argument in it (skyDayWords is itself routed)
-  foot.append(el('p', 'meta', t('menu.online.rules', 'Everyone plays their own save, and you can see and talk to each other anywhere. Dungeons and buildings are shared: enemies, doors, levers and every chest, shelf or cupboard someone has opened are the same for everyone, and stay that way. In towns and the wilds you share who is around: what one player meets, everyone nearby sees and can fight, and those monsters can hurt you too. {skyDay} The world\u2019s clock and sky run on real time: resting, travelling, jail time or training don\u2019t move them, so a quest that waits for a time of day waits for the world\u2019s, and a full moon holds a lycanthrope for its night alone. Your character also keeps their own time: it runs while you play, resting, travelling, jail time and training use it, and it stops while you are logged off. Your wounds, spells, hunger, diseases, curses, guild ranks, rented rooms, loans and repairs run on it. Quests online have no time limits: none fails because time ran out, a bounty never lapses, and a quest that would make you wait days (a letter, a meeting) moves on after a minute or two of play. Every enhancement is on for everyone in the shared world, but your UI is your own, with chat, friends, the party and trading in their own panels. Most mods stay your choice online. A few are the room\u2019s: the ones that change the ground, the ones that change monsters and loot, and the rules everyone plays by. The Mods page marks each one.', { skyDay: skyDayWords() })));   // AUDIT WORLD5 C12: the shared clock, said at the door; OL1: the lane, said at the door
+  foot.append(el('p', 'meta', t('menu.online.rules', 'Everyone plays their own save, and you can see and talk to each other anywhere. Dungeons and buildings are shared: enemies, doors, levers and every chest, shelf or cupboard someone has opened are the same for everyone, and stay that way. In towns and the wilds you share who is around: what one player meets, everyone nearby sees and can fight, and those monsters can hurt you too. {skyDay} The world\u2019s clock and sky run on real time: resting, travelling, jail time or training don\u2019t move them, so a quest that waits for a time of day waits for the world\u2019s, and a full moon holds a lycanthrope for its night alone. Your character also keeps their own time: it runs while you play, resting, travelling, jail time and training use it, and it stops while you are logged off. Your wounds, spells, hunger, diseases, curses, guild ranks, rented rooms, loans and repairs run on it. Quest timers run on the world\u2019s clock while you play: resting, waiting and travelling don\u2019t spend a quest\u2019s days, and time logged off never counts. A quest that only makes you wait - a letter, a meeting, \u201ccome back in a few days\u201d - moves on after a couple of minutes of play. You rest at a fire, a tent or a bed: a night passes at once, at most once every ten minutes of play, and your party within 15 metres sleeps it with you. Every enhancement is on for everyone in the shared world, but your UI is your own, with chat, friends, the party and trading in their own panels. Most mods stay your choice online. A few are the room\u2019s: the ones that change the ground, the ones that change monsters and loot, and the rules everyone plays by. The Mods page marks each one.', { skyDay: skyDayWords() })));   // AUDIT WORLD5 C12: the shared clock, said at the door; OL1: the lane, said at the door; QCLOCK-WORLD: the quests' clock; REST8: the short wait; REST9: the rest act and the party's night
   foot.append(field(t('menu.online.relay', 'Relay'), 'onlineServer', DEFAULT_SERVER, 200));
   body.append(foot);
   body.append(onlineSyncCard());   // UXB1-E: under the rules it copies
@@ -1164,8 +1256,48 @@ function realmCard(who) {
     }
     box.append(grid);
   } else box.append(el('p', 'meta', t('menu.realm.none', 'No online characters yet. Make one, or bring one of yours in below.')));
+  for (const card of waitingHouseCards()) box.append(card);
   box.append(acts([{ label: t('menu.realm.new', 'New online character'), primary: !realmRows.length, disabled: realmBusy || realmRows.length >= realmMax, onClick: () => onAction('online-new') }]));
   return box;
+}
+/** HOUSE-WAITS (FIELD BUGS 2026-10-09f, Sahh: a Bloodline's fall whose heir's birth went back to the title - "despite the
+ *  bloodline still having two characters left in it, I cannot access those characters in any way"): the account's lines
+ *  whose Succession waits, each with the members who may carry it on (systems/legacy/waitingHouses.js). The fallen is the
+ *  realm's tombstone and a member never played has no character, so this card is the line's one door from the menu. */
+let realmLine = null;
+function waitingHouseCards() {
+  if (!realmRows) return [];
+  if (!realmLinesAsked) {
+    realmLinesAsked = true;
+    realmLine = createRealmLine({ io: () => realmIoNow(), storage: () => appStorage() });
+    realmLine.pull().then((r) => { realmLineIds = r?.ok ? r.ids : []; render(); }).catch(() => { realmLineIds = []; });
+  }
+  if (!realmLineIds?.length) return [];
+  const living = new Set(realmRows.map((r) => String(r.id)));
+  const families = realmLineIds.map((id) => loadFamily(appStorage(), id)).filter(Boolean);
+  return waitingHouses(families, { played: (cid) => living.has(cid) }).map(({ family, fallen, heirs }) => {
+    const card = el('div', 'card svhousewaits');
+    card.append(el('h4', null, houseWaitsTitle(family)), el('p', 'meta', houseWaitsLine(family, fallen)));
+    card.append(acts(heirs.map((p) => ({
+      label: heirButtonLabel(p),
+      disabled: realmBusy || realmRows.length >= realmMax,
+      onClick: () => carryOn(family.id, p.id),
+    }))));
+    return card;
+  });
+}
+/** HOUSE-WAITS: the Succession's choice, made here - the record stored and the realm's copy written (its birth checks
+ *  the person there), then the boot births them online. */
+function carryOn(familyId, personId) {
+  realmBusy = true; render();
+  const took = takeUpLine({ storage: appStorage(), tab: tabStorage(), familyId, personId });
+  if (!took.ok) { realmWords = [took.why]; realmBusy = false; render(); return; }
+  Promise.resolve(realmLine?.push(took.family)).then(() => realmLine?.flush()).then((ok) => {
+    if (!ok) { realmWords = [realmRefusalText(realmLine?.refusalOf(familyId) ?? realmLine?.error ?? 'server')]; realmBusy = false; render(); return; }
+    _pickedLegacyBirth = { personId, region: took.place.region, loc: took.place.loc };
+    realmBusy = false;
+    onAction('online-new');
+  }).catch(() => { realmWords = [realmRefusalText('server')]; realmBusy = false; render(); });
 }
 const realmIoNow = () => realmIo({ fetch: (...a) => globalThis.fetch(...a), storage: appStorage() });
 /** One realm act at a time: busy while it runs, its words (or its refusal) shown after, and the list asked again. */
@@ -1183,7 +1315,7 @@ function bringOnline(save) {
   const snap = realmIoNow() ? loadSlot(save.key) : null;
   if (!snap || typeof snap.characterId !== 'string' || !snap.characterId || snap.testRoom === true) return customsNow(save);
   const trial = JSON.parse(JSON.stringify(snap));
-  const leveling = crossLeveling(trial);   // LEVEL-ONLINE: a Daggerfall-levelling character comes in on Oblivion's bar - said first
+  const leveling = crossLeveling(trial);   // LEVEL-ONLINE-2: an Oblivion-levelling character comes in on Daggerfall's leveling - said first
   const preview = [...(leveling ? [LEVELING_CROSS_LINE.before] : []), ...customsLines(applyCustoms(trial), { before: true })];
   return ask(t('menu.online.bringAsk', 'Bring {name} online?', { name: save.name }), preview.join(' '), t('menu.online.bring', 'Bring online'), () => { customsNow(save); });
 }
@@ -1198,7 +1330,7 @@ function customsNow(save) {
     if (typeof snap.characterId !== 'string' || !snap.characterId) return { ok: false, error: 'customs-load-once' };
     if (snap.testRoom === true) return { ok: false, error: 'test-room' };   // AUDIT SET D4's law: the room's characters play offline
     const copy = onlineCopyOf(snap, sharedClassicMinutes(Date.now()));   // AUDIT LIVED1 G: the world's stamps onto the shared clock, and the world's minute it joins at
-    const leveling = crossLeveling(copy);   // LEVEL-ONLINE: a new online character levels the Oblivion way (the offline one keeps its own)
+    const leveling = crossLeveling(copy);   // LEVEL-ONLINE-2: a new online character levels the Daggerfall way (the offline one keeps its own)
     const report = applyCustoms(copy);
     const made = await realmCustoms(io, snap.characterId, copy.name || save.name, realmSummaryOf(copy));
     if (!made.ok) return made;
@@ -1504,17 +1636,325 @@ function paneExit(body) {
 
 // ── SETTINGS ─────────────────────────────────────────────────────
 // The whole shipped screen, rendered from the same law. Three panes:
-// categories, rows, help. Nothing is filtered out by tier - a hidden
+// tabs, rows, help. Nothing is filtered out by tier - a hidden
 // setting is a setting the player cannot find out about, which is the
 // rule U30 landed after the launcher hid them behind a filter.
-function paneSettings(pane) {
-  const panes = el('div', 'panes');
+//
+// ORG2 (2026-10-09, Mac: "Graphic settings needs its own tab, etc. I really need you to go all in"): ONE SCREEN FOR
+// EVERY OPTION. Settings held DFU's keys in seven categories and the Features home held the port's rows and the mods in
+// seven groups of its own - the grass under Features > Sight, the field of view under Settings > Video - so "the
+// graphics" were behind two doors and a long scroll each. Now the rail is TABS by subject (ui/settingsMap.js:
+// Graphics, Gameplay, Combat, World, Interface, Audio, Controls, Accessibility, Mods & files), each cut into SECTIONS
+// with a line of what they hold, and every option is a ROW in one shape - its name, its line, its control on the right -
+// whichever store it lives in: DFU's settingRow, the port's own rows, and a Features row as a row with its bar
+// (featureTile). Over the rows, a toolbar: one SEARCH over every tab, filters (what you changed, and the three kinds the
+// Features home filtered by), and the actions that act on everything. The help pane reads whichever row is picked, or,
+// with none, the tab: its sections and a Restore of its own defaults. Graphics opens on a PRESET (systems/
+// graphicsPresets.js). The pause window draws the same screen, condensed as PX10 had it: the rows that act in play.
+
+let optQuery = '';          // ORG2: the search, over every tab - kept across a repaint, cleared by a tab change
+let optFilter = 'all';      // ORG2: 'all' | 'changed' | a KINDS id
+let pickedFeature = null;   // ORG2: the Features row the help pane reads (pickedKey is DFU's key)
+let optScrollTo = null;     // ORG2: a row to bring into view after the next paint (the mods' list sends you to one)
+
+/** ORG2: the filters over the rows - what you changed, then the Features home's three kinds. */
+const OPT_FILTERS = Object.freeze([['all', 'All'], ['changed', 'Changed'], ['enhanced', 'Enhanced'], ['mod', 'Mods'], ['classic', 'Daggerfall Unity']]);
+
+/** ORG2: the port's own rows, built once a paint and found by the id each carries (`dataset.opt`). A row its builder
+ *  does not draw here - the touch knobs off a touch device, the HUD's layout on the classic skin, the start video at
+ *  pause - is simply absent, and its item draws nothing. (Exported for test/org2_options.test.js, which holds the map
+ *  total over it.) */
+export function portPool({ pause = false } = {}) {
+  const pool = new Map();
+  for (const r of [...portRowsGame({ pause }), ...portRowsAudio(), ...portRowsControls({ pause }), ...portRowsInterface({ pause })]) {
+    if (r?.dataset?.opt) pool.set(r.dataset.opt, r);
+  }
+  return pool;
+}
+
+/** ORG2: a Features row's value as its control reads it - the lane's own read, or the pref. */
+function featureValue(id) {
+  const c = resolveControl(FEATURES.find((f) => f.id === id));
+  return c?.read ? c.read() : getPref(c?.key);
+}
+
+/** ORG2: whether an item stands away from how the game ships - a DFU key off its default, a Features row off its
+ *  default segment, a port row's pref off the shelf's default. The Changed filter and the row's mark read it. */
+function itemChanged(item, pool) {
+  if (isSettingItem(item)) {
+    const [sec, k] = item.split('/');
+    const d = defaultOf(sec, k);
+    return d !== undefined && String(effective()[sec]?.[k] ?? d) !== String(d);
+  }
+  if (item.startsWith('feat:')) {
+    const f = FEATURES.find((x) => x.id === item.slice(5));
+    const st = f && tileStates(f);
+    if (!st || st.locked) return false;
+    const d = defaultSegment(f, st);
+    return d >= 0 && d !== st.at;
+  }
+  if (item.startsWith('port:')) {
+    const pref = pool?.get(item.slice(5))?.dataset?.pref;
+    return !!pref && Object.hasOwn(PREF_DEFAULTS, pref) && onlineForcedPref(pref) === undefined && String(getPref(pref)) !== String(PREF_DEFAULTS[pref]);
+  }
+  return false;
+}
+
+/** ORG2: the kinds an item answers the filter for - a Features row its own, DFU's settings Daggerfall Unity's, the
+ *  port's rows the port's. The screen's own pieces (the preset, the cards, the bindings) answer All alone. */
+function itemKinds(item) {
+  if (isSettingItem(item)) return ['classic'];
+  if (item.startsWith('feat:')) return FEATURES.find((f) => f.id === item.slice(5))?.kinds ?? [];
+  if (item.startsWith('port:')) return ['enhanced'];
+  return [];
+}
+
+/** ORG2: what the search reads of an item - a DFU key's label and help, a Features row's words (its search text), a port
+ *  row's own text, a card's. */
+function itemText(item, pool) {
+  if (isSettingItem(item)) return `${labelOf(item)} ${helpOf(item)} ${item}`;
+  if (item.startsWith('feat:')) { const f = FEATURES.find((x) => x.id === item.slice(5)); return f ? featureSearchText(f) : ''; }
+  if (item.startsWith('port:')) return pool.get(item.slice(5))?.textContent ?? '';
+  if (item === 'preset:graphics') return 'quality preset graphics low medium high ultra performance';
+  if (item === 'link:overhauls') return 'overhauls looks textures vanilla enhanced sounds interface';
+  if (item === 'bindings') return 'key bindings keys keyboard rebind controls';
+  if (item.startsWith('card:')) return { morrowind: 'morrowind files data body 3d attach', packs: 'packs textures music replacement folder',
+    peerSprites: 'other players look sprites', nightSounds: 'night sounds crickets howl' }[item.slice(5)] ?? '';
+  return '';
+}
+const normWords = (s) => String(s).toLowerCase().replace(/[\u2018\u2019]/g, "'");
+/** ORG2: every word of the query in the item's text. */
+function itemMatches(item, pool, q) {
+  const text = normWords(itemText(item, pool));
+  return normWords(q).split(/\s+/).filter(Boolean).every((w) => text.includes(w));
+}
+
+/** ORG2: whether a DFU key draws as a row here - live, or read at the next start; at pause, live alone (PX10). */
+const drawsHere = (key, pause) => (pause ? tierOf(key) === 'live' : drawsFlat(key));
+
+/** ORG2: AN ITEM AS THE NODES IT DRAWS - none for a key a Features row owns (FT13), a key that folds (`fold`
+ *  collects it), a port row this device does not have, or a row the filter leaves out. */
+function itemNodes(item, ctx) {
+  const { pool, pause, fold = null, any = false } = ctx;
+  if (optFilter !== 'all') {
+    if (optFilter === 'changed' ? !itemChanged(item, pool) : !itemKinds(item).includes(optFilter)) return [];
+  }
+  const mark = (n) => { if (n && itemChanged(item, pool)) n.classList.add('changed'); return n; };
+  if (isSettingItem(item)) {
+    if (featureForControl('settings', item)) return [];   // FT13: its switch is the Features row beside it
+    if (!drawsHere(item, pause)) {
+      if (any && !pause) return [mark(settingRow(item))].filter(Boolean);   // the search finds a folded key where it stands
+      fold?.push(item);
+      return [];
+    }
+    return [mark(settingRow(item))].filter(Boolean);
+  }
+  if (item.startsWith('feat:')) {
+    const f = FEATURES.find((x) => x.id === item.slice(5));
+    return f ? [mark(featureTile(f))] : [];
+  }
+  if (item === 'port:language') { const r = pool.get('language'); const pack = r ? translationPackRow() : null; return r ? [mark(r), ...(pack ? [pack] : [])] : []; }   // L10N3b: the translation pack rides under the language row
+  if (item.startsWith('port:')) { const r = pool.get(item.slice(5)); return r ? [mark(r)] : []; }
+  if (item === 'preset:graphics') return [graphicsPresetRow()];
+  if (item === 'link:overhauls') return pause ? [] : [overhaulsLinkRow()];
+  if (item === 'mods-index') return modsIndexRows();
+  if (item === 'bindings') { const box = el('div', 'opt-bindings'); paneControls(box, { render }); return [box]; }
+  if (item.startsWith('card:')) {
+    const make = { morrowind: () => morrowindCard(), packs: () => packsCard(), peerSprites: () => peerSpritesCard(), nightSounds: () => nightSoundsCard() }[item.slice(5)];
+    return make ? [make()] : [];
+  }
+  return [];
+}
+
+/** ORG2: a section's head - its title and how many rows it drew. Its id is the jump strip's anchor. */
+function sectionHead(tab, s, n, { path = false } = {}) {
+  const head = el('div', 'sec-head');
+  head.id = `sec-${tab.id}-${s.id}`;
+  const t = el('div', 'sec-title');
+  t.append(el('h3', null, path ? `${tab.title} \u203a ${s.title}` : s.title));
+  if (n) t.append(el('span', 'count', String(n)));
+  head.append(t);
+  return head;
+}
+
+/** ORG2: a node that is an option - a row or a Features row - and not the screen's own door (the Overhauls link), a
+ *  card, or a row greyed here. What a section's head counts, as the rail's count does (tabCount). */
+const isOptionNode = (x) => (x.classList?.contains('row') && !x.classList.contains('opt-link') && x.dataset?.live !== '0') || x.classList?.contains('ft-tile');
+
+/** ORG2: the rows one tab draws, section by section - `[{ s, nodes }]`, a section that drew nothing left out - and
+ *  the keys it folds. */
+function tabSections(tab, ctx) {
+  const fold = [];
+  const out = [];
+  for (const s of tab.sections) {
+    const nodes = s.items.flatMap((item) => itemNodes(item, { ...ctx, fold }));
+    if (nodes.length) out.push({ s, nodes });
+  }
+  return { sections: out, fold };
+}
+
+/** ORG2: how many options a tab draws - what the rail counts. Rows, not the screen's own pieces. */
+function tabCount(tab, ctx) {
+  let n = 0;
+  for (const s of tab.sections) {
+    for (const item of s.items) {
+      if (isSettingItem(item)) { if (!featureForControl('settings', item) && drawsHere(item, ctx.pause)) n++; }
+      else if (item.startsWith('feat:')) n++;
+      else if (item.startsWith('port:')) { const r = ctx.pool.get(item.slice(5)); if (r && r.dataset.live !== '0') n++; }   // QREPAIR: a row greyed here is not one that works here
+      else if (item === 'mods-index') n += FEATURES.filter((f) => f.kinds.includes('mod')).length;   // every mod has a row in the list
+      else if (item === 'preset:graphics') n++;   // the preset is a choice of its own; the Overhauls door is not
+    }
+  }
+  return n;
+}
+
+/** ORG2: the body under the toolbar - the open tab's page, or, while the search holds a word, what it finds on every
+ *  tab under "Tab › Section" heads. Painted in place on each key of the search (so the field keeps its caret) and by
+ *  every render. */
+function paintOptionsBody(body, { pause = false } = {}) {
+  const pool = portPool({ pause });
+  const ctx = { pool, pause };
+  body.replaceChildren();
+  const q = optQuery.trim();
+  if (q) {
+    let found = 0;
+    for (const tab of CATEGORIES) {
+      for (const s of tab.sections) {
+        const nodes = s.items.filter((item) => item !== 'mods-index' && itemMatches(item, pool, q)).flatMap((item) => itemNodes(item, { ...ctx, any: true }));
+        if (!nodes.length) continue;
+        body.append(sectionHead(tab, s, nodes.filter(isOptionNode).length, { path: true }), ...nodes);
+        found += nodes.length;
+      }
+    }
+    if (!found) body.append(empty('No matches'));
+    return;
+  }
+  const tab = CATEGORIES.find((c) => c.id === category) ?? CATEGORIES[0];
+  if (tab.id === 'mods' && isOnlinePage()) body.append(el('p', 'meta opt-note', noteText(ONLINE_MODS_NOTE)));   // MODS-ONLINE-2: said once, over the mods; L10N4: in the player's language
+  const { sections, fold } = tabSections(tab, ctx);
+  if (sections.length >= 3 && !pause) {
+    const strip = el('nav', 'sec-jump');
+    strip.setAttribute('aria-label', 'Sections');
+    for (const { s } of sections) {
+      const b = el('button', 'sec-jumpbtn', s.title);
+      b.type = 'button';
+      b.onclick = () => document.getElementById(`sec-${tab.id}-${s.id}`)?.scrollIntoView({ block: 'start' });
+      strip.append(b);
+    }
+    body.append(strip);
+  }
+  const many = sections.length > 1;
+  for (const { s, nodes } of sections) {
+    const n = nodes.filter(isOptionNode).length;
+    if (many) body.append(sectionHead(tab, s, n));
+    body.append(...nodes);
+  }
+  if (!sections.length) body.append(empty(optFilter === 'changed' ? 'Nothing changed' : 'Nothing here'));
+  if (pause) body.append(el('p', 'meta opt-note', 'More options in the main menu\u2019s Settings.'));   // PX10: the closing line says so
+  // the tiers a tab folds: SAVED FOR LATER and NOT AVAILABLE HERE (SO1), counted and remembered per tab
+  if (!pause) {
+    for (const [tier, title, blurb] of TIER_GROUPS) {
+      const ks = fold.filter((k) => tierOf(k) === tier);
+      if (ks.length) body.append(tierGroup(tab.id, tier, title(), blurb(), ks));   // L10N4: the group's words read as drawn
+    }
+  }
+}
+
+/** UNSAVED-MARK (FIELD BUGS 2026-10-11): the toolbar's height, kept on its list as `--opt-tools-h` - what a sticky card
+ *  under it (the bindings' head and its Confirm, enhancedStyle.js) stands below. The bar wraps by the width (the search,
+ *  the chips, the actions), so it is measured, not assumed: once now and on every resize, until the bar leaves the page
+ *  (a repaint builds a new one). No observer, no measure: the card sticks at the top, as before. */
+export function stickUnderToolbar(list, bar, RO = globalThis.ResizeObserver) {
+  const put = () => { const h = bar.offsetHeight; if (Number.isFinite(h) && h > 0) list.style?.setProperty?.('--opt-tools-h', `${h}px`); };
+  if (typeof RO !== 'function') return null;
+  const ro = new RO(() => { if (bar.isConnected === false) { ro.disconnect(); return; } put(); });
+  ro.observe(bar);
+  return ro;
+}
+
+/** ORG2: the toolbar over the rows - the search, the filters, and the actions that act on every tab. */
+function optionsToolbar(body, { pause = false } = {}) {
+  const bar = el('div', 'opt-tools');
+  const search = el('input', 'opt-search');
+  search.type = 'search';
+  search.id = 'opt-search';   // AUDIT 32 P3: a repaint gives the caret back by id
+  search.placeholder = 'Search settings';
+  search.setAttribute('aria-label', 'Search settings');
+  search.value = optQuery;
+  search.oninput = () => {
+    discardControlsStaging();   // FIX-F: a search repaints the page - a walk away from the bindings, which drops what they staged
+    optQuery = search.value; pickedKey = null; pickedFeature = null;
+    paintOptionsBody(body, { pause });
+    // the rail says no tab while the search reads them all - painted in place, as the body is
+    for (const b of search.closest('.panes')?.querySelectorAll('.subbtn') ?? []) b.classList.toggle('on', !optQuery.trim() && b.dataset.tab === category);
+  };
+  bar.append(search);
+  const chips = el('div', 'opt-filters');
+  const pool = portPool({ pause });
+  const changed = CATEGORIES.reduce((n, t) => n + t.sections.reduce((m, s) => m + s.items.filter((i) => !(isSettingItem(i) && featureForControl('settings', i)) && itemChanged(i, pool)).length, 0), 0);
+  for (const [id, label] of OPT_FILTERS) {
+    const b = el('button', `chip${optFilter === id ? ' on' : ''}${id === 'all' || id === 'changed' ? '' : ` ${id}`}`, label);
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(optFilter === id));
+    if (id === 'changed') b.append(el('span', 'n', String(changed)));
+    b.onclick = () => { discardControlsStaging(); optFilter = id; pickedKey = null; pickedFeature = null; render(); };   // FIX-F: a filter hides the bindings
+    chips.append(b);
+  }
+  bar.append(chips);
+  // FT18 + FEATURES-DEFAULTS (issue #399): the switches' All off and its Restore, and one reset of everything
+  const kept = getPref(FEATURES_RESTORE_PREF);
+  bar.append(acts([
+    { label: t('menu.features.allOff', 'All off'), onClick: () => ask(t('menu.features.allOffTitle', 'Turn Everything Off'), allOffAsk(), t('menu.features.allOff', 'All off'), () => { featuresAllOff(); }) },
+    ...(kept && typeof kept === 'object' ? [{ label: t('menu.features.restore', 'Restore'), onClick: () => { featuresRestore(); render(); } }] : []),
+    { label: t('menu.settings.reset', 'Reset everything to defaults'), onClick: () => ask(t('menu.settings.resetTitle', 'Reset Everything'), resetAllAsk(), t('menu.settings.resetYes', 'Reset'), () => { resetEverything(); }) },   // L10N4: the words the Features toolbar and the category card carried, routed where they stand now
+  ]));
+  return bar;
+}
+
+/** ORG2: the one reset of everything - DFU's settings as Daggerfall Unity ships them, and every Features row, part, mod
+ *  module and dial as the game ships them (FEATURES-DEFAULTS). Your interface, text size and key bindings are not
+ *  options here, and are left alone. */
+export const RESET_ALL_ASK = 'Every setting and mod goes back to its default. Your interface, text size and key bindings are kept.';
+/** L10N4: the confirm's body in the player's language (RESET_ALL_ASK stays the English the pins read) - the reset's ask, its
+ *  words main's since ORG2. */
+const resetAllAsk = () => t('menu.settings.resetBody', RESET_ALL_ASK);
+function resetEverything() {
+  resetToDefaults(); _eff = null;
+  featuresDefaults();
+}
+
+/** ORG2: one tab back to how the game ships it - its DFU keys, its Features rows (with their parts and a mod's modules
+ *  and dials) and its port rows' prefs. The All off keep is left for Restore: this is one tab, not everything.
+ *  (Exported for test/org2_options.test.js.) */
+export function restoreTabDefaults(tab) {
+  const items = tab.sections.flatMap((s) => s.items);
+  for (const item of items) {
+    if (!isSettingItem(item) || featureForControl('settings', item)) continue;
+    const [sec, k] = item.split('/');
+    if (onlineForcedSetting(sec, k) !== undefined) continue;
+    const d = defaultOf(sec, k);
+    if (d !== undefined) setValue(sec, k, d);
+  }
+  saveSettings(); _eff = null;   // AUDIT F7: the store changed
+  featuresDefaults(items.filter((i) => i.startsWith('feat:')).map((i) => FEATURES.find((f) => f.id === i.slice(5))).filter(Boolean), { spendKeep: false });
+  const pool = portPool();
+  for (const item of items) {
+    const pref = item.startsWith('port:') ? pool.get(item.slice(5))?.dataset?.pref : null;
+    if (pref === MIDI_OUT_PREF) setMidiOut(PREF_DEFAULTS[pref]);   // AUDIT MIDI-OUT1: through the door the music hears
+    else if (pref && Object.hasOwn(PREF_DEFAULTS, pref) && onlineForcedPref(pref) === undefined) setPref(pref, PREF_DEFAULTS[pref]);
+  }
+}
+
+function paneSettings(pane, { pause = false } = {}) {
+  const panes = el('div', 'panes opt');
+  const pool = portPool({ pause });
 
   const rail = el('div', 'subrail');
   for (const cat of CATEGORIES) {
-    const on = cat.id === category;
+    const on = cat.id === category && !optQuery.trim();
     const b = el('button', `subbtn${on ? ' on' : ''}`, cat.title);
-    b.append(el('span', 'count', String(liveCount(cat.id))));   // SO1: what works here, not the file's row count
+    b.dataset.tab = cat.id;
+    b.append(el('span', 'count', String(tabCount(cat, { pool, pause }))));   // SO1: what works here, not the file's row count
     // AUDIT F8, found by the live check rather than by reading: on a
     // PHONE the detail pane is a sheet that only rises when a ROW is
     // tapped, so the category card - and the Reset button living in it
@@ -1533,8 +1973,8 @@ function paneSettings(pane) {
     // gesture nobody uses.
     b.onclick = () => {
       // FT16: a category change is a walk away from the bindings, and
-      // their copy says a walk away drops them.
-      if (on) { pickedKey = null; sheetOpen = true; } else { discardControlsStaging(); category = cat.id; pickedKey = null; }
+      // their copy says a walk away drops them. ORG2: and from the search - a tab pressed is the tab wanted.
+      if (on) { pickedKey = null; pickedFeature = null; sheetOpen = true; } else { discardControlsStaging(); category = cat.id; pickedKey = null; pickedFeature = null; optQuery = ''; }
       render();
     };
     if (on) b.append(el('span', 'more-dot'));
@@ -1542,84 +1982,26 @@ function paneSettings(pane) {
   }
 
   const list = el('div', 'list');
-  // SO1: the port's own rows first (the skin under INTERFACE, which is
-  // what it is - see systems/uiSkin.js), the live store keys flat, and
-  // the two folded tiers with their counts (categoryRows).
-  const rows = categoryRows(category);
-  if (!rows.length && category !== 'controls') list.append(empty(t('menu.settings.emptyTitle', 'Nothing here yet'), t('menu.settings.empty', 'This category has no keys.')));
-  for (const r of rows) list.append(r);
-  // FT16 (Mac: "the control menu option needs to be within settings"):
-  // THE KEY BINDINGS ARE THE CONTROLS CATEGORY. They were a rail door
-  // beside Settings (FIX-F) while Settings already carried a Controls
-  // category holding DFU's Controls/* keys - two doors for one subject,
-  // and a player looking for "how do I rebind jump" had to guess which.
-  // The store keys come first because they are few and the ones a hand
-  // reaches for mid-session; the grid follows under its own head.
-  if (category === 'controls') {
-    list.append(pxDivider(t('menu.settings.keyBindings', 'Key bindings')));
-    paneControls(list, { render });
+  const body = el('div', 'opt-body');
+  const tools = optionsToolbar(body, { pause });
+  list.append(tools, body);
+  stickUnderToolbar(list, tools);   // UNSAVED-MARK: the bindings' sticky head stands under this sticky bar, never behind it
+  paintOptionsBody(body, { pause });
+  if (optScrollTo) {
+    const id = optScrollTo;
+    optScrollTo = null;
+    globalThis.requestAnimationFrame?.(() => document.getElementById(id)?.scrollIntoView({ block: 'center' }));
   }
 
   const detail = el('div', 'detail');
   const close = el('button', 'sheet-close', t('menu.sheet.close', 'Close'));
   close.onclick = () => { sheetOpen = false; confirming = null; render(); };
   detail.append(close);
-  detail.append(confirming ? confirmCard() : (pickedKey ? helpCard(pickedKey) : categoryCard()));
+  const f = pickedFeature ? FEATURES.find((x) => x.id === pickedFeature) : null;
+  detail.append(confirming ? confirmCard() : (pickedKey ? helpCard(pickedKey) : f ? featureCard(f) : categoryCard({ pool, pause })));
   if (sheetOpen) detail.classList.add('open');
 
   panes.append(rail, list, detail);
-  pane.append(panes);
-}
-
-/** PX10: THE CONDENSED SETTINGS (pause only). Every key whose tier is
- *  LIVE - derived from the tier map itself, so a setting that gains a
- *  consumer joins this pane the same day - rendered through the SAME
- *  settingRow every screen uses, with the same rising sheet for help.
- *  The full catalog stays on the main menu's Settings (Mac's call:
- *  'the pause menu should have a more condensed settings menu while
- *  the main menu holds most settings'), and the closing line says so
- *  rather than letting the short list read as the whole store - the
- *  U30 nothing-hidden law kept by TELLING, not by showing all 171. */
-function paneQuickSettings(pane) {
-  const panes = el('div', 'panes');
-  const list = el('div', 'list');
-  let any = false;
-  // One scroll, grouped under the categories' own titles - 48 live
-  // rows flat read as a wall; the dividers give the scroll a spine
-  // without bringing back the chip strip this pane exists to shed.
-  for (const cat of CATEGORIES) {
-    const liveKeys = paneKeys(cat.id).filter((key) => tierOf(key) === 'live');   // FT13: the moved keys are not here
-    if (!liveKeys.length) continue;
-    any = true;
-    list.append(pxDivider(cat.title));
-    for (const key of liveKeys) put(list, settingRow(key));
-  }
-  // SO1: and the port's own rows that take effect without a reload,
-  // under the categories they live in on the main menu
-  for (const cat of CATEGORIES) {
-    const port = portRows(cat.id, { pause: true });
-    if (!port.length) continue;
-    any = true;
-    list.append(pxDivider(cat.title));
-    for (const r of port) list.append(r);
-  }
-  if (!any) list.append(empty(t('menu.settings.noLiveTitle', 'Nothing live here yet'), t('menu.settings.noLive', 'No setting has an in-game consumer in this build.')));
-  // FT16: the condensed pause settings has no category rail, so the
-  // bindings ride the end of the one scroll. Dropping them here would
-  // be FIX-F's bug again - "the row whose absence was the bug" - just
-  // one level down.
-  list.append(pxDivider(t('menu.settings.keyBindings', 'Key bindings')));
-  paneControls(list, { render });
-  list.append(el('p', 'px-note', t('menu.settings.allOnMenu', 'Every setting lives on the main menu\u2019s Settings.')));
-  panes.append(list);
-
-  const detail = el('div', 'detail');
-  const close = el('button', 'sheet-close', t('menu.sheet.close', 'Close'));
-  close.onclick = () => { sheetOpen = false; confirming = null; render(); };
-  detail.append(close);
-  detail.append(confirming ? confirmCard() : (pickedKey ? helpCard(pickedKey) : el('div')));
-  if (sheetOpen) detail.classList.add('open');
-  panes.append(detail);
   pane.append(panes);
 }
 
@@ -1628,20 +2010,120 @@ function paneQuickSettings(pane) {
  * Settings row "Interface Style" and its help. Plain Enhanced went with PLUS-ONLY; the interface is chosen on the
  * Overhauls page's UI Overhaul card alone (Classic, Enhanced Plus, GrimoireUI - systems/overhauls.js uiChoiceUrl, the
  * SKIN-CARRY law's one home now), which both skins' boot rails and the pause menu carry. */
-function categoryCard() {
-  const cat = CATEGORIES.find((c) => c.id === category);
+/** ORG2: THE TAB'S CARD, the help pane with no row picked - how many options it holds, how many you changed, and a
+ *  Restore of its own defaults. */
+function categoryCard({ pool = portPool(), pause = false } = {}) {
+  const cat = CATEGORIES.find((c) => c.id === category) ?? CATEGORIES[0];
   const d = el('div', 'dcard');
   d.append(el('h3', null, cat.title));
-  d.append(el('p', null, cat.blurb));
-  const b = el('button', 'act', t('menu.settings.reset', 'Reset everything to defaults'));
+  const ctx = { pool, pause };
+  const changed = cat.sections.reduce((n, s) => n + s.items.filter((i) => !(isSettingItem(i) && featureForControl('settings', i)) && itemChanged(i, ctx.pool)).length, 0);
+  d.append(el('p', 'status', t('menu.settings.tabStatus', '{n} options \u00b7 {changed} changed', { n: tabCount(cat, ctx), changed })));
+  const b = el('button', 'act', t('menu.settings.restoreTab', 'Restore defaults'));
   b.onclick = () => ask(
-    t('menu.settings.resetTitle', 'Reset Everything'),
-    t('menu.settings.resetBody', 'Put every setting back the way Daggerfall Unity ships it. '
-    + 'Your UI Overhaul and text size are not settings and are left alone.'),
-    t('menu.settings.resetYes', 'Reset'),
-    () => { resetToDefaults(); _eff = null; },
+    t('menu.settings.restoreTabTitle', 'Restore {tab} Defaults', { tab: cat.title }),
+    t('menu.settings.restoreTabBody', 'Every option on this tab goes back to its default.'),
+    t('menu.settings.restoreYes', 'Restore'),
+    () => { restoreTabDefaults(cat); },
   );
   d.append(b);
+  return d;
+}
+
+// ── ORG2: THE SCREEN'S OWN PIECES ────────────────────────────────
+
+/** ORG2: THE GRAPHICS PRESET - one bar over the five rows that cost the most (systems/graphicsPresets.js), reading
+ *  the preset they stand at or Custom. A press writes each row through its own door, so a lane's second store moves
+ *  with it and a row the room decides is left as it is. */
+function graphicsPresetRow() {
+  const now = presetNow(featureValue);
+  const row = el('div', 'row opt-preset');
+  row.dataset.opt = 'graphicsPreset';
+  const main = el('div', 'row-main');
+  main.append(el('div', 'row-name', 'Quality preset'));
+  main.append(el('div', 'row-note', 'View distance, grass, clouds, ground sharpness, water and windows.'));   // RW1: and the real windows
+  row.append(main);
+  const ctl = el('div', 'ctl');
+  const seg = el('div', 'ft-seg');
+  seg.setAttribute('role', 'group');
+  seg.setAttribute('aria-label', 'Quality preset');
+  for (const p of GRAPHICS_PRESETS) {
+    const b = el('button', 'ft-segb', p.label);
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(now?.id === p.id));
+    b.onclick = (e) => { e.stopPropagation(); applyGraphicsPreset(p); render(); };
+    seg.append(b);
+  }
+  if (!now) { const c = el('span', 'ft-segb custom', 'Custom'); c.setAttribute('aria-current', 'true'); seg.append(c); }
+  ctl.append(seg);
+  row.append(ctl);
+  return row;
+}
+/** ORG2: a preset, written - each of its rows to its value through the row's own states (tileStates). */
+export function applyGraphicsPreset(p) {
+  for (const id of PRESET_ROWS) {
+    const f = FEATURES.find((x) => x.id === id);
+    const c = resolveControl(f);
+    const st = f && tileStates(f);
+    if (!st || st.locked || !c?.tiers) continue;
+    const i = c.tiers.findIndex(([v]) => String(v) === String(p.values[id]));
+    if (i >= 0 && i !== st.at) st.set(i);
+  }
+}
+
+/** ORG2: the Overhauls page's door, on the Graphics tab - the whole looks are chosen there. */
+function overhaulsLinkRow() {
+  const row = el('div', 'row opt-link');
+  const main = el('div', 'row-main');
+  main.append(el('div', 'row-name', 'Overhauls'));
+  main.append(el('div', 'row-note', 'Whole looks for the world, its sounds and the interface - Vanilla Enhanced\u2019s textures and the rest - are chosen on the Overhauls page.'));
+  row.append(main);
+  const ctl = el('div', 'ctl');
+  const b = el('button', 'act rowact', 'Open');
+  b.type = 'button';
+  b.onclick = () => go('overhauls');
+  ctl.append(b);
+  row.append(ctl);
+  return row;
+}
+
+/** ORG2: EVERY MOD, ONE LIST - each mod the game carries, where its options live, and its switch. A press on its name
+ *  takes you to its row on its own tab. */
+function modsIndexRows() {
+  return FEATURES.filter((f) => f.kinds.includes('mod')).sort((a, b) => a.title.localeCompare(b.title)).map((f) => {
+    const st = tileStates(f);
+    const row = el('div', 'row opt-modrow');
+    const main = el('button', 'row-main');
+    main.type = 'button';
+    main.append(el('div', 'row-name', f.title), el('div', 'row-note', optionPath(`feat:${f.id}`).replace(/^Settings \u203a /, '')));
+    main.onclick = () => { const w = whereIs(`feat:${f.id}`); if (w) { category = w.tab.id; pickedFeature = f.id; pickedKey = null; optScrollTo = `opt-${f.id}`; render(); } };
+    row.append(main);
+    const ctl = el('div', 'ctl');
+    if (st) ctl.append(segBar(st, f.title));
+    row.append(ctl);
+    return row;
+  });
+}
+
+/** ORG2: A FEATURES ROW'S CARD in the help pane - where it lives, what it does, when it takes effect, a mod's keys. */
+function featureCard(f) {
+  const c = resolveControl(f);
+  const d = el('div', 'dcard ft-card');
+  d.append(el('div', 'ft-rail-k', optionPath(`feat:${f.id}`)));
+  d.append(el('h3', null, f.title));
+  d.append(kindTags(f.kinds));
+  if (f.note) d.append(el('p', 'ft-rail-note', f.note));
+  if (f.effect) d.append(el('p', 'ft-rail-effect', f.effect));
+  const kv = el('dl', 'ft-rail-kv');
+  const pair = (k, v) => { kv.append(el('dt', null, k), el('dd', null, v)); };
+  const rv = c.store === 'mods' ? c.vendor
+    : (Array.isArray(c.also) ? c.also.find((a) => a.store === 'mods')?.vendor : null) ?? null;
+  if (rv) {
+    // UXB1-F: a mod's keys, where a player reading about the mod is already looking
+    const keys = modKeyRows(rv, bindings());
+    if (keys.length) pair(t('menu.features.keysLabel', 'Keys'), t('menu.features.keysList', '{keys} \u2013 {note}', { keys: keys.map((k) => `${k.label}: ${k.key}`).join(' · '), note: featureKeysNote() }));   // L10N4: one pattern
+  }
+  if (kv.children?.length) d.append(kv);
   return d;
 }
 
@@ -1793,7 +2275,7 @@ function write(key, next) {
 }
 
 // ── MODS ─────────────────────────────────────────────────────────
-// There is NO mod system (Ledger C, Not planned - and settings.js:"UI4: the item info"
+// There is NO mod system (Ledger C, Not planned - and systems/settings.js:"UI4: the item info"
 // blocks four keys on exactly that ground). The section still exists,
 // because Mac's call was to set the menus up now, and because a rail
 // that quietly omits mods teaches the player they are impossible.
@@ -1821,8 +2303,8 @@ const ONLINE_LOCK_NOTE = 'Always on online: the shared world uses every enhancem
 /** MODS-ONLINE-2: the Mods pane's own line. The lane's note (above)
  *  is about the PORT's switches and was wrong over the tiles the
  *  moment a mod stopped being forced. */
-const ONLINE_MODS_NOTE = 'Most mods are your choice online. A few are set for everyone in the room so everyone plays on the same ground by the same rules: the ones that change the ground (Basic Roads, World of Daggerfall, Detailed Ships, Iliac Puddle No More\u2019s sea and depth, and There\u2019s a Hole in the Bottom of the Ocean), and every setting of Meaner Monsters, the Combat and Armor Overhaul, Unleveled Loot, Roleplay & Realism, Roleplay & Realism: Items and Oblivion leveling (who stands behind a counter and which leveling your character uses stay yours).';
-const ONLINE_GROUND_NOTE = 'Set for everyone online: it changes the ground itself (roads, camp sites, the shared ship deck, the seafloor and its pits), and everyone in a room has to stand on the same ground. Your own choice comes back offline.';
+const ONLINE_MODS_NOTE = 'Most mods are your choice online. A few are set for everyone in the room so everyone plays on the same ground by the same rules: the ones that change the ground (Basic Roads, World of Daggerfall, Detailed Ships, Iliac Puddle No More\u2019s sea and depth, and There\u2019s a Hole in the Bottom of the Ocean), and every setting of Meaner Monsters, the Combat and Armor Overhaul, Unleveled Loot, Roleplay & Realism, Roleplay & Realism: Items and Oblivion leveling (who stands behind a counter and which leveling your character uses stay yours). Travel Options is on for everyone, so every trip over land is travelled and ships sail only from ports. Immersive Travel is on for everyone too: its carriages stand at every city gate, a driver\u2019s fare is fast travel over land, and its fares and rules are the room\u2019s (how its map looks stays yours).';   // AUDIT IT1 W5: a port's ship passage is fast travel online too
+const ONLINE_GROUND_NOTE = 'Set for everyone online: it changes the ground itself (roads, rivers, camp sites, the shared ship deck, the seafloor and its pits), and everyone in a room has to stand on the same ground. Your own choice comes back offline.';   // AUDIT LANDFORMS C4: the rivers' row is one of the ground's since LANDFORM3 cut their channels
 /** WOD1: the vendors whose room-owned switch is the GROUND's - the two
  *  that write terrain heights (roads' beds, World of Daggerfall's sites). */
 const ONLINE_GROUND_VENDORS = Object.freeze(['roads-hazelnut', 'world-of-daggerfall', 'detailed-ships', 'ocean-holes']);   // DS1: the ships' shared deck   // OH-A: the pits cut into the seafloor
@@ -1846,6 +2328,13 @@ const ONLINE_SETTING_NOTE = 'Set for everyone online: everyone uses the same smi
 /** RAID2: a world event the room shares - its own reason, not the ground's, the ruleset's or a host's foes'. */
 const ONLINE_WORLD_EVENT_VENDORS = Object.freeze(['world-events-raiding-parties']);
 const ONLINE_WORLD_EVENT_NOTE = 'On for everyone online: a raid is shared, so everyone in the town fights the same raiders and every kill counts for all. Your own choice comes back offline.';
+/** TRAVEL-ONLINE: Travel Options' three room switches - the mod and its two journey dials - and their own reason. */
+const ONLINE_TRAVEL_VENDORS = Object.freeze(['travel-options']);
+const ONLINE_TRAVEL_NOTE = 'On for everyone online: every trip over land is travelled, and ships sail only from ports. Your own choice comes back offline.';
+/** IT1: Immersive Travel's two room switches - the mod (its carriages stand at the gates, ground everyone walks among) and
+ *  Disable Normal Travel held off - and their own reason. */
+const ONLINE_CARRIAGE_VENDORS = Object.freeze(['immersive-travel']);
+const ONLINE_CARRIAGE_NOTE = 'Set for everyone online: carriages stand at every city gate, the travel map\u2019s trips stay travelled, and a driver\u2019s fare is fast travel over land, its fares and rules the same for everyone. Your own choice comes back offline.';   // AUDIT IT1 W5
 /** L10N4: the notes above in the player's language. Each constant stays the English identity the ladders below hand
  *  round (and the pins read); a note is turned into words where it is shown (noteText). */
 const NOTE_TEXT = new Map([
@@ -1857,9 +2346,11 @@ const NOTE_TEXT = new Map([
   [ONLINE_BALANCE_NOTE, () => t('menu.online.balanceNote', ONLINE_BALANCE_NOTE)],
   [ONLINE_SETTING_NOTE, () => t('menu.online.settingNote', ONLINE_SETTING_NOTE)],
   [ONLINE_WORLD_EVENT_NOTE, () => t('menu.online.worldEventNote', ONLINE_WORLD_EVENT_NOTE)],
+  [ONLINE_TRAVEL_NOTE, () => t('menu.online.travelNote', ONLINE_TRAVEL_NOTE)],
+  [ONLINE_CARRIAGE_NOTE, () => t('menu.online.carriageNote', ONLINE_CARRIAGE_NOTE)],
 ]);
 const noteText = (note) => NOTE_TEXT.get(note)?.() ?? note;
-const onlineLockNote = (vendor, key) => (ONLINE_GROUND_VENDORS.includes(vendor) || ONLINE_GROUND_KEYS[vendor]?.includes(key) ? ONLINE_GROUND_NOTE : ONLINE_RULESET_KEYS[vendor]?.includes(key) ? ONLINE_RULESET_NOTE : ONLINE_WORLD_EVENT_VENDORS.includes(vendor) ? ONLINE_WORLD_EVENT_NOTE : ONLINE_SHARED_NOTE);
+const onlineLockNote = (vendor, key) => (ONLINE_GROUND_VENDORS.includes(vendor) || ONLINE_GROUND_KEYS[vendor]?.includes(key) ? ONLINE_GROUND_NOTE : ONLINE_RULESET_KEYS[vendor]?.includes(key) ? ONLINE_RULESET_NOTE : ONLINE_WORLD_EVENT_VENDORS.includes(vendor) ? ONLINE_WORLD_EVENT_NOTE : ONLINE_TRAVEL_VENDORS.includes(vendor) ? ONLINE_TRAVEL_NOTE : ONLINE_CARRIAGE_VENDORS.includes(vendor) ? ONLINE_CARRIAGE_NOTE : ONLINE_SHARED_NOTE);   // IT1
 /** REALM P0.2: a key the room owns only because its mod is owned whole wears the balance note; a key the room table names keeps its own. */
 const modLockNote = (vendor, key) => (!Object.hasOwn(ONLINE_ROOM_MOD_KEYS[vendor] ?? {}, key) && onlineWholeModKey(vendor, key, undefined, { offline: true }) ? ONLINE_BALANCE_NOTE : onlineLockNote(vendor, key));
 /** REALM P0.2: a DIAL the room owns online - its steppers and buttons answer nothing, and say why. */
@@ -1880,6 +2371,7 @@ function lockOnline(b, main, { note = ONLINE_LOCK_NOTE, value = true } = {}) {
 function prefRow(key, name, note, { onChange = null, home = false } = {}) {
   if (!home) { const moved = featureForControl('prefs', key); if (moved) return movedRow(moved); }   // FT2: one home per idea, every store
   const row = el('div', 'row');
+  row.dataset.opt = key; row.dataset.pref = key;   // ORG2: the map places a port row by its id; Changed reads its pref
   const main = el('button', 'row-main');
   main.append(el('div', 'row-name', name));
   if (note) main.append(el('div', 'row-note', note));
@@ -1942,6 +2434,7 @@ function choiceRow(key, name, note, tiers, { home = false, read = null, write = 
 /** A stepped number row over a uiPrefs key (TI2's shape). */
 function stepRow(key, name, note, { min, max, step: inc, fmt }) {
   const row = el('div', 'row');
+  row.dataset.opt = key; row.dataset.pref = key;   // ORG2
   const main = el('div', 'row-main');
   main.append(el('div', 'row-name', name));
   if (note) main.append(el('div', 'row-note', note));
@@ -1969,6 +2462,7 @@ function stepRow(key, name, note, { min, max, step: inc, fmt }) {
  *  strings are Claude's drafts says so (Mac: "AI drafts, labeled"). */
 function languageRow() {
   const row = el('div', 'row');
+  row.dataset.opt = 'language'; row.dataset.pref = 'language';   // ORG2: the map finds it by its key (settingsMap port:language)
   const main = el('div', 'row-main');
   const cur = currentLocale();
   main.append(el('div', 'row-name', t('settings.language.name', 'Language')));
@@ -2065,6 +2559,7 @@ function languageOffer() {
  *  a range). `choices` is [id, label] in order; the store holds the id. */
 function slotChoiceRow(key, name, note, choices, current) {
   const row = el('div', 'row');
+  row.dataset.opt = key; row.dataset.pref = key;   // ORG2
   const main = el('div', 'row-main');
   main.append(el('div', 'row-name', name));
   if (note) main.append(el('div', 'row-note', note));
@@ -2087,8 +2582,9 @@ function slotChoiceRow(key, name, note, choices, current) {
  *  at uiPrefs.hudScale). Takes effect at once. */
 function hudScaleRow() {
   const row = el('div', 'row');
+  row.dataset.opt = 'hudScale'; row.dataset.pref = 'hudScale';   // ORG2
   const main = el('div', 'row-main');
-  main.append(el('div', 'row-name', t('menu.hud.scale', 'Gameplay HUD scale')), el('div', 'row-note', t('menu.hud.scaleNote', 'The size of the compass, health bars and effect icons. Takes effect at once.')));
+  main.append(el('div', 'row-name', t('menu.hud.scale', 'Gameplay HUD scale')), el('div', 'row-note', t('menu.hud.scaleNote', 'Compass, bars and effect icons.')));
   row.append(main);
   const ctl = el('div', 'ctl');
   const val = el('span', 'val', `${hudScaleNow().toFixed(2)}\u00d7`);
@@ -2106,16 +2602,43 @@ function hudScaleRow() {
   return row;
 }
 
+/** FIELD BUGS 2026-10-09e MAP-SCALE ("Desktop client in-game map icons and text too small on high resolutions"): the
+ *  held map's interface scale, on the prefs shelf (uiPrefs.mapScale) - Auto (the screen's height over 1080) or a fixed
+ *  scale, stepped through MAP_SCALE_CHOICES (ui/mapScale.js). An open map takes it on its next frame. */
+function mapScaleRow() {
+  const row = el('div', 'row');
+  row.dataset.opt = 'mapScale'; row.dataset.pref = 'mapScale';   // ORG2
+  const main = el('div', 'row-main');
+  main.append(el('div', 'row-name', 'Map text and icons'), el('div', 'row-note', 'The world, town and dungeon maps. Auto grows them on screens taller than 1080p.'));
+  row.append(main);
+  const ctl = el('div', 'ctl');
+  const h = () => globalThis.innerHeight || 0;
+  const val = el('span', 'val', mapScaleLabel(getPref('mapScale'), h()));
+  const step = (dir, label) => {
+    const b = el('button', 'step', label);
+    b.onclick = () => {
+      const next = nextMapScale(getPref('mapScale'), dir);
+      setPref('mapScale', next);
+      val.textContent = mapScaleLabel(next, h());
+    };
+    return b;
+  };
+  ctl.append(step(-1, '\u2039'), val, step(1, '\u203a'));
+  row.append(ctl);
+  return row;
+}
+
 /** HUD-MOVE: LOCK UI and RESET UI. Locked (the default) the HUD stands still and takes no pointer; unlocked, every
  *  piece - the vitals, the hotbar, the chat, the compass, the Overworld's panel and the rest - is outlined in play and
  *  moves with a drag of the freed mouse. Reset puts every piece back where the game stands it. */
 function hudLayoutRows() {
   const lockRow = el('div', 'row');
+  lockRow.dataset.opt = 'hudLock';   // ORG2
   const main = el('button', 'row-main');
   const locked = hudLocked();
   main.append(el('div', 'row-name', t('menu.hud.lock', 'Lock UI')), el('div', 'row-note', locked
-    ? t('menu.hud.lockOn', 'On: the HUD stays where it is. Turn it off (or press Alt+U in game) to move the health bars, hotbar, chat, compass, Overworld panel and the rest.')
-    : t('menu.hud.lockOff', 'Off: in play, free the mouse and drag any outlined piece. Double-click a piece to put it back. Lock it again (or press Alt+U) when you are done.')));
+    ? t('menu.hud.lockOn', 'Turn off (or press Alt+U) to move HUD pieces.')
+    : t('menu.hud.lockOff', 'In play, drag a piece to move it; double-click to put it back.')));
   const flip = () => { setHudLocked(!hudLocked()); render(); };
   main.onclick = flip;
   lockRow.append(main);
@@ -2128,11 +2651,12 @@ function hudLayoutRows() {
 
   // the three bars: moved as one piece, or each on its own
   const barsRow = el('div', 'row');
+  barsRow.dataset.opt = 'hudBars';   // ORG2
   const bmain = el('button', 'row-main');
   const split = hudBarsSplit();
   bmain.append(el('div', 'row-name', t('menu.hud.splitBars', 'Move bars separately')), el('div', 'row-note', split
-    ? t('menu.hud.splitBarsOn', 'On: the health, magicka and fatigue bars each move on their own while the UI is unlocked.')
-    : t('menu.hud.splitBarsOff', 'Off: the health, magicka and fatigue bars move together as one piece.')));
+    ? t('menu.hud.splitBarsOn', 'Each bar moves on its own.')
+    : t('menu.hud.splitBarsOff', 'The three bars move as one.')));
   const bflip = () => { setHudBarsSplit(!hudBarsSplit()); render(); };
   bmain.onclick = bflip;
   barsRow.append(bmain);
@@ -2144,6 +2668,7 @@ function hudLayoutRows() {
   barsRow.append(bctl);
 
   const resetRow = el('div', 'row');
+  resetRow.dataset.opt = 'hudReset';   // ORG2
   const rmain = el('div', 'row-main');
   rmain.append(el('div', 'row-name', t('menu.hud.reset', 'Reset UI')), el('div', 'row-note', t('menu.hud.resetNote', 'Puts every HUD piece you moved back in its usual place.')));
   resetRow.append(rmain);
@@ -2191,28 +2716,70 @@ function outdoorsTestRow() {
 }
 
 
+/** MIDI-OUT1 (2026-10-11, a player asking for MIDI out): THE AUDIO TAB'S PORT ROW - the music on a MIDI device
+ *  (systems/midiOut.js). The button names the device; a click steps to the next one connected, then Off. The first
+ *  click is the one that asks the browser for MIDI, so nothing is asked of a player who never touches the row. */
+export const MIDI_OUT_NAME = 'MIDI out';
+export const MIDI_OUT_NOTE = 'Play the music on a MIDI synth or device.';
+export const MIDI_OUT_NONE = 'This browser has no MIDI.';
+export const MIDI_OUT_DENIED = 'MIDI is blocked for this site.';
+export const MIDI_OUT_EMPTY = 'No MIDI device connected.';
+export const MIDI_OUT_AWAY = 'Not connected - the game\u2019s own synth plays.';
+let midiOutList = null;   // the outputs as last asked - null until the row's first click
+function portRowsAudio() {
+  const can = midiOutSupported();
+  const cur = midiOutName();
+  const note = !can ? MIDI_OUT_NONE
+    : midiOutDenied() ? MIDI_OUT_DENIED
+    : midiOutList && !midiOutList.length ? MIDI_OUT_EMPTY
+    : cur && midiOutList && !midiOutList.some((o) => o.name === cur) ? MIDI_OUT_AWAY
+    : MIDI_OUT_NOTE;
+  const row = el('div', 'row');
+  row.dataset.opt = 'midiOut'; row.dataset.pref = 'midiOut';   // ORG2
+  const main = el('button', 'row-main');
+  main.append(el('div', 'row-name', MIDI_OUT_NAME));
+  main.append(el('div', 'row-note', note));
+  const step = async () => {
+    if (!can) return;
+    midiOutList = await midiOutputs();
+    setMidiOut(nextMidiOut(midiOutName(), midiOutList));
+    render();
+  };
+  main.onclick = step;
+  row.append(main);
+  const ctl = el('div', 'ctl');
+  const b = el('button', 'act rowact', cur || 'Off');
+  b.onclick = step;
+  if (!can) b.disabled = true;
+  ctl.append(b, el('span', `tier ${can ? 'live' : 'unavailable'}`));
+  row.append(ctl);
+  return [row];
+}
+
 /** The CONTROLS category's port rows: the touch layer's knobs, only
  *  where the device reports touch (TI2). */
 function portRowsControls() {
   const out = [];
+  // PAD-CURSOR: a controller's, on every device and both skins - the touch knobs below stay a finger's device's
+  out.push(prefRow('padCursorAssist', 'Controller cursor assist',
+    'Eases the controller\u2019s menu cursor onto buttons.'));
   if (!isTouchDevice()) return out;
   const times = (v) => `${v.toFixed(2)}\u00d7`;
   out.push(stepRow('touchLookSensitivity', t('menu.touch.look', 'Look sensitivity'),
-    t('menu.touch.lookNote', 'How far a thumb\u2019s drag turns the camera, on top of the mouse sensitivity in Controls. '
-    + 'A drag is measured against the screen\u2019s height, so the same sweep turns the same on any phone.'),
+    t('menu.touch.lookNote', 'How far a drag turns the camera.'),
     { min: 0.25, max: 4, step: 0.25, fmt: times }));
   out.push(prefRow('touchAnalogStick', t('menu.touch.analog', 'Analog stick'),
-    t('menu.touch.analogNote', 'The stick\u2019s throw is your speed: a little is a walk, most of the way is a run. '
-    + 'Off is the eight-way stick - any push is a full step.')));
+    t('menu.touch.analogNote', 'Push farther to run. Off: any push is a full step.')));
   // the anchor is a two-way choice, not a switch: a row whose button names the OTHER option
   {
     const fixed = getPref('touchStickAnchor') === 'fixed';
     const row = el('div', 'row');
+    row.dataset.opt = 'touchStickAnchor'; row.dataset.pref = 'touchStickAnchor';   // ORG2
     const main = el('button', 'row-main');
     main.append(el('div', 'row-name', t('menu.touch.stick', 'Stick position')));
     main.append(el('div', 'row-note', fixed
-      ? t('menu.touch.stickFixedNote', 'Fixed: the stick sits bottom-left and waits for your thumb.')
-      : t('menu.touch.stickFloatNote', 'Floating: the stick appears wherever your thumb lands on the left half.')));
+      ? t('menu.touch.stickFixedNote', 'Bottom-left.')
+      : t('menu.touch.stickFloatNote', 'Wherever your thumb lands.')));
     const flip = () => { setPref('touchStickAnchor', fixed ? 'float' : 'fixed'); render(); };
     main.onclick = flip;
     row.append(main);
@@ -2224,8 +2791,7 @@ function portRowsControls() {
     out.push(row);
   }
   out.push(prefRow('touchGyroLook', t('menu.touch.gyro', 'Gyro aim'),
-    t('menu.touch.gyroNote', 'Turn the phone to turn the camera, a degree for a degree, on top of the drag - fine aim without lifting a thumb. '
-    + 'iPhones ask permission for motion the first time.'), {
+    t('menu.touch.gyroNote', 'Tilt the phone to aim.'), {
     // iOS grants motion only from a user gesture - this click is one.
     onChange: (on) => { if (on) { try { globalThis.DeviceMotionEvent?.requestPermission?.()?.catch?.(() => {}); } catch { /* not iOS */ } } },
   }));
@@ -2233,7 +2799,7 @@ function portRowsControls() {
     t('menu.touch.gyroSensitivityNote', 'Degrees of camera per degree of phone.'),
     { min: 0.25, max: 4, step: 0.25, fmt: times }));
   out.push(prefRow('touchHaptics', t('menu.touch.haptics', 'Haptics'),
-    t('menu.touch.hapticsNote', 'A short pulse on a button, when a held finger arms a swing, and when a lock lands. Phones that can.')));
+    t('menu.touch.hapticsNote', 'A short buzz on presses, swings and locks.')));
   // TOUCH-BUTTONS (2026-09-27, Discord: "I haven't been able to remap the android "buttons" on the bottom right of the
   // screen. I would much rather use a button to attack"): the corner's three slots, right to left. Changed here while
   // playing, the corner is re-laid as soon as no finger holds one of its buttons.
@@ -2242,13 +2808,12 @@ function portRowsControls() {
     const slotNames = [t('menu.touch.slot1', 'Corner button'), t('menu.touch.slot2', 'Second button'), t('menu.touch.slot3', 'Third button')];
     TOUCH_BUTTON_SLOTS.forEach((slot, i) => {
       out.push(slotChoiceRow(slot, slotNames[i],
-        i === 0 ? t('menu.touch.slotNote', 'The bottom-right buttons, from the corner in. Attack swings (or casts a readied spell) with one press - the swipe still works too.') : null,
+        i === 0 ? t('menu.touch.slotNote', 'The bottom-right buttons, from the corner in.') : null,
         choices, () => touchButtonSlots(getPref)[i].id));
     });
   }
   out.push(prefRow('touchFullscreen', t('menu.touch.fullscreen', 'Fullscreen on touch'),
-    t('menu.touch.fullscreenNote', 'The first touch asks the browser for fullscreen and a landscape lock. Where the browser will not '
-    + '(Safari on iPhone), add the game to the home screen instead - it opens fullscreen from there.')));
+    t('menu.touch.fullscreenNote', 'Fullscreen on the first touch. On iPhone, add the game to the home screen.')));
   return out.filter(Boolean);   // FT13: a pref that lives on the home draws nothing
 }
 
@@ -2260,17 +2825,21 @@ function portRowsInterface({ pause = false } = {}) {
   if (!pause) out.push(languageRow());   // L10N1b: the front door's alone - a running game is the language it booted in
   if (!pause) { const packRow = translationPackRow(); if (packRow) out.push(packRow); }   // L10N3b: and its translation pack
   out.push(hudScaleRow());
+  out.push(mapScaleRow());   // MAP-SCALE
+  out.push(prefRow('standingAll', 'Every faction\'s standing',
+    'Your reputation with every guild, temple, knightly order, kingdom, coven, vampire clan and Daedric Prince on the character sheet\'s Standing page - not only the ones you belong to.'));   // EVERY-STANDING
   if (isEnhanced()) out.push(...hudLayoutRows());   // HUD-MOVE: the Enhanced Plus HUD's own - Classic draws none of it
   // FOEBAR1: the target bar's face is a two-way choice, not a switch - the
   // stick-position row's shape: a row whose button names the OTHER option.
   {
     const blade = getPref('foeBarStyle') === 'blade';
     const row = el('div', 'row');
+    row.dataset.opt = 'foeBarStyle'; row.dataset.pref = 'foeBarStyle';   // ORG2
     const main = el('button', 'row-main');
     main.append(el('div', 'row-name', t('menu.hud.foeBar', 'Target bar')));
     main.append(el('div', 'row-note', blade
-      ? t('menu.hud.foeBarBladeNote', 'Blade: the twin blades under the compass recede toward their hub as the foe\u2019s health falls.')
-      : t('menu.hud.foeBarBarNote', 'Bar: the plain track under the compass. Takes effect at once.')));
+      ? t('menu.hud.foeBarBladeNote', 'Twin blades under the compass.')
+      : t('menu.hud.foeBarBarNote', 'A plain bar under the compass.')));
     const flip = () => { setPref('foeBarStyle', blade ? 'bar' : 'blade'); render(); };
     main.onclick = flip;
     row.append(main);
@@ -2282,8 +2851,7 @@ function portRowsInterface({ pause = false } = {}) {
     out.push(row);
   }
   out.push(prefRow('showFps', t('menu.hud.fps', 'FPS counter'),
-    t('menu.hud.fpsNote', 'Frames a second in the top-right corner, with the frame\u2019s milliseconds and the slowest frame of the '
-    + 'last second. Takes effect at once. ?fps in the address bar forces it on for a probe.')));
+    t('menu.hud.fpsNote', 'Frame rate in the top-right corner.')));
   if (!pause) out.push(prefRow('skipStartVideo', skipStartVideoName(), skipStartVideoNote()));   // UXB1-A: read at launch, so the front door's alone - as the skin's
   return out.filter(Boolean);   // FT13
 }
@@ -2291,9 +2859,7 @@ function portRowsInterface({ pause = false } = {}) {
 /** UXB1-A (2026-09-25, the UX backlog: '"Skip Start Video" in the options ... Disabled by default, of course.'):
  *  the row's words. The switch is uiPrefs' skipStartVideo, read by main.js at the front door. */
 export const SKIP_START_VIDEO_NAME = 'Skip start video';
-export const SKIP_START_VIDEO_NOTE = 'Open straight onto the main menu, without the opening film (on the classic skin, '
-  + 'without the splash video before the title too). The menu\u2019s music still plays. Takes effect the next time '
-  + 'the game starts.';
+export const SKIP_START_VIDEO_NOTE = 'Open straight onto the main menu. Applies next launch.';
 /** L10N4: the row's words in the player's language (the constants stay the English the pins read). */
 export const skipStartVideoName = () => t('menu.skipVideo.name', SKIP_START_VIDEO_NAME);
 export const skipStartVideoNote = () => t('menu.skipVideo.note', SKIP_START_VIDEO_NOTE);
@@ -2304,10 +2870,9 @@ export const skipStartVideoNote = () => t('menu.skipVideo.note', SKIP_START_VIDE
  *  lives - nothing hidden. The confirm is the one sheet every destructive-looking press here takes (`ask`), and the
  *  repair's own line replaces the row's note until the menu is mounted again. */
 let questRepairSaid = null;
-export const QUEST_REPAIR_NOTE = 'Puts back the people, items, foes and map marks your active quests are missing. Your progress is kept.';
+export const QUEST_REPAIR_NOTE = 'Restores missing quest people, items, foes and map marks. Progress is kept.';
 export const QUEST_REPAIR_AWAY = 'In a game: open Settings from the pause menu.';
-export const QUEST_REPAIR_ASK = 'Puts back the people, items, foes and map marks your active quests are missing. '
-  + 'Nothing a quest did on purpose is undone, and your progress is kept.';
+export const QUEST_REPAIR_ASK = 'Restores missing quest people, items, foes and map marks. Progress is kept.';
 /** L10N4: the repair's words in the player's language (the constants stay the English the pins read). */
 const questRepairNote = () => t('menu.questRepair.note', QUEST_REPAIR_NOTE);
 const questRepairAway = () => t('menu.questRepair.away', QUEST_REPAIR_AWAY);
@@ -2315,6 +2880,7 @@ const questRepairAsk = () => t('menu.questRepair.ask', QUEST_REPAIR_ASK);
 function portRowsGame({ pause = false } = {}) {
   const can = pause && typeof hooks?.repairQuests === 'function';
   const row = el('div', 'row');
+  row.dataset.opt = 'questRepair';   // ORG2
   if (!can) row.dataset.live = '0';
   const main = el('div', 'row-main');
   main.append(el('div', 'row-name', t('menu.questRepair.name', 'Repair active quests')));
@@ -2333,16 +2899,21 @@ function portRowsGame({ pause = false } = {}) {
   };
   ctl.append(b, el('span', `tier ${can ? 'live' : 'unavailable'}`));
   row.append(ctl);
-  return [row];
+  return [row, techniqueMotionRow()];
+}
+/** TECH-FX (bible/05-Combat/Weapon-Techniques.md THE FEEL): how much a weapon technique moves the screen - every device,
+ *  both skins; Settings > Accessibility > Motion lists it (ui/settingsMap.js). */
+function techniqueMotionRow() {
+  const row = choiceRow('techniqueMotion', 'Technique camera motion',
+    'How much a weapon technique shakes and tilts the view and dips your hands.',
+    [[1, 'Full'], [0.75, '75%'], [0.5, 'Half'], [0.25, 'Low'], [0, 'Off']]);
+  if (row?.dataset) { row.dataset.opt = 'techniqueMotion'; row.dataset.pref = 'techniqueMotion'; }   // ORG2: the map finds it by its key
+  return row;
 }
 
-/** Every port-own row of a category, or none. */
-function portRows(catId, opts = {}) {
-  if (catId === 'game') return portRowsGame(opts);   // QREPAIR
-  if (catId === 'controls') return portRowsControls(opts);   // FT12: the Enhanced category is gone - its switches are the Features home's, its test door the Test Room's
-  if (catId === 'interface') return portRowsInterface(opts);
-  return [];
-}
+/** FPS-VSYNC: a key the desktop shell reads at its next launch does something here too - drawn flat with the live
+ *  ones (never at pause, whose rows take effect at once). */
+function drawsFlat(key) { const t = tierOf(key); return t === 'live' || t === 'restart'; }
 
 /** The tiers a category folds: SAVED FOR LATER (stored, unread) and
  *  NOT AVAILABLE HERE (fixed by the browser or a port choice). Each is
@@ -2373,29 +2944,9 @@ function tierGroup(catId, tier, title, blurb, keys) {
   return g;
 }
 
-/** A category's rows, in order: the port's own, the store keys that do
- *  something here flat (drawsFlat), then the two folded tiers. */
-function categoryRows(catId) {
-  const keys = paneKeys(catId);   // FT13: the moved keys are the home's
-  const out = [...portRows(catId)];
-  for (const key of keys) if (drawsFlat(key)) { const r = settingRow(key); if (r) out.push(r); }
-  for (const [tier, title, blurb] of TIER_GROUPS) {
-    const ks = keys.filter((k) => tierOf(k) === tier);
-    if (ks.length) out.push(tierGroup(catId, tier, title(), blurb(), ks));
-  }
-  return out;
-}
-
-/** FPS-VSYNC: a key the desktop shell reads at its next launch does something here too - drawn flat with the live
- *  ones (never in Quick Settings, whose rows take effect at once). */
-function drawsFlat(key) { const t = tierOf(key); return t === 'live' || t === 'restart'; }
-
-/** What the sub-rail counts: the rows that DO something here. */
-const liveCount = (catId) => portRows(catId).filter((r) => r.dataset?.live !== '0').length + paneKeys(catId).filter(drawsFlat).length;   // FT13: what is drawn; QREPAIR: a row greyed here does nothing here
 
 /** MWA4: what the Morrowind files do, in the card's one line. */
-export const MW_CARD_LINE = 'Your own Morrowind files (Morrowind.bsa and Morrowind.esm, with Tribunal and Bloodmoon if you have them) '
-  + 'draw your character in 3D. They stay in this browser.';
+export const MW_CARD_LINE = 'Your Morrowind.bsa and Morrowind.esm draw your character in 3D. They stay in this browser.';
 /** L10N4: the card's line in the player's language (MW_CARD_LINE stays the English the pins read). */
 export const mwCardLine = () => t('menu.mw.line', MW_CARD_LINE);
 /** MWA4: the arms' state in words - the one row the card keeps beside the data count. */
@@ -2479,26 +3030,56 @@ export function morrowindCard({ count = morrowindDataCount(), armState = fpArm.s
 function peerSpritesCard() {
   const c = el('div', 'card');
   c.append(el('h3', null, t('menu.peers.title', 'Other players')));
-  c.append(el('p', 'meta', t('menu.peers.blurb',
-    'Players without a Morrowind body are drawn as the Eye of the Beholder sprite they picked, or, without one, '
-    + 'as their class (a Warrior looks like a Warrior, a Mage like a Mage), moving as they move.')));   // DISC23-B: the chosen set first, the class only for a player without one
+  c.append(el('p', 'meta', t('menu.peers.blurb', 'Players without a Morrowind body show as their chosen sprite, or their class.')));   // DISC23-B: the chosen set first, the class only for a player without one
   c.append(prefRow('peerClassSprites', t('menu.peers.sprite', 'Animated sprite'), t('menu.peers.spriteNote', 'On: the sprite above. Off: the paperdoll.'), { home: true }));
-  c.append(prefRow('peerAttackSounds', t('menu.peers.attack', 'Attack sounds'), t('menu.peers.attackNote', 'On: hear other players\u2019 weapon swings. Off: silent, no matter how close.'), { home: true }));   // PEER-FS1: the two peer-sound switches, beside the sprite one
-  c.append(prefRow('peerFootsteps', t('menu.peers.footsteps', 'Footstep sounds'), t('menu.peers.footstepsNote', 'On: hear other players\u2019 footsteps as they walk. Off: silent, no matter how close.'), { home: true }));
+  c.append(prefRow('peerAttackSounds', t('menu.peers.attack', 'Attack sounds'), t('menu.peers.attackNote', 'Hear other players\u2019 weapon swings.'), { home: true }));   // PEER-FS1: the two peer-sound switches, beside the sprite one
+  c.append(prefRow('peerFootsteps', t('menu.peers.footsteps', 'Footstep sounds'), t('menu.peers.footstepsNote', 'Hear other players\u2019 footsteps.'), { home: true }));
+  // PEER-RANGE (2026-10-10, the owner: "the rendering of players far out is contributing to poor performance"): far
+  // players, not drawn - the near tier is inside a player's shot (200 m), and the row says so; the row reads the law's own
+  // answer, so a stored value that is no tier shows the 300 m it stands for (AUDIT PEER-RANGE A L2)
+  c.append(choiceRow('peerRange', t('menu.peers.range', 'Draw distance'),
+    t('menu.peers.rangeNote', 'How far away other players are drawn. Your party and your duel opponent always show. Nearer is faster; 150 m can hide an archer.'),
+    PEER_RANGE_TIERS.map((m) => [m, m ? t('menu.peers.metres', '{m} m', { m }) : t('menu.peers.everyone', 'Everyone')]), { home: true, read: () => peerRangeOf(getPref('peerRange')) }));
+  // YARD-RANGE (2026-10-11, a player: "20-40 fps in cities"): how far their yards' decorations are drawn - none, nearer, or
+  // as far as ever; one's own yard always (scenes/homeYards.js)
+  c.append(choiceRow('yardRange', t('menu.peers.yards', 'Yard decorations'),
+    t('menu.peers.yardsNote', 'How far away other players\u2019 yard decorations are drawn. Your own yard always shows. Nearer is faster in busy towns.'),
+    YARD_RANGE_TIERS.map((m) => [m, m ? t('menu.peers.metres', '{m} m', { m }) : t('menu.toggle.off', 'Off')]), { home: true, read: () => yardRangeOf(getPref('yardRange')) }));
+  // GATE-CROWD (2026-10-07, Mac: "some type of filter when there are too many people"): a crowded court, thinned
+  c.append(choiceRow('gateCrowd', t('menu.peers.crowd', 'Crowd in the Burning Court'),
+    t('menu.peers.crowdNote', 'How many players the Burning Court draws. Your party always shows.'),
+    GATE_CROWD_TIERS.map((n) => [n, n ? t('menu.peers.nearest', 'Nearest {n}', { n }) : t('menu.peers.everyone', 'Everyone')]), { home: true }));
   // SPELL-GIFT (2026-09-27, Tabitha: "Allow casting of buffs on players outside party"): the receiver's say
   c.append(prefRow('acceptStrangerSpells', t('menu.peers.spells', 'Spells from strangers'),
-    t('menu.peers.spellsNote', 'On: players outside your party can cast healing and protective spells on you - Heal, Regenerate, Cure, Fortify, '
-    + 'Shield, Spell Absorption, the resistances, Jumping and Water Breathing, nothing else. Off: only your party can.'), { home: true }));
+    t('menu.peers.spellsNote', 'Let players outside your party cast healing and protective spells on you.'), { home: true }));
   // REST-OPT (2026-09-27, Tabitha: "Allow party members to choose not to rest with their party")
   c.append(prefRow('restWithParty', t('menu.peers.rest', 'Rest with my party'),
-    t('menu.peers.restNote', 'On: in a party your rest is the party\u2019s - a vote, and everyone near sleeps together. Off: you rest on your own, '
-    + 'and the party rests without you. A leader who turns it off leaves everyone to rest for themselves.'), { home: true }));
+    t('menu.peers.restNote', 'Sleep when a party member within 15 m sleeps at a fire, a tent or a bed.'), { home: true }));   // AUDIT REST: REST5's night, no vote
   // TV3 (2026-09-28, bible/06-Systems/Travel-View.md): being SEEN - the region's travellers see where you are
   c.append(prefRow('showToTravellers', t('menu.peers.show', 'Show me to travellers in my region'),
-    t('menu.peers.showNote', 'On: when you are outdoors, players in your region see you on the overworld and the map, and you see them. '
-    + 'Off: only your party and players nearby know where you are, and you still see those who show themselves. '
+    t('menu.peers.showNote', 'Outdoors, players in your region see you on the overworld and the map. '
     + 'Nothing is shared from indoors except with your party. Kept on this device.'), { home: true }));   // AUDIT DEEP2 C5: the party pose rides from indoors too
+  // CHAT-LANG, CHAT-COLOURS, PING1 (2026-10-11, the players: "More chat channels per-language", "Chat color-coding per
+  // channel", "A unique color or alert for @name pings"): the chat's own three, beside the other players'
+  c.append(el('h3', null, t('menu.chat.title', 'Chat')));
+  c.append(choiceRow('chatLang', t('menu.chat.lang', 'Language channel'),
+    t('menu.chat.langNote', 'A chat tab for players who speak your language, wherever they are. /lang in the chat chooses it too.'),
+    [['', t('menu.toggle.off', 'Off')], ...Object.entries(CHAT_LANGS).map(([code, name]) => [code, name])], { home: true }));
+  c.append(prefRow('chatChannelColours', t('menu.chat.colours', 'Chat colours by channel'),
+    t('menu.chat.coloursNote', 'World white, Region green, Guild purple, Local grey, Party teal, Language rose.'), { home: true }));
+  c.append(prefRow('chatPingSound', t('menu.chat.ping', 'Chime when someone @mentions you'),
+    t('menu.chat.pingNote', 'A line with @YourName is always marked in gold; this adds a chime.'), { home: true }));
   return c;
+}
+
+/** AUDIT VE R2: THE TEXTURE STORE, READ BEFORE A CARD READS THE TEXTURE-MOD DOOR. The enhanced main menu runs before
+ *  any host boots, and the store's mods register at a host's boot - so the Texture Overhaul card and the packs card read
+ *  a door holding the shipped mods alone. The first pane that reads the door begins the page's registration
+ *  (dataSource.js textureStoreRegistered), and the menu is drawn again when it lands. */
+let _storeWait = null;
+function waitForTextureStore() {
+  if (textureStoreSettled() || _storeWait) return;
+  _storeWait = textureStoreRegistered().catch(() => 0).finally(() => { _storeWait = null; render(); });
 }
 
 /** M-EXT: the replacement packs - music and textures - attach here.
@@ -2507,13 +3088,21 @@ function peerSpritesCard() {
  *  behind the same confirm Delete Save uses - and Daggerfall Unity .dfmod texture mods (DREAM and its kin) attach
  *  as files, each listed with its own Remove. */
 function packsCard() {
+  waitForTextureStore();   // AUDIT VE R2: the attached mods registered before they are listed - a host may not have yet
+  installVanillaEnhancedPack();   // VE4: the shipped mods are listed even before a host has registered the store
   const c = el('div', 'card');
   c.append(el('h3', null, t('menu.packs.title', 'Replacement packs')));
-  c.append(el('p', 'meta', t('menu.packs.blurb', 'Your own music (a folder of tracks named as DFU\u2019s replacement music expects), sounds, texture packs and Daggerfall Unity texture mods (.dfmod), stored in this browser like ARENA2. Nothing uploads.')));
+  c.append(el('p', 'meta', t('menu.packs.blurb', 'Your own music, sounds and texture packs (.dfmod), kept in this browser.')));
   let mods = attachedDfmods();
+  const attached = mods.filter((m) => !m.shipped);   // VE4: what the player attached - the shipped mods are never removed
+  const builtIn = mods.length - attached.length;
   c.append(el('p', 'meta', t('menu.packs.supplied', 'Music files supplied: {music} \u00b7 Texture files supplied: {textures} \u00b7 Sound files supplied: {sounds}', { music: replacementCount(), textures: textureReplacementCount(), sounds: soundReplacementCount() })));   // the row reports what the pick covers
   c.append(stats([
-    [t('menu.packs.textureMods', 'Texture mods'), mods.length ? t('menu.packs.textureModsAttached', '{n} attached \u00b7 {inUse} textures in use', { n: mods.length, inUse: bundleTextureCount() }) : t('menu.packs.none', 'none')],
+    [t('menu.packs.textureMods', 'Texture mods'), attached.length || builtIn
+      ? (builtIn
+        ? t('menu.packs.textureModsBuiltIn', '{n} attached \u00b7 {builtIn} built in \u00b7 {inUse} textures in use', { n: attached.length, builtIn, inUse: bundleTextureCount() })
+        : t('menu.packs.textureModsAttached', '{n} attached \u00b7 {inUse} textures in use', { n: attached.length, inUse: bundleTextureCount() }))
+      : t('menu.packs.none', 'none')],
   ]));
   /** A removal behind the confirm; a storage failure is logged and costs nothing else. */
   const remove = (label, title, body, run) => ({ label, onClick: () => ask(title, body, t('menu.packs.removeYes', 'Remove'), async () => {
@@ -2523,9 +3112,9 @@ function packsCard() {
   // L10N4: "It takes full effect the next time an area loads." closes two of the sentences below - each its own whole pattern
   c.append(acts([
     { label: t('menu.packs.attachMusic', 'Attach music pack'), onClick: async () => { const ds = await import('../scenes/dataSource.js'); await ds.pickMusicFolder(); render(); } },
-    ...(replacementCount() > 0 ? [remove(t('menu.packs.removeMusic', 'Remove music pack'), t('menu.packs.removeMusic', 'Remove music pack'), t('menu.packs.removeMusicBody', 'This clears your music files from this browser; Daggerfall\u2019s own songs play again. A sound pack stays.'), (d) => d.clearStoredMusic())] : []),
+    ...(replacementCount() > 0 ? [remove(t('menu.packs.removeMusic', 'Remove music pack'), t('menu.packs.removeMusic', 'Remove music pack'), t('menu.packs.removeMusicBody', 'This clears your music files from this browser; the original game\u2019s own songs play again. A sound pack stays.'), (d) => d.clearStoredMusic())] : []),
     { label: t('menu.packs.attachSound', 'Attach sound pack'), onClick: async () => { const ds = await import('../scenes/dataSource.js'); await ds.pickSoundFolder(); render(); } },   // SNDREP1
-    ...(soundReplacementCount() > 0 ? [remove(t('menu.packs.removeSound', 'Remove sound pack'), t('menu.packs.removeSound', 'Remove sound pack'), t('menu.packs.removeSoundBody', 'This clears your sound files from this browser; Daggerfall\u2019s own sounds play again. A music pack stays.'), (d) => d.clearStoredSounds())] : []),
+    ...(soundReplacementCount() > 0 ? [remove(t('menu.packs.removeSound', 'Remove sound pack'), t('menu.packs.removeSound', 'Remove sound pack'), t('menu.packs.removeSoundBody', 'This clears your sound files from this browser; the original game\u2019s own sounds play again. A music pack stays.'), (d) => d.clearStoredSounds())] : []),
     { label: t('menu.packs.attachTexture', 'Attach texture pack'), onClick: async () => { const ds = await import('../scenes/dataSource.js'); await ds.pickTextureFolder(); render(); } },
     ...(textureReplacementCount() > 0 ? [remove(t('menu.packs.removeTexture', 'Remove texture pack'), t('menu.packs.removeTexture', 'Remove texture pack'), t('menu.packs.removeTextureBody', 'This clears the loose texture files (a folder pick) from this browser. Attached .dfmod texture mods stay. It takes full effect the next time an area loads.'), (d) => d.clearStoredTexturePack())] : []),
   ]));
@@ -2536,7 +3125,7 @@ function packsCard() {
   const lighting = mods.filter(isIilMod);
   mods = mods.filter((m) => !isIilMod(m));
   c.append(el('h3', null, t('menu.packs.lighting', 'Lighting mod')));
-  c.append(el('p', 'meta', t('menu.packs.lightingBlurb', 'Improved Interior Lighting (ShortBeard, or BlazeBlue32\u2019s fixed version): warm, flickering lights in buildings and dungeons, fireplace lights and a warm torch - with shadows if you choose. Pick its .dfmod file (inside the download\u2019s Mods folder). Switch it in Features \u2192 Sight \u2192 Modded lighting.')));
+  c.append(el('p', 'meta', t('menu.packs.lightingBlurb', 'Improved Interior Lighting: warm lights in buildings and dungeons. Pick its .dfmod, then turn it on in {path}.', { path: optionPath('feat:modded-lighting') })));   // ORG2
   for (const m of lighting) {
     const row = el('div', 'card');
     row.append(el('p', null, `${m.title}${m.version ? ` ${m.version}` : ''}${m.author ? ` \u00b7 ${m.author}` : ''}`));
@@ -2552,13 +3141,34 @@ function packsCard() {
   const seen = new Map();
   for (const m of mods) { const k = sameTitle(m.title); seen.set(k, (seen.get(k) ?? 0) + 1); }
   if ([...seen.values()].some((n) => n > 1)) c.append(el('p', 'meta', t('menu.packs.twoVersions', 'Two versions of the same mod are attached (for example DREAM and DREAM 90s). Only one of them shows for each texture and both use memory - remove one.')));
-  c.append(el('p', 'meta', t('menu.packs.dfmodsBlurb', 'Daggerfall Unity texture mods - DREAM\u2019s sprites, NPCs, mobs, paperdoll, portraits, backgrounds and world textures, and mods like them. Pick the .dfmod files themselves; you can pick several at once. Mod scripts do not run.')));
+  c.append(el('p', 'meta', t('menu.packs.dfmodsBlurb', 'Daggerfall Unity texture mods - DREAM\u2019s sprites, NPCs, mobs, paperdoll, portraits, backgrounds and world textures, and mods like them. Pick the .dfmod files themselves; you can pick several at once. Mod scripts do not run. Vanilla Enhanced ships with the game (the Texture Overhaul card wears it); a copy you attach is read instead of the built-in one.')));
+  // VE1: listed in load order - a mod loads after the mods it depends on, and where two carry the same texture the one
+  // loaded later is drawn (DFU's ModManager)
+  if (mods.length > 1) c.append(el('p', 'meta', t('menu.packs.loadOrder', 'In load order: where two mods carry the same texture, the later one is drawn. A mod always loads after the mods it is built on.')));
+  if (!textureStoreSettled()) c.append(el('p', 'meta', t('menu.packs.reading', 'Reading your attached texture mods\u2026')));   // AUDIT VE R2
   for (const m of mods) {
     const row = el('div', 'card');
     row.append(el('p', null, `${m.title}${m.version ? ` ${m.version}` : ''}${m.author ? ` \u00b7 ${m.author}` : ''}`));
-    row.append(el('p', 'meta', t('menu.packs.inBundle', '{n} textures in the bundle', { n: m.textures })));
+    row.append(el('p', 'meta', m.shipped
+      ? (m.enabled ? t('menu.packs.shipped', 'Ships with the game \u00b7 {n} textures', { n: m.textures }) : t('menu.packs.shippedOff', 'Ships with the game \u00b7 {n} textures \u00b7 switched off', { n: m.textures }))
+      : (m.enabled ? t('menu.packs.inBundle', '{n} textures in the bundle', { n: m.textures }) : t('menu.packs.inBundleOff', '{n} textures in the bundle \u00b7 switched off', { n: m.textures }))));
     if (m.error) row.append(el('p', 'meta', t('menu.packs.notWorking', 'Not working: {error}.', { error: m.error })));   // DFMOD2: said where the Remove is
-    row.append(acts([remove(t('menu.packs.removeYes', 'Remove'), t('menu.packs.removeMod', 'Remove {mod}', { mod: m.title }), t('menu.packs.removeModBody', 'This clears {mod} from this browser. It takes full effect the next time an area loads.', { mod: m.title }), (d) => d.removeStoredDfmod(m.key))]));
+    row.append(acts([
+      // VE3: DFU's mod window switches a mod off without removing it (Mod.Enabled); the Texture Overhaul card does the same
+      { label: m.enabled ? t('menu.packs.switchOff', 'Switch off') : t('menu.packs.switchOn', 'Switch on'), onClick: () => { setDfmodEnabled(m.key, !m.enabled); render(); } },
+      // VE4: a shipped mod is switched, never removed - it is not in this browser's store
+      ...(m.shipped ? [] : [remove(t('menu.packs.removeYes', 'Remove'), t('menu.packs.removeMod', 'Remove {mod}', { mod: m.title }), t('menu.packs.removeModBody', 'This clears {mod} from this browser. It takes full effect the next time an area loads.', { mod: m.title }), (d) => d.removeStoredDfmod(m.key))]),
+    ]));
+    c.append(row);
+  }
+  // AUDIT VE R5/R11: a stored mod that did not register - still being read, one that will not read, or the page opened
+  // with ?nomods - is listed with why, and its Remove: it was listed nowhere, so a mod that would not read could not go
+  for (const u of unregisteredDfmods()) {
+    const row = el('div', 'card');
+    row.append(el('p', null, u.fileName));
+    row.append(el('p', 'meta', u.state === 'indexing' ? t('menu.packs.indexing', 'Being read - it joins the load order when that is done.')
+      : u.state === 'nomods' ? t('menu.packs.nomods', 'Not loaded: this page was opened with ?nomods.') : t('menu.packs.notWorking', 'Not working: {error}.', { error: u.error })));
+    row.append(acts([remove(t('menu.packs.removeYes', 'Remove'), t('menu.packs.removeMod', 'Remove {mod}', { mod: u.fileName }), t('menu.packs.removeModBody', 'This clears {mod} from this browser. It takes full effect the next time an area loads.', { mod: u.fileName }), (d) => d.removeStoredDfmod(u.key))]));
     c.append(row);
   }
   // DFMOD2: TEXTURE DETAIL - the longest side a mod's picture is decoded at (a smaller mip past it). Full-resolution
@@ -2569,8 +3179,8 @@ function packsCard() {
   c.append(el('p', 'meta', t('menu.packs.detailNote', 'Texture detail: {detail}. Higher looks sharper and takes more memory and loading time; \u201cfull\u201d can run out of memory with HD packs. A change applies to areas loaded after it.', { detail: detailLabel })));
   c.append(acts([
     { label: t('menu.packs.detail', 'Texture detail: {detail}', { detail: detailLabel }), onClick: () => { setPref('dfmodTextureDetail', nextDetail()); render(); } },
-    { label: t('menu.packs.addDfmods', 'Add texture mods'), primary: !mods.length, onClick: async () => { const ds = await import('../scenes/dataSource.js'); await ds.pickDfmodFiles(); render(); } },
-    ...(mods.length > 1 ? [remove(t('menu.packs.removeAllDfmods', 'Remove all texture mods'), t('menu.packs.removeAllDfmods', 'Remove all texture mods'), t('menu.packs.removeAllDfmodsBody', 'This clears every attached .dfmod texture mod from this browser. It takes full effect the next time an area loads.'), (d) => d.clearStoredDfmods())] : []),
+    { label: t('menu.packs.addDfmods', 'Add texture mods'), primary: !mods.some((m) => !m.shipped), onClick: async () => { const ds = await import('../scenes/dataSource.js'); await ds.pickDfmodFiles(); render(); } },
+    ...(mods.filter((m) => !m.shipped).length + unregisteredDfmods().length > 1 ? [remove(t('menu.packs.removeAllDfmods', 'Remove all texture mods'), t('menu.packs.removeAllDfmods', 'Remove all texture mods'), t('menu.packs.removeAllDfmodsBody', 'This clears every attached .dfmod texture mod from this browser; the built-in ones stay. It takes full effect the next time an area loads.'), (d) => d.clearStoredDfmods())] : []),
   ]));
   return c;
 }
@@ -2580,38 +3190,9 @@ function packsCard() {
 function nightSoundsCard() {
   const c = el('div', 'card');
   c.append(el('h3', null, t('menu.night.title', 'Night sounds')));
-  c.append(prefRow('nightCrickets', t('menu.night.crickets', 'Crickets'), t('menu.night.cricketsNote', 'On: the crickets chirp outdoors on clear nights. Off: silent.'), { home: true }));
-  c.append(prefRow('distantHowl', t('menu.night.howl', 'Distant howl'), t('menu.night.howlNote', 'On: the far-off howl near graveyards. Off: silent.'), { home: true }));
+  c.append(prefRow('nightCrickets', t('menu.night.crickets', 'Crickets'), t('menu.night.cricketsNote', 'Outdoors on clear nights.'), { home: true }));
+  c.append(prefRow('distantHowl', t('menu.night.howl', 'Distant howl'), t('menu.night.howlNote', 'Near graveyards.'), { home: true }));
   return c;
-}
-
-// FT14 (2026-09-15): THE MODS PANE IS GONE. Every vendored mod's
-// switch was already a tile on the features home (FT9), and its
-// modules and curated dials open inside that tile now, so the pane's
-// own reason - "the mod's other knobs live somewhere" - is spent.
-//
-// Three things it also carried were never mod settings and needed a
-// home rather than a deletion: the Morrowind assets card, the texture
-// packs' door, and DFU's four switches for ITS mod system. They stand
-// under the tiles on the same screen, where a player who came looking
-// for "mods" now arrives - the assets card at the head of the list
-// since MWA4.
-//
-// What is NOT drawn any more is the full key list per vendor - that is
-// the 360-key scroll the tiles replace, and features.js MOD_CURATED
-// carries the reasoning and the door back for a key that earns one.
-function modsFooter(body) {
-  if (isOnlinePage()) body.append(el('p', 'meta', noteText(ONLINE_MODS_NOTE)));   // MODS-ONLINE-2: said once, under the tiles - and it says what is actually true of the MODS pane
-  body.append(peerSpritesCard()); // 2026-09-17: other players' look, without a Morrowind body of their own
-  body.append(packsCard());       // SO1/M-EXT: the packs' door, off the launcher
-  body.append(nightSoundsCard()); // SNDREP1: crickets and howl, on or off
-  const c = el('div', 'card');
-  c.append(el('h3', null, t('menu.mods.dfuSystem', "Daggerfall Unity\u2019s own mod system")));
-  for (const key of ['Enhancements/LypyL_ModSystem', 'Enhancements/AssetInjection',
-    'Enhancements/CompressModdedTextures', 'Experimental/CustomBooksImport']) {
-    put(c, settingRow(key));
-  }
-  body.append(c);
 }
 
 /** One row over a vendored mod's own switch (ROADS 24), writing through
@@ -2763,7 +3344,7 @@ export function tileStates(f) {   // FT18: exported for the All off pins, which 
       const found = c.tiers.findIndex(([v]) => String(v) === cur);
       const at = found >= 0 ? found : fallback;
       return { labels: c.tiers.map(([, l]) => l), at, locked,
-        set: (i) => (c.write ?? ((v) => setPref(c.key, v)))(c.tiers[i][0]) };
+        set: (i) => { (c.write ?? ((v) => setPref(c.key, v)))(c.tiers[i][0]); TILE_AFTER[c.key]?.(); } };   // MW-STEEL1: a choice's after-step too (the Steel Helm)
     }
     return { labels: ['Off', 'On'], shown: toggleWords(), at: getPref(c.key) ? 1 : 0, locked,
       set: (i) => { setPref(c.key, i === 1); TILE_AFTER[c.key]?.(); } };
@@ -2815,13 +3396,15 @@ export function classicSegment(f, st) {
  *  standing body: the Morrowind card's own row that did it stopped drawing at FT13 (the key moved here, and
  *  `prefRow` answers nothing for a moved key), so since then the tile wrote the pref and the body kept the old
  *  holster until the next build - while the row's effect line promised it at once. */
+const rebuildMorrowindBody = async () => {
+  if (!morrowindDataCount() || !playerEntity?.chargenDone) return;   // MWA4: attached is on - a character in play wears it
+  const { buildArmsFor } = await import('../combat/weaponRig.js');
+  await buildArmsFor(playerEntity);
+  render();
+};
 const TILE_AFTER = Object.freeze({
-  mwSheathing: async () => {
-    if (!morrowindDataCount() || !playerEntity?.chargenDone) return;   // MWA4: attached is on - a character in play wears it
-    const { buildArmsFor } = await import('../combat/weaponRig.js');
-    await buildArmsFor(playerEntity);
-    render();
-  },
+  mwSheathing: rebuildMorrowindBody,
+  mwSteelHelm: rebuildMorrowindBody,   // MW-STEEL1: the steel helm's style, closed or open, on the standing body at once
 });
 
 /**
@@ -2863,35 +3446,37 @@ function segBar(st, label) {
   return seg;
 }
 
-/** FT14: which tile the reading rail is showing, and which tile has its
- *  drawer open. Both survive a `render()`, so pressing a segment does
- *  not close the drawer you pressed it in. */
-let featureSel = null;
+/** FT14: which row has its drawer open. It survives a `render()`, so pressing a segment does not close the drawer you
+ *  pressed it in. (ORG2: which row the help pane reads is `pickedFeature`.) */
 let featureOpen = null;
 
-/** FT14: one feature, as a tile. (Exported for DISC23-C's pins, which press its bar against a fake document.) */
+/** FT14: one feature. ORG2: AS A ROW of the one Settings screen - its name and labels on the left (a press picks it for
+ *  the help pane, which carries its words), its bar on the right, and its drawer beneath. (Exported for
+ *  DISC23-C's pins, which press its bar against a fake document.) */
 export function featureTile(f) {
   const c = resolveControl(f);
   const st = tileStates(f);
-  const tile = el('div', `ft-tile${featureSel === f.id ? ' sel' : ''}`);
+  const tile = el('div', `ft-tile${pickedFeature === f.id ? ' sel' : ''}`);
+  tile.id = `opt-${f.id}`;   // ORG2: the mods' list brings a row into view by it
   tile.dataset.fid = f.id;   // FT18: the search hides tiles by it
   tile.dataset.on = st && barReading(st).on ? '1' : '0';
   if (st?.locked) tile.dataset.locked = '1';
-  tile.tabIndex = 0;
-  const show = () => { featureSel = f.id; paintRail(); for (const n of document.querySelectorAll('.ft-tile')) n.classList.toggle('sel', n === tile); };
-  tile.onmouseenter = show;
-  tile.onfocus = show;
-  tile.onclick = show;
 
-  tile.append(el('div', 'ft-tile-name', f.title));
+  const main = el('button', 'ft-tile-main');
+  main.type = 'button';
+  main.append(el('div', 'ft-tile-name', f.title));
   const meta = el('div', 'ft-tile-meta');
   for (const k of KIND_ORDER) if (f.kinds.includes(k)) meta.append(el('span', `kind ${k}`, KINDS[k].label));
   if (st?.locked) meta.append(el('span', 'ft-tile-lock', t('menu.features.onlineLock', 'online')));
-  tile.append(meta);
+  main.append(meta);
+  main.onclick = () => { pickedFeature = f.id; pickedKey = null; sheetOpen = true; render(); };
+  tile.append(main);
 
   // the control, or the row's own builder when it is not a bar
-  if (st) tile.append(segBar(st, f.title));
-  else tile.append(featureRow(f));
+  const ctl = el('div', 'ft-tile-ctl');
+  if (st) ctl.append(segBar(st, f.title));
+  else ctl.append(featureRow(f));
+  tile.append(ctl);
 
   // the drawer's door: a mod's modules and dials.
   //
@@ -2945,6 +3530,8 @@ export const FEATURE_KEYS_NOTE = 'Keys are changed in Settings \u203a Controls.'
 export const featureKeysNote = () => t('menu.features.keysNote', FEATURE_KEYS_NOTE);
 function openControls() {
   category = 'controls';
+  optQuery = ''; optFilter = 'all';   // ORG2: a search or a filter would hide the bindings it was sent to
+  optScrollTo = 'sec-controls-bindings';   // and it lands on them, not the top of the tab
   go('settings');
 }
 
@@ -2982,9 +3569,7 @@ function featurePartsDrawer(parts) {
 // who turns everything off, plays, and quits comes back to a Restore that still knows. A tile the online room
 // decides is not touched (its bar refuses the press too), and a CHOICE with neither Off nor a classic value stays.
 export const FEATURES_RESTORE_PREF = 'featuresRestore';
-export const ALL_OFF_ASK = 'Every mod and enhancement goes to Off, or to Daggerfall\u2019s own where a row has no Off. '
-  + 'Restore puts back what you had. Choices that are never off, like the grass\u2019s style, stay as they are, and '
-  + 'online the rows the room decides stay on.';
+export const ALL_OFF_ASK = 'Every mod and enhancement goes to Off. Restore puts back what you had.';
 /** L10N4: the confirm's body in the player's language (ALL_OFF_ASK stays the English the pins read). */
 export const allOffAsk = () => t('menu.features.allOffAsk', ALL_OFF_ASK);
 /** The moves All off makes: every tile not already at its classic segment and not locked. */
@@ -3022,6 +3607,55 @@ export function featuresRestore(list = FEATURES) {
     }
   }
   setPref(FEATURES_RESTORE_PREF, null);
+  return n;
+}
+
+// ── FEATURES-DEFAULTS (issue #399: "An option to put them back as stock values") ──
+// All off keeps what you had and Restore brings it back - so a player who had changed things never got the game's own
+// values again. Defaults sets every tile to the value the game ships it at (the row's own default, the port's settings
+// default over DFU's, a mod's shipped switch), and its drawer with it: a condensed row's parts and a mod's modules and
+// dials. A row or key the online room decides is left as the room has it. Asked first: there is no keep to Restore.
+// ORG2: its button is the Settings toolbar's "Reset everything to defaults" (RESET_ALL_ASK), DFU's settings with it,
+// and each tab's card restores that tab alone (restoreTabDefaults).
+/** The segment a tile ships at, or -1 when its default is not one of its segments. */
+export function defaultSegment(f, st) {
+  const c = resolveControl(f);
+  let i = -1;
+  if (c.store === 'prefs') {
+    const d = c.default ?? c.initial ?? PREF_DEFAULTS[c.key];
+    i = c.tiers ? c.tiers.findIndex(([v]) => String(v) === String(d)) : (d ? 1 : 0);
+  } else if (c.store === 'settings') {
+    const [sec, k] = c.key.split('/');
+    const d = defaultOf(sec, k);
+    i = widgetFor(c.key) === 'switch' ? (d === 'True' ? 1 : 0) : parseInt(d, 10);
+  } else {
+    const d = MOD_SETTINGS[c.vendor]?.keys?.[c.key]?.default;
+    i = d === true || d === 'True' ? 1 : 0;
+  }
+  return Number.isInteger(i) && i >= 0 && i < st.labels.length ? i : -1;
+}
+/** Defaults. Returns how many tiles, parts and mod keys it moved; the All off keep is spent. */
+export function featuresDefaults(list = FEATURES, { spendKeep = true } = {}) {
+  let n = 0;
+  for (const f of list) {
+    const st = tileStates(f);
+    if (st && !st.locked) {
+      const to = defaultSegment(f, st);
+      if (to >= 0 && to !== st.at) { st.set(to); n++; }
+    }
+    const c = resolveControl(f);
+    for (const pt of c?.parts ?? []) {   // the drawer's parts write their pref straight, as the drawer does
+      if (onlineForcedPref(pt.key) !== undefined || !Object.hasOwn(PREF_DEFAULTS, pt.key)) continue;
+      if (String(getPref(pt.key)) !== String(PREF_DEFAULTS[pt.key])) { setPref(pt.key, PREF_DEFAULTS[pt.key]); n++; }
+    }
+    const vendor = c?.store === 'mods' ? c.vendor : (Array.isArray(c?.also) ? c.also.find((a) => a.store === 'mods')?.vendor : null) ?? null;
+    for (const key of vendor ? [...modModules(vendor), ...modDials(vendor)] : []) {
+      const def = MOD_SETTINGS[vendor].keys[key];
+      if (onlineModSetting(vendor, key) !== undefined || JSON.stringify(modSetting(vendor, key)) === JSON.stringify(def.default)) continue;   // a tuple dial is a frozen pair
+      setModSetting(vendor, key, def.default); n++;
+    }
+  }
+  if (spendKeep) setPref(FEATURES_RESTORE_PREF, null);   // nothing for Restore to go back to (ORG2: one tab's restore leaves it)
   return n;
 }
 
@@ -3071,130 +3705,6 @@ function featureDrawer(vendor, mods, dials, keys = []) {
   return d;
 }
 
-/** FT14: the reading rail - the note and the effect line the tiles no
- *  longer carry, for whichever tile is pointed at. */
-function paintRail(rail = document.getElementById('ft-rail')) {
-  // the pane is still DETACHED while paneFeatures builds it, so the
-  // first paint is handed its rail rather than looking one up - by id
-  // it found nothing and the rail stood empty until the first hover.
-  if (!rail) return;
-  const f = FEATURES.find((x) => x.id === featureSel) ?? null;
-  rail.textContent = '';
-  if (!f) { rail.append(el('p', 'meta', t('menu.features.pointAt', 'Point at a tile to read what it does.'))); return; }
-  const c = resolveControl(f);
-  rail.append(el('div', 'ft-rail-k', t('menu.features.selected', 'Selected')));
-  rail.append(el('h3', null, f.title));
-  if (f.note) rail.append(el('p', 'ft-rail-note', f.note));
-  if (f.effect) rail.append(el('p', 'ft-rail-effect', f.effect));
-  const kv = el('dl', 'ft-rail-kv');
-  const pair = (k, v) => { kv.append(el('dt', null, k), el('dd', null, v)); };
-  pair(t('menu.features.stored', 'Stored'), c.store === 'prefs' ? t('menu.features.storedPrefs', 'Port preferences')
-    : c.store === 'mods' ? t('menu.features.storedMod', '{mod}\u2019s own modsettings', { mod: MOD_SETTINGS[c.vendor].title })
-      : t('menu.features.storedIni', 'Daggerfall Unity settings.ini'));
-  const rv = c.store === 'mods' ? c.vendor
-    : (Array.isArray(c.also) ? c.also.find((a) => a.store === 'mods')?.vendor : null) ?? null;
-  if (rv) {
-    const n = Object.keys(MOD_SETTINGS[rv].keys).length;
-    const shown = 1 + modModules(rv).length + modDials(rv).length;
-    pair(t('menu.features.settings', 'Settings'), t('menu.features.shownOf', '{shown} of {n} shown \u2013 the rest keep the mod\u2019s own values', { shown, n }));
-    // UXB1-F: and its keys, where a player reading about the mod is already looking
-    const keys = modKeyRows(rv, bindings());
-    if (keys.length) pair(t('menu.features.keysLabel', 'Keys'), t('menu.features.keysList', '{keys} \u2013 {note}', { keys: keys.map((k) => `${k.label}: ${k.key}`).join(' \u00b7 '), note: featureKeysNote() }));
-  }
-  rail.append(kv);
-}
-
-function paneFeatures(body) {
-  const counts = featureCounts(FEATURES);
-  const chips = el('div', 'chips');
-  const chip = (kind, label, n) => {
-    const b = el('button', `chip${kind ? ` ${kind}` : ''}${featureKind === kind ? ' on' : ''}`);
-    b.type = 'button';
-    b.setAttribute('aria-pressed', String(featureKind === kind));
-    b.append(document.createTextNode(label), el('span', 'n', String(n)));
-    b.onclick = () => { featureKind = kind; render(); };
-    return b;
-  };
-  chips.append(chip(null, t('menu.features.all', 'All'), counts.all));
-  for (const k of KIND_ORDER) chips.append(chip(k, KINDS[k].label, counts[k]));
-  body.append(chips);
-  // FT18: the search (Mac: "Add search bar to mods/enhancements in the ingame pause menu") and All off beside it.
-  // The search hides tiles in place rather than repainting, so the field keeps the keys it is typed into; the menu's
-  // own key handler stands down for a text field, and the hosts' KB1 gate keeps its keys from the game.
-  const tools = el('div', 'ft-tools');
-  const search = el('input', 'ft-search');
-  search.type = 'search';
-  search.placeholder = t('menu.features.search', 'Search features');
-  search.setAttribute('aria-label', t('menu.features.search', 'Search features'));
-  search.value = featureQuery;
-  tools.append(search);
-  const kept = getPref(FEATURES_RESTORE_PREF);
-  tools.append(acts([
-    { label: t('menu.features.allOff', 'All off'), onClick: () => ask(t('menu.features.allOffTitle', 'Turn Everything Off'), allOffAsk(), t('menu.features.allOff', 'All off'), () => { featuresAllOff(); }) },
-    ...(kept && typeof kept === 'object' ? [{ label: t('menu.features.restore', 'Restore'), onClick: () => { featuresRestore(); render(); } }] : []),
-  ]));
-  body.append(tools);
-  if (!FEATURES.length) {
-    body.append(empty(t('menu.settings.emptyTitle', 'Nothing here yet'),
-      t('menu.features.empty', 'Every enhanceable feature is moving here, one at a time, each audited before it moves. '
-      + 'Until then the port\u2019s own switches are under Settings \u203a Enhanced and the mods\u2019 under Mods.')));
-    return;
-  }
-  const rows = filterFeatures(FEATURES, featureKind);
-  if (!rows.length) {
-    body.append(empty(t('menu.features.noneOfKind', 'No {kind} rows yet', { kind: KINDS[featureKind].label }), KINDS[featureKind].blurb));
-    return;
-  }
-  // FT14: two panes - the tiles, grouped by what they change, and the
-  // rail that reads out whichever one is pointed at. The kind is a
-  // FILTER (the chips above) and no longer a heading, because "who
-  // wrote it" does not group anything a player is looking for.
-  if (featureSel && !rows.some((f) => f.id === featureSel)) featureSel = null;   // the filter took the selected tile away
-  body.classList.add('wide');   // FT14: .body is capped at 720px for READING; a tile grid is scanned, not read
-  const panes = el('div', 'ft-panes');
-  const main = el('div', 'ft-main');
-  const shownGroups = [];   // FT18: what the search walks
-  for (const g of GROUP_ORDER) {
-    const items = rows.filter((f) => f.group === g);
-    if (!items.length) continue;
-    const head = el('div', 'ft-grouphead');
-    const gn = el('span', 'ft-gn', String(items.length));
-    head.append(el('h2', null, GROUPS[g].label), gn, el('span', 'ft-gline'));
-    main.append(head);
-    const grid = el('div', 'ft-grid');
-    const tiles = items.map((f) => [f, featureTile(f)]);
-    for (const [, t] of tiles) grid.append(t);
-    main.append(grid);
-    shownGroups.push({ head, grid, gn, tiles });
-  }
-  const none = el('p', 'meta ft-none', t('menu.features.noMatch', 'Nothing here matches that. Try a shorter word, or the mod\u2019s author.'));
-  main.append(none);
-  /** FT18: hide what the query does not find - a tile, and a group left with none; the group's count is what shows. */
-  const applyQuery = () => {
-    let shown = 0;
-    for (const g of shownGroups) {
-      let n = 0;
-      for (const [f, t] of g.tiles) { const hit = matchesFeatureQuery(f, featureQuery); t.hidden = !hit; if (hit) n++; }
-      g.head.hidden = !n;
-      g.grid.hidden = !n;
-      g.gn.textContent = String(n);
-      shown += n;
-    }
-    none.hidden = shown > 0;
-  };
-  search.oninput = () => { featureQuery = search.value; applyQuery(); };
-  applyQuery();
-  const rail = el('aside', 'ft-rail');
-  rail.id = 'ft-rail';
-  rail.setAttribute('aria-live', 'polite');
-  panes.append(main, rail);
-  if (featureKind == null || featureKind === 'mod') body.append(morrowindCard());   // MWA4: the assets card heads the list
-  body.append(panes);
-  if (!featureSel) featureSel = rows[0].id;
-  paintRail(rail);
-  if (featureKind == null || featureKind === 'mod') modsFooter(body);   // FT14: what the Mods pane carried that was never a mod setting
-}
-
 // ── OVH1 (2026-09-24, Mac: "A new option on the main menu that opens to show 3 large panels. These panels will
 // have directional arrows allowing you to switch being different feature sets") - THE OVERHAULS PANE. Three cards,
 // one look each (systems/overhauls.js is the registry and the only writer): the arrows BROWSE, the button WEARS, so a
@@ -3204,12 +3714,14 @@ const ovhAt = {};   // panel id -> the option index being shown
 function overhaulPicture(p, o, inUse) {
   const pic = el('div', 'look-pic');
   pic.dataset.look = o.id;
-  const pack = p.id === 'ui' ? UI_PACKS[o.pack] : null;
+  // GRIM1: DFO Grimoire wears the pack's art too - shown by its desk, where GrimoireUI is shown by its inventory
+  const grim = p.id === 'ui' && o.dress === 'grimoire';
+  const pack = p.id === 'ui' ? UI_PACKS[o.pack] ?? (grim ? UI_PACKS.grimoire : null) : null;
   if (pack) {
     const img = el('img');
-    img.alt = t('menu.ovh.packAlt', '{look}: the inventory', { look: o.name });
+    img.alt = grim ? t('menu.ovh.packAltDesk', '{look}: the desk', { look: o.name }) : t('menu.ovh.packAlt', '{look}: the inventory', { look: o.name });
     img.loading = 'lazy';
-    img.src = packUrl(pack, 'Img/INVE00I0.IMG.png');
+    img.src = packUrl(pack, grim ? 'Img/BIOG00I0.IMG.png' : 'Img/INVE00I0.IMG.png');
     pic.append(img);
   } else {
     const em = el('div', 'look-emblem', o.name);
@@ -3218,6 +3730,47 @@ function overhaulPicture(p, o, inUse) {
   }
   if (inUse) pic.append(el('span', 'look-badge', t('menu.ovh.inUse', 'In use')));
   return pic;
+}
+/** TEXT-FONT: the installed font 'My font' writes in - typed (shown in its own face as it is typed), or picked from the
+ *  machine's list where the browser offers one. Kept on Enter or on leaving the field. */
+function systemFontRow(redraw) {
+  const row = el('div', 'look-colours look-fontrow');
+  row.setAttribute('role', 'group');
+  row.setAttribute('aria-label', 'Your font');
+  row.append(el('span', 'look-colours-label', 'Font name'));
+  const input = document.createElement('input');
+  input.className = 'look-fontname';
+  input.type = 'text';
+  input.spellcheck = false;
+  input.placeholder = 'e.g. Verdana';
+  input.value = textFontSystem();
+  input.setAttribute('aria-label', 'Installed font name');
+  const list = document.createElement('datalist');
+  list.id = 'look-fontlist';
+  input.setAttribute('list', list.id);
+  const look = () => { const f = cleanFamily(input.value); if (f) input.style.setProperty('font-family', `'${f}', sans-serif`, 'important'); else input.style.removeProperty('font-family'); };   // important: over the words' own face
+  look();
+  const keep = () => { if (cleanFamily(input.value) !== textFontSystem()) { setTextFontSystem(input.value); redraw(); } };
+  input.oninput = look;
+  input.onchange = keep;
+  input.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); keep(); } };
+  input.onkeyup = (e) => e.stopPropagation();
+  input.onclick = (e) => e.stopPropagation();
+  row.append(input, list);
+  if (canListFonts()) {
+    const b = el('button', 'look-colour', 'List my fonts');
+    b.type = 'button';
+    b.onclick = async (e) => {
+      e.stopPropagation();
+      const fams = await installedFamilies();
+      list.replaceChildren(...fams.map((f) => { const o = document.createElement('option'); o.value = f; return o; }));
+      b.textContent = fams.length ? `${fams.length} fonts - pick in the field` : 'No list given - type the name';
+      input.focus();
+      if (fams.length) input.showPicker?.();
+    };
+    row.append(b);
+  }
+  return row;
 }
 function overhaulPanel(p) {
   if (!p.options.length) {   // OVH1b: a panel with nothing in it yet - its title, an empty picture, one line
@@ -3264,7 +3817,31 @@ function overhaulPanel(p) {
   card.append(nav, el('p', 'look-blurb', o.blurb));
   // PLUS2: ENHANCED PLUS'S COLOURS - offered on its own card while it is the look in use (they are its surfaces, and
   // they change at once, no reload). One swatch per stone; the chosen one is pressed.
-  if (p.id === 'ui' && o.id === 'enhanced-plus' && o === cur) {
+  // GRIM1: DFO Grimoire is the same enhanced skin, so it offers the same rows (the cursor, the hover card, the
+  // controller) - and in place of the stones, its own two: the page the windows are written on and what the front door
+  // stands on. Both are worn at once.
+  if (p.id === 'ui' && (o.id === 'enhanced-plus' || o.id === 'dfo-grimoire') && o === cur) {
+    const choiceRow = (label, options, now, wear) => {
+      const row = el('div', 'look-colours');
+      row.setAttribute('role', 'group');
+      row.setAttribute('aria-label', label);
+      row.append(el('span', 'look-colours-label', label));
+      for (const [id, name] of Object.entries(options)) {
+        const b = el('button', 'look-colour', name);
+        b.type = 'button';
+        b.setAttribute('aria-pressed', String(id === now));
+        b.onclick = (e) => { e.stopPropagation(); wear(id); render(); };
+        row.append(b);
+      }
+      return row;
+    };
+    if (o.id === 'dfo-grimoire') {
+      card.append(choiceRow('Pages', GRIMOIRE_PAGES, grimoirePages(), (id) => setGrimoirePages(id)));
+      card.append(choiceRow('Backdrop', GRIMOIRE_BACKDROPS, grimoireBackdrop(), (id) => setGrimoireBackdrop(id)));
+      card.append(choiceRow('Vitals', GRIMOIRE_VITALS, grimoireVitals(), (id) => setGrimoireVitals(id)));
+      card.append(choiceRow('Spellbook', GRIMOIRE_SPELLBOOKS, grimoireSpellbook(), (id) => setGrimoireSpellbook(id)));   // GRIM3: a player: "(optionally) retain the look of the original GrimoireUI spellbook"
+      card.append(choiceRow('Tab dial', GRIMOIRE_DIALS, grimoireDial(), (id) => setGrimoireDial(id)));   // DIAL-PACK: Daggerfall's own icons, or the pack's paintings
+    } else {
     const row = el('div', 'look-colours');
     row.setAttribute('role', 'group');
     row.setAttribute('aria-label', t('menu.ovh.plusColour', 'Enhanced Plus colour'));
@@ -3282,6 +3859,7 @@ function overhaulPanel(p) {
       row.append(b);
     }
     card.append(row);
+    }
     // PLUS6: the gauntlet cursor, on or off - worn at once
     const crow = el('div', 'look-colours');
     crow.setAttribute('role', 'group');
@@ -3308,18 +3886,49 @@ function overhaulPanel(p) {
       hrow.append(b);
     }
     card.append(hrow);
+    // TEXT-FONT (2026-10-11, a player: "a Sans font, a Monospace font and a Dyslexic compatible font would be nice. But
+    // allowing selection from system fonts would be most ideal"): the words' face, worn at once; 'My font' names one of
+    // this machine's own (ui/textFont.js).
+    card.append(choiceRow('Text font', TEXT_FONTS, textFont(), (id) => setTextFont(id)));
+    if (textFont() === 'system') card.append(systemFontRow(render));
     card.append(plusControllerRows());   // PADPLUS1
   }
+  // VE4: A LOOK'S ADD-ONS - Vanilla Enhanced's Masked Roads and Snowless Swamps and Jungles, offered as switches while
+  // the look is worn (the PLUS rows' shape); each takes effect when the world next loads, and is kept for the next wear
+  const addons = o === cur ? o.addons?.() ?? [] : [];
+  for (const m of addons) {
+    // ALIKR1/SNOWFALL1: the environment packs ride the look as its add-ons do (built on its Base) - each named with its
+    // own author where the archive names one, so Snowfall does not read as carademono's
+    const label = /^Vanilla Enhanced - /.test(m.title) ? String(m.title).replace(/^Vanilla Enhanced - /, '') : m.author ? t('menu.ovh.addonBy', '{title} by {author}', { title: m.title, author: m.author }) : m.title;
+    const row = el('div', 'look-colours');
+    row.setAttribute('role', 'group');
+    row.setAttribute('aria-label', label);
+    row.append(el('span', 'look-colours-label', label));
+    for (const [on, word] of [[true, t('menu.toggle.on', 'On')], [false, t('menu.toggle.off', 'Off')]]) {
+      const b = el('button', 'look-colour', word);
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(m.enabled === on));
+      b.onclick = (e) => { e.stopPropagation(); setVeAddon(m.key, on); render(); };
+      row.append(b);
+    }
+    card.append(row);
+  }
+  // AUDIT VE R2: the texture store not yet read (the main menu runs before any host registers it) - a look worn now would
+  // miss the attached mods; AUDIT VE R10: what stands in a look's way (a loose texture pack, Classic's)
+  const reading = p.id === 'texture' && !textureStoreSettled();
+  const blocked = o.blocked?.() ?? null;
   const use = el('button', 'act primary look-use', o === cur ? t('menu.ovh.inUse', 'In use') : t('menu.ovh.use', 'Use {look}', { look: o.name }));
   use.type = 'button';
-  use.disabled = o === cur;
+  use.disabled = o === cur || reading || !!blocked;
   use.onclick = () => {
     const r = o.apply();
     if (r?.reload) { location.replace(r.url); return; }
     render();
   };
   card.append(use);
-  if (!cur) card.append(el('p', 'look-note', t('menu.ovh.custom', 'Custom: your own mix from Features. Using a look sets every switch it covers.')));
+  if (reading) card.append(el('p', 'look-note', t('menu.ovh.reading', 'Reading your texture mods\u2026')));
+  else if (blocked && o !== cur) card.append(el('p', 'look-note', blocked));
+  if (!cur) card.append(el('p', 'look-note', p.custom ?? t('menu.ovh.custom', 'Custom: your own mix from Settings. Using a look sets every switch it covers.')));
   const forced = isOnlinePage() && p.online ? p.online : null;
   card.append(el('p', 'look-note', forced ? `${p.effect} ${forced}` : p.effect));
   return card;
@@ -3384,6 +3993,7 @@ function plusControllerRows() {
 }
 
 function paneOverhauls(body) {
+  waitForTextureStore();   // AUDIT VE R2
   body.classList.add('wide');
   const grid = el('div', 'look-grid');
   for (const p of OVERHAUL_PANELS) grid.append(overhaulPanel(p));
@@ -3427,9 +4037,10 @@ function featureRow(f) {
 // ── ABOUT ────────────────────────────────────────────────────────
 function paneAbout(body) {
   const c = el('div', 'card');
-  c.append(el('h3', null, 'Daggerfall Online'));   // the public name (BR1, BR4); project-dagger is the repo
-  c.append(el('p', 'meta', t('menu.about.tagline', 'An open-source reimplementation of The Elder Scrolls II: Daggerfall.')));
+  c.append(el('h3', null, 'DFO Online'));   // the public name (BR1, BR4, BR5); project-dagger is the repo
+  c.append(el('p', 'meta', t('menu.about.tagline', 'An open-source reimplementation of a classic 1996 RPG.')));
   c.append(stats([
+    [t('menu.about.update', 'Update'), UPDATE ?? t('menu.about.devBuild', 'a development build')],   // REL8: the player's update number (scripts/updateNumber.mjs)
     [t('menu.about.build', 'Build'), BUILD_TAG],
     [t('menu.about.interface', 'Interface'), currentOption(OVERHAUL_PANELS.find((p) => p.id === 'ui'))?.name ?? SKIN_NAMES[uiSkin()]],   // PLUS1; MENU-TOGGLE: the UI Overhaul worn, by its card's name (GrimoireUI is the classic skin with a pack)
     [t('menu.about.settings', 'Settings'), t('menu.about.keys', '{n, plural, other {# keys}}', { n: Object.values(DEFAULTS).reduce((n, s2) => n + Object.keys(s2).length, 0) })],
@@ -3489,7 +4100,9 @@ function go(id) {
   // while rebinding, with the Settings row right there. The category
   // switch does its own discard (see the CATEGORIES tabs), so this
   // fires only where it means to: the section actually changing.
+  if (id === 'features') id = 'settings';   // ORG2: the Features home is Settings' tabs - an old door's name still lands
   if (id !== section) discardControlsStaging();
+  pickedFeature = null;   // ORG2: a walk away drops the picked Features row, as it drops pickedKey
   section = id; pickedKey = null; sheetOpen = false; confirming = null; cloudArm = null; render();   // 0927b B5: an armed press never outlives its pane
 }
 
@@ -3553,11 +4166,13 @@ function renderHome() {
       timersAnchor = anchorBeside(mark, home.querySelector?.('.px-profile'), home);   // AUDIT TIMERS1 UI-3: placed again on every resize
       if (timersFocusBack && !timersOpen) { timersFocusBack = false; globalThis.requestAnimationFrame?.(() => mark.focus?.()); }   // UI-5: back where the press was
     }
+    const envelope = postEnvelope(home, mark);   // SERVER-POST: the mailbox beside the hourglass, online - its count kept live
     if (accountOpen) {
       const acct = el('div', 'px-stage px-acctstage');
       acct.append(accountWindow());
       home.append(acct);
       closeOnOutsideTap(home, '.px-acctwin', () => { accountOpen = false; render(); });
+      for (const n of [stage, mark, envelope]) n?.setAttribute?.('inert', '');   // AUDIT SERVER-POST: the face under the account window out of reach, as under the timers'
     }
     else if (timersOpen && hooks.timers?.()) {
       const tstage = el('div', 'px-stage px-timersstage');
@@ -3569,12 +4184,22 @@ function renderHome() {
       // AUDIT TIMERS1 UI-5/UI-7: the pause face under the window is out of reach - no Tab into it, no Enter on its
       // Resume, no bumper turning its tabs (plusPad's tab strips skip what is not visible to it), no profile window
       for (const n of [stage, home.querySelector?.('.px-profile'), mark]) n?.setAttribute?.('inert', '');
+      envelope?.setAttribute?.('inert', '');   // SERVER-POST: and the envelope beside it
+    }
+    else if (postOpen && hooks.post?.()) {
+      // SERVER-POST: the mailbox's window, on the hourglass's own stage (centred, its own padding - enhancedStyle.js)
+      const pstage = el('div', 'px-stage px-timersstage px-poststage');
+      postView = postWindow(document, { box: () => hooks.post?.() ?? null, keep: postKeep, onClose: () => { postOpen = false; postKeep = {}; postFocusBack = true; render(); } });
+      pstage.append(postView.root);
+      home.append(pstage);
+      closeOnOutsideTap(home, '.px-postwin', () => { postOpen = false; postKeep = {}; postFocusBack = true; render(); });
+      for (const n of [stage, home.querySelector?.('.px-profile'), mark, envelope]) n?.setAttribute?.('inert', '');
     }
     // OT1 (Mac: "tapping outside of any UI closes the UI"): a tap on the
     // scrim - outside the window, the clock and the foot - resumes,
     // the way Escape does; the front door has no scrim and no resume.
     // PROFILE2: the mark is inside too (a press on it opens the window), and with the window open the tap is its.
-    else closeOnOutsideTap(home, '.px-win, .px-clock, .px-foot, .px-profile, .px-timersmark', () => onAction('resume'));
+    else closeOnOutsideTap(home, '.px-win, .px-clock, .px-foot, .px-profile, .px-timersmark, .px-postmark', () => onAction('resume'));   // SERVER-POST: the envelope inside too
     // PX4 (Mac): NO FOOT AT PAUSE - no skin toggle, no About plaque;
     // About is a System-tab row instead, and the skin switch stays on
     // the boot face and the settings shell.
@@ -3606,7 +4231,8 @@ function renderHome() {
   // still exists on the shell rail untouched, so the rail-hole pin and
   // the shared-sections law hold.
   for (const label of sections) {
-    if (label === 'About') continue;
+    if (label === 'About' || label === 'Screenshots') continue;   // LOAD1: Screenshots stands in the foot, beside About
+    if (label === 'Tutorials') continue;   // TUT1: the foot's left plaque (an eighth door ran the list past a 720-pixel screen)
     const id = idOf(label);
     // PX31: THE DOOR'S BUTTONS CARRY THEIR OWN NAME. Until now they
     // were classless, and nine probes still reached for `.railbtn` -
@@ -3617,7 +4243,10 @@ function renderHome() {
     // so the hook is structural: doorbtn plus the section id, which
     // is what a probe actually means when it says New Game.
     const b = el('button', `doorbtn door-${id}`);
-    b.append(el('span', 'px-c', '\u25c6'), document.createTextNode(railLabel(label)), el('span', 'px-c', '\u25c6'));   // L10N1b
+    // AUDIT PLUS-MENU M2: the diamonds stand at rest under Plus (MENU_CSS), so they are drawing, not words - hidden from
+    // a reader, or every door was named "◆ Continue ◆"
+    const dia = () => { const d = el('span', 'px-c', '\u25c6'); d.setAttribute('aria-hidden', 'true'); return d; };
+    b.append(dia(), document.createTextNode(railLabel(label)), dia());   // L10N1b
     b.onclick = RAIL_ACTS[id] ? () => onAction(RAIL_ACTS[id]) : () => go(id);
     menu.append(b);
   }
@@ -3627,6 +4256,9 @@ function renderHome() {
   // ACC1f: the profile mark, top-right - the corner the foot's About
   // box does not use.
   home.append(profileMark());
+  // SUPPORT1: the asks, top-left - the front door's alone; PX4 keeps the
+  // pause face to its window, so they are not drawn over a game.
+  home.append(supportMarks());
   // L10N1b: the first-run language offer, in the top-left corner nothing else uses
   const offer = languageOffer();
   if (offer) home.append(offer);
@@ -3662,16 +4294,50 @@ function appendPxFoot(home) {
   const about = el('button', 'px-about', RAIL_TEXT.about());
   about.onclick = () => go('about');
   foot.append(build, about);   // MENU-TOGGLE: the skin pair that stood between them is retired
+  // TUT1: the tutorials' plaque stands over the build line, at the LEFT - the book a new player reads before the game. A
+  // third plaque in About's box ran into the menu's column on a 1280x720 screen, and three stacked overran a phone's foot.
+  if (mode !== 'pause' && sections.includes('Tutorials')) {
+    const tuts = el('button', 'px-about px-tuts door-tutorials', 'Tutorials');
+    tuts.onclick = () => go('tutorials');
+    const left = el('div', 'px-footleft');
+    build.remove();
+    left.append(tuts, build);
+    foot.prepend(left);
+  }
+  // LOAD1: the gallery's plaque stands beside About, in About's own box, so the foot keeps one shape - the centre
+  // runs under the menu's last rows on a 720-pixel screen. The door's face only: the pause window's System rail carries
+  // it as a row (SYSTEM_PANES).
+  if (mode !== 'pause' && sections.includes('Screenshots')) {
+    const shots = el('button', 'px-about px-shots', 'Screenshots');
+    shots.onclick = () => go('screenshots');
+    const right = el('div', 'px-footright');
+    about.remove();
+    right.append(shots, about);
+    foot.append(right);
+  }
   home.append(foot);
 }
 
 // ── PX3: THE PAUSE WINDOW ────────────────────────────────────────
-const PAUSE_TABS = Object.freeze([['quests', 'Quests'], ['stats', 'Stats'], ['system', 'System']]);
+// HOLDINGS (2026-10-03, Mac: "Lets add a new tab to the pause menu as the stat page is starting to get bloated"): what the
+// player owns and who follows them moved off the Stats rail onto a tab of their own (pauseHoldings, below).
+// LEGACY3 (2026-10-05, Mac: "implement it into the pause menu as a new tab"): Project Legacy's family - its tree, its house
+// and the Hall of Ancestors - on a tab of its own (pauseFamily, below; ui/familyPages.js).
+// TUT1 (2026-10-11, Mac: "a menu section where tutorials can be revisited"): every tutorial page, on a tab of its own
+// (pauseTutorials, below; ui/tutorialsPane.js) - the same pane the front door's Tutorials section draws.
+const PAUSE_TABS = Object.freeze([['quests', 'Quests'], ['stats', 'Stats'], ['holdings', 'Holdings'], ['family', 'Family'], ['tutorials', 'Tutorials'], ['system', 'System']]);
+/** HOLDINGS: every tab a landing may name (mountEnhancedMenu's `at`). */
+export const PAUSE_TAB_IDS = Object.freeze(PAUSE_TABS.map(([id]) => id));
+/** LEGACY3: a tab drawn now - the Family tab while Project Legacy is on (a landing on it with the mod off lands on System). */
+const pauseTabShown = (id) => id !== 'family' || legacyOn();
 /** L10N4: the pause window's tab and page words in the player's language, by id - the tables keep the English ids'
  *  labels; a page another module adds (the professions', the revenants', the companions') shows its own label. */
 const PAUSE_TEXT = Object.freeze({
   quests: () => t('pause.tab.quests', 'Quests'),
   stats: () => t('pause.tab.stats', 'Stats'),
+  holdings: () => t('pause.tab.holdings', 'Holdings'),
+  family: () => t('pause.tab.family', 'Family'),
+  tutorials: () => t('pause.tab.tutorials', 'Tutorials'),
   system: () => t('pause.tab.system', 'System'),
   character: () => t('pause.stats.character', 'Character'),
   attributes: () => localizedText('helpAttributes', 'Attributes'),
@@ -3689,18 +4355,90 @@ function pauseWindow() {
   for (const c of ['tl', 'tr', 'bl', 'br']) win.append(el('span', `px-gem px-corner px-${c}`));
 
   const tabs = el('div', 'px-tabs');
-  for (const [id, label] of PAUSE_TABS) {
+  if (!pauseTabShown(pauseTab)) pauseTab = 'system';
+  for (const [id, label] of PAUSE_TABS.filter(([id]) => pauseTabShown(id))) {
     const b = el('button', id === pauseTab ? 'on' : null);
     b.append(el('span', 'px-c', '\u25c6'), document.createTextNode(pauseLabel(id, label)), el('span', 'px-c', '\u25c6'));
-    b.onclick = () => { if (id !== 'system') discardControlsStaging(); pauseTab = id; render(); };
+    b.onclick = () => { if (id !== 'system') discardControlsStaging(); disarmFamilyPages(); disarmCollectionsPage(); pauseTab = id; render(); };   // AUDIT CARDS-5 D5: and the Collections page's
     tabs.append(b);
   }
   win.append(tabs);
 
   const body = el('div', 'px-body');
-  ({ quests: pauseQuests, stats: pauseStats, system: pauseSystem })[pauseTab](body);
+  ({ quests: pauseQuests, stats: pauseStats, holdings: pauseHoldings, family: pauseFamily, tutorials: drawTutorialsPane, system: pauseSystem })[pauseTab](body);   // TUT1
   win.append(body);
   return win;
+}
+
+// ── HOLDINGS: THE HOLDINGS PAGE ──────────────────────────────────
+// The journal's bones a fourth time (PX6's rail of pages, the chosen
+// one on the right), for what the Stats rail had grown past the
+// character sheet: the horse and the wagon (ui/holdingsPages.js), the
+// ships (ui/fleetPage.js), the sworn companions, the revenants, and
+// the Stores online. A page gone (nothing to show, offline) is never
+// drawn, and the rail falls back to its first.
+function pauseHoldings(body) {
+  const wrap = el('div', 'px-journal');
+  const rail = el('div', 'px-qrail');
+  const secs = holdingsSections();
+  if (!secs.some(([id]) => id === holdSec)) holdSec = secs[0]?.[0] ?? 'stable';
+  for (const [id, label] of secs) {
+    const b = el('button', `px-qrow${id === holdSec ? ' on' : ''}`);
+    b.append(el('span', 'px-c', '◆'), document.createTextNode(label));
+    b.onclick = () => { holdSec = id; disarmCollectionsPage(); render(); };   // AUDIT CARDS-5 D5: an armed act never waits for the way back
+    rail.append(b);
+  }
+  wrap.append(rail);
+  const detail = el('div', 'px-qdetail px-sys');   // the system page's dress, as the Stats detail wears it (PLUS4)
+  const kit = { el, divider: pxDivider, meter: pxMeter };
+  // AUDIT HOLDINGS C6: a host with no page to show (the standalone dungeon sets no provider) says so - the Stable drawn
+  // there told a player who owns both that they own no horse and no wagon
+  if (!secs.length) {
+    detail.append(el('div', 'px-qverdict', 'Nothing here to hold'), el('p', null, 'What you own and who follows you is kept in the world - your horse, your wagon, your ships and your companions.'));
+    wrap.append(detail);
+    body.append(wrap);
+    return;
+  }
+  const draw = {
+    stable: (d) => drawStablePage(d, render, kit),
+    // a door the page opens over the world (the shipwright's window, the water's placing click): the pause goes down
+    // first, as the sheet's doors do (PX25/ESC-BOOK), and comes back if the door opened nothing (AUDIT 27h A4)
+    fleet: (d) => drawFleetPage(d, render, { ...kit, door: (fn) => { onAction('handoff'); if (fn() === false) onAction('resume'); } }),
+    captain: (d) => drawCaptainPage(d, render, kit),   // CAPT-LOG: the crowns' regard, the letter, the contracts, the log
+    companions: (d) => drawCompanionsPage(d, render, { ...kit, kindName: enemyDisplayName, here: swornBodyOf }),   // COMPANION-ROSTER
+    revenants: (d) => drawRevenantsPage(d, render, { ...kit, player: playerEntity, kindName: enemyDisplayName }),   // REVENANT-PAGE
+    stores: (d) => drawStoresPage(d, render, kit),   // PROF1
+    collections: (d) => drawCollectionsPage(d, render, { ...kit, player: playerEntity }),   // COLLECTIONS: the codex and the cards
+  }[holdSec];
+  draw?.(detail);
+  wrap.append(detail);
+  body.append(wrap);
+}
+
+// ── LEGACY3: THE FAMILY PAGE ────────────────────────────────────
+// The journal's bones once more (PX6's rail of pages, the chosen one on the right): Project Legacy's tree, its house
+// and the Hall of Ancestors (ui/familyPages.js). Every page says why when there is no family to show.
+function pauseFamily(body) {
+  const wrap = el('div', 'px-journal');
+  const rail = el('div', 'px-qrail');
+  if (!FAMILY_PAGE_SECTIONS.some(([id]) => id === famSec)) famSec = 'tree';
+  for (const [id, label] of FAMILY_PAGE_SECTIONS) {
+    const b = el('button', `px-qrow${id === famSec ? ' on' : ''}`);
+    b.append(el('span', 'px-c', '◆'), document.createTextNode(label));
+    b.onclick = () => { famSec = id; disarmFamilyPages(); render(); };   // AUDIT LEGACY U8: an armed act never waits for the way back
+    rail.append(b);
+  }
+  wrap.append(rail);
+  const detail = el('div', 'px-qdetail px-sys');
+  // an act that takes the player out of the game (a switch's load, a birth, the mantle's Succession): the pause goes down
+  // first, as the Fleet's doors do, and comes back if the act did nothing
+  // AUDIT LEGACY U4: a refused act is refused on the card before the press (switchRefusal, mantleRefusal); one refused
+  // after it (a save that would not take) is said on the HUD by the host, and the world resumes under it
+  const kit = { el, divider: pxDivider, door: (fn) => { onAction('handoff'); const r = fn(); if (!r?.ok) onAction('resume'); return r; },
+    goto: (id) => { famSec = id; disarmFamilyPages(); render(); } };   // AUDIT PLAIN-UI U8: the tree's way to How it works
+  ({ tree: drawTreePage, house: drawHousePage, hall: drawHallPage, guide: drawGuidePage })[famSec](detail, render, kit);   // PLAIN-UI: How it works
+  wrap.append(detail);
+  body.append(wrap);
 }
 
 // ── PX7: THE SYSTEM PAGE ─────────────────────────────────────────
@@ -3726,8 +4464,8 @@ function pauseWindow() {
 export const SYSTEM_PANES = Object.freeze([
   ['resume', 'Resume'], ['save', 'Save Game'], ['load', 'Load Game'],
   ['settings', 'Settings'],   // FT16: Controls is a category INSIDE it
-  ['features', 'Features'],   // FT0
   ['overhauls', 'Overhauls'],   // OVH1
+  ['screenshots', 'Screenshots'],   // LOAD1: the gallery, mid-game too
   ['about', 'About'], ['exit', 'Exit'],   // FT14: no Mods pane
 ]);
 
@@ -3753,15 +4491,16 @@ function pauseSystem(body) {
     // PX10 (Mac): CONDENSED at pause - the keys with LIVE consumers,
     // the ones a hand mid-game actually reaches for; the full catalog
     // stays on the main menu, and the pane says so. The pane owns its
-    // own confirm/help placement (the sheet).
-    paneQuickSettings(detail);
+    // own confirm/help placement (the sheet). ORG2: the same screen as the main menu's - its tabs, its search - with
+    // the rows that act in play.
+    paneSettings(detail, { pause: true });
   } else if (confirming) {
     detail.append(confirmCard());
   } else {
     ({
       save: paneSave, load: paneLoad,
-      features: paneFeatures,   // FT0
       overhauls: paneOverhauls,   // OVH1
+      screenshots: drawShotsPane,   // LOAD1
       about: paneAbout, exit: paneExit,
     })[sysSec](detail);
   }
@@ -3823,8 +4562,13 @@ function meterRow(label, now, max, tone) {
 }
 
 /** PROF1: the rail's pages - the sheet's six, and online, while the professions are this account's, the Professions
- *  and Stores pages (ui/profPages.js). */
-const statsSections = () => [...STATS_SECTIONS, ...(revenantPageShown(playerEntity) ? REVENANT_PAGE_SECTIONS : []), ...(companionPageShown() ? COMPANION_PAGE_SECTIONS : []), ...(profPagesShown() ? PROF_PAGE_SECTIONS : [])];   // REVENANT-PAGE: after the sheet's own, before the professions'
+ *  page (ui/profPages.js). HOLDINGS: the Stores page, the Revenants and the Companions went to the Holdings rail. */
+const PROF_STATS_SECTIONS = Object.freeze(PROF_PAGE_SECTIONS.filter(([id]) => id === 'professions'));
+const PROF_HOLD_SECTIONS = Object.freeze(PROF_PAGE_SECTIONS.filter(([id]) => id !== 'professions'));
+const statsSections = () => [...STATS_SECTIONS, ...(profPagesShown() ? PROF_STATS_SECTIONS : []), ...(vendorPageShown() ? VENDOR_PAGE_SECTIONS : [])];   // HOME-VENDOR: the Vendor page, under the Professions
+/** HOLDINGS: the Holdings rail's pages - what the player owns (the Stable, the Fleet while ships sail, the Stores
+ *  online) and who follows them (the Companions, the Revenants), each while it has a thing to show. */
+const holdingsSections = () => [...(stablePageShown() ? STABLE_PAGE_SECTIONS : []), ...(fleetPageShown() ? FLEET_PAGE_SECTIONS : []), ...(captainPageShown() ? CAPTAIN_PAGE_SECTIONS : []), ...(companionPageShown() ? COMPANION_PAGE_SECTIONS : []), ...(revenantPageShown(playerEntity) ? REVENANT_PAGE_SECTIONS : []), ...(profPagesShown() ? PROF_HOLD_SECTIONS : []), ...(collectionsPageShown(playerEntity) ? COLLECTION_PAGE_SECTIONS : [])];   // COLLECTIONS
 
 function pauseStats(body) {
   const m = sheetModel(playerEntity);
@@ -3847,12 +4591,12 @@ function pauseStats(body) {
   // pauseSystem) carries. The kit's button role (enhancedFrame.js FRAME_ROLES) reads `.px-sys .act`,
   // so without it these four fell through to the bare, unpainted base .act under Plus.
   const detail = el('div', 'px-qdetail px-sys');   // DROPS-AUDIT F3: the system-page dress (Plus's; PLUS-DEAD: the only one)
+  if (statsSec === 'professions' || statsSec === 'stores') detail.classList.add('prof-detail');
   const profKit = { el, divider: pxDivider, meter: pxMeter };
   ({
     character: statsCharacter, attributes: statsAttributes, skills: statsSkills, specials: statsSpecials, standing: statsStanding, effects: statsEffects, master: statsMaster,   // SOFTCAP4: `master` - the Master Skills door's page
-    professions: (d) => drawProfessionsPage(d, render, profKit), stores: (d) => drawStoresPage(d, render, profKit),
-    revenants: (d) => drawRevenantsPage(d, render, { ...profKit, player: playerEntity, kindName: enemyDisplayName }),   // REVENANT-PAGE
-    companions: (d) => drawCompanionsPage(d, render, { ...profKit, kindName: enemyDisplayName, here: swornBodyOf }),   // COMPANION-ROSTER
+    professions: (d) => drawProfessionsPage(d, render, profKit),
+    vendor: (d) => drawVendorPage(d, render, profKit),   // HOME-VENDOR
   })[statsSec](detail, m);
   // PX25: THE DOORS THE F5 SHEET CARRIED. The classic character sheet
   // has four buttons down its side - Inventory, Spellbook, Logbook,
@@ -3863,6 +4607,9 @@ function pauseStats(body) {
   // opens nothing is PX14's drawn door.
   const doors = statsSec === 'master' ? [] : [   // SOFTCAP6: the Master Skills page carries none of the sheet's doors
     [t('pause.door.pack', 'Pack'), hooks.openPack], [t('pause.door.spellbook', 'Spellbook'), hooks.openSpellbook], [t('pause.door.chronicle', 'Chronicle'), hooks.openChronicle],
+    // ARENA3: THE ARENA WINDOW, once a banner is worn (bible/11-Multiplayer/Arena.md 5 - "from the pause menu's Arena entry
+    // once you have joined"): the host's arm (scenes/arenaGate.js windowOverlay, shown in its own slot)
+    [t('pause.door.arena', 'Arena'), hooks.arenaJoined?.() ? hooks.openArena : undefined],
   ].filter(([, fn]) => typeof fn === 'function');
   if (doors.length) {
     const row = el('div', 'px-sheetdoors');
@@ -3935,6 +4682,28 @@ function statsCharacter(detail, m) {
     g.append(r);
   }
   detail.append(g);
+  // LEGACY-SHEET (bible/06-Systems/Legacy-Arc.md section 11): THE HOUSE - the one played's own facts off their Family
+  // card (ui/familyPages.js sheetHouse): the model, the generation, and an Enduring house's age, toll and elder's word
+  const house = sheetHouse();
+  if (house) {
+    detail.append(pxDivider(house.title));
+    const h = el('div', 'px-statgrid');
+    for (const [label, v] of house.rows) { const r = el('div', 'px-stat'); r.append(el('span', 'k', label), el('span', 'v', v)); h.append(r); }
+    detail.append(h);
+    if (house.word) detail.append(el('p', 'px-note', house.word));
+  }
+  // ARENA2: THE ARENA'S NAME FOR YOU (offline - systems/arenaLadder.js): the title of the highest tier whose champion you
+  // beat, Grand Champion over all, and your record on its sand; said only once you have fought there
+  if (m.arena) {
+    detail.append(pxDivider('The Arena'));
+    const a = el('div', 'px-statgrid');
+    for (const [label, v] of [['Title', m.arena.title ?? 'None yet'], ['Record', m.arena.record], ...(m.arena.banner ? [['Banner', m.arena.banner]] : [])]) {   // ARENA3: the banner worn
+      const r = el('div', 'px-stat');
+      r.append(el('span', 'k', label), el('span', 'v', v));
+      a.append(r);
+    }
+    detail.append(a);
+  }
 }
 
 /** BUFF-END (Leafen on Discord: "Could there be a way to dispel magic for non-magic users?"): EFFECTS - every spell on
@@ -3992,7 +4761,7 @@ function statsMaster(detail, m) {
   back.classList.add('px-master-back');
   detail.append(back, pxDivider(t('pause.master.title', 'Master Skills')));
   const lead = !ms.on
-    ? (ms.switchable ? t('pause.master.offClassic', 'Off \u2013 your skills stop at 100, as in Daggerfall.') : t('pause.master.off', 'Off.'))
+    ? (ms.switchable ? t('pause.master.offClassic', 'Off \u2013 your skills stop at 100, as in the original game.') : t('pause.master.off', 'Off.'))
     : t('pause.master.on', 'Choose the skills that may climb past 100, up to 200. A choice is permanent.');
   detail.append(el('div', 'px-master-lead', lead));
   if (_masterNote) detail.append(el('div', 'px-master-note', _masterNote));
@@ -4155,6 +4924,22 @@ function statsStanding(detail) {
   statsDress(detail, playerEntity);
   statsLaw(detail, playerEntity);
   statsGuilds(detail, playerEntity);
+  if (getPref('standingAll')) statsEveryStanding(detail, playerEntity);   // EVERY-STANDING
+}
+
+/** FIELD BUGS 2026-10-09e EVERY-STANDING ("Could we have a setting to see our reputation with every guild/kingdoms?" -
+ *  expelled from the Mages Guild, the way back in had no number on the screen): with the Interface tab's Character
+ *  sheet row on, every organization's reputation under its own divider - the guilds and temples the player is not in,
+ *  the knightly orders, the kingdoms, the covens, the clans, the Daedra (systems/factionStanding.js). */
+export function statsEveryStanding(detail, entity) {
+  for (const g of standingGroups(entity)) {
+    detail.append(pxDivider(g.title));
+    for (const r of g.rows) {
+      const row = el('div', 'px-stat px-org');
+      row.append(el('span', 'k', r.name), signedRep(r.rep));
+      detail.append(row);
+    }
+  }
 }
 
 /** DRESS1 (2026-09-30, Discord: "Add positive and negative reputation buffs for clothing items"): what the worn clothes
@@ -4198,10 +4983,13 @@ export function lawRows(entity, worldNow) {
     // AUDIT REP F2: NaN is a banishment whose term is not known yet (online, the relay's clock unheard) - still a row
     const left = banishmentLeft(entity, i, worldNow);
     if (rep === 0 && left === 0) continue;
-    const days = Math.ceil(left / 1440);
+    const days = banishmentDaysLeft(entity, i, worldNow);   // BANISH-SKY: the days of the calendar the player sees
+    const real = Number.isFinite(left) ? worldSpanRealWords(left) : null;   // ...and online what they are on the wall
     // the price of each: a pardon at the region's temple, a stop's fine on the street (L10N4: each note one pattern)
     const note = left !== 0 ? (Number.isFinite(left)
-      ? t('pause.law.banishedDays', 'banished, {days, plural, one {# day} other {# days}} left (a pardon: {gold} gold)', { days, gold: pardonPrice(entity, i) })
+      ? (real
+        ? t('pause.law.banishedDaysReal', 'banished, {days, plural, one {# day} other {# days}} left, {real} (a pardon: {gold} gold)', { days, real, gold: pardonPrice(entity, i) })
+        : t('pause.law.banishedDays', 'banished, {days, plural, one {# day} other {# days}} left (a pardon: {gold} gold)', { days, gold: pardonPrice(entity, i) }))
       : t('pause.law.banished', 'banished (a pardon: {gold} gold)', { gold: pardonPrice(entity, i) }))
       : rep < KNOWN_CRIMINAL_BELOW ? t('pause.law.known', 'known to the watch (a stop: {gold} gold)', { gold: challengeFine(entity, i, { worldNow }) }) : '';
     out.push({ region: REGION_NAMES[i] ?? t('pause.law.region', 'Region {i}', { i }), rep, word: legalStandingWord(rep), note });
@@ -4295,7 +5083,7 @@ function armQuestTimer(span, key) {
 }
 
 /** The finished-quest header the notebook files:
- *  '<name> completed|ended at <date>:' (notebook.js:"const live = new"). The name
+ *  '<name> completed|ended at <date>:' (notebook.js:"AddFinishedQuest(messages)"). The name
  *  and the verdict come back out of it; a headerless overflow entry
  *  (the notebook's own kept quirk) reads as a continuation. */
 
@@ -4357,18 +5145,20 @@ function pauseQuests(body) {
   // MAC-K2: THE WALK IS ui/questRail.js's now, because the chronicle
   // needs the same one - the L key's window had no quests in it at all
   // and a second copy of this here is how the two would drift.
-  const { active, finished, hidden } = questRail(hooks.questLog() ?? { active: [], finished: [] });
+  const log = hooks.questLog() ?? { active: [], finished: [] };
+  const { active, finished, hidden } = questRail(log);
+  const shelved = shelvedRail(log);   // QUEST-SHELF: and the quests set aside
   // JOURNAL-CLEAN (2026-09-30, Discord: "Should there be a way to clean both finished and unfinished quests from your
   // journal for a cleaner look?"): the host's tidy-ups (scenes/questBridge.js journalClean - remove / clear the
   // archive, hide / unhide an active quest). A host that hands none draws no buttons rather than buttons that do
   // nothing.
   const clean = hooks.journalClean?.() ?? null;
-  if (!active.length && !finished.length && !hidden.length) {
+  if (!active.length && !finished.length && !hidden.length && !shelved.length) {
     body.append(el('p', 'px-note', t('pause.journal.none', 'No active quests.')));
     return;
   }
   const shown = questShowHidden ? hidden : [];
-  const rows = [...active, ...shown, ...finished];
+  const rows = [...active, ...shown, ...shelved, ...finished];
   // GUIDE4: THE JOURNAL OPENS ON THE QUEST THE HUD SHOWS - the tracker's (the one tracked, else the one the journal
   // last changed) - and only then on the first row.
   if (!rows.some((r) => r.key === questSel)) {
@@ -4403,7 +5193,7 @@ function pauseQuests(body) {
   // The ARCHIVE is not split by kind, and that is not an oversight:
   // the notebook's filed header keeps only the display name, so the
   // questName main/side is gone by the time a quest is filed
-  // (notebook.js:"const live = new"). Three sections is the shape the DATA has.
+  // (notebook.js:"AddFinishedQuest(messages)"). Three sections is the shape the DATA has.
   const mains = active.filter((q) => q.main);
   const sides = active.filter((q) => !q.main);
   const section = (label, items, cls, first = false) => {
@@ -4416,6 +5206,9 @@ function pauseQuests(body) {
   // JOURNAL-CLEAN: the hidden quests, drawn only when asked for, under their own heading - and the toggle that asks,
   // which names how many are hidden so a tidied journal never looks like quests were lost.
   if (questShowHidden && hidden.length) section(t('pause.journal.hidden', 'Hidden'), hidden, ' done');
+  // QUEST-SHELF (2026-10-08, Mac: "All quests should be able to be abandoned and reclaimed"): the quests set aside, each
+  // one press from coming back - a section only while there are any
+  if (shelved.length) section(t('pause.journal.abandoned', 'Abandoned'), shelved, ' done');
   section(t('pause.journal.archived', 'Archived'), finished, ' done');
   const railAct = (label, onclick) => {
     const b = el('button', 'px-qrow done', label);
@@ -4447,7 +5240,8 @@ function pauseQuests(body) {
     const head2 = el('div', 'px-qname');
     head2.append(el('span', 'px-qwing'), el('h3', null, questTitleOf(sel.name)), el('span', 'px-qwing px-flip'));   // PX28
     detail.append(head2);
-    if (sel.entries) {
+    const isShelvedRow = String(sel.key).startsWith('s:');   // QUEST-SHELF: a quest set aside - its clock stopped, nothing to track
+    if (sel.entries && !isShelvedRow) {
       // PX22: NO KIND TAG. PX5 put "Main Quest" / "Side Quest" beside
       // the timer; with the rail always showing three named sections
       // that is the same fact twice, and a quest is not TITLED by its
@@ -4493,13 +5287,49 @@ function pauseQuests(body) {
       acts.append(ab);
       detail.append(acts);
     }
+    // RVN7c (bible/12-Enhanced-AI/Feud-Arc.md 18.3): a hunt's one press - Abandon (twice, as a bounty's): its lair forgotten
+    if (sel.entries && isHuntQuestId(sel.id)) {
+      const acts = el('div', 'px-qacts');
+      acts.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;margin:6px 0 8px';
+      const armed = bountyAbandonArmed === sel.id;
+      const ab = el('button', 'act', armed ? 'Click again to abandon' : 'Abandon hunt');
+      ab.onclick = () => {
+        if (bountyAbandonArmed !== sel.id) { bountyAbandonArmed = sel.id; render(); return; }
+        bountyAbandonArmed = null;
+        abandonHuntQuest(sel.id);
+        questSel = null;
+        render();
+      };
+      acts.append(ab);
+      detail.append(acts);
+    }
     // JOURNAL-CLEAN: an active quest HIDES from the journal (it keeps running - its clock, its HUD marks - and ends
     // into the archive like any other), and a hidden one unhides; one press each, since either is undone by the other.
     // An archived entry REMOVES - twice, BOUNTY1's arming, because a removed record does not come back.
     if (clean) {
       const acts = el('div', 'px-qacts');
       acts.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;margin:6px 0 8px';
-      if (sel.entries && sel.id != null) {
+      // QUEST-SHELF: a running quest ABANDONS - twice, BOUNTY1's arming (its clocks stop and its questor is free the moment
+      // it goes) - where the quest may be set aside (scenes/questBridge.js canAbandon); one set aside RECLAIMS in one press
+      if (isShelvedRow && sel.id != null && clean.reclaim) {
+        const rc = el('button', 'act', 'Reclaim quest');
+        // its audit: the selection follows the quest only where it went - a refusal is said under the quest it refused
+        rc.onclick = () => { const out = clean.reclaim(sel.id); questShelfSaid = out?.text ?? null; if (out?.ok) questSel = `a:${sel.id}`; render(); };
+        acts.append(rc);
+      } else if (sel.entries && sel.id != null && clean.abandon && clean.canAbandon?.(sel.id)) {
+        const armed = journalCleanArmed === `ab:${sel.id}`;
+        const ab = el('button', 'act', armed ? 'Click again to abandon' : 'Abandon quest');
+        ab.onclick = () => {
+          if (journalCleanArmed !== `ab:${sel.id}`) { journalCleanArmed = `ab:${sel.id}`; render(); return; }
+          journalCleanArmed = null;
+          const out = clean.abandon(sel.id);
+          questShelfSaid = out?.text ?? null;
+          if (out?.ok) questSel = `s:${sel.id}`;
+          render();
+        };
+        acts.append(ab);
+      }
+      if (sel.entries && sel.id != null && !isShelvedRow) {
         const isHidden = hidden.some((q) => q.key === sel.key);
         const hb = el('button', 'act', isHidden ? t('pause.journal.unhide', 'Unhide') : t('pause.journal.hide', 'Hide from journal'));
         hb.onclick = () => {
@@ -4522,6 +5352,7 @@ function pauseQuests(body) {
         acts.append(rb);
       }
       if (acts.childNodes.length) detail.append(acts);
+      if (questShelfSaid) { detail.append(el('p', 'px-note', questShelfSaid)); questShelfSaid = null; }   // QUEST-SHELF: said once
     }
     if (sel.entries) {
       // Active: the LATEST entry is the state of the quest; the trail
@@ -4582,6 +5413,7 @@ function renderInto() {
   if (groundTimer) { clearInterval(groundTimer); groundTimer = null; }
   if (questTimer) { clearInterval(questTimer); questTimer = null; }
   stopTimers();   // TIMERS1: a rebuild builds the window again, with its own tick
+  stopPost();   // SERVER-POST: and the mailbox's, and the envelope's count
   app.innerHTML = '';
   // PX1/PX2: both doors open on the pixel home; every section keeps
   // its shell.
@@ -4614,7 +5446,7 @@ function renderInto() {
   // (onKey); this is the one a finger can see.
   const homeMark = el('button', 'brand-home');
   homeMark.type = 'button';
-  homeMark.setAttribute('aria-label', t('menu.home.homeAria', 'Daggerfall Online — main menu'));
+  homeMark.setAttribute('aria-label', t('menu.home.homeAria', 'DFO Online — main menu'));
   homeMark.append(brandMark());
   homeMark.onclick = () => go('home');
   h1.append(homeMark);
@@ -4654,8 +5486,9 @@ function renderInto() {
         continue: paneContinue, new: paneNew, load: paneLoad, online: paneOnline,   // ONLINE1
         test: paneTest,
         save: paneSave, exit: paneExit,
-        features: paneFeatures,   // FT0
         overhauls: paneOverhauls,   // OVH1
+        screenshots: drawShotsPane,   // LOAD1
+        tutorials: drawTutorialsPane,   // TUT1
         about: paneAbout, begin: paneBegin,   // FD1: the classic rail's door; SO1: Enhanced is a Settings category now
       })[section](body);
     }
@@ -4768,6 +5601,7 @@ function onKey(e) {
   // rather than walk the screen out from under it.
   const back = accountOpen ? () => { accountOpen = false; render(); }
     : timersOpen && timersView ? () => { timersOpen = false; timersFocusBack = true; render(); }   // TIMERS1: the window first, ahead of the pause face's resume (AUDIT UI-11: a window that is drawn)
+    : postOpen && postView ? () => { postOpen = false; postKeep = {}; postFocusBack = true; render(); }   // SERVER-POST: the mailbox's window, as the timers'
     // AUDIT 32 P12: an act under way on the Stores page is set down first (nothing spent, said) - never the window
     : profActUnderWay() ? () => { setDownProfAct(); render(); }
     : confirming ? () => { confirming = null; render(); }
@@ -4841,6 +5675,9 @@ export function mountEnhancedMenu(host, {
   accountOpen = false;
   timersOpen = false;   // TIMERS1: and the timers window the same
   timersFocusBack = false;
+  postOpen = false;   // SERVER-POST: and the mailbox's
+  postFocusBack = false;
+  postKeep = {};
   // MAC1 (Mac, 2026-09-10: "after exiting game and then going back to
   // enhanced settings, the Build and Switch Arms options are gone and
   // require me to reattach the files"). The Morrowind store is COUNTED
@@ -4873,7 +5710,7 @@ export function mountEnhancedMenu(host, {
   cloudAsked = false;
   cloudArm = null;
   cloudWhy = null;   // the pre-merge audit (0927b): a refusal is last visit's news - this visit asks the service again
-  realmAsked = false; realmRows = null; realmBusy = false;   // REALM P1.3: the realm is asked again each visit
+  realmAsked = false; realmRows = null; realmBusy = false; realmLinesAsked = false; realmLineIds = null;   // REALM P1.3: the realm is asked again each visit
   realmWords = [takeRealmNotice(globalThis.sessionStorage)].filter(Boolean);   // REALM P1.3: why the last online boot came back here
   sections = mode === 'pause' ? SECTIONS_PAUSE : isEnhanced() ? SECTIONS_BOOT : SECTIONS_CLASSIC;   // FD1: one door, two rails
   // WHICH PANE OPENS. Both doors open on the PIXEL HOME (PX1/PX2) -
@@ -4887,7 +5724,7 @@ export function mountEnhancedMenu(host, {
   // which is what keeps the reset the default rather than a thing this
   // has to work around. The tabbed window IS the pause home face, so a
   // landing sets the TAB and leaves the section alone.
-  if (['quests', 'stats', 'system'].includes(at)) pauseTab = at;
+  if (PAUSE_TAB_IDS.includes(at)) pauseTab = at;
   // DISC22-B: ...or a SECTION of the rail - the classic pause window's Controls button lands on Settings (the port's
   // whole settings screen, Controls among its categories), not on the home face a press away from it.
   else if (at && sections.some((l) => idOf(l) === at)) section = at;
@@ -4898,17 +5735,28 @@ export function mountEnhancedMenu(host, {
   statsSec = 'character';
   resetProfPages();   // PROF1: an armed change of specialisation never outlives the visit
   resetCompanionRoster();   // COMPANION-ROSTER: nor an armed Release
+  holdSec = 'stable';   // HOLDINGS: the Holdings rail opens on its first page
+  famSec = 'tree';   // LEGACY3: the Family rail opens on the tree, centred on the one played
+  resetFamilyPages();
+  resetHoldingsPages(); resetFleetPage(); resetCollectionsPage();   // ...and an act's word, an open name field, an armed press never outlive the visit
   statsAllSkills = false;
   sysSec = 'save';
   category = CATEGORIES[0].id;
   pickedKey = null;
   sheetOpen = false;
   confirming = null;
-  featureQuery = '';   // FT18: a fresh visit searches nothing
+  optQuery = '';   // FT18: a fresh visit searches nothing (ORG2: over every tab)
+  optFilter = 'all';
+  pickedFeature = null;
   discardControlsStaging();   // FIX-F: a second visit never inherits the first one's staged binds
   // PROF2: a landing on a professions page - the Stats tab at it (a home forge's press opens the Stores' forge); the
   // draw falls back to the character's own page when the professions are not the account's
-  if (PROF_PAGE_SECTIONS.some(([id]) => id === at)) { pauseTab = 'stats'; statsSec = at; }
+  // HOLDINGS: the Professions page is the Stats rail's, the Stores page the Holdings rail's
+  if (PROF_STATS_SECTIONS.some(([id]) => id === at)) { pauseTab = 'stats'; statsSec = at; }
+  else if (PROF_HOLD_SECTIONS.some(([id]) => id === at)) { pauseTab = 'holdings'; holdSec = at; }
+  else if (FAMILY_PAGE_SECTIONS.some(([id]) => id === at)) { pauseTab = 'family'; famSec = at; }   // LEGACY3: a Family page by name
+  else if (at === 'mailbox') postOpen = true;   // SERVER-POST: the mailbox's door (/mail, either skin) - the pause face with its window open
+  else if (at === 'collections' || at === 'cards' || at === 'codex') { pauseTab = 'holdings'; holdSec = 'collections'; if (at !== 'collections') setCollectionsPart(at); }   // AUDIT CARDS-5 D14: the Collections page by name, or one of its parts
   _eff = null;
   render();
   keyHandler = onKey;
@@ -4945,6 +5793,9 @@ export function mountEnhancedMenu(host, {
       if (textKeyCapture) { globalThis.removeEventListener('keydown', textKeyCapture, true); textKeyCapture = null; }   // DISC28-A
       if (questTimer) { clearInterval(questTimer); questTimer = null; }
       stopTimers();   // TIMERS1
+      releaseShotsPane();   // LOAD1: the gallery's pictures and its listener
+      stopPost();   // SERVER-POST: and the mailbox's ticks
+      releaseTutorialsPane();   // TUT1: the next visit opens on the first page
       // FIX-F: and the rebind pane's own capture listener, which is on
       // the DOCUMENT and would outlive this screen exactly as the one
       // above would.

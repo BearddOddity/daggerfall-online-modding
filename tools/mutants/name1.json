@@ -30,8 +30,8 @@
   {
     "name": "NAME1-anchor-dom-gap-dropped",
     "file": "src/ui/nameLayer.js",
-    "old": "        setStyle(tag.node, 'top', `${Math.round(p.y - NAME_GAP_PX)}px`);",
-    "new": "        setStyle(tag.node, 'top', `${Math.round(p.y)}px`);",
+    "old": "${Math.round(p.y - NAME_GAP_PX)}px) translate(-50%, -100%)`",
+    "new": "${Math.round(p.y)}px) translate(-50%, -100%)`",
     "tests": [
       "test/name1_bubbles.test.js"
     ]
@@ -39,8 +39,8 @@
   {
     "name": "NAME1-anchor-dom-stack-grows-down",
     "file": "src/ui/nameLayer.js",
-    "old": "  transform: translate(-50%, -100%); }",
-    "new": "  transform: translate(-50%, 0); }",
+    "old": "px) translate(-50%, -100%)`, (v) => { tag.node.style.transform = v; });",
+    "new": "px) translate(-50%, 0)`, (v) => { tag.node.style.transform = v; });",
     "tests": [
       "test/name1_bubbles.test.js"
     ]
@@ -93,8 +93,8 @@
   {
     "name": "NAME1-size-not-taken-in-the-dom",
     "file": "src/ui/nameLayer.js",
-    "old": "        setStyle(tag.node, 'fontSize', `${namePixelSize(p.scale ?? 1, vp, hudScale).toFixed(1)}px`);",
-    "new": "        setStyle(tag.node, 'fontSize', `${NAME_BASE_PX.toFixed(1)}px`);",
+    "old": "put(tag, 'size', `${namePixelSize(p.scale ?? 1, vp, hudScale).toFixed(1)}px`",
+    "new": "put(tag, 'size', `${NAME_BASE_PX.toFixed(1)}px`",
     "tests": [
       "test/name1_bubbles.test.js"
     ]
@@ -165,7 +165,7 @@
   {
     "name": "NAME1-host-sight-test-dropped",
     "file": "src/scenes/world.js",
-    "old": "    const blocked = (head, id) => nameSight.blocked(player.collider, eye, id, head);",
+    "old": "    const blocked = (head, id) => glassCuts(projectToScreen(head, 1, 1, proj, view)) || nameSight.blocked(player.collider, eye, id, head);",
     "new": "    const blocked = null;",
     "tests": [
       "test/name1_bubbles.test.js"
@@ -201,8 +201,8 @@
   {
     "name": "NAME1-dom-writes-unguarded",
     "file": "src/ui/nameLayer.js",
-    "old": "  const setStyle = (n, k, v) => { if (n.style[k] !== v) n.style[k] = v; };",
-    "new": "  const setStyle = (n, k, v) => { n.style[k] = v; };",
+    "old": "  const put = (tag, slot, v, write) => { if (tag[slot] !== v) { tag[slot] = v; write(v); } };",
+    "new": "  const put = (tag, slot, v, write) => { tag[slot] = v; write(v); };",
     "tests": [
       "test/name1_bubbles.test.js"
     ]
@@ -630,8 +630,8 @@
   {
     "name": "AUDIT-NAME1-F14-the-pass-projects-under-a-window",
     "file": "src/net/remotePlayers.js",
-    "old": "    const points = covered ? [] : this.namePoints(proj, view, w, h, eye, toScene, rect, blocked);",
-    "new": "    const points = this.namePoints(proj, view, w, h, eye, toScene, rect, blocked);",
+    "old": "    let points = covered ? [] : this.namePoints(proj, view, w, h, eye, toScene, rect, blocked);",
+    "new": "    let points = this.namePoints(proj, view, w, h, eye, toScene, rect, blocked);",
     "tests": [
       "test/name1_bubbles.test.js"
     ]

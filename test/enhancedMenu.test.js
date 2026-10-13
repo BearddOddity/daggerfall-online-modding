@@ -134,9 +134,14 @@ test('the two rails differ only where the question does', () => {
   // that is itself on both rails - and test/enhancedControls.test.js
   // holds the category and its two renderers.
   // OVH1: Overhauls joins the shared set - the three looks, reachable from both doors as Features is.
-  const shared = ['Load Game', 'Settings', 'Features', 'Overhauls', 'About'];   // FT14: no Mods door; FT16: no Controls door
+  // LOAD1: Screenshots joins it - the gallery the key keeps is the same at the door and mid-game.
+  // ORG2 (Mac: "Graphic settings needs its own tab, etc. I really need you to go all in"): FEATURES LEFT THE RAIL as
+  // Controls did - its rows are the Settings screen's tabs, one door for every option, on both rails still.
+  // TUT1: Tutorials joins it - the book a player reads before the game is the one they reread mid-game.
+  const shared = ['Load Game', 'Settings', 'Overhauls', 'Tutorials', 'Screenshots', 'About'];   // FT14: no Mods door; FT16: no Controls door; ORG2: no Features door
   assert.ok(!boot.includes('Controls') && !pause.includes('Controls'),
     'Controls is a Settings category now - a second door to one subject is the thing FT16 closed');
+  assert.ok(!boot.includes('Features') && !pause.includes('Features'), 'and Features is Settings\' tabs (ORG2)');
   for (const s2 of shared) {
     assert.ok(boot.includes(s2), `${s2} must stay on the front door`);
     assert.ok(pause.includes(s2), `${s2} must reach the pause door too`);
@@ -159,7 +164,7 @@ test('the two rails differ only where the question does', () => {
   assert.ok(!boot.includes('Enhanced') && !pause.includes('Enhanced'), 'Enhanced is a settings category, not a rail entry (SO1)');
   // FD1: the classic rail is the shared set behind one door
   const classic = list('SECTIONS_CLASSIC');
-  assert.deepEqual(classic, ['Begin', 'Online', 'Settings', 'Features', 'Overhauls', 'About'], 'ONLINE1: the classic player goes online too; FT0: and reaches the features home; FT14: which is where the mods are now; FT16: and Controls is inside Settings');
+  assert.deepEqual(classic, ['Begin', 'Online', 'Settings', 'Overhauls', 'Tutorials', 'Screenshots', 'About'], 'TUT1: and the tutorials; ONLINE1: the classic player goes online too; FT0/ORG2: and reaches every feature and mod through Settings; FT16: and Controls is inside Settings; LOAD1: and the key\'s shots');
   assert.deepEqual(pause.filter((x) => !shared.includes(x)), ['Resume', 'Save Game', 'Exit']);
   // SETTINGS IS THE POINT. U49's own record says settings were
   // reachable only at boot; a pause rail without them would have left
@@ -199,9 +204,14 @@ test('R7/SO1/FT12: the port\'s own switches are the Features home\'s, every one 
 test('the destructive actions ask first', () => {
   const src = read('src/ui/enhancedMenu.js');
   assert.match(src, /const ask = \(title, body, label, onYes\)/, 'one confirm, not two');
-  const resetAt = src.indexOf('Reset everything to defaults');
-  assert.match(src.slice(resetAt, resetAt + 400), /b\.onclick = \(\) => ask\(/,
+  // PIN MOVED (L10N4): the toolbar's reset and its ask said in the player's language (resetAllAsk reads RESET_ALL_ASK)
+  const resetAt = src.indexOf("label: t('menu.settings.reset', 'Reset everything to defaults')");
+  assert.match(src.slice(resetAt, resetAt + 300), /onClick: \(\) => ask\(t\('menu\.settings\.resetTitle', 'Reset Everything'\), resetAllAsk\(\), t\('menu\.settings\.resetYes', 'Reset'\), /,
     'Reset must ask - the classic screen does');
+  // ORG2: and so does one tab's restore, from its card
+  const tabAt = src.indexOf("const b = el('button', 'act', t('menu.settings.restoreTab', 'Restore defaults'));");
+  assert.ok(tabAt > 0, 'the tab card carries its restore');
+  assert.match(src.slice(tabAt, tabAt + 400), /b\.onclick = \(\) => ask\(\s*\n\s*t\('menu\.settings\.restoreTabTitle', 'Restore \{tab\} Defaults', \{ tab: cat\.title \}\)/, 'a tab\'s restore asks too');
   const delAt = src.indexOf("label: localizedText('deleteSave', 'Delete')");
   assert.match(src.slice(delAt, delAt + 400), /onClick: \(\) => ask\(/,
     'Delete must ask');
@@ -279,7 +289,7 @@ test('U51: the saved game is rendered from one place', () => {
 test('the category card is reachable on a phone', () => {
   const src = read('src/ui/enhancedMenu.js');
   const at = src.indexOf('const rail = el(\'div\', \'subrail\')');
-  const arm = src.slice(at, at + 1600);
+  const arm = src.slice(at, at + 2000);   // ORG2: the tab's arm also leaves the search and the Features row
   assert.match(arm, /if \(on\) \{[^}]*sheetOpen = true;/,
     'a second tap on the active category must raise the sheet');
   assert.match(arm, /more-dot/, 'and the gesture needs a visible affordance');
@@ -312,7 +322,7 @@ test('the settings pane reads the store once, not once per row', () => {
   assert.equal((code.match(/effectiveSettings\(\)/g) || []).length, 1,
     'exactly one call site - a second one is a second store read per row');
   // and every path that can change the store drops the cache
-  const writes = ['_eff = null;   // the store changed', 'resetToDefaults(); _eff = null;'];
+  const writes = ['_eff = null;   // the store changed', 'resetToDefaults(); _eff = null;', 'saveSettings(); _eff = null;   // AUDIT F7: the store changed'];   // ORG2: and one tab's restore
   for (const w of writes) assert.ok(src.includes(w), `the cache must be dropped by: ${w}`);
 });
 

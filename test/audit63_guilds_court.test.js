@@ -112,8 +112,8 @@ test('AUDIT 63 F11: every host site that builds the formula\'s skills object rea
   const wm = read('../src/scenes/worldModes.js');
   assert.equal(/personality:\s*playerEntity\.stats\?\.personality\s*\?\?\s*50/.test(wm), false,
     'no host site may pass the PERMANENT stat into CalculateTradePrice');
-  assert.equal((wm.match(/liveStat\(playerEntity, 'personality'\)/g) ?? []).length, 6,
-    'all six worldModes sites read LivePersonality');
+  assert.equal((wm.match(/liveStat\(playerEntity, 'personality'\)/g) ?? []).length, 7,
+    'all seven worldModes sites read LivePersonality');   // PIN MOVED (CARDS9): the card table's pack, priced at the counter's own law
   const ga = read('../src/systems/guildServiceActions.js');
   assert.ok(/liveStat\(entity, 'personality'\)/.test(ga), 'and the temple cure with them');
 });
@@ -200,13 +200,13 @@ test('AUDIT 63 F9: a Thieves Guild member\'s hideout is revealed under its FACTI
 
 test('AUDIT 63 F9: BOTH exterior hosts drive the reveal, at DFU\'s own moments', () => {
   const world = read('../src/scenes/world.js');
-  assert.ok(/const revealMemberGuildHalls = \(\) =>/.test(world));
+  assert.ok(/const revealMemberGuildHalls = \(\{ witness = false \} = \{\}\) =>/.test(world));   // PIN MOVED (CHAP2a): and, at the entry edge online, the town's halls witnessed off the same buildings
   // Join (ThievesGuild.cs:168-173) - guildInitiationQuestEnded is the
   // port's only door into either guild
   assert.ok(/initiated\.length\) revealMemberGuildHalls\(\)/.test(world));
   // and the location-rect entry the same host already edges on (F062)
   const rect = world.slice(world.indexOf('_inRect && !_wasInLocationRect'));
-  assert.ok(rect.slice(0, 900).includes('revealMemberGuildHalls()'),
+  assert.ok(rect.slice(0, 900).includes('revealMemberGuildHalls({ witness: onlineOn })'),   // PIN MOVED (CHAP2a)
     'the enter-rect edge is where RegisterEvents subscribed (:200)');
   // review round: the name is GetAffiliation's FACTION.TXT read
   // (Guild.cs:170-176), whose "unknown-guild" fallback (:175) answers a
@@ -217,14 +217,14 @@ test('AUDIT 63 F9: BOTH exterior hosts drive the reveal, at DFU\'s own moments',
   assert.ok(/ensureFactions\?\.\(\)/.test(body),
     'the streaming host reveals before FACTION.TXT is read - the plate saves as unknown-guild');
   const ext = read('../src/scenes/exterior.js');
-  assert.ok(/revealGuildHallsOnMap\(activeMemberships\(playerEntity\)/.test(ext),
+  assert.ok(/revealGuildHallsOnMap\(revealingMemberships\(playerEntity\)/.test(ext),   // PIN MOVED (AUDIT CHAP2 D4): either book's registration
     'the fixed-city host arms it at load - its one location becomes available exactly once');
   // the pool is the FULL building set, not the talk directory
   assert.ok(/buildingSummaries\(dfLocation\.exterior\?\.buildings/.test(ext));
   // the streaming host's pool is the FULL set too, resolved inside the
   // one reveal (the wait between the two is a microtask, not a re-read)
   assert.ok(/buildingSummaries\(dfLoc\.exterior\?\.buildings/.test(reveal.slice(0, reveal.indexOf('};'))));
-  assert.ok(/revealGuildHallsOnMap\(activeMemberships\(playerEntity\)/.test(reveal.slice(0, reveal.indexOf('};'))));
+  assert.ok(/revealGuildHallsOnMap\(revealingMemberships\(playerEntity\)/.test(reveal.slice(0, reveal.indexOf('};'))));   // PIN MOVED (AUDIT CHAP2 D4)
 });
 
 // ── F33: PlayerActivate.cs:800-841 + :1611-1673 ───────────────────
@@ -474,7 +474,7 @@ const dungeonEnemyArm = (mode, rolls = null) => {
   };
   const build = new Function('dungeonCtx', 'tryMobileEnemyActivate', 'eye', 'dir',
     'getInteractionMode', 'playerEntity', 'makeEnemiesHostile', 'player', 'townTalk',
-    'FOUND_NOTHING_VALUABLE_TEXT_ID', 'say', 'mountInterior', 'ActionTextBox', 'doorDistanceOf', 'targets',
+    'FOUND_NOTHING_VALUABLE_TEXT_ID', 'say', 'mountInterior', 'ActionTextBox', 'doorDistanceOf', 'targets', '_pick',
     `${decl}\n    return _enemyArm;`);
   const arm = build(dungeonCtx,
     // the REAL member, with only the dice fixed - the sinks under test
@@ -484,7 +484,8 @@ const dungeonEnemyArm = (mode, rolls = null) => {
     { pos: [0, 0, 0] }, { randomText: () => null, say: (t) => seen.say.push(t) }, 8999,
     (t) => seen.say.push(t), (w) => seen.mounted.push(w),
     class { constructor(rows) { this.rows = rows; } },
-    doorDistanceOf, []);   // AUDIT TACT C7: the arm asks for a door behind the foe - none here
+    doorDistanceOf, [],   // AUDIT TACT C7: the arm asks for a door behind the foe - none here
+    null);   // FB1012d ALLY-YIELDS: and the ladder's winner behind him (`behind: _pick`) - none here
   return { arm, seen, foe };
 };
 

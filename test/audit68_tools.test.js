@@ -130,8 +130,9 @@ test('AUDIT 68 X5-mutate-interrupt-loses-source: a .mutbak left by an interrupte
 });
 
 test('AUDIT 68 X5-mutate-interrupt-loses-source: a SIGTERM while the tests run puts the source back and stops', async (t) => {
-  const slow = "import { test } from 'node:test';\nimport { writeFileSync } from 'node:fs';\n"
-    + "test('slow', async () => { writeFileSync(new URL('./started', import.meta.url), ''); await new Promise((r) => setTimeout(r, 4000)); });\n";
+  // PIN MOVED (AUDIT SCALE M1): the runner first runs every test unmutated, so the marker is the mutant's run alone
+  const slow = "import { test } from 'node:test';\nimport { writeFileSync, readFileSync } from 'node:fs';\n"
+    + "test('slow', async () => { if (readFileSync(new URL('./target.js', import.meta.url), 'utf8').includes('= 2;')) writeFileSync(new URL('./started', import.meta.url), ''); await new Promise((r) => setTimeout(r, 4000)); });\n";
   const d = mutantBed(t, { 'slow.test.js': slow }, [{ name: 'm', file: 'target.js', old: '= 1;', new: '= 2;', tests: ['slow.test.js'] }]);
   const child = spawn(process.execPath, [join(ROOT, 'tools/mutate.mjs'), 'list.json'], { cwd: d, stdio: 'ignore', env: ENV });
   const exited = new Promise((res) => child.on('exit', (code, signal) => res({ code, signal })));
@@ -260,8 +261,33 @@ test('AUDIT 68 X5-verify-deploy-tag-length-bypasses-dirty: the build tag is twel
   mkdirSync(join(d, 'src'));
   const r = node([join(ROOT, 'scripts/buildTag.mjs')], { cwd: d });
   assert.equal(r.status, 0, r.stderr);
-  assert.equal(readFileSync(join(d, 'src/buildTag.js'), 'utf8'), `export const BUILD_TAG = '${git('rev-parse', 'HEAD').slice(0, 12)}';\n`,
+  // PIN MOVED (REL8): the stamp's second line is the player's update number - none in a repository with no line
+  assert.equal(readFileSync(join(d, 'src/buildTag.js'), 'utf8'), `export const BUILD_TAG = '${git('rev-parse', 'HEAD').slice(0, 12)}';\nexport const UPDATE = null;\n`,
     'bare --short sizes it by the object count: 7 in this repo and in CI\'s shallow clone, 9 in a full one');
+});
+
+test('BUILDTAG-CLEAN (issue #626): a build leaves the tree as it found it - the stamp is put back once the bundle has read it', (t) => {
+  // prebuild writes HEAD's sha over the committed src/buildTag.js. Left
+  // there, the next `git pull` that brings a new copy of it refuses ("Your
+  // local changes ... would be overwritten"), and a build that is committed
+  // carries the stamp into every merge. Run the real pair, in order, on a
+  // scratch clone of the committed file.
+  const d = scratch(t);
+  const git = (...a) => execFileSync('git', a, { cwd: d, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  git('init', '-q');
+  mkdirSync(join(d, 'src'));
+  writeFileSync(join(d, 'src/buildTag.js'), read('src/buildTag.js'));
+  git('add', '-A');
+  git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'one');
+  const { scripts: npm } = JSON.parse(read('package.json'));
+  const run = (cmd) => spawnSync(cmd, { cwd: d, shell: true, encoding: 'utf8', env: ENV });
+  const pre = run(npm.prebuild.replace('scripts/buildTag.mjs', JSON.stringify(join(ROOT, 'scripts/buildTag.mjs'))));
+  assert.equal(pre.status, 0, pre.stderr);
+  assert.equal(git('status', '--porcelain'), 'M src/buildTag.js', 'prebuild must still stamp the file the bundle imports');
+  assert.equal(typeof npm.postbuild, 'string', 'package.json has no postbuild - every build leaves src/buildTag.js modified');
+  const post = run(npm.postbuild);
+  assert.equal(post.status, 0, post.stderr);
+  assert.equal(git('status', '--porcelain'), '', 'the build left src/buildTag.js modified');
 });
 
 // ── the Ledger and the open flags ────────────────────────────────────────
@@ -283,7 +309,7 @@ test('AUDIT 68 X5-regenopenflags-dies-at-zero: the open-flags list empties, stay
   const d = tree(t, ['tools/regenOpenFlags.mjs', 'tools/flagSites.mjs']);
   mkdirSync(join(d, 'bible'));
   mkdirSync(join(d, 'src/zq'), { recursive: true });
-  writeFileSync(join(d, 'bible/Home.md'), '# H\n\n## Open flags\n\nprose\n\n- `src/zq/zqold.js:1` - FLAGGED: old\n\n## Next\n');
+  writeFileSync(join(d, 'bible/Home.md'), '# H\n\n## Open flags\n\nprose\n\n- `src/zq/zqold.js` - FLAGGED: old\n\n## Next\n');
   writeFileSync(join(d, 'src/zq/zqold.js'), '// retired\n');
   const regen = (...a) => node([join(d, 'tools/regenOpenFlags.mjs'), ...a]);
   assert.equal(regen().status, 0);
@@ -292,5 +318,5 @@ test('AUDIT 68 X5-regenopenflags-dies-at-zero: the open-flags list empties, stay
   assert.equal(check.status, 0, `the empty list the tool wrote is one it can read (${check.stderr})`);
   writeFileSync(join(d, 'src/zq/zqnew.js'), '// FLAGGED: new one\n');
   assert.equal(regen().status, 0);
-  assert.equal(readFileSync(join(d, 'bible/Home.md'), 'utf8'), '# H\n\n## Open flags\n\nprose\n\n- `src/zq/zqnew.js:1` - FLAGGED: new one\n\n## Next\n');
+  assert.equal(readFileSync(join(d, 'bible/Home.md'), 'utf8'), '# H\n\n## Open flags\n\nprose\n\n- `src/zq/zqnew.js` - FLAGGED: new one\n\n## Next\n');
 });

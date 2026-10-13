@@ -27,6 +27,8 @@
 import { heldMapWorn } from './mapSkin.js';   // MAP-TOGGLE: the skin AND the player's switch
 import { ExteriorAutomapWindow, preloadExteriorAutomapArt, exteriorAutomapArtLoaded } from './exteriorAutomapWindow.js';
 import { HeldMapWindow } from './heldMap.js';
+import { yardTownBlocks } from '../world/merchantYardMap.js';   // YARDS-FOUND: the town's yards on either map
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export { preloadExteriorAutomapArt };
 
@@ -49,8 +51,21 @@ export function townMapDoorReady() {
  *
  * Answers null where this build cannot draw a map, so the hosts'
  * `if (win)` guards keep meaning.
+ *
+ * YARDS-FOUND (2026-10-10): `yards` - the town's Stable and Wagon Yard
+ * (world/merchantYardSites.js's sites, the location's frame) - are laid
+ * on the block rows HERE, once, for whichever map is built: their ground
+ * in a shop's byte and their names among the landmarks
+ * (world/merchantYardMap.js yardTownBlocks).
+ *
+ * SHIPYARDS-FOUND (2026-10-11): `ports` - a port town's shipyard and
+ * lighthouse (world/portSites.js's sites, the same frame) - laid the
+ * same way, the lighthouse in a house's byte.
  */
 export function createTownMapWindow(deps = {}) {
+  noteFirstUse('automap');   // TUT1: the town's map is the same page
+  if (deps.ports?.length) deps = { ...deps, blocks: yardTownBlocks(deps.blocks ?? [], deps.ports) };   // SHIPYARDS-FOUND: a port town's shipyard and lighthouse, the same way
+  if (deps.yards?.length) deps = { ...deps, blocks: yardTownBlocks(deps.blocks ?? [], deps.yards) };
   if (heldMapWorn()) {
     return new HeldMapWindow({
       ...(deps.travel ?? {}),
@@ -69,6 +84,7 @@ export function createTownMapWindow(deps = {}) {
         boards: deps.townBoards ?? null,   // TOWN-MARKS: the Notice Boards, feet in the location's frame (the classic window ignores them)
         homes: deps.townHomes ?? null,   // TOWN-MARKS: the player housing, by building key
         homesVersion: deps.townHomesVersion ?? null,
+        questBuildings: deps.townQuestBuildings ?? null,   // GUIDE8's Town tier (AUDIT DELVE): the buildings a quest's journal names here
         title: deps.locationName ?? '',
       },
     });

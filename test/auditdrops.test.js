@@ -134,7 +134,10 @@ test('AUDIT DROPS A3: a malformed resync is refused whole and the LIVE quest is 
   const q = receiveSharedQuest(m, lists, '__SH', data).quest;
   const resources = q.resources.size, tasks = q.tasks.size;
   assert.ok(resources > 0 && tasks > 0);
-  const bad = structuredClone(data); bad.tasks[0].actions[0].actionSpecific = null; bad.messages = 3;
+  const badAction = structuredClone(data); badAction.tasks[0].actions[0].actionSpecific = null;
+  assert.equal(shapeMismatch(m.parseQuestShape('__SH'), badAction), 'action', 'missing script parameters are refused before restoration');
+  assert.equal(receiveSharedQuest(m, lists, '__SH', badAction).ok, false);
+  const bad = structuredClone(data); bad.messages = 3;
   assert.equal(shapeMismatch(m.parseQuestShape('__SH'), bad), null, 'the shape passes (the rot is deeper)');
   const r = receiveSharedQuest(m, lists, '__SH', bad);
   assert.equal(r.ok, false);
@@ -360,7 +363,8 @@ test('AUDIT DROPS F: the pose\'s fk is clamped 0-5, the quest frame has its own 
   assert.equal(peerRelationText({ whyNotInvite: WHY_IN_PARTY, relation: 'friend' }), 'In your party');
   assert.match(rd('src/net/social.js'), /if \(seated\) whyNotInvite = WHY_IN_PARTY;/);
   assert.equal(typeof st.actionsFor, 'function');
-  // tradeFrame after chatFrame, before the dead return (lens 3 #5)
-  assert.match(rd('src/scenes/world.js'), /const onlineFrame = \(now, dt\) => \{\s*chatFrame\(\);[^\n]*\n\s*tradeFrame\(\);[^\n]*\n(?:\s*duelFrame\(\);[^\n]*\n)?(?:\s*profileFrame\(\);[^\n]*\n)?(?:\s*pageFrame\(\);[^\n]*\n)?(?:\s*mail\?\.poll\(\);[^\n]*\n)?(?:\s*gateFrame\(\);[^\n]*\n)?(?:\s*renownTracker\?\.tick\(\);[^\n]*\n)?(?:\s*peerMenuFrame\(\);[^\n]*\n)?(?:\s*peerFxFrame\(\);[^\n]*\n)?(?:\s*\/\/[^\n]*\n)*(?:\s*if \(realmSession && !realmSession\.lost && realmDoorShut\(online\)\) \{ realmLost\('no-realm-character'\); return; \}\n)?(?:\s*\/\/[^\n]*\n)*(?:\s*if \(seatOut\(\)\) \{\n[\s\S]*?\n    \}\n)?(?:\s*\/\/[^\n]*\n)*\s*if \(townTalk\.overlay instanceof DeathScreen/);   // ONE-SEAT: a tab out of the seat returns before the dead's law, after every frame above
+  // tradeFrame after chatFrame, before the dead return (lens 3 #5). PIN MOVED (SCALE4c): the lane's look at the box is
+  // its stamp now (`_mailFrameAt`) - the box's looks ride the tab's one heartbeat while the lane runs
+  assert.match(rd('src/scenes/world.js'), /const onlineFrame = \(now, dt\) => \{\s*if \(!modes\?\.sailingCabin \|\| seatOut\(\) \|\| playerEntity\.health <= 0 \|\| modes\?\.deathUp\?\.\(\)\) cabinLink\.close\(\);\n\s*chatFrame\(\);[^\n]*\n\s*tradeFrame\(\);[^\n]*\n(?:\s*duelFrame\(\);[^\n]*\n)?(?:\s*wedFrame\(\);[^\n]*\n)?(?:\s*profileFrame\(\);[^\n]*\n)?(?:\s*pageFrame\(\);[^\n]*\n)?(?:\s*_mailFrameAt = performance\.now\(\);[^\n]*\n)?(?:\s*gateFrame\(\);[^\n]*\n)?(?:\s*serpentFrame\(\);[^\n]*\n)?(?:\s*sdFrame\(\);[^\n]*\n)?(?:\s*renownTracker\?\.tick\(\);[^\n]*\n)?(?:\s*rollTracker\?\.tick\(\);[^\n]*\n)?(?:\s*peerMenuFrame\(\);[^\n]*\n)?(?:\s*peerFxFrame\(\);[^\n]*\n)?(?:\s*nameAsFrame\(\);[^\n]*\n)?(?:\s*\/\/[^\n]*\n)*(?:\s*if \(realmSession && !realmSession\.lost && realmDoorShut\(online\)\) \{ realmLost\('no-realm-character'\); return; \}\n)?(?:\s*\/\/[^\n]*\n)*(?:\s*if \(seatOut\(\)\) \{\n[\s\S]*?\n    \}\n)?(?:\s*\/\/[^\n]*\n)*\s*if \(townTalk\.overlay instanceof DeathScreen/);   // ONE-SEAT: a tab out of the seat returns before the dead's law, after every frame above (CHAP1, PIN MOVED: the Roll's tick beside Renown's) (PIN MOVED, SD2d: the Hollow's frame beside the serpent's) (PIN MOVED, NAME-AS: a name chosen on this device said again, after the others' blows)
   assert.ok(inRange);
 });

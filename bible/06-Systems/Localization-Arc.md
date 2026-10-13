@@ -840,3 +840,41 @@ Mac, 2026-10-03: "I want to finish that arc." The branch had stood since 2026-09
   through DFU's own keys.
 - **The batches** each take an area with its own key prefix, in a worktree of its own, and are merged and drafted in
   waves. Every wave lands with its drafts in all 25 languages, so the catalog stays covered at every push.
+
+## The merge of main (2026-10-12): the branch brought to #853
+
+The branch had stood since 2026-10-03 while main took 2,503 commits (#553-#853), among them CITE-ANCHOR: a cite into
+our code is an anchor now, never a line number (`bible/Home.md`, A CITE NAMES WHAT IT POINTS AT).
+- **The cites first, on the branch's own tree.** Before main came in, main's `tools/citeAnchor.mjs --apply` turned the
+  branch's 1,947 numeric cites (344 files) into anchors, each naming the line its number meant on this branch. The
+  quote is deterministic, so wherever both sides cite the same unchanged line they wrote the same anchor and the merge
+  took it without a conflict. Converting after the merge would have read the branch's numbers against main's lines.
+- **The conflicts.** 851 hunks in 257 files. 440 differed only by a cite or wrapping, and took main's side by rule. The
+  413 left (122 files) were resolved by hand in seven lanes, one per area: main's behaviour, logic and English, with
+  this branch's routing laid over it (a routed key keeps its key and takes main's English). `huntWindow.js` stays
+  deleted (HUNT-OUT).
+- **Where main's code met the arc's readers:**
+  - ORG2's one-map Settings screen draws only what `ui/settingsMap.js` places, so the Language row has its own
+    section, Interface > Language (`port:language`), with the translation-pack row under it.
+  - SUPPORT1's asks hold the front door's top-left corner. The first-run language offer stands under them.
+  - `MONTH_NAMES` is L10N3e's `monthNames()` reader. Main's arena board and Project Legacy's date line read it.
+  - HOOD-CAREER's career rung says the routed sunlight box, as the racial rung does (`systems/vampirism.js`).
+  - TEXT-F1's starred names and L10N3e's shown names are one `shownItemName`: the name is starred first, then
+    looked up in the translation's tables. UMI-NAMES' use-magic-item list reads `itemLongName`, which reads it.
+  - ARENA-FIX's office names stand before the shown name on the three plaques, the Info line and the talk plate.
+    QUESTOR-MOVED's moved name is read by both `npcDisplayName` and `npcShownName`.
+  - CRAFT2 removed the anvil's metal row, so `profPages.js` routes 6 DFU words, not 16. PROF's
+    `unlocksOf` calls the lazy UNLOCKS rows, and CRAFT4's temper reads its own purse lines.
+  - Main's words inside the routed areas are routed with the area's prefix: 124 account refusals, the menu's new
+    rows, the water-quality tile, the new mods' effect lines. Main's refusals that met a DFU key go through it: the
+    LW-II reach, both "enemies nearby" refusals and "indoors" in `world.js`. `ILIAC_REFUSALS` reads REFUSALS' words
+    when it says them, never at load.
+  - Every source pin and mutant record that quoted a routed line was re-aimed by content; English assertions kept.
+- **The catalog:** 2,435 keys (2,257 before).
+- **The ratchet, re-baselined:** 7,602 literals at the branch's tip, 13,602 in 722 files merged. The rise is main's
+  English outside the routed areas, most of all `modSettings.js` (243: the new mods' settings) and `features.js` (135).
+  It is L10N4's next work, and the ratchet holds it from rising again.
+- **The Ledger:** L10N1's row (THE PORT'S LOCALES) stays at section A's foot, now the 305th, and every
+  `Port-Ledger.md:NNN` row identifier below it was re-resolved by its row's content.
+- **Still owed, as at the branch's tip:** the 25 languages' drafts of the port's own strings. Each language holds 96
+  rows, and the catalog 2,435. `test/l10n1b.test.js` and `test/l10n6b.test.js` fail until they land.

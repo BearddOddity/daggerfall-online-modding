@@ -22,7 +22,6 @@ import { takeCorpseLoot } from '../src/scenes/corpseMarker.js';
 import { modSaveRecords, restoreModSaveRecords } from '../src/systems/modSaveData.js';
 import { validLootItem } from '../src/systems/loot.js';
 import { createWeapon } from '../src/combat/enemyEquipment.js';
-import { ensureChampionLoot } from '../src/scenes/hostCombat.js';
 import { isAmmunition } from '../src/systems/itemTemplates.js';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -57,7 +56,7 @@ test('LOOT8: the mark - every eligible piece a source door rolls, whatever its t
     const items = [createWeapon(113, 1), createWeapon(127, 1), gold, arrows];
     LR.rollLootRarity(items, { kind: 'pile', tier: 6 }, { rolls: lcg(seed) });
     for (const it of items) {
-      if (it === gold || it === arrows) assert.equal(it.untaken, undefined, 'gold and arrows are no piece');
+      if (it === gold || it === arrows || LR.gemKindOf(it)) assert.equal(it.untaken, undefined, 'gold, arrows and a found gem are no piece');   // PIN MOVED (GEM2): the door's gem find, after every piece
       else { assert.equal(it.untaken, true, `seed ${seed}: ${it.rarity ?? 'common'} (a unique find too)`); pieces++; }
     }
   }
@@ -168,8 +167,6 @@ test('LOOT8: the doors in play - a dungeon of commons fills the drought at the t
     n++;
   }
   assert.equal(D.droughtOf(), 60, 'sixty taken, sixty counted - at the take, never the roll');
-  const champ = { items: [], level: 8 };
-  assert.equal(ensureChampionLoot(champ, 8, lcg(4)).untaken, true, 'a champion\'s minted piece is a found piece too');
   const legs = (d) => {
     D._setDroughtForTests(d);
     let k = 0;

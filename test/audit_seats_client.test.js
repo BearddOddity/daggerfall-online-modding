@@ -160,7 +160,7 @@ test('AUDIT-SEATS C1 THE WORLD\'S WAYS OUT by source: the one door (whichever is
   assert.match(w, /const atSeat = \(seat\) => \{\n\s*if \(!Array\.isArray\(seat\?\.pixel\) \|\| \(modes\?\.mode \?\? 'exterior'\) === 'dungeon'\) return false;\n\s*const p = playerTravelPixel\(\);\n\s*return Math\.abs\(p\.x - seat\.pixel\[0\]\) <= 1 && Math\.abs\(p\.y - seat\.pixel\[1\]\) <= 1;/);
   const frame = w.slice(w.indexOf('const gateFrame = () => {'), w.indexOf('const gateFrame = () => {') + 3500);
   assert.match(frame, /if \(townTalk\.overlay instanceof DeathScreen \|\| modes\?\.deathUp\?\.\(\)\) \{ leaveBattle\(\);/, 'the dead leave it - the gate\'s frame runs before the death return');
-  assert.match(w, /onlineFrame\(now, dt\); \} else \{[^\n]*courtRing\(\) : null; siegeHud\?\.hide\(\); \/\*/);
+  assert.match(w, /onlineFrame\(now, dt\); \} else \{[^\n]*courtRing\(\) : null; if \(!player\.arena\) player\.arena = arenaBouts\.ring\(\); \/\* ARENA2[^*\n]*\*\/ siegeHud\?\.hide\(\); \/\*/);   // the arena merge: ARENA2's bout ring stands before it
 });
 
 test('AUDIT-SEATS C2 ONE MINT SLOT: a leave clears net/online.js mintSiegePass only while it is its own (another battle\'s stays); a fresh enter lets its old one go; the world enters one battle at a time (mutants: the ownership test; the doors\' leaves)', async () => {
@@ -316,7 +316,7 @@ test('AUDIT-SEATS C7 EVERY SETTLING ANSWER REACHES THE CARD: claimed before, a v
   assert.deepEqual([t.hud.at(-1).card.claim, t.hud.at(-1).card.honour], [false, SIEGE_CLAIM_REFUSED['honours-twice']], 'never stuck on "claim it"');
   t.ses.claimed({ ok: true, honours: { marks: 50, xp: 2000 } }, mine);
   t.ses.tick();
-  assert.match(t.hud.at(-1).card.honour, /50 Marks/);
+  assert.match(t.hud.at(-1).card.honour, /50 silver/);   // PIN MOVED: GUILD3a (bible/11-Multiplayer/Guilds-Made-Plain.md) - silver, as every sentence says it
   assert.match(rd('src/scenes/world.js'), /onClaimed: \(a, r\) => siegeSession\?\.claimed\(a, r\)/);
 });
 
@@ -692,7 +692,7 @@ test('AUDIT-SEATS G5 THE WORLD\'S BATTLE ARMS by source: the swing and the shaft
   assert.match(w, /return heal > 0 && siegeSession\.cast\(id, siegeCastClamp\(heal, true\), true\);/);
   assert.match(w, /spellRefusal: \(sp\) => battleSpellRefusal\(sp\),/);
   assert.match(w, /const battleSpellRefusal = \(sp\) => \(inSiegeRoom\(\) && siegeSpellBarred\(sp\) \? SIEGE_SPELL_BARRED_TEXT : null\);/);
-  assert.match(w, /registerLevitateWard\(\(\) => inSiegeRoom\(\)\);/);
+  assert.match(w, /registerLevitateWard\(\(\) => inSiegeRoom\(\) \|\| modes\?\.sdRealmSlot\?\.\(\) != null\);/);   // SD7b (PIN MOVED): and the Shattered Hour's - its Steps walked, not flown
   assert.match(w, /if \(inSiegeRoom\(\) && isRiding\(player\.transportMode\)\) \{ setTransportModeHere\(TRANSPORT_MODES\.Foot\); townTalk\.say\(SIEGE_DISMOUNT_TEXT\); \}/);
   // the side-mates the heal reaches: standing, of my side, never me
   const t = siegeRig();

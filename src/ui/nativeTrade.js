@@ -26,6 +26,7 @@
 // The laws are systems/tradeModes.js's; this file is the panel, the
 // hit rects, the staging collections and the confirm box.
 
+import { BAG_WORDS } from '../net/bagLaw.js';   // BAG1
 import { loadImg, nativeMetrics, drawImg, drawImgSub, shadowText } from './nativePanel.js';   // MAC-N2: drawImgSub, the selected tab's INVE01I0 cutout
 import { drawScreenDimBackdrop } from './chargenArt.js';
 import { LIST_SLOTS, CELL_X, CELL_W, SLOT_H, CELL_MARGIN, ARROW_H, DOWN_ARROW_Y, scrollerHit, applyScroll, makeIconDrawer, drawStackLabel,
@@ -35,6 +36,7 @@ import { getBool } from '../systems/settings.js';   // AUDIT 64 F53: InstantRepa
 import { FntFile } from '../formats/fntFile.js';
 import { makeFont } from './text.js';
 import { planTake, applyTransfer, clearLightSourceOnLeave, cannotCarryText } from '../systems/itemTransfer.js';   // AUDIT 26 F157/F158
+import { isKeptSpellbook, SPELLBOOK_KEPT_TEXT } from '../systems/itemTransfer.js';   // KEEP-SPELLBOOK: never sold
 import { HOW_MANY_ITEMS, SPLIT_INPUT_MAX, parseSplitAmount, splitRequired } from '../systems/itemTransfer.js';   // DISC25-F: TransferItem's split popup, inherited
 import { InputMessageBoxWindow } from './inputMessageBox.js';   // DISC25-F: ...pushed as CM5 pushes it for the pack
 import { audio } from '../systems/audio.js';
@@ -42,11 +44,11 @@ import { SOUND } from '../systems/soundClips.js';
 import { layoutMessageBox, drawMessageBox, messageBoxHit, MB_BUTTONS, fitBoxRows } from './messageBox.js';
 import {
   MODE_ACTION_ART, SELL_GOLD_ART, modeActionArt,
-  tradeCost, getTradePrice, tradeDecision, sellProceeds, creditRows, creditRefusalRows,
-  localListAccepts, localClickDecision, doesntNeedIdentifyText, letterOfCreditText,
+  tradeCost, getTradePrice, tradeDecision, sellProceeds,
+  localListAccepts, localClickDecision, sellGuardOf, doesntNeedIdentifyText, letterOfCreditText,
   MAGIC_ITEMS_CANNOT_BE_REPAIRED_TEXT_ID, DOES_NOT_NEED_TO_BE_REPAIRED_TEXT_ID,
 } from '../systems/tradeModes.js';
-import { cannotBeRepairedText, interruptRepairText, isBeingRepaired as itemIsBeingRepaired,
+import { cannotBeRepairedText, TRANSPORT_CANNOT_BE_REPAIRED_TEXT, interruptRepairText, isBeingRepaired as itemIsBeingRepaired,
   isRepairFinished, collectRepaired, updateRepairTimes, repairStatusLabel } from '../systems/repairService.js';   // D7: the Repair mode's remote arm; UXB1-K: its misc label
 import { localizedText } from '../systems/textManager.js';   // L10N3d: DoSteal's two lines
 import { isFurnishing } from '../systems/decorFurnish.js';   // DECOR2b: furniture is delivered, never carried
@@ -59,9 +61,9 @@ import {
   CONTAINER_IMAGES, LOCAL_TARGET_ICON_RECT, REMOTE_TARGET_ICON_RECT,
   drawTargetIconPanel, targetIconWeightText,
 } from './targetIconPanel.js';
-import { WAGON_KG_LIMIT } from '../systems/itemTransfer.js';   // ItemHelper.WagonKgLimit (:56)
+import { wagonKgFor } from '../systems/wagonKinds.js';   // ItemHelper.WagonKgLimit (:56) - WAGONS1: the driven wagon's
 import { cannotRemoveItemText } from '../systems/createItem.js';   // both TransferItem refusals speak it
-import { questTransferRefused, SMALL_CART_TEMPLATE, INV_RECTS, TABS, tabAccepts } from './nativeInventory.js';   // DaggerfallTradeWindow EXTENDS the inventory window; MAC-N2: and INHERITS its four tab pages
+import { questTransferRefused, INV_RECTS, TABS, tabAccepts } from './nativeInventory.js';   // DaggerfallTradeWindow EXTENDS the inventory window; MAC-N2: and INHERITS its four tab pages
 import { expandGuildMacros } from '../systems/guildServiceActions.js';
 import { firstName } from '../systems/talkSession.js';   // MACRO-4: %pct's shop arm
 import { firstHotkey } from '../systems/dialogShortcuts.js';   // A8: the DaggerfallShortcut table
@@ -230,6 +232,10 @@ const inRect = ([rx, ry, rw, rh], x, y) => x >= rx && y >= ry && x < rx + rw && 
  *   crimeTheft()           -> CrimeCommitted = Crimes.Theft (:927)
  *   spawnCityGuards(flag)  -> SpawnCityGuards(true) (:928)
  *   say(line, seconds)     -> AddHUDText(text, 2) (:918, :925)
+ *   stealRefusal()         -> AUDIT MERCHANT-YARDS Y1: the counter's word
+ *                             when its keeper never looks away (a yard's,
+ *                             systems/merchantYards.js yardCounter) - said,
+ *                             and nothing rolled, tallied or moved
  *   deliver(items)         -> DECOR2b: furniture stolen off the shelf,
  *                             to the host's delivery, as bought furniture
  *                             goes (never the pack; decorFurnish.js)
@@ -527,7 +533,9 @@ export class NativeTradeWindow {
       magic: rows(MAGIC_ITEMS_CANNOT_BE_REPAIRED_TEXT_ID),
       undamaged: rows(DOES_NOT_NEED_TO_BE_REPAIRED_TEXT_ID),
       notRepairable: [{ text: cannotBeRepairedText(), center: true }],
+      transport: [{ text: TRANSPORT_CANNOT_BE_REPAIRED_TEXT, center: true }],   // WAGONS4
       identified: [{ text: doesntNeedIdentifyText(), center: true }],
+      bagLoaded: [{ text: BAG_WORDS.notEmpty, center: true }],   // BAG1: a Materials Bag holding anything
     }[refusal] ?? [];
     this.box = { rows: text.length ? text : [{ text: '...', center: true }], buttons: null };
   }
@@ -554,6 +562,12 @@ export class NativeTradeWindow {
       this.box = { rows: [{ text: boundText(itemLongName(item, { getQuest: this.hooks.getQuest ?? null })), center: true }], buttons: null };
       return true;
     }
+    // KEEP-SPELLBOOK: the spellbook is never put up for sale (systems/itemTransfer.js isKeptSpellbook); a repair or an
+    // identify still takes it, because it comes back
+    if ((this.mode === 'Sell' || this.mode === 'SellMagic') && isKeptSpellbook(item)) {
+      this.box = { rows: [{ text: SPELLBOOK_KEPT_TEXT, center: true }], buttons: null };
+      return true;
+    }
     const refused = isSummoned(item) || questTransferRefused(item, {
       fromLocal: true, toWagon: false, getQuest: this.hooks.getQuest ?? null,
     });
@@ -573,9 +587,7 @@ export class NativeTradeWindow {
       // PlayerEntity.WagonItems / PlayerEntity.Items.GetItem (:789-793)
       // are read straight off the entity here, as DFU reads them off
       // the singleton - they are not the window's collections.
-      wagonLoaded: (this.hooks.entity?.wagonItems ?? []).length > 0,
-      usedWagon: (this.hooks.entity?.items ?? []).find(
-        (i) => i.group === 'Transportation' && i.templateIndex === SMALL_CART_TEMPLATE) ?? null,
+      ...sellGuardOf(this.hooks.entity),   // WAGONS1/BAG1: the wagon driven and loaded, the bag loaded (WAGONS2 FINAL AUDIT: one home)
     });
     if (d.kind === 'stage') {
       if (this._refuseTransfer(item)) return;
@@ -723,6 +735,8 @@ export class NativeTradeWindow {
   _doSteal() {
     const { cost } = this.cost();
     if (this.mode !== 'Buy' || !(cost > 0)) return;
+    const refused = this.hooks.stealRefusal?.() ?? null;   // AUDIT MERCHANT-YARDS Y1
+    if (refused) { this.hooks.say?.(refused, 2); return; }
     const ctx = this.hooks.priceCtx?.() ?? {};
     const out = shopliftAttempt({
       basket: this.basket,
@@ -779,14 +793,8 @@ export class NativeTradeWindow {
     const price = getTradePrice(this.mode, cost, ctx.quality ?? 0, ctx.skills ?? {}, pieces);   // FB0929: a purchase asks a gold a piece at least
     const d = tradeDecision(this.mode, { cost, tradePrice: price, gold: this.hooks.gold() });
     if (d.kind === 'notEnoughGold') {
-      // SHIP-CREDIT (Mac: "Buy on credit"): a boat the purse falls short of, offered on the bank's credit - or why not
-      const credit = this.mode === 'Buy' ? this.hooks.credit?.([...this.stagedForCost], price) ?? null : null;
-      if (credit?.kind === 'credit') {
-        this.box = { rows: creditRows(credit, price, this.hooks.gold?.() ?? 0), buttons: 'YesNo', price, cost, onYes: () => this._confirm(price, credit) };
-        return;
-      }
       // the two records CONCATENATED into one click-anywhere box
-      this.box = { rows: [...d.textIds.flatMap((id) => this._rows(id, price)), ...(credit?.kind === 'refuse' ? creditRefusalRows(credit, credit.lines) : [])], buttons: null };
+      this.box = { rows: d.textIds.flatMap((id) => this._rows(id, price)), buttons: null };
       return;
     }
     this.box = { rows: this._rows(d.textId, price), buttons: 'YesNo', price, cost, onYes: () => this._confirm(price) };
@@ -809,12 +817,12 @@ export class NativeTradeWindow {
   }
 
   /** ConfirmTrade_OnButtonClick's Yes arm (:1027-1092). */
-  _confirm(price, credit = null) {
+  _confirm(price) {
     const selling = this.mode === 'Sell' || this.mode === 'SellMagic';
     const proceeds = selling
       ? sellProceeds(price, this.hooks.weight?.() ?? {})
-      : credit;   // SHIP-CREDIT: a purchase on the bank's credit
-    this.hooks.commit?.(this.mode, [...this.stagedForCost], price, proceeds);
+      : null;
+    const refused = this.hooks.commit?.(this.mode, [...this.stagedForCost], price, proceeds) === false;
     // D7 - ConfirmTrade clears PER MODE, and two of the four clear
     // nothing at all (:1027-1090). Buy does `PlayerEntity.Items
     // .TransferAll(basketItems)`, Sell/SellMagic `remoteItems.Clear()`;
@@ -825,6 +833,9 @@ export class NativeTradeWindow {
     // the moment the goods stopped being a selection over the pack.
     if (this.mode === 'Buy') this.basket.length = 0;
     else if (selling) this.staged.length = 0;
+    // AUDIT LW-II-2 C10: a deal the counter REFUSED (LW11's road counter, its purse spent - the host put the goods back in
+    // the pack) is none: the staging cleared, and no coin clinks nor letter of credit is told for it
+    if (refused) return;
     this.lastPrice = price;
     // "a concluded deal clinks" - and a LETTER OF CREDIT scratches
     // instead (:1084-1087), which is the one place that sound is used.
@@ -963,7 +974,7 @@ export class NativeTradeWindow {
     if (this.usingWagon) {
       return {
         container: CONTAINER_IMAGES.Wagon,
-        label: targetIconWeightText(totalWeight(this.hooks.entity?.wagonItems ?? []), WAGON_KG_LIMIT),
+        label: targetIconWeightText(totalWeight(this.hooks.entity?.wagonItems ?? []), wagonKgFor(this.hooks.entity)),
       };
     }
     return {

@@ -140,7 +140,7 @@ test('U24 (ROAD-A7 CORRECTED): a click SELECTS the scrolled row; the DOUBLE clic
 
 test('AUDIT 65 UI-1: a BARE picker takes the HOST\'s four-argument click, and the 4th slot is not its clock', () => {
   // The mounts that hand a ListPickerWindow straight to an overlay slot
-  // - the U key's useMagicItemWindow (world.js:"host's own two doors",
+  // - the U key's useMagicItemWindow (world.js:"shipped statusInfoRows",
   // dungeonContext.js:"bonus pool - spending", worldModes.js:"- NOT the rest window's") and the bookshelf
   // picker (worldModes.js:"E2: the shelf browse/buy") - are dispatched by the hosts'
   // ONE shape: `click(vx, vy, right, middle)` (townTalk.js:"function pointerdown",

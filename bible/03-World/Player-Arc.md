@@ -424,7 +424,10 @@ dungeon geometry. All are fixed and rooted; the durable record:
 - **Per-commit build tag**: scripts/buildTag.mjs stamps
   `git rev-parse --short=12 HEAD` into src/buildTag.js on prebuild, so a
   screenshot self-identifies its bundle and stale-cache ambiguity
-  dies.
+  dies. BUILDTAG-CLEAN (issue #626): `postbuild` puts the committed
+  file back once the bundle has read it, so a build leaves no edit in
+  the tree for the next `git pull` to refuse, and no stamp gets
+  committed for the next merge to conflict on.
 - **`[spawn]` console line**: marker -> feet on every dungeon boot.
 
 ### Systems live-path hardening (post-arc audit)
@@ -769,9 +772,12 @@ AcrobatMotor/PlayerMotor/FrictionMotor/PlayerHealth read end to end:
   is now HELD in all four hosts - DFU re-fires past the gate,
   intended), crouched jumps x0.8 (crouchingJumpDelta), a MOVING jump
   adds forward x jumpSpeed x 0.05 momentum (DFU's classic-momentum
-  hack), slowfall cancels the jump outright - and so does a Cart, and
-  so does exterior water (AUDIT 64 F1: AcrobatMotor.cs:64-70 is ONE
-  four-clause cancel, `OnExteriorWater == Swimming` included).
+  hack), a Cart cancels the jump outright, and so does exterior water
+  (AUDIT 64 F1: AcrobatMotor.cs:64-70 is ONE four-clause cancel,
+  `OnExteriorWater == Swimming` included). Its slowfall clause is
+  dropped (JUMP-SLOW, FIELD BUGS 2026-10-11b, a departure: the rise is
+  the jump's and the spell takes the descent from the apex -
+  `01-Overview/Field-Bugs-2026-10-11b.md`).
 - **airControl = false** (AcrobatMotor.cs:21): airborne horizontal
   momentum FREEZES at liftoff - DFU recomputes x/z from input only in
   the grounded branch, so mid-air steering does nothing. AUDIT 64 F2:
@@ -836,6 +842,12 @@ The payoff: IsMovingLessThanHalfSpeed goes TRUE while sneak-moving
 half line), so the P13 stealth checks now apply to a MOVING player.
 Toggle-mode sneak (ToggleSneak) and autorun pend with the input-
 options arc. All four motor hosts wired (standing rule).
+
+CROUCH-SNEAK (2026-10-08, a recorded departure - Port-Ledger A, CROUCH IS
+SNEAK): the crouch now carries the sneak - `isSneaking` latches on the
+sneak mode OR a crouch, so a crouched walk is the crouched-sneak speed and
+passes the half line. Sneak's Left Alt is the mode wheel's; the Sneak
+action ships unbound.
 
 +1 trace in motorStairs.test.js (10). Suite 384/85, ARENA2 corpus
 green pre-commit.
@@ -1591,7 +1603,7 @@ the expectation with them. Mutant: the clause dropped; 1 killed.
 `AcrobatMotor.HandleJumpInput` cancels the jump on four conditions
 (`Game/Player/AcrobatMotor.cs:64-70`): `IsParalyzed`, `OnExteriorWater
 == OnExteriorWaterMethod.Swimming`, `IsSlowFalling`, and `TransportMode
-== Cart`. The port's gate carried slowfall and Cart, the hosts' zeroed
+== Cart`. The port's gate carried slowfall (dropped by JUMP-SLOW, FIELD BUGS 2026-10-11b) and Cart, the hosts' zeroed
 input bag covers paralysis, and the water clause was covered nowhere -
 so standing in outdoor deep water the port granted the full
 `JUMP_SPEED * boost` leap DFU refuses outright. The clause is live for
@@ -1722,8 +1734,8 @@ at the shipped `Mouse2` default, and handed it to the input lane.
 `worldModes` has no `keys` Set of its own: it destructures one from
 `host` (`worldModes.js:"wave-37 gate now"`), and its only two callers are `world.js`
 (`:6147`) and `exterior.js` (`:2769`), both of which pass their own Set
-and both of whose WINDOW-level handlers (`world.js:"shares this host's"`,
-`exterior.js:"U46: the HUD is not"`) call `mouseCode(e.button)` and add/delete
+and both of whose WINDOW-level handlers (`world.js:"(e) => { if (isSwingButton(e.button)) rightHeld = true"`,
+`exterior.js:"(e) => { if (isSwingButton(e.button)) rightHeld = true"`) call `mouseCode(e.button)` and add/delete
 unconditionally - outside every mode and overlay gate. `MOUSE_CODES`
 maps button 2 to `Mouse2` (`input.js:"export const MOUSE_CODES"`), which is the shipped
 binding (`InputManager.cs:995`). The latch is live in that host; there
@@ -1741,7 +1753,7 @@ not gate on `HasAction`; it gates on `playerMotor.IsStandingStill`
 that `GroundedMovement` writes straight into `moveDirection`, so DFU
 plays the stride. The port walked the autorunner forward in silence in
 every host. All four now pass `standingStill: player.standing`, the
-motor's own mirror of that getter (`world.js:"DUEL1: my duel opponent first"` already did at its
+motor's own mirror of that getter (`world.js:"AUDIT 23 (combat-4)"` already did at its
 other footstep site) - which is also still the paralysis answer,
 because the hosts zero both axes for a frozen player.
 
@@ -2248,3 +2260,38 @@ walking and not, 20 seconds each): before, 10 bodies out through a face (7 water
 W0000021, W0000024); after, none.
 PH1's own cases (a floor the body sank under, its head over it) are unchanged and pinned; PH1's source pin re-aimed to
 the renamed line, and DISC28-G's and AUDIT DISC28's `rising` mutants with it.
+
+## UNSTUCK-OUT - out of a mountain's rock (FIELD BUGS 2026-10-08)
+
+SaberGGaming: *"Invisible walls around mountains often gets you stuck. Using the overhead map and traveling around
+caused this ... I had to end up dying to respawn somewhere else cause unstuck didnt work"*; Sahh: *"I got stuck inside a
+mountain during fast travel"* (the shots: the slope drawn over the body). Not the terrain - `heightAt` is a floor, never
+a wall, and the motor's slope limit reads meshes alone. World of Daggerfall's mountain rocks are: meshes scaled by
+hundreds, reaching past their own pixel, added to the collider whole (`world.js` the WoD layouts' `collider.addMesh`),
+and the collider holds BOTH faces of a skin (winding-blind) while the renderer culls the back ones - so from inside a
+rock its walls cannot be seen and hold the body in, ROCK-FREE's own finding for ships, never answered for the player.
+The body gets in by a landing ray that starts inside a rock and stops on its inner face, by a neighbour pixel's rocks
+built round a body already standing there, and by the terrain floor's lift on steep landform ground. And `/unstuck` -
+UNSTUCK1, indoors and underground only - answered "There is nowhere to send you from out here."
+
+- **The nearest open ground** (`player/enterExit.js openGroundNear`, `heldInSolid`): the terrain's own floor at the point
+  and then on rings out (`OPEN_GROUND_RINGS`, 0 to 256 m, a spot every `OPEN_GROUND_STEP` 8 m along each), the first
+  spot where no static solid holds the body's feet or head (the collider's `insideSolid`, its parity law - a rock open
+  beneath holds what stands under its crown) and its torso's sphere touches no mesh (`sphereOverlaps`), above the sea
+  where the host asks (`dry` - the world's sea level, `tvSeaY`); null where nothing is built or no ring is open.
+- **The landing** (`world.js _teleportToPixel`, after TL2, before the arrival is committed): a fast-travel landing held
+  in a rock stands on the nearest open ground instead, said on the console.
+- **`/unstuck` outdoors** is PVPUNSTUCK's (`11-Multiplayer/Wild-Zone.md` section 17, the owner, 2026-10-08: *"3 m
+  forward wont help, to the next town will"* - the walk to the nearest town). UNSTUCK-OUT's own outdoor arm (the body
+  stood on the nearest open ground, refused afloat, mounted or mid-door in its own words) was WITHDRAWN at the merge with
+  main: two `/unstuck`s outdoors, and the owner's word is the later one. The landing's check above is UNSTUCK-OUT's still.
+- **THE FOUR HOSTS**: the streaming world's (`scenes/world.js`) alone - `scenes/exterior.js` is the fixed city (no WoD
+  mountains, no fast travel); `scenes/worldModes.js` and `scenes/dungeonContext.js` have no fast-travel landing.
+
+OPEN for Mac (the investigation's, not built here): a body a neighbour pixel's rocks are built round after it stands is
+not ejected on its own - `/unstuck` (PVPUNSTUCK's walk to the nearest town) is its way out; the Overworld route no
+longer marks rock at all (MOUNTAINS WALKABLE, `11-Multiplayer/Wild-Zone.md` section 19), so its travel can walk into a
+massif; and the collider's floor is the bilinear read where the drawn landform ground is triangles, a gap that can reach
+metres on the steepest ridges. `test/unstuckout.test.js` (2) - the real collider over real closed rock meshes;
+`tools/mutants/unstuckout.json` (7), all dead. AUDIT FIELD-BUGS 1008 (`01-Overview/Audit-Log.md`): `tvSeaY` declared
+beside `state`, before the boot's own load reads it (the outdoor arm's refusals that audit worded went with the arm).

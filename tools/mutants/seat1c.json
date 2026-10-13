@@ -320,8 +320,8 @@
   {
     "name": "SEAT1c-guild-goes-holding",
     "file": "server-account/src/guilds.js",
-    "old": "  OR EXISTS (SELECT 1 FROM town_seat_holds WHERE guild_id = ${p})   -- SEAT1c",
-    "new": "  OR 0   -- SEAT1c",
+    "old": "`EXISTS (SELECT 1 FROM town_seat_holds WHERE guild_id = ${p})`",
+    "new": "`0`",
     "tests": [
       "test/seat1c_service.test.js"
     ]
@@ -338,7 +338,7 @@
   {
     "name": "SEAT1c-no-settle-on-read",
     "file": "server-account/src/index.js",
-    "old": "        if (seatsOpenFor(who.player, env)) await settleDue(ctx.db, nowS, seasonZeroOf(env.SEASON_ZERO_WEEK));   // SEASON1: a Season's end at its Turning\n",
+    "old": "        if (seatsOpenFor(who.player, env) && (await settleDueOnce(ctx.db, nowS, seasonZeroOf(env.SEASON_ZERO_WEEK))).pending && !SEAT_READS.has(path)) return no('seats-settling', 503, origin);   // SEASON1: a Season's end at its Turning\n",
     "new": "",
     "tests": [
       "test/seat1c_service.test.js"
@@ -365,8 +365,8 @@
   {
     "name": "SEAT1c-tab-relinquish-any-rank",
     "file": "src/ui/seatTab.js",
-    "old": "      if (holder && data.mine?.guild === holder.guild.id && data.mine.rank === GUILD_RANK_MASTER) {",
-    "new": "      if (holder && data.mine?.guild === holder.guild.id) {",
+    "old": "        if (ruling && data.mine.rank === GUILD_RANK_MASTER) {",
+    "new": "        if (ruling) {",
     "tests": [
       "test/seat1c_client.test.js"
     ]
@@ -401,8 +401,8 @@
   {
     "name": "SEAT1c-token-seat-title-bare",
     "file": "src/net/identityToken.js",
-    "old": "  if (SEAT_TITLES.includes(c.t) ? !seatTitleClaimOk(c.ts) : c.ts !== undefined) return false;",
-    "new": "  if (!SEAT_TITLES.includes(c.t) && c.ts !== undefined) return false;",
+    "old": "  if (titleClaimed(c.t) ? !seatTitleClaimOk(c.ts) : c.ts !== undefined) return false;",
+    "new": "  if (!titleClaimed(c.t) && c.ts !== undefined) return false;",
     "tests": [
       "test/seat1c_titles.test.js"
     ]
@@ -410,8 +410,8 @@
   {
     "name": "SEAT1c-token-claim-anywhere",
     "file": "src/net/identityToken.js",
-    "old": "  if (SEAT_TITLES.includes(c.t) ? !seatTitleClaimOk(c.ts) : c.ts !== undefined) return false;",
-    "new": "  if (SEAT_TITLES.includes(c.t) && !seatTitleClaimOk(c.ts)) return false;",
+    "old": "  if (titleClaimed(c.t) ? !seatTitleClaimOk(c.ts) : c.ts !== undefined) return false;",
+    "new": "  if (titleClaimed(c.t) && !seatTitleClaimOk(c.ts)) return false;",
     "tests": [
       "test/seat1c_titles.test.js"
     ]
@@ -428,7 +428,7 @@
   {
     "name": "SEAT1c-wire-claim-unstamped",
     "file": "src/net/wire.js",
-    "old": "  if (typeof t === 'string' && SEAT_TITLES.includes(t) && seatTitleClaimOk(from?.ts)) row.ts = from.ts;",
+    "old": "  if (typeof t === 'string' && titleClaimed(t) && seatTitleClaimOk(from?.ts)) row.ts = from.ts;",
     "new": "",
     "tests": [
       "test/seat1c_titles.test.js"
@@ -437,7 +437,7 @@
   {
     "name": "SEAT1c-wire-claim-anywhere",
     "file": "src/net/wire.js",
-    "old": "  if (typeof t === 'string' && SEAT_TITLES.includes(t) && seatTitleClaimOk(from?.ts)) row.ts = from.ts;",
+    "old": "  if (typeof t === 'string' && titleClaimed(t) && seatTitleClaimOk(from?.ts)) row.ts = from.ts;",
     "new": "  if (from?.ts) row.ts = from.ts;",
     "tests": [
       "test/seat1c_titles.test.js"
@@ -482,8 +482,8 @@
   {
     "name": "SEAT1c-mint-title-for-any-character",
     "file": "server-account/src/index.js",
-    "old": ": SEAT_TITLES.includes(wornT) ? (seatBadge?.title === wornT ? { t: wornT, ts: seatBadge.ts } : {}) : (wornT ? { t: wornT } : {});",
-    "new": ": SEAT_TITLES.includes(wornT) ? { t: wornT, ts: seatBadge?.ts ?? [0, 0] } : (wornT ? { t: wornT } : {});",
+    "old": ": SEAT_TITLES.includes(wornT) ? (seatBadge?.title === wornT ? { t: wornT, ts: seatBadge.ts } : {})\n",
+    "new": ": SEAT_TITLES.includes(wornT) ? { t: wornT, ts: seatBadge?.ts ?? [0, 0] }\n",
     "tests": [
       "test/seat1c_titles.test.js"
     ]
@@ -518,8 +518,8 @@
   {
     "name": "SEAT1c-client-plain-word",
     "file": "src/ui/playerBadge.js",
-    "old": "  const text = (SEAT_TITLES.includes(key) ? seatTitleText(key, peer?.ts, _seatPlace) : null) ?? TITLE_TEXT[key];",
-    "new": "  const text = TITLE_TEXT[key];",
+    "old": "const text = (SEAT_TITLES.includes(key) ? seatTitleText(key, peer?.ts, _seatPlace) : CHAPTER_TITLES.includes(key)",
+    "new": "const text = (SEAT_TITLES.includes(key) ? null : CHAPTER_TITLES.includes(key)",
     "tests": [
       "test/seat1c_titles.test.js"
     ]

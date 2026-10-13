@@ -29,11 +29,12 @@
   {
     "name": "RESTSYNC-a-refused-ask-breaks-the-rest",
     "file": "src/scenes/dungeonContext.js",
-    "old": " y: q3(_motorYaw) } })) _restAskAt = Date.now();",
-    "new": " y: q3(_motorYaw) } }) || true) _restAskAt = Date.now();",
+    "old": " s: [q2(spot.x), q2(spot.y), q2(spot.z)] } })) {",
+    "new": " s: [q2(spot.x), q2(spot.y), q2(spot.z)] } }) || true) {",
     "tests": [
       "test/restsync.test.js"
-    ]
+    ],
+    "note": "AUDIT REST II (PIN MOVED): F1 made the sent ask's arm a block (a night running hears it at once - ambushNight - and only a paced window latches the hour); re-aimed by content at the ask's own test, the refused ask still let through. AUDIT REST III E1 (PIN MOVED): re-aimed by content - the ask names the spot its placement found, the host stands it there."
   },
   {
     "name": "RESTSYNC-the-ask-breaks-every-hour",
@@ -83,11 +84,12 @@
   {
     "name": "RESTSYNC-stood-by-the-hosts-feet",
     "file": "src/scenes/dungeonContext.js",
-    "old": "{ feet: f, yaw: Number.isFinite(rs.y) ? rs.y : 0, shared: true })",
-    "new": "{ yaw: Number.isFinite(rs.y) ? rs.y : 0, shared: true })",
+    "old": "{ feet: f, yaw: Number.isFinite(rs.y) ? rs.y : 0, shared: true, asked: s })",
+    "new": "{ yaw: Number.isFinite(rs.y) ? rs.y : 0, shared: true, asked: s })",
     "tests": [
       "test/restsync.test.js"
-    ]
+    ],
+    "note": "AUDIT REST III E1 (PIN MOVED): re-aimed by content - the ask names the spot its placement found, the host stands it there."
   },
   {
     "name": "RESTSYNC-the-ask-unheard",
@@ -137,7 +139,7 @@
   {
     "name": "RESTSYNC-a-shed-record-counts-as-sent",
     "file": "src/scenes/dungeonContext.js",
-    "old": "      for (const r of shared.slice(n)) { const f = _sharedById.get(r.i); if (f) { f._sentKey = null; f._maxSent = undefined; } }   // AUDIT SETS M1: and its maximum, if it carried one, is owed\n",
+    "old": "      for (const r of shared.slice(n)) { const f = _sharedById.get(r.i); if (f) { f._sentKey = null; f._maxSent = undefined; f._lsSent = undefined; } }   // AUDIT SETS M1: and its maximum, if it carried one, is owed\n",
     "new": "",
     "tests": [
       "test/restsync.test.js"
@@ -200,8 +202,8 @@
   {
     "name": "RESTSYNC-the-puppet-never-kept",
     "file": "src/scenes/dungeonContext.js",
-    "old": "    f._encId = r.i;\n    _sharedById.set(r.i, f);\n",
-    "new": "    f._encId = r.i;\n",
+    "old": "    f._mwWire = 'seed'; applyWireLook(f, newest);   // AUDIT MW-NPC II K3: the host's man - its seed, not the feet it was first streamed at (its `marker` here)\n    _sharedById.set(r.i, f);\n",
+    "new": "    f._mwWire = 'seed'; applyWireLook(f, newest);   // AUDIT MW-NPC II K3: the host's man - its seed, not the feet it was first streamed at (its `marker` here)\n",
     "tests": [
       "test/restsync.test.js"
     ]
@@ -218,7 +220,7 @@
   {
     "name": "RESTSYNC-the-blow-by-pool-index",
     "file": "src/scenes/dungeonContext.js",
-    "old": "opts.onFoeHit?.({ ...(foe._encId != null ? { i: foe._encId, xs: 1 } : { i: pi }), dmg: damage, kind,",
+    "old": "opts.onFoeHit?.({ ...(foe._encId != null ? { i: foe._encId, xs: 1 } : { i: foe._surI ?? pi }), dmg: damage, kind,",
     "new": "opts.onFoeHit?.({ i: pi, dmg: damage, kind,",
     "tests": [
       "test/restsync.test.js"
@@ -317,8 +319,8 @@
   {
     "name": "RESTSYNC-the-room-name-unspelt",
     "file": "src/scenes/dungeonContext.js",
-    "old": "  const LOOT_KEY_RE = /^(loot|corpse|enc):(0|[1-9][0-9]{0,4})$/;",
-    "new": "  const LOOT_KEY_RE = /^(loot|corpse):(0|[1-9][0-9]{0,4})$/;",
+    "old": "  const LOOT_KEY_RE = /^(loot|corpse|enc|srch):(0|[1-9][0-9]{0,4})$/;",
+    "new": "  const LOOT_KEY_RE = /^(loot|corpse|srch):(0|[1-9][0-9]{0,4})$/;",
     "tests": [
       "test/restsync.test.js"
     ]
@@ -389,8 +391,8 @@
   {
     "name": "SETS-M1-shed-kept-as-paid",
     "file": "src/scenes/dungeonContext.js",
-    "old": "if (f) { f._sentKey = null; f._maxSent = undefined; } }",
-    "new": "if (f) { f._sentKey = null; } }",
+    "old": "if (f) { f._sentKey = null; f._maxSent = undefined; f._lsSent = undefined; } }",
+    "new": "if (f) { f._sentKey = null; f._lsSent = undefined; } }",
     "tests": [
       "test/restsync.test.js"
     ]

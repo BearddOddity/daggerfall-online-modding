@@ -545,7 +545,7 @@ contracts, invitations)."
   `src/net/letterLaw.js` joins the worker's deploy paths (test/accountdeploy.test.js caught it missing). The relay
   sends no new frame, but `visibleText` moved within its bundle, so world102's LAW row is restated.
 
-Pins: `test/mail1.test.js` (17); `tools/mutants/mail1.json` (51, all dead); `tools/mailProbe.mjs` (36 checks, 12
+Pins: `test/mail1.test.js` (17); `tools/mutants/mail1.json` (51, all dead - 50 since NAME-AS retired TAB-guest-friend-written, whose line it took out: `06-Systems/Accounts-And-Cloud-Saves-Arc.md` NAME-AS); `tools/mailProbe.mjs` (36 checks, 12
 photographs at a desktop, a narrow window and a phone). Re-aimed: ACC1b's table list, ACC1e's refusal walk (which reads
 letterLaw's words, since the service returns them verbatim), CHAT1's and AUDIT DROPS F's online-frame order, and
 SOC3's host pin.
@@ -690,8 +690,8 @@ The sixth merge's conflicts showed a Ledger row whose DFU message ids read "8076
 The struck row above it still reads "8076/8077", and DFU's TalkManager.cs answers with records 8075, 8076 and 8077
 (:2029-2035). `tools/citeShift.mjs` and `tools/citeMerge.mjs` had been moving it for as far back as the history goes.
 - **CITE-SLASH.** RF3's grammar read a bare `/N` after a cite, anywhere up to the next cite, as that cite's line. So
-  "8076/8077", a sentence after `world.js:"ROAD-B: THE AREA"`, was world.js:"so in a tavern or" to both tools, and it moved whenever that line did.
-  A bare `/N` now continues only the chain it touches: `world.js:"carries none."/world.js:"saved ones at their"`, `world.js:"import { liveDungeonAutomapKey"/world.js:"import { WORLD_FRAME"`. The colon forms keep RF3's
+  "8076/8077", a sentence after `world.js` line 9257, was world.js line 15404 to both tools, and it moved whenever that line did.
+  A bare `/N` now continues only the chain it touches: `world.js:N/M`, `:N/M`. The colon forms keep RF3's
   reach, because the colon says what they are.
 - **CITE-CS.** RF3 ends a cite's region at a `.cs:N` cite, but DFU's members are mostly written without their file:
   "| TalkManager.GetReactionToPlayer_0_1_2 (:689-693) |" in the Ledger's DFU column, and
@@ -725,8 +725,8 @@ worked a batch each, and every span was checked here against the source before i
   - WeaponManager.cs:230-233 and :275-281;
   - PlayerGPS.cs:747 and :766-776;
   - DaggerfallTalkWindow.cs:1465-1499;
-  - three JS continuations that RF3 had given to the cite before them: `guildServiceFlow.js:"Spymaster: 'guildServiceSpymaster',"`/`guildServiceFlow.js:"ReceiveArmor: 'guildServiceReceiveArmor',"` and
-    `useItem.js:"else if (isMap(item) && collection)"`/`useItem.js:"THE USE CLICK ITSELF"`.
+  - three JS continuations that RF3 had given to the cite before them: `guildServiceFlow.js` lines 277/278 and
+    `useItem.js` lines 390-414/304-340.
 - Found by the passes and left for a person: row 735's `DaggerfallCourtWindow.cs:191` names the Dark Brotherhood
   rescue's refill, not the acquittal's (:425).
 
@@ -748,7 +748,7 @@ Main moved thirty commits while the arc was in review. Merged, not rebased; 106 
 - **Six of main's mutant records, re-aimed by content.** Each is aimed at the site its name gives, and each dies
   against a green baseline.
   - Four SURV-TIERS records mutate line cites in source comments, and the merge had moved those cites
-    (`world.js:"console.warn('[court] prison screen art unavailable:', e?.message ?? e)"` is `world.js:"on the pre-chargen"` now).
+    (`world.js` line 6142 is 6156 now).
   - MUT-AIM found two that name two sites each:
     - DISC10-D-H1's stamp, which the hit's defaults and the kill's share;
     - DISC9's heard word, which DISC11's rain gain repeats below it.
@@ -794,6 +794,11 @@ an invite to duel which then traps both players in a surrounding transparent hog
 outside of the duel space." Asked, Mac chose: weapons, bows and spells all count; "Loser drops to 1HP and both are fully
 healed on duel end. Add a dueling K/D to the profile menu and player inspect profile"; outdoors only; the record per
 account, on the main menu's account card.
+
+**Since INT8 (2026-10-09, `06-Systems/Integrity-Arc.md` section 5) the duel is the RELAY's to referee**: the bout,
+every blow and cast, the ring and the end are its (`net/duelRef.js`), at the Royal Tourney's vitality rather than the
+save's health (so no one drops to 1 HP and nothing is healed at the end), and the record is its signed `d1` receipt
+claimed once (`/v1/duel/claim`) - the loser's own report retired. What follows is DUEL1 as it was built.
 
 **The one door through co-op's rule.** Co-op was never PvP (`11-Multiplayer/Multiplayer.md`): no peer stands in any
 melee, arrow or spell target list, a `hit` names foes alone and a `cast` lands a party mate's gift alone. The duel is the
@@ -868,7 +873,8 @@ projection, `castSpellOf`), and the cast frame is exactly what it was.
 columns - a player's wins are the rows naming them the winner, their losses the rows naming them the loser, so the ONE
 INSERT is the whole write. The loser reports at most once a DUEL_REPORT_GAP_S and one pair counts at most
 DUEL_PAIR_DAY_MAX a day, both measured inside that INSERT (`reportDuelLoss`); a self-duel (two tabs of one account) and a
-winner who is no account are refused. `POST /v1/duel/loss { winner }` (the session is the loser) and `POST /v1/duel/record
+winner who is no account are refused. `POST /v1/duel/loss { winner }` (the session is the loser - INT8: retired, 410;
+the relay's `d1` receipt at `/v1/duel/claim` records a duel now) and `POST /v1/duel/record
 { id }` sit behind a session; `/v1/account` carries the caller's own. The main menu's account card shows "Duels: 3 won,
 1 lost (K/D 3.00)" (the K/D is wins over losses, and no losses reads the wins); the Inspect card shows the same line
 for the player it stands for, asked by the relay's stamp and kept a minute. acct8.
@@ -881,7 +887,8 @@ duel spell's reflection lands on nobody (the defender has no caster entity to se
 by a ring and can walk through it.
 
 **Pins.** `test/duel_session.test.js` (7), `test/duel_wire.test.js` (6), `test/duel_combat.test.js` (7),
-`test/duel_wall.test.js` (6), `test/duel_record.test.js` (7). `tools/mutants/duel.json`: 51, all dead (three survived the
+`test/duel_wall.test.js` (6), `test/duel_record.test.js` (7). `tools/mutants/duel.json`: 51, all dead (42 since INT8
+retired the nine whose laws - the defender's resolve, the loser's report - are the referee's now; three survived the
 first run - an exactly lethal blow, a weapon whose skill is not a long blade's, a faded ring under the draw's cap - and
 each found a test that did not look; the tests look now). The relay is world107's (`test/relayversion.test.js`'s row);
 the account service acct8's. Re-aimed: the version pins (world107, acct8), the foreign-pass counts (the wall is the
@@ -893,7 +900,8 @@ bag of acts, the card arm, the cast funnel), and seven older mutant records whos
 Four independent reviews read DUEL1 and DISC21 end to end: the duel's trust boundaries (the wire, the relay, the
 account service), its rules and combat, regressions outside it, and DISC21 with the tests and the records. Every
 finding below was verified against its code path before it was fixed. `test/auditduel1.test.js` (4) pins them, with
-`test/duel_record.test.js` (8) for the record's SQL; `tools/mutants/auditduel1.json` has 28 mutants, all dead.
+`test/duel_record.test.js` (8) for the record's SQL; `tools/mutants/auditduel1.json` has 28 mutants, all dead (22 since
+INT8 retired the six of the mutual draw, the duel's heal and its fatigue floor - the referee's bar touches no save).
 
 **Blocker.**
 - **A1: a record minted without a duel.** Any session could report a loss naming any account as the winner. Guest
@@ -936,6 +944,8 @@ finding below was verified against its code path before it was fixed. `test/audi
 - **C1:** a duel ended away from a cell room (a Recall into a dungeon) forced every later foes frame full; only a cell
   room forces it now.
 - **D2:** Mac's "both are fully healed" had no pin; the heal's strip and its health, fatigue and magicka are pinned.
+  (INT8, 2026-10-09: the referee's vitality is the duel's own and the save's health is never touched - no heal stands to
+  pin; `06-Systems/Integrity-Arc.md` 5.)
 - **D3 (DISC21-C):** a pad player's empty-quickslot line named the keyboard's key; with the pad live it names none, as
   the chip shows a glyph.
 - **D4:** the clamp the tests drove (`clampToRing`) was not the one the motor ran; the motor runs it now.
@@ -945,3 +955,33 @@ finding below was verified against its code path before it was fixed. `test/audi
 **The limits that stand.** Still no server authority over a blow: a modified client can refuse to fall. A quick yield
 is still a free full heal (Mac's rule). A pair can still count `DUEL_PAIR_DAY_MAX` a day between two registered
 accounts, and a winner 20. Mounted duels, a reflected duel spell, and onlookers walking through a ring are as above.
+
+## CHAT-LANG, CHAT-COLOURS, PING1, NAME-INK (2026-10-11)
+
+The players asked for "more chat channels per-language", "chat color-coding per channel (i.e. White for Global, Green
+for Regional, Purple for Guild, Grey for Local)" and "a unique color or alert for @name pings". Mac added "the color was
+the problem not the font" (a player's name read as part of their line) and "make sure the colors are all good readable".
+
+**Language channels.** A language is a channel of its own: one room per language (`chat:lang.<code>`,
+`net/wire.js` `CHAT_LANGS`, fifteen of them, each named in its own tongue), whitelisted in `CHAT_ROOMS` as the World and
+region rooms are. The Language tab (`net/chat.js` `CHAT_TABS`, `lang`) rides a link of its own, stands on the bar only
+while the player has chosen one (`chatLang`), and joins only once the World link's welcome names a relay that opens
+them (`LANG_RELAY_MIN`, world192). `/lang de` chooses, `/lang off` leaves, `/lang` lists, `/lc <text>` says a line on it;
+Settings > Other players > Chat has the same choice. The relay change is the whitelist alone: **deploy world192 before
+the Language tab can join** (an older relay refuses the room key, and the tab says so).
+
+**Channel colours.** A plain line's words are drawn in its channel's colour (`ui/chatColours.js` `CHANNEL_COLOURS`):
+World white, Region green, Guild purple, Local grey, Party teal, Language rose; a pip of the colour stands before each
+tab's name. System, server, DM, aside, action and roll lines keep their own colours. Every colour comes as a pair - light
+for Plus's box and for the lines over the world, dark for DFO Grimoire's page, where the chat is now written on the
+cream page - and `test/chatcolours1.test.js` holds each at 4.5:1 or better on the darkest ground it is drawn on.
+The switch is the player's (`chatChannelColours`).
+
+**Names.** A name is never its words' colour (`NAME_COLOURS`): a stranger's brass (the page's red on Grimoire), my own a
+pale gold (a brown gold), a party member's green and a friend's blue. On Grimoire the old filter that deepened a
+coloured name to the ink is gone; each is deepened by hand to keep its hue.
+
+**Pings.** A line someone else says with `@MyName` (the whole name, any case - `mentions`) is marked: laid on a gold wash
+with a bar at its edge, the mention itself in gold, its tab's dot and the Chat button's count gold until read, and it
+stands over the world from whichever tab it was said on. The enchanter's chime sounds once for a burst
+(`chatPingSound`).

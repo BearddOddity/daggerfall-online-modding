@@ -30,8 +30,9 @@ export const TOUCH_BUTTON_ACTIONS = Object.freeze([
   { id: 'CastSpell', label: 'Spellbook', glyph: 'Cast', kind: 'tap', w: 60 },
   { id: 'RecastSpell', label: 'Ready the last spell', glyph: 'Recast', kind: 'tap', w: 72 },
   { id: 'UseMagicItem', label: 'Use magic item', glyph: 'Item', kind: 'tap', w: 60 },
-  { id: 'Crouch', label: 'Crouch', glyph: 'Crouch', kind: 'hold', w: 72 },
-  { id: 'Sneak', label: 'Sneak', glyph: 'Sneak', kind: 'hold', w: 68 },
+  // CROUCH-SNEAK: Crouch is the sneak now, and Sneak ships unbound - its button would press nothing, so it is no
+  // choice here (a stored 'Sneak' reads as its slot's default, touchButtonAction's law)
+  { id: 'Crouch', label: 'Crouch and sneak', glyph: 'Crouch', kind: 'hold', w: 72 },
   { id: 'Run', label: 'Run', glyph: 'Run', kind: 'hold', w: 60 },
   { id: 'AutoRun', label: 'Auto run', glyph: 'Auto', kind: 'tap', w: 60 },
   { id: 'SwitchHand', label: 'Switch hand', glyph: 'Hand', kind: 'tap', w: 60 },
@@ -42,6 +43,12 @@ export const TOUCH_BUTTON_ACTIONS = Object.freeze([
   { id: 'TravelMap', label: 'Travel map', glyph: 'Travel', kind: 'tap', w: 68 },
   { id: 'LogBook', label: 'Journal', glyph: 'Log', kind: 'tap', w: 60 },
   { id: 'Transport', label: 'Transport', glyph: 'Ride', kind: 'tap', w: 60 },
+  // TECH1 (bible/05-Combat/Weapon-Techniques.md): the weapon's technique - held while the finger is: an aiming technique
+  // aims while it holds (the other finger's drag is the look), and looses as it lifts; a quick tap looses it at the look
+  { id: 'WeaponTechnique', label: 'Weapon technique (hold to aim)', glyph: 'Tech', kind: 'hold', w: 60 },
+  // SPYGLASS (bible/03-World/Captains-Sea.md): the captain's glass - a tap raises it aboard, the next lowers it (at a helm
+  // the plate offers its own Glass press too, ui/navalHud.js)
+  { id: 'Spyglass', label: 'Spyglass (aboard)', glyph: 'Glass', kind: 'tap', w: 64 },
 ]);
 const BY_ID = new Map(TOUCH_BUTTON_ACTIONS.map((a) => [a.id, a]));
 

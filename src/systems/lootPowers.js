@@ -17,12 +17,19 @@
 //               hand's blow at its kind of foe (DFU's own four groups:
 //               combat/formulas.js enemyEntityGroup)
 //   leech       a STRIKE listener (the blow that LANDED, its final
-//               damage): that share of it heals me, the fraction carried
+//               damage): that share of it heals me, the fraction carried,
+//               a weapon's lines and gems summed under LEECH_CAP (BAL7)
 //   thorns      a LANDED-BLOW listener (sigilSetPowers.js - the one law
 //               of a foe's blow that took my health): the foe takes that
-//               much back, all I wear summed under THORNS_CAP
+//               much back, all I wear summed under THORNS_CAP - and never
+//               its last point (BAL5, playerDoor.js paidBack)
 //   focus       a CAST COST modifier: that share off my spells'
 //               magicka, all I wear summed under FOCUS_CAP
+//   potency     BAL9c, a SPELL POWER modifier (systems/spellPower.js):
+//               that share more of my damage spell's landing at a foe,
+//               all I wear summed under POTENCY_CAP
+//   wellspring  BAL9c, a KILL listener: that share of my magicka back,
+//               all I wear summed under WELLSPRING_CAP
 //
 // LOOT5 (section 7): EVERY LEGENDARY A POWER - the records' own (systems/
 // lootRarity.js LEGENDARY_POWERS), done here through the same seams and a
@@ -40,39 +47,63 @@
 // is the sets' (his ward turns a blow whole; his strikes carry no mark).
 // ═══════════════════════════════════════════════════════════════════
 
-import { registerWeaponBlowMod } from './entityMods.js';
+import { registerWeaponBlowMod, registerEntityFold, newMods, EMPTY_MODS } from './entityMods.js';
+import { effectSchool } from './spellcost.js';   // LOOT15: Stendarr's Mercy reads a spell's school
+import { hoodUp } from './survival/temperature.js';   // LOOT15: Unseen reads the hood (HOOD-SAID's one law)
 import { registerPlayerStrikeListener, enemyEntityGroup, ENEMY_GROUPS } from '../combat/formulas.js';
 import { registerSpellCostMod } from './spellcost.js';
+import { registerCastSpeedMod } from './castSpeed.js';   // CAST-SPEED: the castSpeed lines' door onto a cast's rate
+import { registerSpellPowerMod, registerSpellPierceMod } from './spellPower.js';   // BAL9c: potency and the arcane three's doors onto a damage spell
+import { hasSpecialAbility, SPECIAL_ABILITY, restIgnoresNoRegen } from './rest.js';   // BAL9c: a career that cannot regenerate magicka, rest's own gate
 import { registerPlayerBlowLanded, pendingPlayerBlow, REACH_RISE_M } from './sigilSetPowers.js';
-import { playerDoor } from './playerDoor.js';
+import { playerDoor, paidBack } from './playerDoor.js';   // BAL5: a blow paid back never kills
 import { careerTolerance, EFFECT_FLAGS } from './spellcast.js';
-import { lootRarityOn, validAffix, powerOf, registerLegendaryFind } from './lootRarity.js';
+import { lootRarityOn, validAffix, powerOf, registerLegendaryFind, readLines } from './lootRarity.js';   // GEM1: readLines, law 6's reading
 import { equipTableOf } from './equip.js';
 import { registerPlayerDamageMod, registerPlayerDeathSave, registerPlayerHurtListener, playerEntity } from '../characters/playerEntity.js';
 import { registerPlayerKillListener } from './playerKills.js';
 import { registerAbsorptionChance } from './absorption.js';
 import { registerMagicRoundHook, skyMinutes } from './worldTick.js';   // TIME1: a moon power answers to the sky's night
 import { setsDueling } from './sigilSets.js';
-import { addGoldPieces } from './inventory.js';
+import { addGoldPieces, addItem } from './inventory.js';
+import { createPellets } from './thunderlock.js';   // GILDED1: the Hour Tolls gives a felling shot's pellet back
 import { isNight } from '../world/worldClock.js';
 import { hudText } from './notify.js';
+import { healMine, _resetPlayerHealForTests } from './playerHeal.js';   // SERPENT-SET: the one heal a power gives, below this file and the sets'
 import { weaponSkillUsed } from '../characters/weapons.js';
 import { SKILLS } from './skills.js';
 import { friendlyProtected } from '../combat/playerWeapon.js';
 import { KNIGHT_CITY_WATCH } from '../characters/mobileTypes.js';
 
-/** All the thorns a wearer's pieces sum to, at most, a blow. */
-export const THORNS_CAP = 25;
+/** All the thorns a wearer's pieces sum to, at most, a blow. BAL5 (bible/05-Combat/Balance-Arc.md section 11): 10, the
+ *  top of a Legendary line's band and a Legendary sear's own most - it was 25, a whole endgame swing paid back on every
+ *  blow that landed, past every foe's armour and the metal it asks of a weapon (an Ancient Lich killed by standing still). */
+export const THORNS_CAP = 10;
 /** All the focus a wearer's pieces sum to, at most (%). */
 export const FOCUS_CAP = 30;
 /** LOOT5: all the loot takes off a spell's magicka, focus and powers together, at most (%). */
 export const SPELL_CUT_MOST = 50;
+/** CAST-SPEED: all the casting speed a wearer's pieces sum to, at most (%). */
+export const CAST_SPEED_CAP = 30;
+/** BAL7 (bible/05-Combat/Balance-Arc.md section 13): all the leech a weapon's lines and gems sum to, at most (%) - the
+ *  top of a Legendary line's band, as THORNS_CAP is. Summed uncapped, an Exalted line and a Perfect Emerald healed 17% of
+ *  every landed blow, and the heal grew with every point of offence: the measured kit without a guard went from 6.6
+ *  Ancient Liches in a Dragon's Den before it fell to 49.7. */
+export const LEECH_CAP = 10;
+/** BAL9c (bible/05-Combat/Balance-Arc.md section 15): all the potency a wearer's pieces sum to, at most (%) - focus's and
+ *  castSpeed's own 30. */
+export const POTENCY_CAP = 30;
+/** BAL9c: all the loot adds to a damage spell's landing, potency and powers together, at most (%) - SPELL_CUT_MOST's 50. */
+export const SPELL_POWER_MOST = 50;
+/** BAL9c: all the wellspring a wearer's pieces sum to, at most (% of my magicka a kill) - LEECH_CAP's 10, the caster's
+ *  leech (Soul Siphon's 15 is the Legendary's own, beside it). */
+export const WELLSPRING_CAP = 10;
 
 const mine = (e) => !!e?.isPlayer && !e.peer;
 /** A piece's valid lines of one kind - none with the switch off (off is DFU exactly). */
 export function linesOf(item, id) {
   if (!lootRarityOn() || !Array.isArray(item?.affixes)) return [];
-  return item.affixes.filter((a) => a?.id === id && validAffix(a));
+  return readLines(item).filter((a) => a?.id === id && validAffix(a));   // GEM1: a piece's gems as law 6 holds them (bible/06-Systems/Gem-Sockets.md)
 }
 /** What MY entity wears - the equip table's pieces. */
 export const wornPieces = (entity) => (entity ? equipTableOf(entity).filter(Boolean) : []);
@@ -99,19 +130,8 @@ export function elementShare(target, element) {
 // ── the session's memory ───────────────────────────────────────────
 /** @type {WeakMap<object, number>} */
 let _carry = new WeakMap();   // a weapon's (or my fists') per-cent fraction, carried to its next blow
-let _healOwed = 0;            // the leech's fraction, carried to the next heal
-/** Heal MY entity by `amount` - the fraction carried, never past its maximum, never a body. */
-export function healMine(entity, amount) {
-  if (!entity || !(entity.health > 0) || !(amount > 0)) return 0;
-  const exact = amount + _healOwed;
-  const whole = Math.floor(exact + 1e-9);
-  _healOwed = exact - whole;
-  if (whole <= 0) return 0;
-  const max = Number.isFinite(entity.maxHealth) ? entity.maxHealth : entity.health + whole;
-  const before = entity.health;
-  entity.health = Math.min(max, entity.health + whole);
-  return entity.health - before;
-}
+// SERPENT-SET: the heal (and the leech's fraction it carries) is systems/playerHeal.js's - the serpent's Shed Skin heals
+// through it too, and sigilSetPowers.js, which this file reads the blow's law out of, may not import this file
 /** A per-cent share of a blow, the fraction carried on its weapon (the sets' own law, sigilSetPowers.js setBlow). */
 function shareOf(key, damage, pct) {
   const exact = (damage * pct) / 100 + (_carry.get(key) ?? 0);
@@ -133,16 +153,28 @@ const freshState = () => ({
 let _s = freshState();
 /** @type {WeakMap<object, number>} */
 let _hexed = new WeakMap();              // a foe's entity -> until when its blows are hexed
+/** @type {WeakMap<object, number>} */
+let _tolls = new WeakMap();              // GILDED1: a tolling weapon -> its landed shots since its last toll
+/** @type {{ foe: object, at: number } | null} */
+let _lastToll = null;                    // GILDED1: the last foe a tolling weapon's shot landed on, and when
 /** @type {WeakSet<object>} */
 let _struck = new WeakSet();             // the foes my blows have landed on (First Blood)
 let _manaOwed = 0;
+/** GILDED1: THE HOUR TOLLS - is this weapon's next landed shot its toll? Its landed shots are counted on the strike
+ *  (lootStrike, after the blow), so the blow asks before the count moves: shots one and two ring nothing, the third tolls. */
+const tollDue = (weapon, p) => !!weapon && (_tolls.get(weapon) ?? 0) === p.every - 1;
+/** GILDED1: how long after its shot landed a foe's fall is the shot's - a kill is told the frame its health ran out,
+ *  which is the strike's own frame or the next; a second is a generous bound that a later blow of anything else
+ *  replaces (the record is the last landed shot's). */
+export const TOLL_REFUND_S = 1;
 let _say = (line) => { hudText(line); };
 /** The host's voice for a power's line (the HUD's own door by default). */
 export function setLootPowersVoice({ say = null } = {}) { if (typeof say === 'function') _say = say; }
 const say = (line) => { try { _say(line); } catch { /* a line is not the power's problem */ } };
 
-/** The power ids a piece carries: a Legendary's own record, and (LOOT10) a Rare's imprint - none on anything else. */
-const powerIds = (it) => [it?.rarity === 'legendary' ? it.legendary : null, it?.rarity === 'rare' ? it.imprint : null];
+/** The power ids a piece carries: a Legendary's own record, (LOOT10) a Rare's imprint and (GILDED1) a Gilded record's -
+ *  none on anything else. */
+const powerIds = (it) => [it?.rarity === 'legendary' ? it.legendary : null, it?.rarity === 'rare' ? it.imprint : null, it?.rarity === 'gilded' ? it.gilded : null];
 /** Every power MY entity's worn pieces carry - `[{ id, power, item }]`, ONE entry an id (a power counts once): a
  *  Legendary's own record, and (LOOT10) a Rare's imprint. None for anyone but me, with the switch off, or in a duel. */
 export function wornPowers(entity) {
@@ -207,6 +239,7 @@ export function lootBlow(weapon, damage, attacker, target, info) {
       case 'rage': if (share(attacker) < p.below / 100) pct += p.pct; break;
       case 'execute': if (share(target) < p.below / 100) pct += p.pct; break;
       case 'firstblood': if (!_struck.has(target)) pct += p.pct; break;
+      case 'toll': if (tollDue(weapon, p)) pct += p.pct; break;   // GILDED1: the third that lands
       default: break;
     }
   }
@@ -220,6 +253,7 @@ export function lootStrike(attacker, target, damage, weapon) {
   if (!mine(attacker) || !(damage > 0) || !target || target.isPlayer) return;
   let pct = 0;
   for (const a of linesOf(weapon, 'leech')) pct += a.value;
+  pct = Math.min(LEECH_CAP, pct);   // BAL7
   if (pct > 0) healMine(attacker, (damage * pct) / 100);
   // LOOT5: the powers that answer a blow that landed
   const now = _now();
@@ -228,9 +262,10 @@ export function lootStrike(attacker, target, damage, weapon) {
       case 'chain': if (ranged(weapon)) arc(target, (damage * p.share) / 100, p.metres); break;
       case 'quake': if (weapon && !ranged(weapon)) quake(target, (damage * p.share) / 100, p.metres); break;
       case 'echo': if (_rand() * 100 < p.chance) again(target, damage); break;
-      case 'fists': if (!weapon) again(target, damage); break;
+      case 'fists': if (!weapon) again(target, (damage * p.share) / 100); break;   // BAL7: for half (the record's share)
       case 'conduit': gainMana(attacker, p.mana); break;
       case 'flow': _s.flow = Math.min(p.max, flowStacks(now) + 1); _s.flowUntil = now + p.seconds; break;
+      case 'toll': if (weapon) { _tolls.set(weapon, ((_tolls.get(weapon) ?? 0) + 1) % p.every); _lastToll = { foe: target, at: now }; } break;   // GILDED1
       default: break;
     }
   }
@@ -273,7 +308,8 @@ function quake(target, amount, metres) {
 
 // ── a foe's blow landed: thorns ────────────────────────────────────
 /** A FOE'S BLOW TOOK MY HEALTH (sigilSetPowers.js registerPlayerBlowLanded): the thorns I wear, summed under the cap,
- *  back to the foe that struck - through its own pool's door (systems/playerDoor.js), a kill mine. */
+ *  back to the foe that struck - through its own pool's door (systems/playerDoor.js), never its last point (BAL5: the
+ *  kill is mine to take, never the thorns'). */
 export function lootLanded(entity, attacker, took) {
   if (!mine(entity) || !(took > 0) || !attacker || attacker.isPlayer) return;
   // LOOT5: the powers a landed blow arms - Dawnward's charge, Bedrock's stack, the Hex on the foe that struck
@@ -287,7 +323,8 @@ export function lootLanded(entity, attacker, took) {
   if (n <= 0) return;
   const door = playerDoor();
   const f = door?.foes().find((x) => x.entity === attacker);
-  if (f && !f.dead) door.hurtFoe(f, n);
+  const back = f && !f.dead ? paidBack(f, n) : 0;
+  if (back > 0) door.hurtFoe(f, back);
 }
 
 // ── LOOT5: the damage I take ────────────────────────────────────────
@@ -336,12 +373,15 @@ export function lootDeathSave(entity) {
 }
 /** A HURT LANDED on me (told after it): Divine Grace's heal, after the door left me at 1; the Ghost-King's Vigil when a
  *  hurt takes me under its line. */
-export function lootHurt(entity, { before, after }) {
+export function lootHurt(entity, { before, after, saved = false }) {
   if (!mine(entity)) return;
   const max = entity.maxHealth;
   if (_s.graceHeal > 0) { healMine(entity, (max * _s.graceHeal) / 100); _s.graceHeal = 0; }
   const v = powerKind(entity, 'vigil');
-  if (!v || !(max > 0) || !(after > 0)) return;
+  // AUDIT SD II (L5 F7): nor a killing blow a death save turned aside (`saved` - AUDIT 625 P1's law for Shed Skin): The
+  // Hour Turns (and Unbroken, and Divine Grace) left 1 and healed, and the Vigil healed again on top and spent its
+  // minute on a death that never happened. Divine Grace's own heal, above, stays
+  if (!v || !(max > 0) || !(after > 0) || saved) return;
   const line = (max * v.below) / 100;
   if (!(before >= line && after < line)) return;
   const now = _now();
@@ -371,6 +411,9 @@ export function lootKill(foe) {
   if (!foe || neverCounts(foe)) return;
   const door = playerDoor();
   const me = door?.player?.() ?? playerEntity;
+  // BAL9c: the wellspring lines I wear - that share of my magicka back, summed under the cap (Soul Siphon's own door)
+  const well = mine(me) ? Math.min(WELLSPRING_CAP, wornSum(me, 'wellspring')) : 0;
+  if (well > 0 && me.maxMagicka > 0) gainMana(me, (me.maxMagicka * well) / 100);
   const powers = wornPowers(me);
   if (!powers.length) return;
   const now = _now();
@@ -380,6 +423,7 @@ export function lootKill(foe) {
       case 'rage': healMine(me, (me.maxHealth * p.heal) / 100); break;
       case 'siphon': gainMana(me, (me.maxMagicka * p.pct) / 100); break;
       case 'tribute': { const g = p.gold * Math.max(1, foe.level | 0); addGoldPieces(me, g); say(`Tribute: ${g} gold.`); break; }
+      case 'toll': if (p.refund && _lastToll?.foe === foe && now - _lastToll.at <= TOLL_REFUND_S && Array.isArray(me?.items)) { addItem(me.items, createPellets(1)); _lastToll = null; } break;   // GILDED1: the felling shot's pellet, back
       case 'haste':
         if (now >= _s.hasteReady && door?.castOnPlayer) { _s.hasteReady = now + p.recover; _s.recovering.add('haste'); door.castOnPlayer(hasteBundle(p)); }
         break;
@@ -389,16 +433,42 @@ export function lootKill(foe) {
 }
 
 // ── the cast: focus ─────────────────────────────────────────────────
+/** LOOT15: a spell OF a school - every effect it carries that school's (a heal-and-burn is no Restoration spell). */
+export const spellOfSchool = (spell, school) => {
+  const fx = (spell?.effects ?? []).filter((e) => e && e.type > -1);
+  return fx.length > 0 && fx.every((e) => effectSchool(e) === school);
+};
 /** MY spell's magicka: the focus I wear off it, summed under the cap. */
-export function lootCastCost(entity, sp) {
+export function lootCastCost(entity, sp, spell = null) {
   if (!mine(entity)) return sp;
   let pct = Math.min(FOCUS_CAP, wornSum(entity, 'focus'));
   for (const { power: p } of wornPowers(entity)) {   // LOOT5: the Direnni Staff wielded, the Archmage's Loop
     if (p.kind === 'conduit') pct += p.less;
     else if (p.kind === 'mastery') pct += Number.isFinite(entity.magicka) && entity.maxMagicka > 0 && entity.magicka < entity.maxMagicka / 2 ? p.low : p.less;
+    else if (p.kind === 'school' && spellOfSchool(spell, p.school)) pct += p.less;   // LOOT15: Stendarr's Mercy
   }
   pct = Math.min(SPELL_CUT_MOST, pct);
   return pct > 0 ? (sp * (100 - pct)) / 100 : sp;
+}
+
+/** BAL9c: MY damage spell's power at a foe (systems/spellPower.js spellPowerMult) - the potency lines I wear, summed under
+ *  POTENCY_CAP, and Arcane Surge while my magicka stands above its line; all of it under SPELL_POWER_MOST. */
+export function lootSpellPower(entity, target) {
+  if (!mine(entity) || !target || target.isPlayer) return 0;
+  let pct = Math.min(POTENCY_CAP, wornSum(entity, 'potency'));
+  const surge = powerKind(entity, 'surge');
+  if (surge && entity.maxMagicka > 0 && Number.isFinite(entity.magicka) && entity.magicka > (entity.maxMagicka * surge.above) / 100) pct += surge.pct;
+  return Math.min(SPELL_POWER_MOST, pct);
+}
+/** BAL9c: Magnus's Gaze - the points MY damage spell takes off a foe's saving throw (spellcast.js savingChance, after the
+ *  immunity). */
+export const lootSpellPierce = (entity, target) => (mine(entity) && target && !target.isPlayer ? (powerKind(entity, 'pierce')?.points ?? 0) : 0);
+
+/** CAST-SPEED: MY casting hands' speed - the castSpeed lines I wear, summed under the cap, a percent onto the cast's rate
+ *  (systems/castSpeed.js castRate). */
+export function lootCastSpeed(entity) {
+  if (!mine(entity)) return 0;
+  return Math.min(CAST_SPEED_CAP, wornSum(entity, 'castSpeed'));
 }
 
 // ── LOOT5: the absorption roll, the round, the find ─────────────────
@@ -410,12 +480,20 @@ const READY = Object.freeze({
   grace: { at: () => _s.graceReady, line: 'Divine Grace is ready again.', kind: 'grace' },
   haste: { at: () => _s.hasteReady, line: null, kind: 'haste' },   // ten seconds: no word worth saying
 });
-/** THE MAGIC ROUND: Hist-Sap's regeneration, and "ready again" for a recovery that ran out with its power still worn. */
+/** THE MAGIC ROUND: Hist-Sap's regeneration, (BAL9c) the Wellspring of Artaeum's magicka, and "ready again" for a
+ *  recovery that ran out with its power still worn. */
 export function lootRound(entity) {
   if (!mine(entity)) return;
   const hist = powerKind(entity, 'regen');
   if (hist && entity.maxHealth > 0 && entity.health > 0 && entity.health < entity.maxHealth) {
     healMine(entity, (entity.maxHealth * (share(entity) < 0.5 ? hist.low : hist.pct)) / 100);
+  }
+  // BAL9c: the Wellspring of Artaeum - a share of my magicka, more under half; never for a career that cannot regenerate
+  // it (NoRegenSpellPoints), where rest's own gate holds it back (offline - REST-MANA1: online every career's comes back)
+  const well = powerKind(entity, 'attune');
+  if (well && entity.maxMagicka > 0 && entity.health > 0 && Number.isFinite(entity.magicka) && entity.magicka < entity.maxMagicka
+    && !(hasSpecialAbility(entity.career, SPECIAL_ABILITY.NoRegenSpellPoints) && !restIgnoresNoRegen())) {
+    gainMana(entity, (entity.maxMagicka * (entity.magicka < entity.maxMagicka / 2 ? well.low : well.pct)) / 100);
   }
   if (!_s.recovering.size) return;
   const now = _now();
@@ -433,12 +511,38 @@ export function lootFind() {
   return powerKind(me, 'fortune')?.mult ?? 1;
 }
 
+// ── LOOT15: the wardrobe's powers, folded ─────────────────────────
+/** LOOT15 (the Loot arc II, bible/06-Systems/Loot-II-Arc.md section 7): THE ROAD'S AND THE COURT'S POWERS are FOLDED onto
+ *  MY entity (systems/entityMods.js), so the leaves that read them stay import-free - survival's felt temperature (the
+ *  degrees, survival/needs.js through wardrobeCtx), DRESS1's standing (clothingStanding.js), the shared fatigue and fall
+ *  laws (scenes/shared.js), skillValue. A power counts once (wornPowers); nothing for anyone but me, with the switch off,
+ *  or in a duel. Unseen answers the hood of the piece that carries it - the hood up, 25 Stealth; down, none. */
+export function wardrobeFold(entity) {
+  const powers = wornPowers(entity);
+  if (!powers.length) return EMPTY_MODS;
+  let mods = null;
+  const m = () => (mods ??= newMods());
+  for (const { power: p, item } of powers) {
+    switch (p.kind) {
+      case 'climate': m().heatDegrees += p.heat ?? 0; m().coldDegrees += p.cold ?? 0; break;
+      case 'longroad': m().fatigueLess += p.fatigue ?? 0; m().fallLess += p.fall ?? 0; break;
+      case 'bearing': { const s = m().standing; for (let g = 0; g < s.length; g++) s[g] += p.standing ?? 0; break; }
+      case 'hood': if (hoodUp(item)) m().skills[p.skill] = (m().skills[p.skill] ?? 0) + (p.more ?? 0); break;
+      default: break;
+    }
+  }
+  return mods ?? EMPTY_MODS;
+}
+
 // ── registered at import ───────────────────────────────────────────
 export const LOOT_POWERS = 'lootPowers';
 registerWeaponBlowMod(LOOT_POWERS, lootBlow);
 registerPlayerStrikeListener(LOOT_POWERS, lootStrike);
 registerPlayerBlowLanded(LOOT_POWERS, lootLanded);
 registerSpellCostMod(LOOT_POWERS, lootCastCost);
+registerCastSpeedMod(LOOT_POWERS, lootCastSpeed);   // CAST-SPEED
+registerSpellPowerMod(LOOT_POWERS, lootSpellPower);   // BAL9c
+registerSpellPierceMod(LOOT_POWERS, lootSpellPierce);   // BAL9c
 registerPlayerDamageMod(LOOT_POWERS, lootDamageMod);   // LOOT5
 registerPlayerDeathSave(LOOT_POWERS, lootDeathSave);
 registerPlayerHurtListener(LOOT_POWERS, lootHurt);
@@ -446,6 +550,7 @@ registerPlayerKillListener(LOOT_POWERS, lootKill);
 registerAbsorptionChance(LOOT_POWERS, lootAbsorbChance);
 registerMagicRoundHook(LOOT_POWERS, lootRound);
 registerLegendaryFind(LOOT_POWERS, lootFind);
+registerEntityFold(LOOT_POWERS, wardrobeFold);   // LOOT15
 
 /** LOOT5: THE HUD'S CHIPS for the powers now, beside the sets' (scenes/world.js hands both to the HUD) - each
  *  `{ key, set: 'legendary', name, text, state }`: Flow's and Bedrock's stacks and seconds, Dawnward's charges, a
@@ -468,7 +573,7 @@ export function lootHudChips(entity, now = _now()) {
 
 /** Tests only: every carry and power fresh, a clock and a chance of their own (seconds, [0, 1)). */
 export function _resetLootPowersForTests() {
-  _carry = new WeakMap(); _healOwed = 0; _manaOwed = 0; _s = freshState(); _hexed = new WeakMap(); _struck = new WeakSet();
+  _carry = new WeakMap(); _resetPlayerHealForTests(); _manaOwed = 0; _s = freshState(); _hexed = new WeakMap(); _struck = new WeakSet(); _tolls = new WeakMap(); _lastToll = null;
   _say = (line) => { hudText(line); };
 }
 export function _setLootPowersClockForTests(fn) { _now = typeof fn === 'function' ? fn : () => performance.now() / 1000; }

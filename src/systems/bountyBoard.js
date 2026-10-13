@@ -407,6 +407,10 @@ export function rewardStory({ town = 'town', gold, itemName }, h = 0) {
   return fillStory(pick(BOUNTY_REWARD_STORIES, h >>> 0), { town, gold, item: itemName || 'a small trinket' });
 }
 
+/** The boards by position - x, then z, then y - as `[box, index]`; a board with no box takes no place. */
+const boardOrder = (boards) => (Array.isArray(boards) ? boards : []).map((b, i) => [b?.box, i]).filter(([b]) => Array.isArray(b))
+  .sort(([a], [b]) => (a[0] - b[0]) || (a[2] - b[2]) || (a[1] - b[1]));
+
 /** Which of a town's boards are bounty boards (Mac, 2026-09-28: "always the half of the bounty boards in every city
  *  should share the same quests"): HALF of them, spread through the town - the boards sorted by position (x, then z,
  *  then y) and every other one taken, starting with the first. Two boards give one, four give two, five give two. A
@@ -416,12 +420,29 @@ export function rewardStory({ town = 'town', gold, itemName }, h = 0) {
  *  @returns {Set<number>} the indices into `boards` that are bounty boards */
 export function questBoardIndices(boards) {
   const out = new Set();
-  if (!Array.isArray(boards)) return out;
-  const order = boards.map((b, i) => [b?.box, i]).filter(([b]) => Array.isArray(b))
-    .sort(([a], [b]) => (a[0] - b[0]) || (a[2] - b[2]) || (a[1] - b[1]));
+  const order = boardOrder(boards);
   const want = Math.floor(order.length / 2);
   for (let k = 0; k < order.length && out.size < want; k += 2) out.add(order[k][1]);
   return out;
+}
+
+/** THE RUMOUR BOARD NEAREST THE TOWN'S MIDDLE: of the boards questBoardIndices left, the one nearest `centre` (the
+ *  town's middle on the ground, [x, z]), the first by position on a tie or with no centre - the board the siege field
+ *  takes for its Market (systems/siegeField.js). ONE-BOARD (2026-10-06) made it the town's one Notice Board online;
+ *  ONE-BOARD REVERTED (2026-10-07, Mac: revert "just that change") made every board questBoardIndices left a Notice
+ *  Board again, and this the field's alone. Pure.
+ *  @param {Array<{box:number[]}>} boards pixel-local boxes, as questBoardIndices reads them
+ *  @param {Set<number>} [bounty] the indices questBoardIndices took
+ *  @param {number[]|null} [centre]
+ *  @returns {number} the Notice Board's index into `boards`, or -1 where every board is a bounty board */
+export function noticeBoardIndex(boards, bounty = questBoardIndices(boards), centre = null) {
+  let best = -1, near = Infinity;
+  for (const [box, i] of boardOrder(boards)) {
+    if (bounty.has(i)) continue;
+    const d = Array.isArray(centre) ? Math.hypot((box[0] + box[3]) / 2 - centre[0], (box[2] + box[5]) / 2 - centre[1]) : 0;
+    if (d < near) { near = d; best = i; }
+  }
+  return best;
 }
 
 // ── the ledger ────────────────────────────────────────────────────────
@@ -429,12 +450,18 @@ export function questBoardIndices(boards) {
  * A hunter's bounties: the ones held, and the slots already paid (a slot paid is not posted to that hunter again
  * that day). Plain data - it is the save record as it stands.
  * @typedef {{ id:string, takenAt:number, killed:number, shared?:boolean, from?:string }} HeldBounty
- * @typedef {{ held: HeldBounty[], paid: string[], dropped: string[], paidAt?: Record<string, number>, droppedKilled?: Record<string, number> }} BountyLedger
+ * @typedef {{ held: HeldBounty[], paid: string[], dropped: string[], paidAt?: Record<string, number>, droppedKilled?: Record<string, number>, v?: number }} BountyLedger
  */
 /** AUDIT 28 B1/B2: `paidAt` - slotKey -> the minute it was paid (a mate's clear pays only a bounty held before it);
  *  `droppedKilled` - slotKey -> the kills a bounty given up had (taken again, it goes on from them). */
+/** AUDIT REST II Q3: THE LEDGER'S VERSION, saved with it as `v`. 1 - every ledger written before the mark (it is
+ *  absent): under TIMEFREE (app-v0.1.5694, `Online-Time-Arc.md` 6.3b) a held bounty never lapsed online, so a row held
+ *  through that build can carry a `takenAt` days behind the world's clock, and QCLOCK-WORLD's lapse sweep, back, took
+ *  every such row - and its kills - on the first tick after the update. 2 - a ledger this build wrote, whose rows ran
+ *  under a lapse sweep online. */
+export const BOUNTY_LEDGER_VERSION = 2;
 /** @returns {BountyLedger} */
-export const newBountyLedger = () => ({ held: [], paid: [], dropped: [], paidAt: /** @type {Record<string, number>} */ ({}), droppedKilled: /** @type {Record<string, number>} */ ({}) });
+export const newBountyLedger = () => ({ held: [], paid: [], dropped: [], paidAt: /** @type {Record<string, number>} */ ({}), droppedKilled: /** @type {Record<string, number>} */ ({}), v: BOUNTY_LEDGER_VERSION });
 
 /** A save record, read defensively - anything malformed is dropped rather than trusted. */
 export function readBountyLedger(rec) {
@@ -451,7 +478,20 @@ export function readBountyLedger(rec) {
     const into = /** @type {Record<string, number>} */ (out[k]);
     for (const [slot, v] of Object.entries(src)) if (slot.length <= 40 && Number.isSafeInteger(v) && v >= 0) into[slot] = v;
   }
+  out.v = Number.isSafeInteger(rec.v) && rec.v >= 1 ? rec.v : 1;   // AUDIT REST II Q3: no mark - a ledger from before it
   return out;
+}
+
+/** AUDIT REST II Q3: a ledger written before the version mark, first played online: every bounty it holds runs from
+ *  `nowMinutes` - ONCE (the mark is set, and saved with the ledger). The never-lapse build kept no time for them, so a
+ *  row held through it lapses a day after the update, never on its first tick with its kills. The host asks it online
+ *  alone: offline a held bounty lapsed under that build too, and the mark waits for the first online tick. Answers the
+ *  rows re-stamped. */
+export function restampNeverLapsed(ledger, nowMinutes) {
+  if ((ledger.v ?? 1) >= BOUNTY_LEDGER_VERSION) return [];
+  for (const h of ledger.held) h.takenAt = nowMinutes;
+  ledger.v = BOUNTY_LEDGER_VERSION;
+  return ledger.held.slice();
 }
 
 const heldSlot = (ledger, slotKey) => ledger.held.find((h) => parseBountyId(h.id)?.slotKey === slotKey) ?? null;

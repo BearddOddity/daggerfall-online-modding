@@ -5,7 +5,7 @@
 // port already keeps:
 //
 //   Active quests  - QuestMachine.getAllQuestLogMessages()
-//                    (systems/quest/machine.js:"C# QUIRK KEPT: the", already verbatim)
+//                    (systems/quest/machine.js:"is the questor for", already verbatim)
 //   Finished quests- PlayerNotebook.getFinishedQuests()
 //   Notebook       - PlayerNotebook.getNotes()
 //   Messages       - PlayerNotebook.getMessages() (the 50-slot ring)
@@ -24,6 +24,8 @@ import { lastPlaceMentionedInMessage, locationInRegionText } from './questLens.j
 import { REGION_NAMES, patchRegionIndex } from '../formats/mapsFile.js';
 import { audio } from '../systems/audio.js';
 import { SOUND } from '../systems/soundClips.js';
+import { InputMessageBoxWindow } from './inputMessageBox.js';   // NOTE-KEYS: EnterNote's DaggerfallInputMessageBox, the one home (CM3)
+import { hotkeyHit } from '../systems/dialogShortcuts.js';   // NOTE-KEYS: the confirm box's Yes 'Y' and No 'N', off either host's alphabet
 import { ToolTip } from './toolTip.js';   // U37's shared component - this window points two panels at it
 import { localizedStrings, localizedTable, localizedText, formatText, getLocalizedLocationName, getLocalizedRegionName } from '../systems/textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language; L10N3e: the place names shown
 
@@ -163,8 +165,12 @@ export const CONFIRM_TEXT = localizedTable({   // L10N3d: baseKey "confirmMove" 
   remove2: ['confirmRemove2', '(It will be deleted permanently and cannot be restored)'],
 });
 export const ENTER_NOTE_PROMPT = 'Enter your note:';
-/** L10N3d: EnterNote's prompt (:515), in the player's language, read where the box draws. */
+/** L10N3d: EnterNote's prompt (:515), in the player's language, read when the box opens. */
 export const enterNotePrompt = () => localizedText('enterNote', ENTER_NOTE_PROMPT);
+/** EnterNote's field (:507-526): the entry line's label and TextBox.WidthOverride = 318 (:521); MaxCharacters is the
+ *  notebook's MaxLineLenth (MAX_LINE_LENGTH, 70). */
+export const ENTER_NOTE_LABEL = ' > ';
+export const ENTER_NOTE_WIDTH_OVERRIDE = 318;
 
 export class QuestJournalWindow {
   /**
@@ -207,7 +213,8 @@ export class QuestJournalWindow {
     this.findPlace = null;
     this.findBox = null;
     // F160: the move/remove confirm (CreateDialogBox, :487-505) and
-    // the EnterNote input box (:507-526).
+    // the EnterNote input box (:507-526) - NOTE-KEYS: a pushed
+    // InputMessageBoxWindow, owned here as automapWindow owns its note's.
     this.moveRemoveBox = null;
     this.noteBox = null;
     this._font = null;
@@ -284,18 +291,25 @@ export class QuestJournalWindow {
     const code = e?.code ?? action;
     // The find dialog is a pushed window in DFU, so it owns the keys
     // while it is up - Escape is its No, Enter its Yes.
-    // F160: the EnterNote field (DaggerfallInputMessageBox) - chars,
-    // backspace, Enter submits, Escape cancels; MaxLineLenth 70.
+    // F160: the EnterNote field is a DaggerfallInputMessageBox, PUSHED - it owns the keys while it is up (Enter submits,
+    // Escape cancels, MaxLineLenth 70).
+    // NOTE-KEYS (FIELD BUGS 2026-10-06, Skibbster: "when getting to this page on the classic/grimoire UI, player key
+    // presses are ignored"): this window is a NATIVE one (isChoiceWindow), so the hosts' routeKey hands it the raw
+    // CODE and the event (ui/input.js "a NATIVE window keys off raw codes") - `KeyA`, never `char:a` - and the field
+    // typed into the journal's own art read only the action map's spelling: Enter, Backspace and Escape worked, and
+    // not one letter landed. It is now the one InputMessageBoxWindow (ui/inputMessageBox.js, CM3), which reads both
+    // hosts' alphabets, as CM3-CM11 made every other raiser's field (test/classicinputbox.test.js THE ROSTER).
     if (this.noteBox) {
-      if (action === 'confirm' || code === 'Enter') return this._submitNote();
-      if (action === 'back' || code === 'Escape') { this.noteBox = null; this.selectedEntry = null; return true; }
-      if (action === 'backspace' || code === 'Backspace') { this.noteBox.value = this.noteBox.value.slice(0, -1); return true; }
-      if (typeof action === 'string' && action.startsWith('char:') && this.noteBox.value.length < MAX_LINE_LENGTH) { this.noteBox.value += action.slice(5); return true; }
+      this.noteBox.input(action, e);
+      if (this.noteBox?.done) this.noteBox = null;
       return true;
     }
     if (this.moveRemoveBox) {
-      if (action === 'confirm' || code === 'Enter' || action === 'char:y' || action === 'char:Y') return this.answerMoveRemove(MB_BUTTONS.Yes);
-      if (action === 'back' || code === 'Escape' || action === 'char:n' || action === 'char:N') return this.answerMoveRemove(MB_BUTTONS.No);
+      // NOTE-KEYS: Y and N are the message box's own buttons' shortcuts (DialogShortcuts.txt Yes 'Y', No 'N'), read off
+      // either host's alphabet by the table's one reader (systems/dialogShortcuts.js hotkeyHit) - a native window's
+      // key is `KeyY`, the dungeon's `char:y`
+      if (action === 'confirm' || code === 'Enter' || hotkeyHit('Yes', action, e)) return this.answerMoveRemove(MB_BUTTONS.Yes);
+      if (action === 'back' || code === 'Escape' || hotkeyHit('No', action, e)) return this.answerMoveRemove(MB_BUTTONS.No);
       return true;
     }
     if (this.findBox) {
@@ -506,14 +520,20 @@ export class QuestJournalWindow {
   enterNote(index) {
     if (this.mode !== 'notebook') return true;
     this.selectedEntry = -index + this.currentMessageIndex;
-    this.noteBox = { value: '' };
+    // NOTE-KEYS: the one DaggerfallInputMessageBox (CM3) - the prompt above the entry line in one parchment box, the
+    // box as wide as WidthOverride (:521) whatever the note's length. Escape closes it and the pick clears with it.
+    this.noteBox = new InputMessageBoxWindow({
+      lines: [{ text: enterNotePrompt(), center: false }], label: ENTER_NOTE_LABEL,
+      maxCharacters: MAX_LINE_LENGTH, widthOverride: ENTER_NOTE_WIDTH_OVERRIDE,
+      onSubmit: (text) => this._submitNote(text),
+      onCancel: () => { this.noteBox = null; this.selectedEntry = null; },
+    });
     return true;
   }
 
   /** EnterNote_OnGotUserInput (:365-374): empty adds nothing; either
    *  way the pick clears. */
-  _submitNote() {
-    const text = this.noteBox?.value ?? '';
+  _submitNote(text) {
     this.noteBox = null;
     if (text.length) {
       this.deps.notebook()?.addNote(text, this.selectedEntry);
@@ -658,17 +678,8 @@ export class QuestJournalWindow {
       this.moveRemoveBox.box = layoutMessageBox(font, this.moveRemoveBox.rows, [MB_BUTTONS.Yes, MB_BUTTONS.No]);
       drawMessageBox(renderer, m, font, this.moveRemoveBox.box);
     }
-    if (this.noteBox && messageBoxArtLoaded()) {
-      // DaggerfallInputMessageBox: the entry line under the prompt in
-      // one parchment box; the sizing row fixes the width the way
-      // WidthOverride = 318 does (:521), so the box does not breathe
-      // as the note grows.
-      const entry = ` > ${this.noteBox.value}_`;
-      const prompt = enterNotePrompt();
-      const box = layoutMessageBox(font, [{ text: prompt, center: false }, { text: entry, center: false }], [],
-        { sizingRows: [prompt, ` > ${'M'.repeat(44)}_`] });
-      drawMessageBox(renderer, m, font, box);
-    }
+    // NOTE-KEYS: the pushed note box draws itself over the page (its parchment, its art-less panel, the enhanced face)
+    if (this.noteBox) this.noteBox.draw(renderer, canvas, font);
     if (this.findBox && messageBoxArtLoaded()) {
       this.findBox.box = layoutMessageBox(font, this.findBox.rows, [MB_BUTTONS.Yes, MB_BUTTONS.No]);
       drawMessageBox(renderer, m, font, this.findBox.box);

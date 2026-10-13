@@ -170,8 +170,8 @@ carried only the first of the two lines, so a player fighting with the
 left-hand weapon loaded back holding the right hand's item, or bare
 fists. By the time it was found, the two restore lines had drifted six
 and thirteen lines apart inside their own hosts, and the comment in
-`worldModes.js` that pointed between them cited `world.js:"const eraw = landing.edgePos"` and
-`dungeonContext.js:"position: lastPlayerFeet"` - lines that had moved to `dungeonContext.js:"ROAD-B: EnemySenses.StealthCheck's"` and `dungeonContext.js:"past the threshold"`.
+`worldModes.js` that pointed between them cited `world.js` line 12100 and
+`dungeonContext.js` line 8738 - lines that had moved to 6935 and 8710.
 *Three copies of a rule, and the signpost between them stale as well.*
 
 The pair lives in `src/combat/playerWeapon.js` now - `weaponPoseOf`,
@@ -249,7 +249,7 @@ three collapsed on verification.**
 2. *"`npcSession.onWorldChanged()` is on both door exits and not on the
    teleport/load path."* True, and correct: every caller of
    `forceExitToExterior` follows it with `_teleportToPixel`, and THAT
-   function owns the call (`world.js:"(:1587, :1592), which"`, DFU's `OnMapPixelChanged` /
+   function owns the call (`world.js:"const wantsLanding"`, DFU's `OnMapPixelChanged` /
    `OnLoadEvent`). The quickload caller goes through
    `restoreSessionState` instead. Calling it in both places would be the
    redundancy, not the fix.
@@ -444,6 +444,21 @@ behind is worse than none - two texts, one edited and one read), the
 ban on negative pins aimed at one page, the reason `## Open flags` stayed,
 and the pin on the warning above. Mutation-verified three ways.
 
+**THE CEILING DID ITS JOB, 2026-10-05.** Home.md grew back from 30 KB to
+80 KB in three weeks - the page index under `## Sections`, one line per
+page with a record of its own, many of them grown into essays (THE LIVING
+WORLD's is 6 KB) - and WALLET1's merge of main (#621) crossed the ceiling.
+The page index moved to `01-Overview/Page-Index.md` the same way, byte for
+byte: a stub where it stood and the derived index reading it. The six
+pins that matched a page's line in Home.md (BA1, IF1, WATER, WEATHER2a, 2b
+and 2d) read that page now, not the derived index: three of their pages
+are named in Active-Arcs too, so through the whole index those three
+could no longer fail when their own line went. Home.md is 23 KB again.
+AUDIT 625 (D7) found the move half done: it took the 53 lines that stood
+together and left eight that stood among the folder lines, while the stub
+said the page index had gone - two places a new page's line could go.
+The eight followed, byte for byte; the page holds all 61.
+
 ## AUDIT-HARD, 2026-09-15 - the program audited against itself
 
 Mac, before merging: "Lets audit this before merging." Nine findings over
@@ -543,7 +558,7 @@ The door list derived; the four arm names did not. It demanded `close`,
 which no host has ever called on a slot - the hosts free a window with
 `dispose?.()` - so that requirement was invented, and it passed only
 because the one door lacking `close` was also the one being skipped. And
-it omitted `tick`, which `interior.js:"the geometry would"` calls unguarded **every
+it omitted `tick`, which `interior.js:"overlay.tick(dt)"` calls unguarded **every
 frame**.
 
 **F3 - it assumed the population was `ui/*Door.js`.** It is not. Twelve
@@ -639,7 +654,7 @@ extraction changed.
 ### One thing left standing, deliberately
 
 `citeShift` reports two citations "for a person" in a STRUCK row of
-`Port-Ledger.md` - `combat/playerWeapon.js:"export const usingRightHandFromSaveVars"` and its `:808`
+`Port-Ledger.md` - `combat/playerWeapon.js` lines 119-161 and its line 808
 continuation. Read at the commit before this branch, **that span was
 already stale**: it claims to name the port's own gesture path and
 actually pointed at the sheath-and-hand region. HARD2c's insertion moved
@@ -671,10 +686,23 @@ Two further mechanics, both learned the expensive way here:
   merge first, then let the tool re-resolve against the new base - the
   same order PR #168's merge established.
 - `src/buildTag.js` conflicts on every merge and is build output; take
-  either side and let `prebuild` stamp it.
+  either side and let `prebuild` stamp it. (BUILDTAG-CLEAN, issue #626:
+  `postbuild` now restores the committed file, so a build no longer
+  leaves a stamp to commit.)
 
 Post-merge the gate is green on 7,654 tests with `citeShift` reporting
 nothing to move.
+
+**CITE-ANCHOR (2026-10-06) retired the number-by-number resolution above.**
+A cite into our code names its line by a quote -
+`world.js:"const livingQuarry = () =>"` - so a change to a file moves no doc but the ones
+that cite the lines it changed, and a merge conflicts on a cite only where
+both sides changed the cited line - the conflict is then a real one, about
+what the cite should say. A branch that still wrote numbers merges main by
+taking main's side of each cite-only conflict, then running
+`node tools/citeAnchor.mjs --apply` and `--check` on the merged tree: its
+own new cites become anchors in the same pass. Neither citeShift nor
+citeMerge is part of a merge any more.
 
 ### The shape worth keeping
 

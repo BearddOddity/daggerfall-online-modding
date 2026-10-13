@@ -218,8 +218,8 @@
   {
     "name": "CA-door-keeps-bodies",
     "file": "src/scenes/crewAshore.js",
-    "old": "    if (key !== placeKey) { liftAll(); placeKey = key; epoch++; }",
-    "new": "    if (key !== placeKey) { placeKey = key; epoch++; }",
+    "old": "    if (key !== placeKey) { liftAll(); placeKey = key; epoch++; trail.length = 0; leaderWas = null; }",
+    "new": "    if (key !== placeKey) { placeKey = key; epoch++; trail.length = 0; leaderWas = null; }",
     "tests": [
       "test/crewcompanions.test.js"
     ]
@@ -254,8 +254,8 @@
   {
     "name": "CA-heel-one-distance",
     "file": "src/scenes/crewAshore.js",
-    "old": "const followOf = (i) => ({ feet: () => deps.leader()?.feet ?? null, stop: HEEL_M + i * HEEL_STEP_M });",
-    "new": "const followOf = (i) => ({ feet: () => deps.leader()?.feet ?? null, stop: HEEL_M });",
+    "old": "const followOf = (i) => ({ feet: () => deps.leader()?.feet ?? null, stop: HEEL_M + i * HEEL_STEP_M, trail: () => trail });",
+    "new": "const followOf = (i) => ({ feet: () => deps.leader()?.feet ?? null, stop: HEEL_M, trail: () => trail });",
     "tests": [
       "test/crewcompanions.test.js"
     ]
@@ -380,7 +380,7 @@
   {
     "name": "PX-companion-killed",
     "file": "src/scenes/exteriorFoes.js",
-    "old": "      if (f.companion != null) { f.entity.health = 1; f._knockedOut = true; return; }\n",
+    "old": "      if (f.companion != null) { f.entity.health = 1; if (!f._knockedOut) f._knockedBy = striker; f._knockedOut = true; return; }\n",
     "new": "",
     "tests": [
       "test/crewcompanions.test.js"
@@ -389,7 +389,7 @@
   {
     "name": "PD-companion-killed",
     "file": "src/scenes/dungeonContext.js",
-    "old": "      if (foe.companion != null) { foe.entity.health = 1; foe._knockedOut = true; return; }\n",
+    "old": "      if (foe.companion != null) { foe.entity.health = 1; if (!foe._knockedOut) foe._knockedBy = striker; foe._knockedOut = true; return; }\n",
     "new": "",
     "tests": [
       "test/crewcompanions.test.js"

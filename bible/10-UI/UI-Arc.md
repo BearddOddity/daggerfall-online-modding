@@ -13,6 +13,255 @@ policies one by one.
 
 
 
+## BR5 DFO ONLINE (2026-10-11, Mac's call)
+
+Mac: "So next up I want to replace the current daggerfall online logo
+anywhere it's present with this logo. I want to comprehensively scan the
+repo, ingame, etc for any mentions of daggerfall/daggerfall online and
+change it to DFO Online/DFO. We are rebranding for our own sake and I want
+to do this right." Two questions went back before anything moved, because
+"any mention" reaches past the product: the ORIGINAL GAME's name stands in
+text that is true about it (the files a player brings, the credits), and a
+handful of KEYS carry the old spelling. On the first he chose to MINIMIZE.
+On the second he asked for an opinion on the law; the one given (not a
+lawyer's): ZeniMax holds DAGGERFALL for computer games and has gone after
+fan domains (skyrim.online, skyrim.wiki, a Morrowind name) and DoomRL's
+marks, so the DOMAIN is the exposed key - move the site to a new domain and
+put the two Workers behind it in one switch, a migration of its own; the
+repository can rename with it; the appId, the userData folder and the
+storage keys are no public use of the mark and move nothing but breakage.
+And one flag on the new name itself: Neople (Nexon) holds USPTO filings for
+DFO over online game software - Dungeon Fighter Online, commonly DFO
+(serials 77833542, 87490228; their status unread) - worth a search before
+the mark is public. The name lives in one constant per surface below, so a
+change of it is a sweep and the logo.
+
+THREE LAWS, each pinned in `test/brand.test.js`:
+
+- THE PRODUCT IS DFO ONLINE, DFO where a label is short. Every surface BR4
+  named, swept for the old name whole and split: the landing page (title,
+  `og:title`, its type wordmark - `DFO` over a tracked ONLINE, BR3's ruling
+  standing; AUDIT BR5 made it the logo, Mac's call - and its footer and credits), the game page and its iPhone
+  title (`DFO`), the PWA manifest (`short_name` `DFO`), the desktop shell's
+  `productName` twice, its window titles, its dialogs, the launcher's title
+  and wordmark, the downloads (`DFO-Online-<os>-<arch>`, the two Windows
+  names), the saves zip (`DFO-Online-Saves.zip`), the class importer's
+  refusal and its copy note, the loader's and the second tab's titles, the
+  pause line, the About panel, the intro's aria-label and fallback, the
+  masthead's way home, the new character's masthead (`DFO Online` under
+  New Character, where `Daggerfall` stood), a screenshot's and a loading
+  shot's file names (`dfo-...`), the Patreon link's page title, README,
+  SUPPORT and the prototype pages. The macOS bundle becomes `DFO
+  Online.app`; the folder search already skipped every `.app`, and an
+  older copy by the old name is still skipped (`test/da9_arena2detect.test.js`).
+- THE ORIGINAL GAME IS NAMED ONLY WHERE IT MUST BE. It stays where it is
+  the truth about something that is not this product: the copy a player
+  brings (the landing page's gate now names it whole, The Elder Scrolls II:
+  Daggerfall; the launcher's "Where is Daggerfall?"; the ARENA2 prompts and
+  the shell's folder descriptions), the credits and the licence, a
+  trademark notice (new on the landing page's credits and in the README:
+  The Elder Scrolls and Daggerfall are trademarks of ZeniMax Media Inc.),
+  Daggerfall Unity and the mods by their own names, DFU's own settings text
+  (`systems/settingsText.js`, generated verbatim) and a mod's own switches,
+  and the Iliac Bay's places - the city, the kingdom, its bank, its crown,
+  its ships and songs are the world's, not the brand's. Everywhere else a
+  player reads "the original game" or "classic": the tagline (An
+  open-source reimplementation of a classic 1996 RPG - the landing page,
+  the manifest, the About panel and the README, each then naming the copy a
+  player brings where it says how to play), twenty-two lines of the feature rows ("Off
+  is the classic loot", "like the original" - the shorter words keep the
+  notes inside FT15's budget, which the longer ones broke by 163 characters), the overhaul cards' `by` and blurbs, the
+  classic door (`Classic`), the leveling choice (`Classic`), the crossing
+  line ("the classic way"), the stats card, the profession pages, the decor
+  line, the music, sound and texture pack blurbs, the land-view tier
+  (`Classic (3)`), the skin shelf (`Original classes`) and the port's own
+  mod switches. The pin reads the PRODUCERS (FEATURES, OVERHAUL_PANELS,
+  MOD_SETTINGS, levelingOptions, LEVELING_CROSS_LINE, INSTEAD, FOOT_GROUPS,
+  LAND_VIEW_TIERS), so a new row saying "as Daggerfall does" reddens it
+  wherever it is written. Comments, the bible and the code's DFU names are
+  not what a player reads and are not swept.
+- THE KEYS OTHER SYSTEMS HOLD KEEP THEIR SPELLING, each pinned with what
+  moving it breaks: the relay's and the account service's addresses
+  (`daggerfall-online` / `daggerfall-accounts` on workers.dev - every client
+  dials them), the relay Worker's name (its hostname), the D1 database's
+  name, the Patreon link's key-derivation salt (every linked secret stops
+  opening), the Ko-fi page (`ko-fi.com/daggerfallonline`, an account outside
+  the tree, as the Patreon page is), the shell's package and User-Agent,
+  and - from BR1 - the repository, the domain, the appId, the `Daggerfall
+  JavaScript` userData folder and the live storage keys.
+
+THE LOGO. Mac's file is 800 x 600 with real alpha and its paint in the
+middle; it ships as `src/assets/branding/dfo-online.png`, cut to the
+526 x 322 its paint covers - every pixel inside his, unchanged, and no
+pixel outside with any alpha - and the old `daggerfall-online.png` is
+gone. It draws as it is, no blend mode (BR4's law: its dark outlines and
+its shadow are the art). It is 1.63:1 and painted to its edges where BR4's
+was 2.48:1 with 81 empty rows, so EVERY BOX KEEPS THE HEIGHT IT HAD and
+nothing above or below a mark moves: the door's mark is 321px (BR4's 540px
+x 769/2112 x 526/322) or 50vw, 234px or 33.3vw on a short landscape screen;
+the masthead's mark is 59.5% of its column, centred; the film's title box
+is min(56.5vw, 815px), min(48.7vw, 657px) on a short screen - the box its
+probe measures against the tap target. The margin that pulled the menu up
+over BR4's empty rows is gone with them. And SUPPORT1's CORNERS' BAND, which
+pushes the door's stage below the corner marks wherever the wordmark reaches
+under one, is worked from the wordmark's width: (vw - min(321px, 50vw)) / 2 is
+under the marks' 234px reach below 789px wide, not 1008, so the band is
+`(min-width: 481px) and (max-width: 788px)` (`test/support1_asks.test.js`,
+its threshold mutant re-aimed). In a real browser: `tools/supportAsksProbe.mjs`
+22/22 - the asks on no opaque pixel of the new logo and DOOR-FIT, at 192
+sizes on both skins - and `tools/introProbe.mjs` 29/29, the title clearing
+the tap target on desktop, phone, landscape phone and reduced motion. The
+intro probe had BR4's 2112 x 850 written into it and failed the new mark for
+that alone; it reads the PNG's IHDR now. (Its first page waits 30 s for the
+film, which a cold dev server here took longer than; it passed with the wait
+raised in a scratch copy, the file unchanged on that point.) FOR MAC: at the film's 815px the
+file is drawn 1.55 times its size, and about three times on a 2x screen -
+a larger export of the same art (2,000px or more across) would draw it
+sharp, and nothing else would need to change for it.
+
+THE INTRO TRACK's ID3 title is "DFO Online Main Theme (Remastered x2)",
+retitled as BR1 and BR4 retitled it: the TIT2 frame alone, the tag
+reassembled frame for frame, the MPEG payload's hash unmoved
+(`3a1bc066...`); the cover art carries no name.
+
+THE TERMS AND THE PRIVACY POLICY name their operator, so the rename was
+first made a NEW VERSION of each (2026-10-11). ~~The account service reads
+the versions, so it moves to acct113~~ - AUDIT BR5 put the version back
+(below): the words are renamed and re-hashed at 2026-09-28; their trademark
+sentences, which name the original game as its owners', are unchanged. The
+account service is acct115 for the Patreon page's title alone (acct113 on
+this branch, renumbered past GUILD-SEEN and GUILD3 at the merge) - no
+migration, every ACCOUNT_VERSION pin with it.
+
+THE DOWNLOADS MOVE WITH THE MERGE: the site links
+`releases/latest/download/DFO-Online-...` from its deploy on, and the
+release carrying those names publishes about half an hour later - between
+the two the landing page's download links answer 404 unless the files are
+staged first (AUDIT BR5 C-2, below). The desktop updater reads
+`latest.yml`, which names the file, so a copy on the updater (installed
+Windows, the AppImage) updates across the rename; ~~as BR4's did~~ - BR4's
+names still carried their version, so no copy asked for a file by name
+then. A copy on the notice transport (the Mac, the portable exe) does, and
+AUDIT BR5 found the rename stranded it (below).
+
+Pins: `test/brand.test.js` 8 -> 11 (BR5: the sweep, whole, split and in a
+file name; the original game named only where owed, read off the
+producers; the keys kept); `test/intro.test.js` (the PNG's hash and IHDR,
+the alt text, the retitled track, which now refuses the old name whole);
+`test/terms1.test.js` re-hashed at the new version; the doctrine
+allow-list row; PIN MOVEs where a pin quoted the old words or names - the
+feature rows (FT2, FT4, FT6, FT18, MAP-TOGGLE), the leveling (ORL1's
+knob, LEVEL-ONLINE-3), the skin shelf (SKIN2), the loom's line (PROF7), the
+screenshot names (KB1, AUDIT KB1, LOAD1), the corners' band (SUPPORT1) and
+every ACCOUNT_VERSION pin. The leveling choice's line is "Level with your
+skills, the classic way." - "as the original game does" ran past the
+320-unit game area (ORL1's deep audit). Mutants: `tools/mutants/br5.json` 36; BR4's margin record
+retired with the margin, and its five name records, orl1, rel4 (three),
+rel8, relwin1 (two), terms1 (three) and the account version's four
+re-aimed by content.
+
+
+### AUDIT BR5 (2026-10-11, Mac: "Audit everything")
+
+Four cold lanes on the frozen branch (`61179f8e`) - the copy and the
+producers, the desktop shell and its releases, the site and the docs, the
+pins and their mutants - and a live one of my own, which built the site
+and took the door, the landing page and the launcher in a real browser.
+Mac stopped the lanes' long runs once each had reported ("I feel like we
+can cancel the current runs"). Four findings were his to call, asked
+together; the rest were fixed as found.
+
+HIS FOUR CALLS:
+
+- THE DOWNLOAD NAMES (his: "Whatever is the best for avoiding legal
+  issues"). Every copy on the NOTICE transport - a Mac, a portable exe -
+  asks for its update at `releases/latest/download/<name>` by the name it
+  was built with (REL5), and nothing it holds can learn another; the
+  launcher's Reinstall does the same on every platform. The rename would
+  have answered each of them 404. Kept: the new `DFO-Online-...` names,
+  which keep the mark out of what a player downloads. Added: each release
+  ALSO carries its four downloads under their `DaggerfallOnline-...` names
+  (`app/lib/downloads.cjs` LEGACY_DOWNLOAD_FILES; `scripts/desktopRelease.mjs
+  alias`, a workflow step between collecting the legs' files and checking
+  the set, which now expects all thirteen), so no older copy meets a dead
+  link; and a copy from BR5 on reads its download off the release's own
+  asset list (`releaseAssetUrl`: by its name, else by the platform part of
+  it, only from this repository's GitHub download path), and Reinstall
+  follows the link the last check read - so a later rename needs no alias,
+  and the old names can go once no pre-BR5 copy is left to ask. They are
+  the one place the old name is still published, exempted from BR5's sweep
+  line by line (four, and no more). An updater with no blockmap cached
+  downloads its first update past the rename whole: the differential
+  download looks for the previous release's blockmap under the new name,
+  finds none, and falls back.
+- THE TERMS' MATERIALITY (his: "Your decision"). Not material: the same
+  project, the same terms, under its new name. A new version refuses
+  every account a build older than the service tries to make
+  (`terms-stale`) - every installed desktop copy until it updates - which a
+  rename does not earn. So both stay 2026-09-28, their dates with them,
+  the words re-hashed (`test/terms1.test.js`); BR5's version mutant
+  retired, TERMS1's two date mutants re-aimed back.
+- THE WORDMARK (his: "Use the new logo"). BR5 had kept BR3's TYPE
+  wordmark on the landing page and the launcher, so the site and the
+  launcher said DFO in a face while the game drew the logo. Both draw the
+  logo now, the GAME's own file and no copy of it: the landing page refers
+  to `src/assets/branding/dfo-online.png`, which the build carries for the
+  front door already, at the door's 321px (or 64vw); the launcher's shell
+  serves it out of the same file (`LAUNCHER_LOGO`, packed beside the
+  launcher's page as the pad module is; its CSP takes `img-src 'self'`), 76px
+  high where the type stood. Both reserve the file's own size from its
+  IHDR. U60's no-raster law is BR2's whitelist of one again, for this
+  logo; the heading keeps the wordmark face for its alt text, and the
+  landing probe's "the face loaded" check went with the last glyph set in
+  it.
+- THE MAC'S OLD APP (his: "Patch note only"). The new dmg installs
+  `DFO Online.app` beside the old `Daggerfall Online.app` rather than over
+  it; the saves are the shared userData folder's (BR1's `Daggerfall
+  JavaScript`), so the old app can simply be deleted. Said in the patch
+  notes, with the Windows note that a pinned shortcut may need pinning
+  again under the new name.
+
+FIXED AS FOUND:
+
+- A-2: the Professions page still said "Daggerfall's own potion maker" -
+  the producer walk never read `profPages.js`. Now "The classic potion
+  maker"; and the walk is widened by a new pin over the files that DRAW
+  their words (the profession pages, the stats card, the decor line, the
+  shots pane, the pack blurbs, the menu, the pause line, the class
+  importer, the update notice, the tutorials), read as code with comments
+  out: every line naming the original game must be one of the three owed
+  ARENA2 prompts, each still seen.
+- A-4: "joined to the classic coast" said nothing; the Tamriel map now
+  joins "the Bay's own coast". A-5: "The sounds ship with the game" read
+  as THIS game; now "are in the original game". Both inside FT15's budget
+  (21057 of 21065).
+- A-7, C-9: the comments and docs that said the wrong thing - the
+  downloads' header named a versioned file by the NEW name, the screenshot
+  docstring kept `daggerfall-...`, a REL4 assert called a versioned name
+  "the OLD names", the save-zip pin's comment named BR4 alone, this
+  section's "as BR4's did" (above), the Accounts arc's legal paragraph.
+- C-2, THE 404 BETWEEN THE DEPLOYS (not fixable in the tree: the site
+  runs no script and the release is cut after it). Before merging, stage
+  the current release's four files under their `DFO-Online-...` names on
+  it, as AUDIT INSTALL L3-1 staged REL5's; the site's links then answer
+  from the first minute.
+- Not this PR's, and said once on it: the cinematic workflow's 25-minute
+  timeout is spent by its `npm run check` before the film's probe runs,
+  and the intro probe's "still out in front" reads frame cadence (783 ms
+  frames on that runner) - a timeout to raise, proposed there.
+
+Merged main (#780 GUILD3, #787 GUILD-SEEN, #784, #789 SLIM-FRAME, #785
+TUT1) first: main had taken acct113 and acct114, so BR5's version is
+acct115, with every pin and the four version records. Pins:
+`test/brand.test.js` 11 -> 12 (the drawn words; the old download names
+kept and exempted; the logo on the site and the launcher, sized from the
+IHDR), `test/rel4_release.test.js` 14 -> 15 (the aliases, the step's place,
+a real copy run, the asset lookup), PIN MOVEs in `test/landing.test.js`
+(the whitelist of one), `test/da8_launcher.test.js` (the CSP, the logo's
+serving and packing, the release link first), `test/da11_install_whole.test.js`
+(the logo packed into the archive beside the pad module), `test/terms1.test.js`
+(re-hashed at the kept version). Mutants: `tools/mutants/auditbr5.json`.
+
 ## BR4 DAGGERFALL ONLINE (2026-09-27, Mac's call)
 
 Mac: "So I want to rebrand Daggerfall: Enhanced to Daggerfall Online
@@ -76,10 +325,10 @@ SKIN's names (Enhanced Plus, Enhanced lighting and the rest are the
 port's own departures, not the product); `daggerfall-enhanced/custom-class`,
 the format every exported class file carries - rename it and each of
 those files is refused on import; the Patreon page and the Discord
-invite (`dfenhanced`), accounts outside the tree; and the repository, the
-domain, the appId and the `Daggerfall JavaScript` userData folder as BR1
-left them, so an update installs over the copy that is there and the
-saves stay where they are.
+invite (`dfenhanced` then; `jM2JdwSM8w` since 2026-10-09), accounts
+outside the tree; and the repository, the domain, the appId and the
+`Daggerfall JavaScript` userData folder as BR1 left them, so an update
+installs over the copy that is there and the saves stay where they are.
 
 IN THE ART, for Mac: the tops of "The Elder Scrolls" touch the file's
 top edge and are cut flat there - a re-export with a few pixels of
@@ -175,6 +424,16 @@ DFU IS a `DaggerfallInputMessageBox` subclass, and the tavern's day
 count, CM11). All four push the box now. The `ChoiceWindow.click`
 reconciles: a notice is click-anywhere, a keyed menu keeps the row hit.
 Ledger A row TB1 is struck.
+NOTE-KEYS (2026-10-11, FIELD BUGS 2026-10-06, Skibbster: "when getting to
+this page on the classic/grimoire UI, player key presses are ignored")
+found a fifth: the quest journal's EnterNote (DaggerfallQuestJournalWindow
+.cs:507-526, F160) typed its field into the journal's own art and read
+only the dungeon's `char:` actions - never `typedChar`, the roster's
+needle, which is how the audit missed it, and why no letter landed on the
+native-window hosts that hand it raw codes. It pushes the box now (the
+prompt above, `" > "`, MaxLineLenth 70, WidthOverride 318), and the
+confirm box's Y and N read the shortcut table (`hotkeyHit`); THE ROSTER
+(`test/classicinputbox.test.js`) names it.
 
 **What stays inline, and why.** The bank's transaction amount is a
 `TextBox` IN the panel in DFU too (DaggerfallBankingWindow.cs:185), and
@@ -704,7 +963,7 @@ window class under `src/systems`.
 `test/enhancedNotice.test.js` +3 (`noticeHold`, `drawEnhancedToasts`, the box
 above the toasts), the roster widened; `test/tavernwindow.test.js` +3,
 `test/enhancedInventory.test.js` +3, `test/heldmap.test.js` +1 and two
-re-pinned, `test/surv6_hunting.test.js` +2; the old-law pins in
+re-pinned, `test/surv6_hunting.test.js` +2 (DELETED with the hunt, HUNT-OUT 2026-10-04); the old-law pins in
 `roadb_push_doors`, `ba1_betterambience`, `audit63_quests_talk`,
 `audit64_hud`, `audit24_wave22`, `waveD_dungeonHost` and `automap`
 moved to the new law. Campaign: `tools/mutants/enhnotice3.json` 101
@@ -956,10 +1215,10 @@ does the pack's USE arm.
                         button and the pack's USE hand-off, whose
                         close-then-hand-over ordering U55 got
                         backwards. No law needs extracting first.
-    THE LOGBOOK         THREE sites: charSheetNav.js:"walk and the notebook",
-    / NOTEBOOK          world.js:"onInput: (text) =>", dungeonContext.js:"U26: ui/input.js". A seam
+    THE LOGBOOK         THREE sites: charSheetNav.js:"? () => new QuestJournalWindow",
+    / NOTEBOOK          world.js:"MaxCharacters 80", dungeonContext.js:"U26: ui/input.js". A seam
                         wants making, as U52's and U53's did.
-    HISTORY             ONE site (charSheetNav.js:"? () => new QuestJournalWindow"), and it reads
+    HISTORY             ONE site (charSheetNav.js:"history: () => new"), and it reads
                         only the entity's backStory. The small one.
     THE HUD             No door, and unlike every screen above it is
                         drawn PER FRAME on the canvas rather than
@@ -992,7 +1251,7 @@ None of these blocks anything; all are real.
                         makes it worth fixing: the overworld is the
                         first map a thumb could actually drive.
 
-    THE SPLIT POPUP     systems/itemTransfer.js:"{ fromLocal: false". TransferItem
+    THE SPLIT POPUP     systems/itemTransfer.js:"or in the wagon;". TransferItem
                         opens a numeric field DEFAULTED to maxAmount
                         when a stack will not fit whole (:1515);
                         BOTH skins take exactly what fits and never
@@ -1080,6 +1339,88 @@ page's Install, Source and issues links and the desktop app's releases link land
 beside a README that said Patreon. It is `custom: ["https://www.patreon.com/c/dfenhanced"]` now (`custom`, not
 `patreon: dfenhanced`, which would link a URL Mac never gave), and the PATREON1 pin reads it, README.md and SUPPORT.md:
 the same Patreon, no Ko-fi (`tools/mutants/patreon1.json`, 4, all dead).
+
+**SUPPORT1 (2026-10-05, Mac: "I want to add the kofi link in addition to the patron on the website" and "I also want
+to add the patron/kofi ingame on the main menu as 2 icons").** PATREON1's "only ask" is retired: Ko-fi stands beside
+Patreon again, at Mac's new page (https://ko-fi.com/daggerfallonline - U64's ko-fi.com/dfjs is no longer the
+project's), at two doors. THE WEBSITE: the corner is a labelled row (`<nav class="asks" aria-label="Support">`) of two
+plaques in the ONE `.ask` shape - Patreon's then Ko-fi's, each with its mark beside the words - so the page still has
+exactly two box shapes; the door starts below the row at every width now, not on a phone alone (two plaques reach over
+the wordmark on a short window), and on a phone the row stays one row, the mark and the platform's name with "Support
+on" set down. THE GAME'S FRONT DOOR: two icons in the door's top-left corner, Patreon's mark and Ko-fi's mug, a 44px
+target each in a plaque wearing the About box's face (ACC1f: corner marks that look unrelated read as two kinds of
+thing) and, under Plus, the kit's carved frame and the window motion About and the profile have; each a LINK out of the
+game (`target=_blank`: a new tab on the web, the system browser from the desktop app, which hands http(s) there as it
+does the credits' links), titled and labelled "Support on Patreon" / "Support on Ko-fi" for the pointer and a reader.
+The front door's alone: PX4 keeps the pause face to its window. AND EVERY OTHER ASK, by PATREON1-F1's own law, two now:
+README.md, SUPPORT.md and the repository's Sponsor button (`.github/FUNDING.yml`: `custom` keeps Mac's /c/ Patreon
+URL, `ko_fi: daggerfallonline` is GitHub's own key).
+
+ONE HOME, TWO DOORS. `src/ui/supportAsks.js` holds the asks (`SUPPORT_ASKS`: id, name, label, address) and their
+drawings, a string a row, and `markCss` turns a drawing into a box and one ::before pixel whose box-shadow paints the
+rest. The skin is composed with the block (`SUPPORT_MARKS_CSS`); the website runs no script, so the build seam
+(`scripts/landingHtml.mjs`) injects the same block after the tokens, as it injects the skin's tokens and the menu's
+night - the site and the game cannot ask under two drawings, and the page's own style holds the plaques alone. The
+generator reproduces PATREON1's Patreon mark pixel for pixel (its 26 pixels, checked against the shipped list). Both
+marks light in the classic pair's gold under the pointer AND the keyboard - the whole brass, where PATREON1's corner
+lit one pixel.
+
+THREE CALLS MADE HERE, FOR MAC TO OVERTURN. (1) WHERE: the top-left corner, the one the door had free. Measured at six
+sizes before choosing - the foot's open centre runs under the last menu row on a 1366x768 screen (Overhauls ends at
+y 729, the foot starts at 700: PX8's shape exactly), and a phone's foot is already full - the build and About left 0px
+between them on an iPhone SE, and LOAD1 has since stood Screenshots over About there. (2) THE MUG: U64's cup, its handle redrawn as a RING. Its solid handle read as a
+cup beside the words "Support on Ko-fi"; alone as an icon on the door it read as a goblet (both rendered at 12x to
+choose), and the hole is what says mug. The body stays filled - U64's own lesson, whose first draft was a ring and read
+as an 'o'. (3) THE WHOLE DRAWING IS LAID OUT. The first cut laid out the mug's body and let its steam rise above the
+box undrawn-for; on the website the steam landed in the plaque's top border (caught at 3x). Each mark's box is now its
+whole drawing (`MARK_BODY_ROWS`, five, says which rows are its body): the site centres each drawing in a plaque padded
+to keep PATREON1's 46px, and the door stands both on their feet so the two bodies centre in their cells.
+
+THE CORNERS' BAND. With a mark in each top corner, the front door's stage starts below them wherever the wordmark is
+wide enough to reach under either - the front door's twin of AUDIT TIMERS1 UI-2, which stands the pause window clear
+of the corner marks over a game. Measured rather than argued: `tools/supportAsksProbe.mjs` reads the logo PNG's alpha,
+maps it onto the screen through the <img>'s own box and counts the opaque pixels under each mark (the Plus frame's
+outset included) at 192 viewport sizes. Without the band the asks stood on the logo at every phone width and at
+540-700px (up to 1,965px²); and the PROFILE MARK ALREADY DID - at every phone width, and up to 5,247px² at 540-900px,
+where its "Sign in" caption sits on the logo's top-right; with a long name and character line, out to 1,024px. The
+band's numbers are the marks' own (pinned that way): the asks reach 122px in (18, the plaque's 98, the frame's 6), the
+profile 234 (18, its 58px portrait, the 12px gap, its caption, the frame's 6), and (vw - min(540px, 84vw)) / 2 is under
+234 below 1,008px, so between 481 and 1,007px the stage starts at 84px (over both marks' 74 and 80) and keeps the
+one-row foot's 68px at its foot; on a phone, where the marks stand 10px in and the caption is hidden, PX8's 7dvh is
+floored at 72px. THE CAPTION IS BOUNDED IN PIXELS on the door for it: its two lines' 14ch and 22ch are the font's (158px
+in Pixelify Sans, measured), and a reach that is the font's cannot be the band's - and at 158 the band would reach
+1,043px and push a 1,024x768 door, which fits unscrolled, into a scroll. 140px keeps a new player's "No character yet"
+(123px) whole; a character's line longer than about nineteen letters ends in its ellipsis three letters sooner than it
+did. The pause face, with no wordmark over it, keeps the caption's own 22ch. With it: neither mark on the logo at any of
+the 192 sizes on either skin, the caption at its bound included.
+
+DOOR-FIT (2026-10-05, Mac: "Fix these now", of what SUPPORT1's probe found). THE FRONT DOOR NEVER CUTS ITSELF OFF. Its
+stage centred by justify-content and scrolled only under PX8's 560px - a threshold set before the door grew to eight
+rows - so under Plus a desktop window from 561 to about 690px tall (the eight-row door's own height) ran off BOTH ends
+of the screen with nothing to scroll: the wordmark's top (61px of it at 1366x568), the last row's foot, and under about 620px the WHOLE Overhauls row
+(1366x568, 1280x568: pressable by nothing). A 720p screen's browser window is in that range; the classic rail's five
+rows fit. Now the door's stage is a scroller at every width PX8's phone rule does not take, starting at the top and
+centred by auto margins, which take the room that is left and none that is not - so where the door fits nothing moved
+(the probe holds the room over it equal to the room under it), and where it does not, every row can be scrolled to. A
+phone keeps PX8's door, from the top. Against the CSS before the fix the same probe fails seven of its checks (the
+profile on the logo, with and without the long caption, the 159px caption, and the clipped top and last row); with it
+all pass.
+
+Pins: `test/support1_asks.test.js` (7) - the asks deepEqual Mac's addresses; the drawings pixel for pixel; `markCss`
+painting each pixel once on the 4px grid and laying out the whole drawing; the REAL front door mounted on the fake
+document drawing the two links (`_blank`, `noopener`, titled, labelled, marks aria-hidden) and the pause face none; the
+skin's plaque, cells, phone offsets, frame and motion; the band derived from both marks' numbers and the caption's px
+bound (the band's edge short of 1,024); and DOOR-FIT (the door's own scroller and auto margins over 480px, the base
+stage still centred for the pause face and the account window, a phone never centred). `test/landing.test.js`: the
+PATREON1 pin rewritten as U64 + PATREON1 + SUPPORT1 (the two asks in order at the module's addresses, each plaque
+whole, the door's room computed from the row, the phone row, no mark of the page's own - read off its rules, not its
+comments, the AUDIT SITE1 F10 lesson - and every ask the project makes naming the same two), and a new pin on the
+injection (verbatim, after the tokens, the skin wearing the same block). `tools/mutants/support1.json`: 40 mutants, 40
+dead; PATREON1-F1's four still die. Live: `tools/supportAsksProbe.mjs` 22/22 (a press on each icon opens Mac's page
+and leaves the door standing; the band, the caption and DOOR-FIT at 192 sizes on both skins, against every foot plaque
+- About and LOAD1's Screenshots) and `tools/landingProbe.mjs` 54/54 (the site's asks on desktop and a phone, gold under
+the pointer, one row clear of the door at 60 sizes from 320px to 1920px). Seen in Chromium; not in the desktop app,
+whose link path is the credits' own.
 
 ## U63 THE SITE WEARS THE GAME'S FACE (2026-08-27, Mac's call)
 
@@ -4748,7 +5089,7 @@ drift apart again.
 
 Found on the way, and fixed with it: the builder's keyboard had a
 LIVE `plus` arm against a DEAD `minus` one. The shared overlay table
-(ui/input.js:"four hosts read that") matches `-` inside its character class first, so the
+(ui/input.js:"if (e.key.length === 1 && /[a-zA-Z0-9 '-]/.test(e.key))") matches `-` inside its character class first, so the
 minus arm never fired from any host - but `+` is not in that class and
 fell through to spend a point. A keyboard could take from the freeEdit
 pool and never give back. DFU has no keyboard stat control on this
@@ -5430,7 +5771,7 @@ all four with a no-raw-constant assertion.
 
 **F2 - THE LAUNCHER TRAPPED EVERY TOUCH DEVICE (severe).**
 `launcherScene.js` registered only `keydown`, while every other
-pre-game screen takes `pointerdown` (menu.js:": 'classic';", menu.js:"DFU does; this is") and every
+pre-game screen takes `pointerdown` (menu.js:"let resolved = null", menu.js:"AUDIT (2026-08-25)") and every
 playable scene calls `attachTouch`. With `ShowOptionsAtStart` shipping
 True, a phone booted straight into a screen it could not dismiss - the
 game was unreachable. PROVEN on an emulated Pixel 5 before the fix
@@ -7623,7 +7964,7 @@ because a Daggerfall quest speaks in journal entries, not objective
 flags: the entries ARE the tasks, and inventing checkbox objectives
 the machine does not track would be a lying UI. Archived quests parse
 the notebook's own filed header ('<name> completed|ended at <date>:',
-notebook.js:"const live = new") back into name/verdict/date - the verdict line
+notebook.js:"AddFinishedQuest(messages)") back into name/verdict/date - the verdict line
 gold for completed, dim for ended - with the headerless overflow
 entry (the notebook's kept quirk) reading as a continuation. Data
 arrives RAW through the new `hooks.questLog` (world.js walks
@@ -7890,7 +8231,7 @@ claims; 4 mutations, 4 dead.
 P0b LIVE CRASH, SECOND FILING (Mac 2026-08-28, deployed 3a23bff, the
 same `n[0], n is null` shape - DIFFERENT ROOT CAUSE, decoded to the
 line): line 40 col 39203 of main-C3j4GYWq.js is
-enemyCasting.js:"last classic tick's".."}"'s `playerFeet[0]`, and the caller frame is the
+enemyCasting.js:"const dx = playerFeet"'s `playerFeet[0]`, and the caller frame is the
 DUNGEON foe loop. dungeonContext's cast arm guarded on `playerFeet`
 - non-null whenever the player stands in the block - then passed
 `_tgt`, the SELECTED target's feet, which _targetFeet answers as
@@ -8504,7 +8845,10 @@ itself, which U58's "no second cart check" caught immediately and
 rightly. The fix was not to weaken the pin but to give the question a
 home: `hasHorse` and `transportItem` now sit beside `hasCart` in
 inventorySession, so the pack, the road and whatever comes next read
-one answer. No template index is read in the window at all.
+one answer. No template index is read in the window at all. (CART-SLOT,
+FIELD BUGS 2026-10-11b: the cart `transportItem` answers is the wagon
+driven - wagonKinds.js activeWagonItem - not the first of the Small
+Cart's template, which a Caravan shares.)
 
 PX21b (Mac: "give it a solid redesign with readability"): THE LOOT
 WINDOW READS. The loot list inherited the DOCK's 56px tile grid -
@@ -8520,8 +8864,11 @@ showing you the list of items that are available"): THE HOVER PLAQUE.
 Daggerfall tells you nothing about a pile until you open it, and
 opening it is a window. Look at a pile now and a small plaque names
 what is in it, so "is this worth stopping for" is answered in the
-world rather than through a door. Six lines then "and N more", counts
-only on stacks - a pile is a glance, not a list.
+world rather than through a door. Six lines at a time, counts only on
+stacks - a window over the pile that follows the wheel's light, the
+rows it leaves counted above and below (FIELD BUGS 2026-10-11g
+LOOT-SCROLL: six then a tail no wheel could reach, until an elite's
+grant stood past the sixth row).
 
   IT IS A READOUT, NOT A CONTROL: no clicks, no keys, nothing to
   dismiss, pointer-events off, aria-hidden (a crosshair is not a
@@ -8613,7 +8960,7 @@ and _BRISIEN is the MQ opener (StartGameBehaviour.cs:445-447) - so
 which quest is which is untouched. And the ARCHIVE is still not split
 by kind, which is the DATA's shape rather than an omission: the
 notebook's filed header keeps only the display name, so the questName
-is gone by the time a quest is filed (notebook.js:"const live = new"). Three
+is gone by the time a quest is filed (notebook.js:"AddFinishedQuest(messages)"). Three
 sections is what this log can honestly draw.
 
 Pins: 2 in enhancedPause.test.js (the three sections in order from one
@@ -8723,7 +9070,7 @@ THE BOOK BORROWS EVERY LAW IT COULD READ. The point cost with its
 free-cast quirk (spellPointCost - a lycanthropy spell reads 0, pinned
 equal to the classic's own answer), the effects filter that drops
 empty slots, the effect naming through the same effectByKey
-spellbookWindow.js:"computed from the" imports with its "<effect not found>"
+spellbookWindow.js:"import { effectByKey" imports with its "<effect not found>"
 fallback, and both delete refusals as the classic's own CONSTANTS and
 WORDS. This window is paint and bones; the book's rules stay in the
 book.
@@ -8848,7 +9195,7 @@ typed.
 
 AND IT THREW AWAY A DATE THE DATA ALREADY HELD. `_createNote` stamps
 every note with a HIGHLIGHT token first - the day and the city, from
-the host's own clock (notebook.js:"this.notes.splice(destIdx, 0, item)") - and the finished-quest filing
+the host's own clock (notebook.js:"this.deps.dateTimeString?.()") - and the finished-quest filing
 does the same. Flattening every token to a string turned that header
 into just another line, and the window numbered its entries 1, 2, 3
 instead, which tells a player nothing. `chronicleEntry` makes the
@@ -8863,7 +9210,7 @@ PX24c (Mac: "do it" - the same look for messages and history). Two
 faults, one of them mine from the pass before.
 
 PX24b PRINTED A LIE ON EVERY MESSAGE. `addMessage` builds a CENTRE
-token and the words (notebook.js:"let note = this._createNote") and never a highlight, so a
+token and the words (notebook.js:"addMessage(str) {".."if (!str) return;") and never a highlight, so a
 message has no dated head - ever. The "- continued -" fallback,
 correct for a NOTE whose page split, ran on all fifty messages
 instead. It is the note's alone now; a message gets the only true
@@ -9481,13 +9828,13 @@ cited and ported somewhere in `src/`. FOUR were not:
 |---|---|---|
 | DaggerfallUseMagicItemWindow | 139 | **CLOSED, UI1** - see below |
 | DaggerfallMerchantServicePopupWindow | 175 | **CLOSED, UI2** - see below |
-| DaggerfallTransportWindow | 264 | OPEN, and it is a SYSTEM gap wearing a UI hat: `motor.js:"_eyeLevel() {"` reads `riding: false` with "the transport arc pends". The window is the last tenth of that arc, not a slice on its own |
+| DaggerfallTransportWindow | 264 | OPEN, and it is a SYSTEM gap wearing a UI hat: `motor.js:"prev/target fields"` reads `riding: false` with "the transport arc pends". The window is the last tenth of that arc, not a slice on its own |
 | DaggerfallUnityMouseControlsWindow | - | NOT A GAP: DFU's own mouse-settings screen, and the port's settings surface (U29) carries those keys already |
 
 ### UI1 CLOSED: the use-magic-item window
 
 The port had the DOOR and not the room. `input.js:"the ReadyWeapon comment"` routed
-`Actions.UseMagicItem` to `ctx.openUseMagicItem`, `hudLarge.js:"import { racialOverrideHeadArt"`
+`Actions.UseMagicItem` to `ctx.openUseMagicItem`, `hudLarge.js:"{ key: 'useMagicItem',"`
 gave the large HUD's button its rect, `inputActions.js` bound KeyU -
 and no host implemented the method, so a live binding silently did
 nothing. That is the anti-lie law's other half: a deferred feature
@@ -9503,6 +9850,25 @@ all); the window opens only when something is usable; AllowCancel
 false; the pick closes first and uses second. The use is the port's one
 seam, `systems/useItem.js` - the inventory's own path, both arms - owned
 by the world host and lent to worldModes and on to the dungeon ctx.
+
+**UMI-NAMES (2026-10-07, the field: "Use Magic Item Menu is crowded").**
+The list read "Kit of Venom Spitting" and row after row of "Glass
+Bottle", and the player could not tell they were potions. Refresh
+(:50-57) lists each item's `LongName` - ItemHelper.ResolveItemLongName -
+and the factory's default `nameOf` listed the raw `name` field instead,
+the same miss MAC-D found in the quest machine: a potion showed its
+template's "Glass Bottle" (setItemFields' name; createPotion's own mint
+carries none, so a blank row) and a MAGIC.DEF item its unfilled
+`%it of ...`. `createUseMagicItemWindow` now names a row with
+`itemInfo.js:"export function itemLongName(item, opts) {"` - "Potion of
+Healing" by its recipe (the %po arm, Potent included), "Mark of
+Lightning" with %it filled once identified and the bare "Mark" before.
+The crowding was the names, not the rows: DFU lists one row per ITEM
+and folds nothing, and identical potions are already one row because
+`addItem` stacks them (ItemCollection.AddItem / FindExistingStack's
+recipe term). Pinned in `test/ui1_usemagicitem.test.js` off the real
+producers (createPotion, mintHealingPotion, brewItems,
+createRegularMagicItem).
 
 ### UI2 CLOSED: the merchant service popup
 
@@ -9525,7 +9891,7 @@ the art-less fallback.
 ### What is left
 
 `DaggerfallTransportWindow` alone, and it wants its own arc: the window
-is trivial, `TransportManager` is not - `motor.js:"_eyeLevel() {"` reads
+is trivial, `TransportManager` is not - `motor.js:"prev/target fields"` reads
 `riding: false` with "the transport arc pends". With UI1 and UI2
 closed, **58 of DFU's 60 real windows are ported**, and the 59th is a
 system's last tenth.
@@ -10150,7 +10516,7 @@ to the wrong code.
   so the edge was a silent no-op and one press glued a slider to the
   pointer for the rest of the popup's life, with the runaway value then
   written by the grid's save. `ControlsWindow.release()` forwards it now,
-  the ROAD-E E1 shape `ui/itemMakerWindow.js:"const [vx, vy] =".."if (!inRect(rect, vx, vy)) continue;"` has carried since
+  the ROAD-E E1 shape `ui/itemMakerWindow.js:"release() { this.picker?.release"` has carried since
   Wave E, and it is `HorizontalSlider.cs:148-154`'s else arm.
 - **The wheel arm was dead.** `sliderScroll` ported MouseScrollUp/Down
   (:180-190) with no caller anywhere. `MouseControlsWindow.wheel(dir)`
@@ -10674,9 +11040,9 @@ re-resolved the `exterior.js` half of a three-file sentence and left the
 `ExteriorAutomapWindow` construction, `:4101` on a `locationName:`
 field). Both halves are now read by `test/citedrift.test.js` - the
 existing entries only ever captured the exterior number, which is how
-the other half went stale unnoticed. (The rest cite named `world.js:"if (!townTalk.overlayActive && act === 'Escape' && gatherHost?.cancel())"`,
+the other half went stale unnoticed. (The rest cite named `world.js` line 15410,
 the first of the host's TWO identical `act === 'Rest'` arms; ROAD-H H5
-deleted the second and the cite is `world.js:"refuses unless something"` now.)
+deleted the second and the cite is line 15416 now.)
 
 ## AUDIT 62 F24/F25 - THE SENTINEL SWEEP WAS TWO WINDOWS SHORT (2026-09-07)
 
@@ -14836,8 +15202,8 @@ status strip on a phone sits under the touch layer's two top-left buttons
 exactly as the classic did; the enhanced HUD has no arrow counter (AUDIT
 28 W2a's classic-arm feature) - not a font matter. AND THE CANVAS NATIVE
 WINDOWS, which the first record did not name: under the enhanced skin the
-death screen (`ui/deathScreen.js:"the text rather than"`), the rest window's rows
-(`ui/restWindow.js:"rows = this.endLines".."}"`), the save window (`ui/saveWindow.js`, eight
+death screen (`ui/deathScreen.js:"font, died, (canvas.width - measureText(font.fnt, died) * s)"`), the rest window's rows
+(`ui/restWindow.js:"rows = this.endLines"`), the save window (`ui/saveWindow.js`, eight
 `shadowText` sites), the travel popup (`ui/travelPopUp.js:"font, r.text ?? r"`), the quest
 journal (`ui/questJournal.js:"font, line, m.ox + (lx + 1)"`), every MessageBox row
 (`ui/messageBox.js:"for (const c of r.cells)", 434`) and every ActionTextBox (`ui/actionText.js:"drawText(renderer, font, l, x + 12 * s, ty, s, TEXT)",
@@ -15575,9 +15941,9 @@ whether an entry MATCHES and asserts nothing.
 Following it out was worse than the symptom. Five Ledger rows cite a
 PAIR - `` `world.js:N`, `exterior.js:M` `` - and the table captured `M`
 alone. So `M` was re-resolved at every wave for a year and `N` was never
-read: `world.js:"the whole identity."` named a line that is 8950, `world.js:"let hccGroundMoved"` one that is
+read: `world.js` line 12401 named a line that is 8950, `:2018` one that is
 1215, `:1094` one that is 2194, `:3903` one that is 3066, `:3920` one
-that is 8907. `world.js:"start marker at ${raw".."}"` and `dungeonContext.js:"button and the Backspace"` were
+that is 8907. `world.js` lines 12103-12140 and `dungeonContext.js` line 2073 were
 stale the same way. Seven numbers re-resolved BY CONTENT, every
 uncaptured half de-baked to `\d+`, and eight new entries added so every
 number in a pair is captured. The half nobody reads cannot rot in
@@ -15878,7 +16244,7 @@ that through `InputManager` (:1084-1108, one poll a frame in
 `GetKeyDown` at all, so every consumer wrote its own out of the only
 read there was.
 
-`motor.js:"crouch key's old"` had already named this bug's twin from the other side:
+`motor.js:"levitation gate below"` had already named this bug's twin from the other side:
 "a render frame that accumulates less than one physics step swallowed
 the press" - the fix there moved `_heightAction` out of the fixed-step
 loop. The half that remained was the host's.
@@ -17180,7 +17546,7 @@ written both lessons down and the new code did not read them.
 `destroyLevelNotices`' note said "a host tearing down (ui/hud.js's own
 destroy path)". `ui/hud.js` HAS no destroy path, and nothing in `src/`
 calls this function at all. It is the same false sentence AUDIT FONT
-F12 struck from `ui/enhancedHudText.js:325-336` one file over, written
+F12 struck from `ui/enhancedHudText.js` lines 325-336 one file over, written
 again, one arc later. The note is the sibling's corrected idiom now -
 the callers are the TESTS, the enhanced skin's elements live as long as
 the page does because every skin and scene change in this port ends in
@@ -17578,7 +17944,12 @@ What the ladder says, every arm driven by a pin:
 - a pile of exactly one named by that item with its stack count; a
   corpse by who it was; a door by its lock level when locked; a static
   door by where it goes, its lock, and the closed-shop sentence from
-  its one home.
+  its one home. SENSE1 (2026-10-05, `03-World/Delve-Arc.md`): an action
+  object's two bands in the MOD'S order, the action band first (.cs:397)
+  and the door band only when it said nothing - and a special door
+  (DaggerfallActionDoorSpecial) is no DaggerfallActionDoor, so a wall a
+  lever swings is never called "Door" (`systems/worldTooltips.js`
+  actionObjectName, both hosts' one door).
 - `HideDefaultInteractTooltip` verbatim - the author's own knob, so the
   main quest's puzzles are not given away by a label on the thing you
   are meant to find for yourself.
@@ -17864,7 +18235,7 @@ draws, and it is a DEPARTURE recorded as one (Ledger A).
 
 DFU's own precedent for taking with no window is real and narrow: a
 body holding nothing but arrows is taken whole and no window opens
-(PlayerActivate.cs:948-952). This generalises that one case to any row
+(PlayerActivate.cs:949-954). This generalises that one case to any row
 the player has picked out, which is exactly the size of the departure.
 
 **Where the parts live.** The HIGHLIGHT's law is `systems/worldHover.js
@@ -17872,8 +18243,8 @@ nextSelection` - pure, and clamped at both ends rather than wrapping,
 because a highlight off the end points the take at nothing and a wrap
 makes a flick of a trackpad unpredictable. The row -> item walk is the
 DRAW's own (`hoverItemAt` over `hoverItems`), so a hole in a pack is not
-a row and is not an item either, and the "and N more" tail names nothing
-and takes nothing. The MOVE is `systems/inventory.js takeOneInto`,
+a row and is not an item either; every row is reachable (LOOT-SCROLL,
+FIELD BUGS 2026-10-11g), the plaque's six being only what is drawn. The MOVE is `systems/inventory.js takeOneInto`,
 which is DoTransferItem's first statement written ONCE: gold to the
 counter, never the item list. `corpseMarker.js`'s bulk take is that door
 applied to every row now rather than a second copy of the law.
@@ -18293,6 +18664,14 @@ document without an SVG namespace draws no glyph and does not throw.
 `tools/mutants/chatfit.json`: 14, 14 dead. acc3wear's roster-order pin
 re-aimed at the row's line.
 
+**TITLE-C (2026-10-12, Mac: "I also want to remove titles from appearing
+in the chat")** took the title off the line - the badge above laid it
+before the name. The line wears the guild's tag and the glyphs after the
+name, as the roster row has since TITLE-R, and the badge pass keys a line
+on what it draws, so a title put on re-lays nothing. Recorded in
+`06-Systems/Chat-Roster-And-Names.md` TITLE-C; this section's pins and
+its layLine mutant re-aimed there.
+
 ## DISCORD5 - five reports off the bug-reports channel: black arms, three arms, the torch keys, the hotslot, the loot that came back (2026-09-22, through Mac)
 
 Five players, five root causes, one commit. The torch's two are recorded in `06-Systems/Handheld-Torches.md` (3ARMS + TORCH-BIND) and the corpse loot in `06-Systems/Online-Arc.md` (LOOT-REGEN); the three that are this arc's are below.
@@ -18301,7 +18680,7 @@ Five players, five root causes, one commit. The torch's two are recorded in `06-
 
 **TORCH-BIND, the Continue half (teuton: "Keybind changes do not stick?"; The Frog: "if you scroll up after rebinding, there should be a Continue or Confirm button ... it needs some streamlining").** Rebinds are staged and applied only on Continue, in the head card, 53 rows above the Quickslot and Mouse rows a player binds last, and every walk-away discards - so a player who bound a key at the foot and pressed Escape lost it and read "does not stick". The staging law stands (DFU's OnPop applies on leave; the enhanced pane says what it does in its own copy): the head card is `position: sticky` now, so Continue is in view while the list scrolls, and a second Continue closes the list in a foot card, the same `applyAndSave`. Pin: `test/discord5.test.js` mounts the pane - two Continues, the foot one saves.
 
-**HOTSLOT (!Simple: "Cant change Hotslot spell").** The spell slot had ONE writer a player could reach: a 350 ms HOLD of the quick-spell key, said nowhere - the pane row read "Ready quickslot spell", the chip wore the bare key. A press readies the book's first spell and a second press unreadies it, so from the chair the key was a toggle stuck on spell one. On a phone it was a dead end: the chip that takes the hold was `display: none` until the slot was filled, and only the hold fills it. Four changes: the enhanced spellbook slots a spell - a Quickslot / Unslot button beside Ready, the pair the pack gives a consumable (`quickslotActs`); the empty chip is a SOCKET (drawn dim as "No spell", wearing its key, so the key is seen and a finger has a chip to fill - departure 4's law for the diamond's cells); the pane row says "(hold to cycle the book)"; and `spellCandidates` answers one entry per index - a bought stock spell, a classic import and the vampire/lycanthrope gifts each push a record without asking, and `findIndex` on a doubled book always landed on the first copy, the cycle stuck on one spell. The classic skin keeps the hold. Pins: `test/discord5.test.js` mounts the enhanced book over a DOM fake and slots, re-slots and unslots; the doubled book walks every spell; the socket and the label by source. `test/qs2_inputs.test.js` re-aimed to the label.
+**HOTSLOT (!Simple: "Cant change Hotslot spell").** The spell slot had ONE writer a player could reach: a 350 ms HOLD of the quick-spell key, said nowhere - the pane row read "Ready quickslot spell", the chip wore the bare key. A press readies the book's first spell and a second press unreadies it, so from the chair the key was a toggle stuck on spell one. On a phone it was a dead end: the chip that takes the hold was `display: none` until the slot was filled, and only the hold fills it. Four changes: the enhanced spellbook slots a spell - a Quickslot / Unslot button beside Ready, the pair the pack gives a consumable (`quickslotActs`); the empty chip is a SOCKET (`qspell-empty` since HUD-CLASS, below; drawn dim as "No spell", wearing its key, so the key is seen and a finger has a chip to fill - departure 4's law for the diamond's cells); the pane row says "(hold to cycle the book)"; and `spellCandidates` answers one entry per index - a bought stock spell, a classic import and the vampire/lycanthrope gifts each push a record without asking, and `findIndex` on a doubled book always landed on the first copy, the cycle stuck on one spell. The classic skin keeps the hold. Pins: `test/discord5.test.js` mounts the enhanced book over a DOM fake and slots, re-slots and unslots; the doubled book walks every spell; the socket and the label by source. `test/qs2_inputs.test.js` re-aimed to the label.
 
 Not verified in a browser: none of the five is reproducible headless. `tools/mutants/discord5.json`: 20 records, 20 dead.
 
@@ -18574,6 +18953,18 @@ the disposer takes the listener and a pending delivery; the refused request aske
 with no shell left alone; the bridge by source); `kb1_keybinds.test.js`'s sweep carries the reservation. Mutants
 `tools/mutants/esc_lock.json` (8, all dead). `01-Overview/Field-Bugs-2026-09-27.md`.
 
+**A THIRD RULE - GECKO ENDS A LOCK ON A TOUCH (TOUCH-UNLOCK, FIELD BUGS 2026-10-09c).** On Firefox for Android and its
+forks every tap opened the pause ("Touching anywhere onscreen in mobile opens the system menu"; Chrome played). Gecko
+grants a tap's lock - a tap is a user activation, and the hosts' canvas arm asks on every pointerdown - and ends ANY
+lock on the next touch event (`PresShell.cpp`, `PointerLockManager::Unlock("TouchEvent")`), posting the change after
+that touch's own dispatch: a loss the page did not ask for, with nothing up - this section's swallowed Escape. The pause
+then relocked on its close, for the next tap to end. Blink never ends a lock on a touch, which is why "a finger never
+holds a lock" (AUDIT 62 F6, PL3) held there. `bindCursorToggle` now hears the four touch events on the document's
+capture phase, and a loss within `TOUCH_UNLOCK_MS` (500 ms) of one is the finger's - never delivered; a loss with no
+touch near is the player's Escape as before, so a mouse and a keyboard are untouched (and a Firefox touchscreen laptop,
+the layer off, is covered too). Not proven on a device. Pinned in `test/fb1009c_touchunlock.test.js` (2);
+`tools/mutants/fb1009c_touchunlock.json` (4, all dead; `esc_lock.json`'s relock record re-aimed by content).
+
 ## CARD-FIT - the item card fits its window and says what a glance needs (2026-09-28)
 
 The Discord (#bug-reports, Cruor): *"New sigil items descriptor is a bit long! ... all the buttons on it's pop-up card
@@ -18768,7 +19159,9 @@ name).
 ## TIMERS1 - THE HOURGLASS: EVERY SHARED MOMENT, COUNTED DOWN (2026-10-02, Mac: "we need to create a new unique UI element for reset times like the Sunday wars, oblivion gates, town raids, and anything else so the player can keep track of when things are and watch countdowns. Im thinking maybe an enhanced plus button on the pause menu next to the profile icon")
 
 **Where.** An hourglass beside the profile mark on the pause face (`ui/enhancedTimers.js` `timersMark`; `placeBeside`
-measures the mark, whose width is its caption's). Online only: the hosts hand `hooks.timers`, which answers null
+measures the mark, whose width is its caption's). The glass stands alone, with no word beside it (HOURGLASS-ALONE,
+2026-10-04, the owner: *remove the text "timer" from next of the hourglass*); its name is its label's and its
+title's. Online only: the hosts hand `hooks.timers`, which answers null
 offline, and no source means no hourglass. A press opens the timers window in the pause window's own frame
 (`.px-win.px-timerswin`) on its own scrim: a tap outside or Escape closes the window alone and leaves the pause face
 standing (the one back stack, ahead of the resume; the OT1 pin counts four scrims now). The street's pause bag, the
@@ -18778,6 +19171,11 @@ modes host (a building's pause) and the dungeon's opts all carry the world host'
 or COMING (counting to its start), live first. It derives nothing: each row is its own law's answer -
 - the OBLIVION GATE (`net/gateLaw.js` `gateAt`/`gatePhase`/`gateTimes`): coming to its opening, live to its seal, then
   live to its collapse; the gate after it once this one is under way; where it stands from the omen's site;
+- the SEA SERPENT (`net/serpentLaw.js` `serpentAt`/`serpentPhase`/`serpentTimes` - SERPENT2, 2026-10-04, the owner:
+  "So this also shows in the pause menu timer?", then "This needs to happen"): coming to its rising, live to the storm
+  that closes its waters, then live to its dive; the next serpent once this one is under way; a kill ends its row; the
+  port it lies off from its bells on (the omen's `site.near`). Its own kind, `serpent`, after the gate's, in its ring's
+  colour (`Sea-Serpent.md` section 14);
 - the TOWN RAIDS (the mod's day, `raidState().raids`, in relay ms through `sharedWallMs`): the player's own region's
   whole, coming to a raid's start, live to its withdrawal; every other region's as one row, the soonest and how many
   more (AUDIT TIMERS1 D3); a cleansed or ended raid says nothing;
@@ -18804,3 +19202,308 @@ the live pause face online (no relay or ARENA2 here). Pins: `test/timers1.test.j
 (9: the gate, the seat week, the battles, the raids and the two days, the order, the words, the window over a fake
 document - drawn, moved, a row gone, offline said - the hourglass and its placing, the wiring through all the hosts);
 `test/outsideTap.test.js` (the fourth scrim, the hourglass in the keep list).
+
+## WAGON-FILTER and SHIFT-STOW - the player's own stores, filtered and filled (2026-10-04, Mac: "The wagon needs a filter option and shift click to deposit items (like materials) needs to be a thing")
+
+Port-Ledger A: THE PLAYER'S OWN STORES, FILTERED and SHIFT AND A CLICK STOW THE WHOLE STACK.
+
+**The filter (enhanced skin).** DFU's window filters only the local list. Its four tabs are AddLocalItem's
+(`nativeInventory.js tabAccepts`), and the remote list - the wagon, a chest, a corpse - is shown whole. A wagon holds
+750 kg, so finding one ingot in it meant scrolling the lot.
+
+- **Where it shows.** The remote pane of the player's OWN store: the wagon, their storage (SHIP-STORE) and the
+  Materials Bag (`ui/storeFilter.js STORE_FILTER_KINDS`). It sits between the head and the rows as ONE row of fixed
+  furniture, 44 px - the search beside a category menu (PX21e: the rows scroll, never the frame).
+- **The search.** It reads the row's own name (`itemLine` - an unidentified piece is found by what it shows, never by
+  the name it hides), trimmed, lower-cased and capped at 40. Typing refills the rows in place, so the field is never
+  rebuilt under the caret; a repaint from elsewhere (an icon landing, a resize) gives it back its focus and caret.
+  Back in the field clears it, then leaves it, and the pack never sees that Back.
+- **The menu.** All, then MATERIALS, then the pack's nine pages, each with its count ("Materials (2)"). Materials is
+  the Materials Bag's own test (`materialsBag.js isMaterialItem`) and crosses the pages: an ingot is Misc and a herb
+  Ingredients. The pages are `packPages.js pageOf`, never a second copy. Only what the store holds is listed, and the
+  chosen one stays at nought rather than vanishing from under the hand. A choice refills the rows in place - a card
+  open on a pack item stays open.
+- **What does not change.** A take is `take(item)`, so a filtered list takes that piece out of the whole store. A
+  corpse, a container, the ground and a reward tray keep their whole list. The filter is fresh for every store shown:
+  each open, each wagon or bag door pressed, and a store emptied.
+- **The classic skin draws none.** THE NATIVE-WINDOW RULE: DFU's parchment has no such control and no source for one.
+
+**Shift (both skins).**
+
+- **The gesture.** Shift and the left button on a pack item put the whole stack - or what the store still takes -
+  into the player's own store, in one press and in any action mode, through the one ladder (`planStore`).
+- **Enhanced.** The arm is `itemRow`'s, ahead of the double click, so a refused piece clicked twice is never worn.
+  The card's how-many field does not apply. A line under the store's head says the gesture (`SHIFT_STOW_HINT`, in the
+  store's own verb), its own element, hidden on a touch screen (no Shift) and a short one (the list first).
+- **Classic.** Shift is held as Control is - `_shiftDown`: each Shift key's down and up edge, the pointer's `shiftKey`
+  on every hover, and never trusted across the page losing the keyboard (a Shift let go out there sends no key-up, and
+  `click` carries no event of its own). A held Shift's repeated down edge answers no box. `_pick(slot, 'remove', true)`
+  is Remove's own transfer, without TransferItem's split popup. Only the wagon and the player's storage take it
+  (`_shiftStores`); the classic skin has no bag pane; the middle button is `_middleClick`'s, as it was.
+- **Known.** Shift is also Run's default key: a player still holding Run as they click a pack item beside their wagon
+  deposits it. Taking it back is one click.
+
+**Seen.** At the slice, by execution on the fake document (`test/invdrag.mjs`). Its audit drove the real pack in
+Chromium through vite and Playwright, from the scratchpad (below).
+
+**Proof.** `test/shiftstow.test.js` (9 after the audit): the filter law; the one row, the menu and the search
+refilling in place, a take from the narrowed list, Back, no bar over a corpse; the filter fresh per store; the search
+blind to a hidden name; Shift into the wagon, a plain click still a pick, the refused piece never worn, nothing on the
+ground; the how-many field not applying; the 750 kg taking what fits, and the storage; the classic latch, the arm in
+Info mode, no popup on a partial fit, the ground, a right and a middle click unchanged, the repeat, the focus loss and
+the two keys. Mutants: `tools/mutants/shiftstow.json` (23, all dead).
+
+### AUDIT WAGON-FILTER AND SHIFT-STOW (2026-10-04, Mac: "Audit this")
+
+The UI lens of `06-Systems/Horse-Cart-And-Cargo.md`'s AUDIT WAGON-HITCH, run in a real Chromium (vite and Playwright
+from the scratchpad, the pack mounted over a wagon of thirteen):
+
+- **C1 (MAJOR - BLOCKER on a phone): the filter took the list away.** The first cut stood a search, a WRAPPING row of
+  chips and the hint as fixed furniture - 202 px on a touch screen, 236 with the hint, in the frame PX21e keeps from
+  scrolling. The list it left: a phone on its side 1 px (it had 203: 3 rows to 0), 1366x625 170 px (7 rows to 3),
+  1366x768 292 px (9 to 5); at 390x500 head and bar overran the frame. The fake document has no layout, so the PX21e
+  pin could not see it. ONE row now (the search beside a menu), the hint its own line and hidden where it costs most.
+  Re-measured in the same probe after the fix: a phone on its side 157 px (2 whole rows), 1366x625 360 px (6 rows),
+  1366x768 452 px (8 rows) - a row short of no filter at all - and nothing past the frame at any size.
+- **C2: the filter followed the player from store to store** - the wagon's Weapons and "mace" carried into the bag
+  ("Nothing here matches." over a bag holding an ingot), and a wagon emptied on Materials hid the dagger shift-stowed
+  into it next. Reset at each door and each emptied store.
+- **C3 / C4 (classic):** a held Shift's repeated keydown (Windows) took a shift-stow's refusal away in about 30 ms; a
+  Shift seen before an alt-tab turned the next unmoved click into a whole-stack deposit. Both closed (above), with the
+  two-keys nit.
+- **The nits:** the chip-focus claim (false in Chromium: a clicked button takes the focus and the repaint dropped it -
+  the menu refills in place now); a chip closing a pack card (likewise); an empty band where the hint hid on a touch
+  screen; the search's focus restore now `preventScroll`, as domRepaint's.
+- **M3 (the records lens): claims with no pin** - the how-many field, the classic storage, the middle button (its
+  guard was unreachable: `_middleClick` answers first, so the guard is gone and the click's path pinned), the focus,
+  the mount's reset, Back, the cap, the search's name - each pinned now and killed by a mutant.
+- **Checked and fine** (the lens's own): all four hosts deliver Shift's raw down and up to the classic window and real
+  DOM events to its hover; the pack's key handlers, Tab's registry, the hotbar, chat and the hosts' routing step aside
+  for a text field; in Chromium the first Escape cleared the field and the second left it, the pack staying open; a
+  real Shift+click stowed with no text selected; `itemRow` is the pack's alone (trade, bank and the hold untouched).
+
+
+
+## TELL9 - THE FIGHT ON SCREEN (2026-10-04)
+
+The Feud arc's screen slice (`bible/12-Enhanced-AI/Feud-Arc.md` section 11 and its TELL9 record), on the enhanced HUD
+and both skins' debuffs, under the Enhanced AI switch:
+
+- **The target frame follows a threat** (`ui/hudFoeTarget.js markFoeThreat`): a foe whose wind-up at me begins takes
+  the frame unless I struck another in the last 2 s. Before it the frame followed only the foes I struck (PX30).
+- **The poise track** under the frame's health (`.hud-foepoise`, drawn from `foeTarget().poise` - the brain's reading,
+  registered by `scenes/hostCombat.js`, so the HUD's leaf imports no brain): empty, amber and filling, red and hatched
+  "Iron", a white flash "Staggered" (none under reduced motion), "Open". The quest card clears the taller frame.
+- **Words on the hit** (`ui/hitNumbers.js HIT_TAGS`): "Stagger", "Holds", "Open" join the number my blow just raised
+  on that foe (or rise alone); "Perfect" at a perfect dodge; "Weakness" waits on RVN3.
+- **The bleed's own icon** (`ui/hudStatus.js STATUS_GLYPHS.bleed`, two drops of blood): the status widget's tile -
+  which had not shown the bleed at all - and the classic debuff row's.
+- **Telegraph contrast**, a part of the Enhanced AI row on the Features home.
+
+Pins: `test/tell9_screen.test.js` (9); `tools/foeTelegraphProbe.mjs` (the contrast off a real frame).
+
+
+## HUD-CLASS - every class the HUD writes is its own (2026-10-05, the field fixes' audit)
+
+POISE-BOX (field, the owner's screenshot - "enemies seem to have this black transparent bar"; `12-Enhanced-AI/Feud-Arc.md`,
+TELL9's record): the poise track's idle state wore the bare word `empty`, and the windows' sheet (`ui/enhancedStyle.js`)
+names its components with bare words - `.empty` (the "nothing here" box: a dashed border, 26 px of padding, 16 px under
+it), `.side` (a column on the `--ink` ground). Every module under `src/ui` may lay a sheet in the one game document, so a
+HUD element wearing one of those words wears the component. The audit found three more, each measured in Chromium on the
+real HUD over the real sheets, and each gone with the word made the widget's own:
+
+- **The status widget beside the diamond** (`ui/enhancedHud.js`; `side` to `stat-side`, and `tight` and `noroom` to
+  `stat-tight` and `stat-noroom` with it): the `.side` column's `--ink` ground stood a dark box behind the tiles - a
+  phone on its side, or a laptop with the chat open, in the diamond quickslot style.
+- **The empty spell socket** (HOTSLOT; `empty` to `qspell-empty`): `.empty`'s 16 px margin under it - the caption 41 px
+  tall where it is 25, everything above it lifted 16 px, on every character with no quick spell.
+- **An empty gun battery** (`ui/navalHud.js`; `empty` to `gun-empty`): the same margin under the plate - its row
+  36.3 px to 52.3 px, the battery rose 116.8 px to 132.8 px.
+
+The pin reads RULES and WRITES, never source text (`test/sheetRules.mjs`). The sheets: every string the UI's modules
+export that reads as CSS, evaluated - 65 of them, a selector built from a list read as built (the layout editor's,
+`ui/hudLayout.js HUD_LAYOUT_CSS`, exported for it) - and the literals of the ones no module exports, read by a walker
+that takes a text as CSS only when the whole of it is. The writes: every class word the HUD's two modules write
+(`classList`, `className`, `setAttribute('class')`, markup) - a helper's at its callers, a callback's through its host -
+and each word the data chooses named with what its producer mints: a status tile's kind, a bitten span's frame, a
+plate's chip, the target card's state, a ship's faction, a crew line's word. `test/hudclass_sheets.test.js` (4): no rule
+from outside the HUD styles a class the HUD writes - and, given the field's bare words back, it finds `.side` and
+`.empty`; `tools/mutants/hudclass.json` (12 dead). POISE-BOX's own pin (`tell9_screen`) reads the same rules now: it had
+read source text, where a JS read like `b.empty` stood as a selector. PIN MOVED: `ui3_status`, `discord5`, `nav_f_ui`,
+`tools/uiStatusProbe.mjs`; re-aimed: `tools/mutants/ui3.json` UI3-never-beside and UI3-never-stepped-aside,
+`tools/mutants/discord5.json` D5-HOTSLOT-empty-chip-hidden.
+
+## PROFILE-MENU, PLUS-MENU, PLUS-SITE - the profile organised, the front door and the website in stone and brass (2026-10-07, Mac: "I want to organize and detail the player profile (the top right icon section), give the main menu the enhanced plus UI treatment and do the same thing for our website. A proper detailed overhaul")
+
+Three surfaces the Plus refresh had never reached, done as one pass because they are one look: the card the corner
+portrait opens, the doors under the wordmark, and the page in front of the game.
+
+**PROFILE-MENU - the card is a profile** (`ui/enhancedAccount.js`, its sheet in `ui/enhancedStyle.js`). Signed in, the
+account card was one centred column of key-and-value rows (up to fourteen) - who you are, what you have done and what the account
+is, all at one weight - with the Renown rows wrapping to three lines on a phone, where the window also stood from the
+top of the screen to its middle with the menu reading through the scrim under it. It reads now in the order a player
+looks:
+
+- **The plate**: the portrait the corner mark wears - the same character (`ui/enhancedMenu.js` `profileCharacter`, one
+  function the mark and the card both ask: paused, the one being played; at the door, the newest finished save), its face
+  asked for as a copy and drawn once (a face that lands after the card is up repaints it, and the same canvas moves into
+  every repaint's well) - with the hooded silhouette until then, and for good with none. Under it the name with its
+  Renown (the heading RENOWN1 pinned, unchanged), the title worn in the colour it wears over a head (`.acctworntitle`,
+  walked out of the vocabulary beside the button's rule in `ui/playerBadge.js` `badgeCss`), the glyphs shown (a hidden
+  one is not worn, so not drawn), and "Playing <name> · level N".
+- **Record**: a tile a deed - duels, breaches closed, towns defended, serpents slain, silver - the figure large and its
+  name under it; the duels' tile takes the row, with the share won drawn (`<progress>`, said in words to a reader).
+- **Characters**: each Renown row as it was written (RENOWN-BAR's words), with the way to the next level drawn under it;
+  a full bar at the cap.
+- **Wardrobe**: ACC3c's pickers, unchanged, under their head.
+- **Account**: the facts ACC4 pinned (username, kind, registered, time played) and the Patreon row beside them.
+
+Each section stands only once a row is in it (ACC1e: no heading over an empty box), and a column only once a section
+is in it. Two columns where the card is wide and both have something in them (a container query on the card,
+`.acctgrid2`), one otherwise; the window widens only for two (`:has(.acctgrid2)`) and keeps clear of the foot's plaques
+under the wordmark, takes the height on a short screen, and keeps its row of presses - Close among them - stuck at its
+foot. On a phone every account stage is the screen's, under a heavier scrim (the sign-in forms included: more room than
+the 58dvh window over a menu reading through). Two facts are still said twice, as the old card said them: a registered
+account's name is its username, and the first character's Renown is the chip by the name and its own row. Under Plus a deed's tile is a panel (`ui/enhancedFrame.js` panel role).
+The card still brings no design language of its own - no style from script, no colour - so the bars are the browser's
+`<progress>` told how to draw by the sheet.
+
+**PLUS-MENU - the doors in stone** (`ui/enhancedPlusStyle.js` `MENU_CSS`). The front door was the one enhanced screen
+the kit never reached: eight words floating on the night while the About plaque, the asks and the profile mark were
+carved. The doors (`.doorbtn`) play the kit's BUTTON role now - raised
+stone, brass under the pointer and the pad, sunk while held, and every Plus colour's ground, since the theme rules are
+walked out of the same role list. `MENU_CSS` gives them the 2px edge the role paints and the padding gives it back, so a
+door is the box it was (the pin reads both rules and does the sum); one width a column, inside the stage, so the list
+reads as one rail; the diamonds stand at rest in dim stone (the lit stone on Stone's ground) and light the classic gold
+on the door under the pointer, and are hidden from a reader - a door is named by its word; a phone's doors sit at
+the 44px floor a size down, so the rail stands above the foot's plaques on a tall phone (PX8's scroll still holds where
+it cannot). The rule under the wordmark is gilt.
+
+**PLUS-SITE - the website in the game's stone** (`ui/enhancedFrame.js` `siteKitCss`, injected by
+`scripts/landingHtml.mjs` as `#plus-kit`). The site wears the kit's roles in the kit's tones: a section is a carved
+window with its name on the lit band at its head, a box inside it a panel (the three columns, the nine features, each
+step, each question with its answer - the `<dl>`s' pairs now stand a `<div>` each), a step's numeral sits in a well, and
+what you press is a stone slab that goes brass - Play, the one press the page is for, in brass, and the section links
+pressed slabs too. The page's law holds: no `url()` (the game's window frame is a picture, `frameSvg`, so the site's is
+cut from borders and shadows, and its four brass fittings are solid gradients on a pseudo-element, rivet and all), no
+colour of the page's own (each box the page declares gives its edge and room and names no colour - the kit's stone is
+injected after the page's sheet, as the night and the marks are), and the plaque and the ask keep the About plaque's
+edge as their fallback. One source: the site's stone and the game's are both `FRAME_TONES`.
+
+`test/plus_menu_site.test.js` (7); `tools/mutants/plus_menu_site.json` (24 dead at the slice, 52 and 3 equivalent after its audit). PIN MOVED: `landing` U63 (the plaque
+edge was the page's only box; the kit's boxes give their edge and no colour), `profile1_badge` and
+`profile2_pause_profile` (the character's law is `profileCharacter`, which the card asks too). Re-aimed:
+`tools/mutants/renown1.json` RENOWN1-heading-changed-for-everyone (the heading lands in the plate),
+`tools/mutants/profile2.json` P2-live-portrait-is-the-newest-save (the law's new home), and `tools/mutants/profile1.json`
+P1-door-shares-the-tile-canvas (the card asks for the face as a copy too, so the record names the mark's own line).
+
+### AUDIT PROFILE-MENU / PLUS-MENU / PLUS-SITE (2026-10-07, Mac: "Audit this")
+
+Three cold lanes over the slice as pushed (the profile card; the menu's and the site's sheets; the pins, the mutants and
+the record), each reading the tree only - nothing was touched while they read - and every finding reproduced here
+before it was paid.
+
+**Paid.**
+- **P1 (severe) - a short screen took the profile window away.** Wider than 480px and at most 560px tall (a landscape
+  phone), the stage drops its deep top padding (SHORT-TOUCH), but the profile's window rule - heavier than
+  SHORT-TOUCH's, by its `:has()` - still subtracted the 270px it no longer had: 844x390 drew the window 36px tall,
+  740x360 6px, 1024x540 186px. A short screen's rule now follows it at its weight: 370px, 340px, 520px.
+- **P2 - an empty column.** A new guest, or an account a service before the record knows, has no Record and no
+  Characters, and its Account stood in the right half of the wide window beside an empty left column. A column is
+  drawn only with something in it; two columns, and the wide window, only for two.
+- **P3 - Stone's light ground.** The record's tile names read 2.3:1 there and the section heads 2.6:1; the window takes
+  AUDIT TIMERS1 UI-4's lift (`--dim`, `--brass` and a hard drop under the words).
+- **P4 - Close out of reach.** The profile is long and its row of presses stood under all of it - 470px of scrolling on a
+  phone to put the window away, and below the fold at every size with a full record. The row is stuck at the window's
+  foot over a fade of the window's ink (the body's foot padding is the row's, or words scrolled under it showed through);
+  on a phone its four presses stand two to a row.
+- **P7 - the shape the producer mints.** `loadFace` is async, so the door hands a promise; the card's branch for a bare
+  canvas was reached by the pins alone, and they drew the plate through it. The branch is gone and the plate is pinned
+  through the promise.
+- **M1 - the door panned sideways.** The rail's width was the viewport's (`100vw - 32px`) on a stage that keeps 24px a
+  side on a phone: 8px past it from 320 to 431px wide, so the whole door moved under a thumb. It is the stage's now.
+- **M2 - the diamonds were every door's name.** Standing at rest, they were read with the word - "◆ Continue ◆" - and
+  `getByRole('button', { name: 'Settings' })` found nothing; `tools/enhancedMenuProbe.mjs`'s door census failed on it.
+  Each is hidden from a reader; the probe reads the word.
+- **M3 - a list that does not exist.** `.px-menu.px-compact` was dressed "the same" as the System tab's list, and nothing
+  builds it: that list is the rail's rows (`.px-qrow`, the kit's qrow role, dressed already). The selector left the kit,
+  `MENU_CSS` and the pins, and the claim this record, the commit and the patch notes made. (The base sheet's own
+  `.px-menu.px-compact` rules are older than this slice and left as they stand.)
+- **M4 - Stone's diamonds.** The dim stone diamond on Stone's button ground was 1.2:1; the lit stone stands there at rest.
+- **The pins.** 27 mutants the slice's own list did not hold survived the pins lane - among them the card's container
+  (without it the two columns never come: no ancestor is a container), the fittings DRAWN rather than only written, the
+  phone window's full rule, the site's brass under the pointer, its sinking press and its name band, the duels' share
+  rounding (14 of 20 cannot tell round from floor), the guest's note in its section, and the class sweep's two blind
+  spots (an SVG's class is an attribute, and a prefix passed for its longer name - `.acctworn` for `.acctworntitle`). Each
+  is pinned in `test/plus_menu_site.test.js`, and the list holds them: 52 dead. The landing's colourless-box count is
+  exact (6), not at least. A comment that called the portrait a well and the bars meters under Plus said what the kit
+  does not do; it says what it does.
+
+**Equivalent, recorded so.** The bar's clamp (no caller leaves the range, and a real `<progress>` clamps itself), the
+`host` restore after the signed-in block (build resets it before every paint), and the face's stage check (a repaint of
+a form puts the focus back) - each marked `equivalent` with its reason in the list.
+
+**Unchanged on purpose.** The phone rule takes every account stage, not the profile alone: the sign-in forms gain the
+room, and on a phone the wordmark was already covered.
+
+Probes on the paid tree: `tools/supportAsksProbe.mjs` 22/22, `shortTouchProbe.mjs` ("every door can be seen and
+pressed"), `menuPadProbe.mjs` ("the door answers the pad"), `landingProbe.mjs` 54/54, `enhancedMenuProbe.mjs` 31/32 - its
+door census passing again, and its classic-rail check failing on main too (it predates LOAD1's Screenshots entry), as
+`enhancedTapProbe.mjs`'s intro wait does (stale, not this slice's). PIN MOVED: `landing` U63's
+colourless count; `tools/enhancedMenuProbe.mjs` reads a door's word.
+
+## SERVER-POST - THE MAILBOX BESIDE THE HOURGLASS (2026-10-08, Mac: "Let's develop an ingame server mailbox that goes next to the hourglass in the pause menu. It should show notifications whenever players have a message. First use is to utilize it for players being granted items.")
+
+The server's post (`06-Systems/Accounts-And-Cloud-Saves-Arc.md` SERVER-POST) drawn on the pause face, online, as TIMERS1's
+hourglass is: `ui/enhancedPost.js`.
+
+- **The envelope** (`postMark`): a pixel envelope - brass edge, parchment, a red seal - left of the hourglass
+  (`anchorPost`: each placing stands the hourglass off the profile's measured box first and the envelope off the
+  hourglass, so a caption that changes width moves both; left of the profile where there is no hourglass). Its count
+  (`.px-postbadge`, hidden at none, "99+" past it, said in the label) is the box's `waiting` - a piece unread or a gift not
+  yet claimed, each once - kept live off the box's version on its own tick (`watchPostMark`, POST_TICK_MS), since the
+  pause face draws itself only when opened, closed or Escaped; while anything waits the envelope nudges (none under
+  `prefers-reduced-motion`).
+- **The window** (`postWindow`), on the hourglass's own stage (`.px-timersstage`, centred, its own padding): the pieces
+  waiting gifts first, then the unread, newest first - a brass dot on the unread and the waiting gifts (said too, " -
+  unread", for a reader that cannot see the dot), an item named in its rarity's own colour (`data-rarity`, a literal
+  rule a rung - the stylesheet imports no game code, and `test/serverpost_client.test.js` holds each to `RARITIES`; the
+  Stone theme's lighter three for its dark ground) with *Waiting* or *Claimed*; a piece opened, its words, its item with **Claim** (*The
+  Hourlock is in your pack.*; labelled "Claim" and the item's name; one claim a press, the button down at once), and
+  **Throw away** only once nothing waits in it. The states said: looking, signed out, a guest (the account's own
+  sentence), empty, a failed look or open (each with **Try again**); every refusal in the account's words (REFUSALS).
+- **AUDIT SERVER-POST, its place kept.** The pause face is rebuilt by anything that renders it (a quest's clock lapsing,
+  the cloud's answer), and the window with it: the menu keeps what it showed (`postKeep` - the piece open, the line
+  said), so the rebuilt window reopens there without wiping the line; reset when the window closes and with the visit.
+  The focus never falls out: on Back once a piece opens or a claim lands, on the row Back came from (`data-key`), on
+  the first row after a throw. Under the account window the face is inert (stage, profile mark, envelope), and the pause
+  door's Tab trap skips whatever is inert.
+- **`/mail`** (and `/mailbox`, `net/chatCommands.js` HOST_COMMANDS and `/help`): the mailbox from the chat, on either skin -
+  `ui/pauseDoor.js` opens the enhanced pause face for a `mailbox` door whatever the skin (the classic window has no
+  envelope), and the face opens on the window (`at === 'mailbox'`). The street's chat (`scenes/world.js`) asks
+  `worldModes.js` `openPauseAt` first, so indoors and underground it is that host's own pause; offline it says the
+  mailbox is online.
+- **The face's laws, kept**: its own scrim (a tap outside closes it alone - the fifth `closeOnOutsideTap`), the envelope
+  inside the pause face's (a press opens the window, never resumes), the face under the window inert, Escape closing it
+  before the face resumes, the focus handed back to the envelope, its ticks stopped on every rebuild and unmount, and a
+  visit's window (`postOpen` reset at mount). Every host hands the world's box (`post: postSource`, the street's bag and
+  the modes host; a building's and a dungeon's forward it), null offline and never a throw before the boot declared it.
+  The FOUR HOSTS: `scenes/world.js` (the box, the street's bag, `/mail`), `scenes/worldModes.js` (forwarded, and
+  `openPauseAt`), `scenes/dungeonContext.js` (forwarded) wired; `scenes/exterior.js` FLAGGED as not applicable - the
+  offline exterior door has no online lane, no chat and no hourglass, so no box to hand: its pause face draws no
+  envelope.
+- **The notification** beside the count: a line on the world tab when a look finds post (`postNoticeText`), the
+  letterbox's own manner.
+- Pins: `test/serverpost_client.test.js`; PIN MOVED: `test/outsideTap.test.js` (five scrims, the envelope inside the
+  pause face's; the face under the account window inert; the window's place reset on a tap outside).
+
+
+## EVERY-STANDING - every organization's standing, a setting (FIELD BUGS 2026-10-09e)
+
+A player expelled from the Mages Guild: "since I don't am part of the guild anymore, I can't see how is my standing with
+them ... I personally feel that could be a setting". The enhanced Standing page listed the guilds the player belongs to
+alone. With the Interface tab's Character sheet row on, "Every faction's standing" (prefs `standingAll`, on by
+default since STANDING-ON, 2026-10-11 - Mac: "should be on by default"), it lists every organization's reputation from the live faction store under its divider
+(`systems/factionStanding.js` standingGroups, drawn by `enhancedMenu.js` statsEveryStanding): the guilds, the temples,
+the knightly orders, the kingdoms, the covens, the vampire clans, the Daedric Princes - a membership under Guilds above,
+with its rank, never twice. The classic skin's sheet is untouched. The record: `01-Overview/Field-Bugs-2026-10-09e.md`.

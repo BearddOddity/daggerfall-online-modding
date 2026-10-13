@@ -130,8 +130,8 @@
   {
     "name": "AUDIT-SILVER-WAYS-C3-no-mark-read",
     "file": "server-account/src/motherlodes.js",
-    "old": "if (await db.prepare('SELECT 1 FROM motherlode_days WHERE day = ?1').bind(day).first()) return keptOf();",
-    "new": "if (false) return keptOf();",
+    "old": "  const marked = async (/** @type {any} */ db) => !!(await db.prepare('SELECT 1 FROM motherlode_days WHERE day = ?1').bind(day).first());",
+    "new": "  const marked = async () => false;",
     "tests": [
       "test/auditsilver_service.test.js"
     ]
@@ -211,7 +211,7 @@
   {
     "name": "AUDIT-SILVER-WAYS-D4-fallback-unasked",
     "file": "src/scenes/mineHost.js",
-    "old": "        ?? standAnywhere(samples, tilemap, locationRect, pieces);",
+    "old": "        ?? standAnywhere(samples, tilemap, locationRect, solid, stone, beach);",
     "new": "        ?? (standAnywhere && null);",
     "tests": [
       "test/auditsilver_client.test.js"
@@ -220,8 +220,8 @@
   {
     "name": "AUDIT-SILVER-WAYS-D4-town-unasked",
     "file": "src/scenes/mineHost.js",
-    "old": "    const at = natureStandsAt(samples, tilemap, locationRect, x, y);\n    if (at && onPixel(at.x, at.z) && !insideRocks(rocks, at.x, at.z)) return at;",
-    "new": "    const at = natureStandsAt(samples, tilemap, null, x, y);\n    if (at && onPixel(at.x, at.z) && !insideRocks(rocks, at.x, at.z)) return at;",
+    "old": "    const at = natureStandsAt(samples, tilemap, locationRect, x, y, clear, beach);\n    if (at && onPixel(at.x, at.z) && !insideRocks(rocks, at.x, at.z)) return at;",
+    "new": "    const at = natureStandsAt(samples, tilemap, null, x, y, clear, beach);\n    if (at && onPixel(at.x, at.z) && !insideRocks(rocks, at.x, at.z)) return at;",
     "tests": [
       "test/auditsilver_client.test.js"
     ]
@@ -247,17 +247,19 @@
   {
     "name": "AUDIT-SILVER-WAYS-D6-account-unread",
     "file": "src/net/motherlodeBook.js",
-    "old": "return w && w.s === meNow() && motherlodeWatchOk(",
-    "new": "return w && motherlodeWatchOk(",
+    "old": "      const m = meNow(true);\n      const w = watches.get(`${x},${y}`);",
+    "new": "      const m = meNowV;\n      const w = watches.get(`${x},${y}`);",
     "tests": [
-      "test/auditsilver_client.test.js"
-    ]
+      "test/auditsilver_client.test.js",
+      "test/motherlode_identity_regression.test.js"
+    ],
+    "note": "Bugs update reconciliation 2026-10-03: re-aimed by the current source law; forced Watch identity refresh, cached frame reads, receipt ownership/expiry, and actual host seed citations remain independently killable. The action now refreshes identity before fetching the receipt, clearing old receipts; mutate that refresh rather than removing its redundant subject comparison."
   },
   {
     "name": "AUDIT-SILVER-WAYS-D6-kept-for-return",
     "file": "src/net/motherlodeBook.js",
-    "old": "if (m !== meNowV) { meNowV = m; watches.clear(); }",
-    "new": "if (m !== meNowV) { meNowV = m; }",
+    "old": "      meNowV = m;\n      watches.clear();",
+    "new": "      meNowV = m;",
     "tests": [
       "test/auditsilver_client.test.js"
     ]
@@ -265,17 +267,18 @@
   {
     "name": "AUDIT-SILVER-WAYS-D7-account-each-frame",
     "file": "src/net/motherlodeBook.js",
-    "old": "    if (t - meAt < MOTHERLODE_ME_MS) return meNowV;\n",
+    "old": "    if (!force && t - meAt < MOTHERLODE_ME_MS) return meNowV;\n",
     "new": "",
     "tests": [
       "test/auditsilver_client.test.js"
-    ]
+    ],
+    "note": "Bugs update reconciliation 2026-10-03: re-aimed by the current source law; forced Watch identity refresh, cached frame reads, receipt ownership/expiry, and actual host seed citations remain independently killable."
   },
   {
     "name": "AUDIT-SILVER-WAYS-D7-list-a-frame",
     "file": "src/net/motherlodeBook.js",
-    "old": "    standingAll(out = []) {\n      out.length = 0;",
-    "new": "    standingAll(out = []) {\n      out = [];",
+    "old": "    standingAll(out = []) {\n      meNow();\n      out.length = 0;",
+    "new": "    standingAll(out = []) {\n      meNow();\n      out = [];",
     "tests": [
       "test/auditsilver_client.test.js"
     ]

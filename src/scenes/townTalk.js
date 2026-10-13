@@ -43,7 +43,7 @@ import { TalkWindow } from '../ui/talkWindow.js';
 import { hudScale } from '../ui/hud.js';
 import { hudRenderEnabled } from '../ui/hudShortcuts.js';   // AUDIT 64 F37: DaggerfallHUD's Draw override covers popupText too
 import { setMidScreenText, midScreenText } from '../ui/midScreenText.js';   // AUDIT 64 F34: the HUD's OTHER text surface, and its notebook tail
-import { overlayAction, actionsOf, isTextEntryTarget, isDomControlTarget } from '../ui/input.js';   // AUDIT 58: the mode keys read the registry, not e.code; CG2: a DOM field's key is the field's
+import { overlayAction, actionsOf, isTextEntryTarget, isDomControlTarget, isDomFocusWalk } from '../ui/input.js';   // AUDIT 58: the mode keys read the registry, not e.code; CG2: a DOM field's key is the field's
 import { makeWindowStack, pauseWhileOpen, hidesHud } from '../ui/windowStack.js';   // ROAD-B B1: UserInterfaceManager's stack, under this host's one slot; ROAD-tail: and its PAUSE
 import { hudFade } from '../ui/fadeLayer.js';   // D4: PushWindow's ClearFade
 import {
@@ -63,6 +63,9 @@ import { REGION_RACES } from '../formats/mapsFile.js';
 import { getLocalizedLocationName, getLocalizedRegionName } from '../systems/textManager.js'; import { shownFactionNames } from '../world/buildingNames.js';   // L10N3e: the place names shown, and the faction names a guild hall and a temple show
 import { ChoiceWindow } from '../ui/talkWindow.js';
 import { buildBuildingDirectory, questorCandidateBuildings, TOPIC_CATEGORIES, whereIsAnswer, reactionTier012, buildingHint } from '../systems/talkTopics.js';
+import { yardDirectoryRows } from '../systems/merchantYards.js';   // YARDS-FOUND: the town's yards in its directory
+import { portDirectoryRows, FOUND_KIND_ORDER, FOUND_TALK_GROUPS, lettersOnMap } from '../systems/portPlaces.js';   // SHIPYARDS-FOUND: and a port town's shipyard, crew hall, lighthouse and docks - the found places' one order
+import { OPENED_SHOP_TYPES, OPENED_SHOP_GROUPS } from '../world/buildingNames.js';   // PROF-FOUND: the shops the port opened, asked after
 import { LIST_ITEM_TYPE, QUESTION_TYPE } from '../systems/topicTree.js';   // TK-vi: the window's rows are the tree's ListItems; B6: the Work question type
 import { discoverBuilding } from '../systems/discovery.js';   // T4: %loc's mark side effect
 import { getNameBankOfRegion, fullName as nameHelperFullName, GENDERS } from '../characters/nameHelper.js';   // MACRO-6: %fn/%mn in the engine-less answer
@@ -85,7 +88,8 @@ export const TONE_NAMES = ['Polite', 'Normal', 'Blunt'];   // T3f: TalkTone -> i
 // currentMode is GLOBAL - the dungeon door ladder reads it too);
 // townTalk keeps the keydown, the HUD line and these re-exports.
 export { MODES, nextInteractionMode } from '../player/interactionMode.js';
-import { MODES, MODE_ACTIONS, getInteractionMode, setInteractionMode, nextInteractionMode, interactionModeText } from '../player/interactionMode.js';
+import { MODES, MODE_ACTIONS, getInteractionMode, setInteractionMode, nextInteractionMode, interactionModeText, askInteractionMode } from '../player/interactionMode.js';
+import { modeWheel, MODE_WHEEL_ACTION } from '../ui/modeWheel.js';   // MODE-WHEEL: the held key's wheel
 import { getClassicQuestionIndex } from '../systems/answerPipeline.js';   // F042
 // AUDIT 58 (talk lane): the four modes ride the keybinding registry
 // now - MODE_ACTIONS lives beside the mode it sets
@@ -138,7 +142,7 @@ export function rayPersonDistance(camPos, fwd, feet) {
   return t / fl * Math.hypot(fwd[0], fwd[1], fwd[2]);
 }
 
-export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, regionIndex, onCrime = null, topics = null, palette = null, rolls = Math.random, talkEngine = null, onBuildingList = null, otherOverlayActive = null, otherHudCovered = null, questBuildingSource = null }) {   // AUDIT ENH-NOTICE3 C2: `otherHudCovered` is the mode host's previousWindow-chain answer (modes.hudCovered), for the toasts   // AUDIT 63 F49: PlayerGPS.DiscoverBuilding's quest name-override seam ({ currentMapID, isBuildingQuestResource }), null in a host with no topic tree
+export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, regionIndex, onCrime = null, topics = null, palette = null, rolls = Math.random, talkEngine = null, onBuildingList = null, otherOverlayActive = null, otherHudCovered = null, keysLive = null, questBuildingSource = null, livingTalk = null, livingTone = null, legacyTopics = null }) {   // LW2: `livingTalk` the living world's doors - { refuses(person) -> text|null, talked(person), caught(person) } (bible/06-Systems/Living-World.md); LEGACY-HOME: `kin(person, talk)` true when one of the player's line took the activation (`talk` the conversation, should they ask for it); LW7: `livingTone(person, tone)` a question's tone   // AUDIT ENH-NOTICE3 C2: `otherHudCovered` is the mode host's previousWindow-chain answer (modes.hudCovered), for the toasts   // AUDIT 63 F49: PlayerGPS.DiscoverBuilding's quest name-override seam ({ currentMapID, isBuildingQuestResource }), null in a host with no topic tree
   // RP1 - THE REGION IS READ LIVE, NOT CAPTURED AT BOOT.
   //
   // This took a plain number, and the world host had no choice but to
@@ -328,6 +332,14 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
       const opts = nameOpts();
       if (!opts) return;
       directory = buildBuildingDirectory(topics.exteriorBuildings, topics.blocks, opts);
+      // YARDS-FOUND (from play: "Ensure these locations appear when talking to NPCs"): the town's Stable and Wagon Yard
+      // (the host's `yards`, the location's frame) as rows beside its buildings - the Where-is page, the compass, the
+      // knowledge roll and the map's mark all read a place from this one list (systems/merchantYards.js yardDirectoryRows)
+      directory.push(...yardDirectoryRows(topics.yards));
+      // SHIPYARDS-FOUND (Mac: "Everything should show on the map/overworld and be able to be asked by NPCs"): a port town's
+      // shipyard, its crew hall, its lighthouse and its docks (the host's `ports`, the location's frame), rows as the
+      // yards' are (systems/portPlaces.js portDirectoryRows)
+      directory.push(...portDirectoryRows(topics.ports));
       // QP1: GetBuildingList's questor half rides the SAME rebuild -
       // C# populates npcsWithWork inside the one building walk
       // (TalkManager.cs:2807-2874). The candidates go out through the
@@ -349,6 +361,13 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
   function setTopics(t) {
     topics = t;
     if (loaded) rebuildDirectory();   // pre-load swaps build at load's tail
+  }
+  /** SHIPYARDS-FOUND: a port town's places handed again (scenes/world.js portPlacesOf - its docks once the harbour is
+   *  sounded off its shore), the directory rebuilt over them; nothing while no town's topics stand. */
+  function setPorts(rows) {
+    if (!topics) return;
+    topics = { ...topics, ports: rows };
+    if (loaded) rebuildDirectory();
   }
 
   const textVariants = (id) => textRsc?.plainText(id) ?? [''];
@@ -379,14 +398,15 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
    *  every Text TOKEN of a record and picks among them, where
    *  randomVariant above picks a whole SUBRECORD variant. The two
    *  diverge exactly where a record holds several one-line entries -
-   *  which is the shape of the oath records (textRsc.js:"TextProvider.GetRandomText (TextProvider.cs:250-268)") and
+   *  which is the shape of the oath records (textRsc.js:"o += 6;") and
    *  of 8999 - so a multi-line variant printed all its lines fused. */
   const randomPooledText = (id, fallback) => {
     const t = textRsc?.randomTextById(id, rolls);
     return t?.length ? t : fallback;
   };
 
-  function setMode(m) {
+  function setMode(m, ask = true) {
+    if (ask) askInteractionMode(m);   // SENSE1: asked, changed or not (the dungeon's look round reads the count); AUDIT DELVE B6: a held key's repeats are no asks
     if (m === getInteractionMode()) return;   // ChangeInteractionMode: no-op on the same mode
     setInteractionMode(m);
     // AUDIT 64 F34: PlayerActivate.cs:1424 ends ChangeInteractionMode
@@ -419,6 +439,7 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
       // AUDIT 28 H11: Enter or Space on a DOM window's own button is the browser's press of it - the payday notice's
       // "Take the reward", the boards' every act - never prevented under the window that drew it
       if ((e.key === 'Enter' || e.key === ' ') && isDomControlTarget(e.target)) return true;
+      if (isDomFocusWalk(e)) return true;   // AUDIT LEGACY II U3: Tab walks a DOM window that owns the focus
       e.preventDefault();
       // E says goodbye too - the touch layer's E button opens AND
       // closes talk (desktop-consistent; Esc/Enter unchanged). Choice
@@ -486,10 +507,16 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
     // player who moves StealMode off F1 moves the key, and an F1 they
     // have re-pointed at Inventory falls through this ladder to the
     // host's own `actionOf` and opens the pack.
+    // MODE-WHEEL: the held key opens the wheel and its release picks through pickMode - the same two gates as the
+    // four mode keys below, asked again AT THE RELEASE (AUDIT: a window raised while the key was held must not see the
+    // mode flip under it), and not before the host's world keys are live (KEY-BOOT: no wheel over the loading screen).
+    // NOT consumed: the key still joins the host's held ring below this rung (G3), so a key the player shares with
+    // another action still does that one too (KB1 law 3) (ui/modeWheel.js)
+    if (keysLive?.() !== false && actionsOf(e, keys).includes(MODE_WHEEL_ACTION)) { e.preventDefault(); modeWheel.press(e, pickMode); }
     const m = actionsOf(e, keys).map((a) => MODE_ACTIONS[a]).find(Boolean);   // UXB1-S: the mode a shared key carries, whichever of its actions it is
     if (m) {
       e.preventDefault();
-      setMode(m);
+      setMode(m, !e.repeat);   // AUDIT DELVE B6: DFU's ActionStarted is the press, not the key's repeat
       return true;
     }
     return false;
@@ -697,6 +724,15 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
     return getInteractionMode();
   }
 
+  /** MODE-WHEEL: one mode, chosen - the wheel's release, and the pad's NextMode and its mode choices once the four
+   *  mode actions ship unbound (the hosts' padAction door). Under nextMode's two gates, and the host's KEY-BOOT
+   *  `keysLive` where it hands one; answers whether it was heard. */
+  function pickMode(m) {
+    if ((overlay && talkPaused()) || otherOverlayActive?.() || keysLive?.() === false) return false;
+    setMode(m);
+    return true;
+  }
+
   /** The activation ray (the host's E/use edge). persons = [{ person, pos }] world feet of LIVE townsfolk. Returns true
    *  if a person consumed the activation. AUDIT 65 MC-2: `nearerThan` is the REST of the ladder's winning distance and
    *  this arm consumes strictly below it alone - :412 is reached for the ONE ray's own hit (activate.js has the law). */
@@ -734,6 +770,7 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
       if (target.person.pickpocketAttempted) return;
       if (dist > PICKPOCKET_DISTANCE) { setMidScreenText(tooFarAwayText()); return; }   // AUDIT 64 F34: :790, the same surface
       target.person.pickpocketAttempted = true;
+      const crimeWas = playerEntity.crimeCommitted;   // AUDIT LW-II-2 C15: the flag standing before the hand went in
       const r = pickpocket(playerEntity, {
         rolls,
         nothingText: () => randomPooledText(FOUND_NOTHING_VALUABLE_TEXT_ID, 'You found nothing valuable.'),   // F046: GetRandomText(8999)
@@ -746,8 +783,11 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
       // failure is the arm that spawns the watch behind it.
       if (r.modal) showOverlay(new ActionTextBox(String(r.message).split('\n')));
       else hud.add(r.message);
-      // G1: the caught pickpocket IS the crime - SpawnCityGuards(true)
-      if (!r.success) onCrime?.();
+      // G1: the caught pickpocket IS the crime - SpawnCityGuards(true). LW3: a resident of the living world remembers the
+      // hand in their purse (their regard of the player); on the road - no town, no watch - that is all that comes of it:
+      // AUDIT LW-II-2 C15, the flag the pickpocket set (talk.js: no target, a crime) put back as it stood - the road's door
+      // cleared it, and a crime standing before it with it
+      if (!r.success) { livingTalk?.caught?.(target.person); if (!target.person?.living?.town?.roadside) onCrime?.(); else playerEntity.crimeCommitted = crimeWas; }
       return;
     }
     // Info / Grab / Talk all talk to a mobile NPC (DFU verbatim)
@@ -773,6 +813,30 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
     // is `DaggerfallUI.MessageBox(suppressTalkMessage)`.
     const sup0 = racialSuppressTalk(playerEntity);
     if (sup0) { showOverlay(new ActionTextBox([sup0.text])); return; }
+    // LW2: a resident of the living world who counts the player an enemy has no words for them - said on the HUD's
+    // middle line, as the activation's other refusals are; DFU's walkers have no memory to refuse from
+    const refusal = livingTalk?.refuses?.(target.person) ?? null;
+    // AUDIT PLAIN-UI U11: the refusal says where the resident stands - an enemy's badge was the one no panel ever opened on
+    if (refusal) { const b = livingTalk?.regard?.(target.person) ?? null; setMidScreenText(b ? `${refusal} (${b.label}, ${b.value})` : refusal); return; }
+    // LW6c: a household's moment before the words - the keepsake of one of theirs the deep kept, carried home (the
+    // body's town's: livingTown.js moment, the room's door): their words on the parchment, the conversation another time
+    const moment = target.person?.living?.town?.moment?.(target.person) ?? null;
+    if (moment) { showOverlay(new ActionTextBox(moment)); return; }
+    // LEGACY-HOME: one of the player's own line (Project Legacy's family in the world, systems/legacy/household.js) is
+    // met before the words - Play as them, the town's own conversation (`talk`, below), or goodbye: the host's window
+    if (livingTalk?.kin?.(target.person, () => converse(target))) return;
+    // LW11: one of the road's people who keeps a counter or offers the road (a caravan's merchant, a pedlar, a carter) asks
+    // what the player wants before the words - Trade, Hire on, Talk, Goodbye: the host's window
+    if (livingTalk?.offers?.(target.person, () => converse(target))) return;
+    converse(target);
+  }
+
+  /** LEGACY-HOME: a mobile's portrait - a resident's own (one of the line: the chargen head they were made with), else
+   *  TalkManager.cs:817's: a mobile ALWAYS portraits from TFAC00I0.RCI, at the record SetPerson minted for it. */
+  const portraitOf = (person) => person?.living?.res?.portrait ?? { archive: 'CommonFaces', record: person?.personFaceRecordId ?? 0 };
+
+  /** The conversation itself, once nothing stands before it (the activation's gates above). */
+  function converse(target) {
     const eng0 = engine();
     if (eng0?.session) {
       // T3c: the NPC keeps a stable per-person seed for the
@@ -786,6 +850,8 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
       // has already said its piece through the session's messageBox
       if (talk?.kind !== 'talk') return;
       _talkNpc = target.person;
+      livingTalk?.talked?.(target.person);   // LW2: a word exchanged - their regard of the player
+      _toneNext = target.person.living ? target.person : null;   // LW7: a resident's - each question's tone noted
       // the local mirrors of the tone half TalkToNpc just reset
       toneSession = [0, 0, 0];
       lastToneIndex = -1;
@@ -799,7 +865,7 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
         npcSeed: target.person._talkSeed, npcName: target.person.nameNPC ?? '',
         // TalkManager.cs:817 - a mobile ALWAYS portraits from
         // TFAC00I0.RCI, at the record SetPerson minted for it.
-        portrait: { archive: 'CommonFaces', record: target.person.personFaceRecordId ?? 0 },
+        portrait: portraitOf(target.person),
       });
       return;
     }
@@ -820,6 +886,7 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
     // uniform seed stands in, Ledger A).
     target.person._talkSeed ??= Math.floor(rolls() * 0x7fffffff);
     _talkNpc = target.person;
+    _toneNext = target.person.living ? target.person : null;   // LW7
     // TK-v: TalkToNpc's session reset is the ENGINE's - both halves of
     // it - so a host cannot clear one and forget the other. With no
     // engine mounted these local mirrors are the whole of it.
@@ -836,7 +903,7 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
     // through the verbatim hit rects; the keyed chain is the fallback)
     openTalkWindow(t.text, {
       npcSeed: _talkNpc?._talkSeed ?? 0, npcName: _talkNpc?.nameNPC ?? '',
-      portrait: { archive: 'CommonFaces', record: _talkNpc?.personFaceRecordId ?? 0 },
+      portrait: portraitOf(_talkNpc),
     });
   }
 
@@ -849,6 +916,8 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
    *  talkToStaticNPC runs the C# ones inside the engine. Art-less or
    *  building-less sessions keep the keyed greeting chain. */
   function openTalkWindow(greeting, { npcSeed = 0, npcName = '', portrait = null, push = false, onClosed = null } = {}) {
+    _toneTarget = _toneNext;   // LW7: the resident this conversation is with, if the mobile door named one - else nobody
+    _toneNext = null;
     // AUDIT 63 F44: TalkToStaticNPC is a PushWindow (TalkManager.cs:
     // :757, :767), and for ONE caller that distinction is visible -
     // DaggerfallGuildServicePopupWindow's TALK button is the only
@@ -886,17 +955,25 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
         // whole reason they were blockers is that the tree computed
         // all of this and the window threw it away. Null when no
         // engine is mounted: the window keeps the consumed no-op.
-        tellMeAboutTopics: () => treeFlatTopics(engine()?.tree?.listTopicTellMeAbout),
+        // LEGACY5: Project Legacy's own rows first - a resident courted, a proposal, the wedding, the family - the port's,
+        // answered by the host and never through the engine's pipeline (`legacy`)
+        tellMeAboutTopics: () => {
+          const own = _toneTarget ? (legacyTopics?.(_toneTarget) ?? []) : [];
+          const tree = treeFlatTopics(engine()?.tree?.listTopicTellMeAbout);
+          return own.length ? [...own, ...(tree ?? [])] : tree;
+        },
         peopleTopics: () => treeFlatTopics(engine()?.tree?.listTopicPerson),
         thingsTopics: () => treeFlatTopics(engine()?.tree?.listTopicThing),
         workQuestion: () => (eng?.pipeline ? eng.pipeline.getQuestionText(workListItem(), tone) : null),
-        askWork: () => eng.pipeline.getAnswerText(workListItem(), {
+        askWork: () => (_toneHeard(), eng.pipeline.getAnswerText(workListItem(), {
           npcSeed,
           // TalkManager.WorkAvailable - the town's npcsWithWork pool
           // (TK-iv owns it); no work in town = record 8078 verbatim
           workAvailable: eng.session?.workAvailable ?? false,
-        }),
+        })),
         answer: (row) => {
+          _toneHeard();   // LW7: the question's tone, in a resident's regard
+          if (row.legacy) return row.legacy.answer(tone);   // LEGACY5: the host's answer
           if (row.listItem) return eng.pipeline.getAnswerText(row.listItem, { npcSeed });
           const a = answerText(row); _questionsAsked++; return a;   // AUDIT 17e F13, moved to DFU's own site
         },
@@ -905,12 +982,15 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
         // shipped selection model), and DFU's GetQuestionText has
         // never touched numQuestionsAsked - GetAnswerText does, which
         // is where the engine path already had it.
-        question: (row) => (row.listItem
+        question: (row) => (row.legacy ? row.legacy.question(tone) : row.listItem
           ? eng.pipeline.getQuestionText(row.listItem, tone)
           : questionText(row)),
         tone: () => tone,
         setTone: (t2) => { tone = t2; },
         npcName,   // AUDIT 18 F5: the NPC's OWN name, not the People faction
+        // PLAIN-UI (bible/10-UI/Plain-Words.md): a living resident's regard of the player, for the enhanced panel's badge -
+        // null for anyone else (the classic face draws DFU's TALK01I0 and nothing it has no rect for)
+        regard: () => (_toneTarget ? livingTalk?.regard?.(_toneTarget) ?? null : null),
         // AUDIT 63 F5: OnPop's `PlayerEntity.Notebook.AddNote(
         // copiedEntries)` (DaggerfallTalkWindow.cs:319). townTalk holds
         // no notebook, so the sink is the host's - set beside
@@ -978,9 +1058,11 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
 
   /** AUDIT 68 S21-talk-category-dup: the location's buildings grouped by TOPIC_CATEGORIES, empty groups dropped -
    *  one pipeline for the native window's rows and the keyed Where-is chain. */
-  const directoryByCategory = () => TOPIC_CATEGORIES
-    .map((c) => ({ label: c.caption, buildings: directory.filter((b) => b.buildingType === c.type) }))
-    .filter((c) => c.buildings.length);
+  const directoryByCategory = () => [
+    ...TOPIC_CATEGORIES.map((c) => ({ label: c.caption, buildings: directory.filter((b) => b.buildingType === c.type) })),
+    ...OPENED_SHOP_TYPES.map((t) => ({ label: OPENED_SHOP_GROUPS[t], buildings: directory.filter((b) => b.buildingType === t) })),   // PROF-FOUND: the Furniture Store after DFU's shops, as the tree lays it
+    ...FOUND_KIND_ORDER.map((k) => ({ label: FOUND_TALK_GROUPS[k], buildings: directory.filter((b) => b.yard === k) })),   // YARDS-FOUND: the tree's own groups, after the shops - SHIPYARDS-FOUND: the port's four after the yards' two
+  ].filter((c) => c.buildings.length);
   /** The pre-engine fallback: T3c's flat category directory. */
   function localCategories() {
     return directoryByCategory()
@@ -988,6 +1070,11 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
   }
 
   let _talkNpc = null;
+  /** LW7: the resident this conversation is with (the mobile door names them in `_toneNext`; openTalkWindow takes it -
+   *  every other door leaves nobody), whose regard hears each question's tone - a courteous one or a blunt one
+   *  (relations.js: once a day each). */
+  let _toneTarget = null, _toneNext = null;
+  const _toneHeard = () => { if (_toneTarget) livingTone?.(_toneTarget, tone); };
   // AUDIT 26 F043: the CURRENT partner's reaction seed. DFU seeds the
   // roll from whichever NPC is being spoken to - `DFRandom.Seed =
   // lastTargetMobileNPC.GetHashCode()` or `lastTargetStaticNPC`'s
@@ -1145,7 +1232,7 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
     // function the walk calls per macro, and a record with neither
     // never rolls.
     const hint = () => {
-      const h = buildingHint(rolls, false);
+      const h = buildingHint(rolls, !lettersOnMap(building.buildingKey));   // AUDIT SHIPYARDS L7-5: a found place no map letters takes the way there
       const text = randomVariant(h.textId, h.reveal ? '... Let me just mark %loc here on your map' : '%di of here')   // MAC-U: the no-data fallback is the table's phrase too
         .replaceAll('%loc', building.name).replaceAll('%di', a.direction);
       // RP1: the discovery key is the CURRENT region's. This read the
@@ -1356,8 +1443,9 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
     hudText: (line, delayInSeconds) => { hud.add(line, delayInSeconds); return true; },
     priority: 0,
   });
+  registerPresenter({ holds: (win) => windows.containsWindow(win) });   // TUT1 audit: whether this host's stack still holds a window (systems/notify.js windowHeld) - a registration of its own, no `mount`, so the presenter above keeps its shape
   return {
-    keydown, keyup, tryActivate, frame, ensureLoaded, nextMode, setMode, showOverlay, pushOverlay, setTopics, pointerdown, pointer, wheel, hover,   // ROAD-B B1: pushOverlay is the stacking door beside the replacing one   // U45: setMode is the large HUD's mode panel, whose cycle is not nextMode's   // c2/S10: `pointer` is the RELEASE route (down rides pointerdown, move rides hover)
+    keydown, keyup, tryActivate, frame, ensureLoaded, nextMode, setMode, pickMode, showOverlay, pushOverlay, setTopics, setPorts, pointerdown, pointer, wheel, hover,   // ROAD-B B1: pushOverlay is the stacking door beside the replacing one   // U45: setMode is the large HUD's mode panel, whose cycle is not nextMode's   // c2/S10: `pointer` is the RELEASE route (down rides pointerdown, move rides hover)
     openTalkWindow,   // B7: TalkToStaticNPC's window push routes here (worldModes' click + the guild popup's TALK)
     /** TK-v: the two halves of the tone the ENGINE asks the host for -
      *  which tone button is selected, and the tier computation for a
@@ -1490,6 +1578,13 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
      *  identity guard is the caller's: pass the window that is
      *  closing, and a slot already holding something else is left
      *  alone. Runs the same drain `frame` does, callback included. */
+    /** DUPE-LOAD (AUDIT): A LOAD'S DRAIN BENEATH `keep` (the death screen the load lands under) - every other window in
+     *  the stack disposed and gone, and NONE of their close callbacks run (the suspended ones are theirs): the game they
+     *  would answer is the one the load replaces. `keep` and its own callback stand, for closeDeathScreen. */
+    discardBeneath(keep) {
+      windows.keepOnly(keep, (w) => w.dispose?.());
+      _suspendedCallbacks.length = 0;
+    },
     closeOverlay(win = null) {
       // The IDENTITY guard is this door's; the EMPTY-SLOT guard is
       // dropOverlay's, and asking twice would leave that one

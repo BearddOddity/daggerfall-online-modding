@@ -29,6 +29,7 @@ import { createWeapon } from '../src/combat/enemyEquipment.js';
 import { ENEMY_BASICS, enemyDisplayName } from '../src/characters/enemyBasics.js';
 import { makeEnemyEntity } from '../src/characters/enemyEntity.js';
 import { calculateAttackDamage } from '../src/combat/formulas.js';
+import { ARENA_PUPPET_OWNER } from '../src/net/arenaLaw.js';   // ARENA4: the kill door's puppet test, the real owner word (no puppet here)
 import { playerEntity } from '../src/characters/playerEntity.js';
 import { registerPresenter, _resetNotifyForTests } from '../src/systems/notify.js';
 import { mobileEntityName, liveEntityName } from '../src/systems/worldTooltips.js';
@@ -59,7 +60,7 @@ test('LOOT7-CHECK CORPSE-FIND: a body keeps its unique find - the Thunderlock an
     LR.rollCorpseLoot(body, { level: 12 }, { rolls: lcg(seed), luck: 50 });
     const src = LR.corpseSource({ level: 12 }, 12, 7);
     const list = [createWeapon(113, 1)];
-    LR.rollLootRarity(list, { ...src, tier: src.tier + LR.CHAMPION_SOURCE.tier, qualityMult: LR.CHAMPION_SOURCE.quality }, { rolls: lcg(seed), luck: 50 });
+    LR.rollLootRarity(list, LR.championSource(src), { rolls: lcg(seed), luck: 50 });   // CHAMP-LOOT: the champion's own source, one home
     assert.deepEqual(body.items.map(said), list.map(said), `seed ${seed}: the body is the list`);
     if (body.items.some(isThunderlock)) {
       finds++;
@@ -122,8 +123,8 @@ test('HOVER-PLAIN (CHAMP-HOVER retired): a hostile champion, elite or revenant s
     const esc = done.replace(/[.?]/g, (c) => `\\${c}`);
     assert.match(read(f), new RegExp(String.raw`mobileEntityName\(liveEntityName\(${v}, enemyDisplayName\(${v}\.mobileType\)\), \{ hostile: !!${v}\.ai\?\.isHostile${esc} \}\)`), f);
   }
-  assert.match(read('src/scenes/exteriorFoes.js'), /return t \? \{ title: f\.yielded \|\| f\._pupYield \? `\$\{t\} - beaten` : t \} : null;/, 'the street\'s cue');
-  assert.match(read('src/scenes/dungeonContext.js'), /return t \? \{ title: f\.yielded \? `\$\{t\} - beaten` : t \} : null;/, 'the dungeon\'s cue');
+  assert.match(read('src/scenes/exteriorFoes.js'), /return t \? \{ title: f\.yielded \|\| f\._pupYield \? `\$\{t\} - beaten` : t, subs: questFoeSubs\(f\) \} : null;/, 'the street\'s cue (QUEST-FOE-LINE: and a quest foe\'s line beside it)');
+  assert.match(read('src/scenes/dungeonContext.js'), /return t \? \{ title: f\.yielded \? `\$\{t\} - beaten` : t, subs: questFoeSubs\(f\) \} : null;/, 'the dungeon\'s cue (QUEST-FOE-LINE: and a quest foe\'s line beside it)');
   // WHY THE LINE BELOW EXISTS TOO: the plaque is the enhanced skin's - on the classic skin it never draws a name
   assert.match(strip(read('src/ui/worldPlaque.js')), /_gateOn = isEnhanced\(\) && !isTouchDevice\(\);/, 'the plaque: the enhanced skin\'s');
   assert.match(strip(read('src/ui/worldPlaque.js')), /export const classicPlaqueOn = \(\) => !isEnhanced\(\) && !isTouchDevice\(\) && quickLootOn\(\);/, 'the classic face: quick loot\'s piles alone');
@@ -213,12 +214,13 @@ const foeRec = (mobileType = 0, entity = {}) => ({
 function killDoor() {
   const hud = [];
   const state = {
-    foes: [], _authority: true, opts: {}, lastPlayerFeet: [0, 0, 0], _ecvT: 0, foeDeps: null, playerEntity: { isPlayer: true, items: [] }, audio: {},
+    foes: [], _authority: true, ARENA_PUPPET_OWNER, feudWeakBlow: () => false, blowClassOf: () => null, opts: {},   // AUDIT FEUD: the hit door asks a blow's weakness (none here)
+    lastPlayerFeet: [0, 0, 0], _ecvT: 0, foeDeps: null, playerEntity: { isPlayer: true, items: [] }, audio: {},
     renownFoeStruck: () => {}, renownFoeDied: () => {}, reportPlayerKill: () => {}, takeWholeBlow: () => false, markFoeStruck: () => {}, markConcealedHit: () => {},
     handleAttackFromPlayer: () => {}, damageShieldPool: (e, n) => n, noteFighter: () => {}, PARTY_ME: 'me', _sharedFoe: () => false, partyFoeLoses: (f, n) => n, fightN: () => 1,
     peerSoulTrapOf: () => null, attemptSoulTrap: () => ({ allowDeath: true }), isAzurasStarEquipped: () => false, fillEmptyTrap: () => false,
     hudText: { add: (l) => hud.push(l) }, SOUL_TRAP_TEXT: {}, setEnemyAlert: () => {}, sayEnemyDied,
-    spawnCorpse: () => {}, playRareDrop: () => {}, stampWonWeapons: () => {}, raiseEnemyDeath: () => {}, liveStat: () => 50,
+    spawnCorpse: () => {}, playRareDrop: () => {}, rollCorpseKit: () => [], stampWonWeapons: () => {}, raiseEnemyDeath: () => {}, liveStat: () => 50,
   };
   return { hud, ...mount(`${fnSrc('damageFoe')} return { damageFoe };`, state) };
 }
@@ -228,7 +230,8 @@ function joiner(self) {
   const foes = [foeRec(0), foeRec(7, { champion: 'vampiric' })];
   const state = {
     foes, _layoutFoes: 2, _retyping: new Set(), _authority: false, validFoeRecord, opts: { selfId: () => self },
-    renownFoeDied: () => {}, reportPlayerKill: () => {}, addCorpseFood: () => {}, stampWonWeapons: () => {}, liveStat: () => 50,
+    renownFoeDied: () => {}, reportPlayerKill: () => {}, rollCorpseKit: () => [], addCorpseFood: () => {}, stampWonWeapons: () => {}, capFoeLoot: () => [], liveStat: () => 50,
+    dropFoeCard: () => null,   // PIN MOVED (AUDIT CARDS-6 A3): the copy's own card, drawn at the copy door - not this seam
     playerEntity: { isPlayer: true, items: [] }, setFoeDead: (f, d) => { f.dead = d; }, retypeFoe: async () => false,
     sayEnemyDied, hudText: { add: (l) => hud.push(l) },
   };

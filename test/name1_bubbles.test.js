@@ -203,8 +203,8 @@ test('NAME1: the sight test is the ENGINE\'S OWN and says what it cannot see - t
   assert.match(src, /TERRAIN is not one of them/, 'the limit is written down where the law is');
   assert.match(src, /pickActivatableHit|pickFoeAlong/, 'and it cites the two picks that already ask this question');
   const w = rd('src/scenes/world.js');
-  assert.match(w, /const blocked = \(head, id\) => nameSight\.blocked\(player\.collider, eye, id, head\);/,
-    'the host casts against player.collider - the LIVE one worldModes re-points at every door - through the session\'s own cache (AUDIT NAME1 F2/F5)');
+  assert.match(w, /const blocked = \(head, id\) => glassCuts\(projectToScreen\(head, 1, 1, proj, view\)\) \|\| nameSight\.blocked\(player\.collider, eye, id, head\);/,
+    'the host casts against player.collider - the LIVE one worldModes re-points at every door - through the session\'s own cache (AUDIT NAME1 F2/F5)');   // PIN MOVED (GLASS-CLEAR, 2026-10-11): a head the glass's focus cut from its view is nameless first
   assert.match(rd('src/scenes/worldModes.js'), /player\.collider = ctx\.collider;/, 'and worldModes really does re-point it (the interior and the dungeon)');
 });
 
@@ -244,8 +244,9 @@ test('NAME1: the enhanced face - a DOM layer in PIXEL_STACK on bone, one element
   assert.equal(layer.root.style.display, '');
   const bran = layer.tagFor('bran');
   assert.equal(bran.name.textContent, 'BRAN');
-  assert.equal(bran.node.style.left, '100px');
-  assert.equal(bran.node.style.top, `${300 - NAME_GAP_PX}px`, 'the element sits the gap ABOVE the head point and grows upward from there');
+  // PERF-NAMES1: the anchor rides the transform - the same whole pixels `left`/`top` held, then the sheet's own lift
+  assert.equal(bran.node.style.transform, `translate(100px, ${300 - NAME_GAP_PX}px) translate(-50%, -100%)`, 'the element sits the gap ABOVE the head point and grows upward from there');
+  assert.equal(bran.node.style.left, undefined, 'PERF-NAMES1: and no box is moved - a move lays nothing out');
   assert.equal(bran.node.style.fontSize, `${NAME_BASE_PX.toFixed(1)}px`, 'the reference frame: the base size, exactly');
   // AUDIT NAME1 F3: half the scale is half the face until the legible floor takes over - 8 px is not a word.
   assert.equal(layer.tagFor('zed').node.style.fontSize, `${NAME_PX_MIN.toFixed(1)}px`, 'half the scale, held at the floor');
@@ -263,7 +264,7 @@ test('NAME1: the enhanced face - a DOM layer in PIXEL_STACK on bone, one element
   layer.render({ points: pointsOf([{ id: 'bran', x: 140, y: 300, scale: 1 }, { id: 'zed', x: 400, y: 260, scale: 0.5 }]), colorOf });
   assert.equal(doc.built, 0, 'a frame that moves a name builds nothing');
   assert.equal(doc.structure, 0, 'and re-parents nothing');
-  assert.equal(bran.node.style.left, '140px');
+  assert.equal(bran.node.style.transform, `translate(140px, ${300 - NAME_GAP_PX}px) translate(-50%, -100%)`);
   assert.ok(doc.writes > 0 && doc.writes <= 2, 'one write for the one thing that moved');
   doc.zero();
   layer.render({ points: pointsOf([{ id: 'bran', x: 140, y: 300, scale: 1 }, { id: 'zed', x: 400, y: 260, scale: 0.5 }]), colorOf });
@@ -421,10 +422,12 @@ test('NAME1 + BUBBLE1: the wiring in scenes/world.js - the layer is made ONCE be
   assert.match(bare, /if \(typeof document !== 'undefined'\) chatStart\(\);/, '...the same gate the chat takes');
   assert.equal((w.match(/createNameLayer\(/g) ?? []).length, 1, 'called in exactly one place - never per frame');
   assert.match(bare, /nameSight = createSightCache\(\);/, 'AUDIT NAME1 F2/F5: and the sight cache is the session\'s, made once beside it');
-  assert.equal((w.match(/createSightCache\(/g) ?? []).length, 3, 'never per frame either - a cache rebuilt every frame is no cache: the names\', (AUDIT NAV1) the ships\' tags\' and (SHIPMATES) the crew\'s bars\', each made once');
+  // PIN MOVED (AUDIT CAPTAIN'S SEA S6): and the spyglass's own, made once with the host beside the tags'
+  assert.match(w, /\n  const glassSight = createSightCache\(\);\n/, 'the glass\'s, the session\'s');
+  assert.equal((w.match(/createSightCache\(/g) ?? []).length, 4, 'never per frame either - a cache rebuilt every frame is no cache: the names\', (AUDIT NAV1) the ships\' tags\', (SHIPMATES) the crew\'s bars\' and (AUDIT CAPTAIN\'S SEA S6) the glass\'s, each made once');
   assert.match(bare, /\n  const shipSight = createSightCache\(\);/, 'the ships\' tags\' own made with the host, at its top level - offline too, where the names\' is never made');
   assert.match(bare, /\n  const crewSight = createSightCache\(\);/, 'SHIPMATES: the crew\'s bars\' own, the same');
-  assert.match(bare, /const blocked = \(head, id\) => nameSight\.blocked\(player\.collider, eye, id, head\);/);
+  assert.match(bare, /const blocked = \(head, id\) => glassCuts\(projectToScreen\(head, 1, 1, proj, view\)\) \|\| nameSight\.blocked\(player\.collider, eye, id, head\);/);   // PIN MOVED (GLASS-CLEAR, 2026-10-11): a head the glass's focus cut from its view is nameless first
   // AUDIT NAME1 F1/F14: ONE call, into the pass the test below drives end to end.
   assert.match(bare, /remotePlayers\.nameFrame\(\{/, 'the whole pass in one call');
   assert.match(bare, /w: nameLayer \? canvas\.clientWidth : canvas\.width,/, 'CSS pixels for a style attribute, the buffer\'s for the bitmap pass');
@@ -784,7 +787,7 @@ test('AUDIT NAME1 F13: the classic face\'s gap takes the HOST scale, like the gl
   const doc = fakeDocument();
   const layer = createNameLayer({ doc, now: () => 1000 });
   layer.render({ points: [p], viewport: H });
-  assert.equal(layer.tagFor('x').node.style.top, `${Math.round(p.y - NAME_GAP_PX)}px`, 'the two faces leave the same clearance in their own pixels');
+  assert.equal(/translate\(-?\d+px, (-?\d+)px\)/.exec(layer.tagFor('x').node.style.transform)?.[1], `${Math.round(p.y - NAME_GAP_PX)}`, 'the two faces leave the same clearance in their own pixels');   // PERF-NAMES1: the anchor's y, in the transform
   // ...and the gap is NOT the depth term: a far peer gets the same screen clearance as a near one
   const far = stand([{ id: 'x', at: [0, 0, -40], height: 1.8 }]);
   const [q] = far.namePoints(PROJ, VIEW, W, H, EYE, (v) => [v.x, v.y, v.z]);

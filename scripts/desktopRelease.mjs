@@ -42,28 +42,39 @@
 // tree, and test/rel4_release.test.js fails any patch-notes file
 // committed to it (PATCH_NOTES_PATH_RE).
 //
+//   node scripts/desktopRelease.mjs alias <dir>           each download copied under its name from before BR5
 //   node scripts/desktopRelease.mjs check <dir>           exit 1 naming any file missing
 //   node scripts/desktopRelease.mjs notes <tag>           the release body, markdown, to stdout (gh api: GH_TOKEN)
+//   node scripts/desktopRelease.mjs renotes <tag> <body>  a published release's body, its notes read again (REL7)
 //   node scripts/desktopRelease.mjs latest <tag> [<cur>]  "true" when <tag> should be marked latest
-import { readdirSync } from 'node:fs';
+import { copyFileSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { isMain } from '../tools/lib/isMain.mjs';
 
 const require = createRequire(import.meta.url);
-const { DOWNLOAD_FILES, RELEASES_URL } = require('../app/lib/downloads.cjs');
+const { DOWNLOAD_FILES, LEGACY_DOWNLOAD_FILES, RELEASES_URL } = require('../app/lib/downloads.cjs');
 const { parseReleaseTag } = require('../app/lib/updateCheck.cjs');
+
+/** BR5: each download and the name a copy from before the rename asks for
+ *  it by (app/lib/downloads.cjs LEGACY_DOWNLOAD_FILES) - [from, to] pairs,
+ *  copied in the release's folder before the set is checked. */
+export const ALIAS_COPIES = Object.freeze(Object.keys(DOWNLOAD_FILES).map((k) => Object.freeze([DOWNLOAD_FILES[k], LEGACY_DOWNLOAD_FILES[k]])));
 
 /** Every file a published release must carry: the four downloads, the
  *  three manifests electron-updater reads (one per OS), and the two
  *  blockmaps its differential download diffs against. The AppImage's
- *  blockmap is embedded in the AppImage; the portable exe has none. */
+ *  blockmap is embedded in the AppImage; the portable exe has none. BR5:
+ *  and the four downloads again under their names from before the rename
+ *  (ALIAS_COPIES), which no manifest names - an updater reads the new. */
 export const EXPECTED_RELEASE_FILES = Object.freeze([
   DOWNLOAD_FILES.winSetup, `${DOWNLOAD_FILES.winSetup}.blockmap`,
   DOWNLOAD_FILES.winPortable,
   DOWNLOAD_FILES.mac, `${DOWNLOAD_FILES.mac}.blockmap`,
   DOWNLOAD_FILES.linux,
   'latest.yml', 'latest-mac.yml', 'latest-linux.yml',
+  ...ALIAS_COPIES.map(([, to]) => to),
 ]);
 
 /** The expected files a list of names does not have. */
@@ -108,6 +119,27 @@ export function composeReleaseNotes(notes) {
   return `${parts.length ? parts.join('\n\n') : NO_NOTES_TEXT}\n`;
 }
 
+/** GitHub's generated list of merged changes, which it appends under the
+ *  notes when the release is staged. The launcher cuts its news at the
+ *  same place (app/lib/launcherState.cjs GENERATED_RE): a player reads
+ *  the notes, never the list. */
+export const GENERATED_LIST_RE = /^(##\s*What['’]s Changed\b|\*\*Full Changelog\*\*|##\s*New Contributors\b)/m;
+
+/**
+ * REL7: a published release's body with its notes written again - `notes`
+ * (composeReleaseNotes) above GitHub's generated list, which stays as it
+ * was. A body with no list is replaced whole.
+ *
+ * @param {string|null|undefined} current
+ * @param {string} notes
+ * @returns {string}
+ */
+export function renotedBody(current, notes) {
+  const text = String(current ?? '').replace(/\r\n/g, '\n');
+  const cut = text.search(GENERATED_LIST_RE);
+  return cut < 0 ? notes : `${notes}\n\n${text.slice(cut)}`;
+}
+
 /**
  * Should `tag` become the repository's latest release? Yes when nothing
  * is latest yet, and when it is at least the current latest by REL3's
@@ -132,10 +164,10 @@ export function shouldMarkLatest(tag, currentLatest) {
 
 const git = (args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }).trim();
 
-/** The release tag before `tag` in this checkout's history, or null. */
-export function previousReleaseTag(tag, run = git) {
+/** The release tag before `tag` in the history of `at` (HEAD, or REL7 the tag itself), or null. */
+export function previousReleaseTag(tag, run = git, at = 'HEAD') {
   try {
-    return run(['describe', '--tags', '--abbrev=0', '--match', 'app-v*', '--exclude', tag, 'HEAD']) || null;
+    return run(['describe', '--tags', '--abbrev=0', '--match', 'app-v*', '--exclude', tag, at]) || null;
   } catch {
     return null;
   }
@@ -143,14 +175,15 @@ export function previousReleaseTag(tag, run = git) {
 
 /**
  * The pull requests merged from `from` (the previous release's tag) to
- * HEAD, newest first, by number: every commit on the first-parent line
- * that is GitHub's "Merge pull request #N" or a squash's "... (#N)",
- * once. A commit pushed straight to the branch names none.
+ * `to` (HEAD, or REL7 the release's own tag), newest first, by number:
+ * every commit on the first-parent line that is GitHub's "Merge pull
+ * request #N" or a squash's "... (#N)", once. A commit pushed straight to
+ * the branch names none.
  */
-export function pullRequestsSince(from, run = git) {
+export function pullRequestsSince(from, run = git, to = 'HEAD') {
   if (!from) return [];
   const numbers = new Set();
-  for (const subject of run(['log', '--first-parent', '--format=%s', `${from}..HEAD`]).split('\n')) {
+  for (const subject of run(['log', '--first-parent', '--format=%s', `${from}..${to}`]).split('\n')) {
     const m = /^Merge pull request #(\d+)\b/.exec(subject) ?? /\(#(\d+)\)\s*$/.exec(subject);
     if (m) numbers.add(Number(m[1]));
   }
@@ -259,9 +292,9 @@ const repository = () => process.env.GITHUB_REPOSITORY || new URL(RELEASES_URL).
  * With no previous release there is nothing to read since, and the body
  * says "fixes and improvements" rather than every note ever written.
  */
-export function pullRequestNotesSince(from, { run = git, api = githubApi, repo = repository(), log = console.error } = {}) {
+export function pullRequestNotesSince(from, { run = git, api = githubApi, repo = repository(), log = console.error, to = 'HEAD' } = {}) {
   const notes = [];
-  for (const pr of pullRequestsSince(from, run)) {
+  for (const pr of pullRequestsSince(from, run, to)) {
     const got = api(`repos/${repo}/pulls/${pr}`);
     if (!got?.merged_at) {
       log(`#${pr} is no merged pull request in ${repo} - no notes from it`);
@@ -279,6 +312,17 @@ export function pullRequestNotesSince(from, { run = git, api = githubApi, repo =
 
 function main(argv) {
   const [cmd, a, b] = argv;
+  if (cmd === 'alias') {
+    const have = new Set(readdirSync(a));
+    const absent = ALIAS_COPIES.filter(([from]) => !have.has(from)).map(([from]) => from);
+    if (absent.length) {
+      console.error(`nothing to copy under its old name: ${absent.join(', ')} - nothing is published`);
+      return 1;
+    }
+    for (const [from, to] of ALIAS_COPIES) copyFileSync(join(a, from), join(a, to));
+    console.log(`${ALIAS_COPIES.length} downloads copied under their names from before BR5`);
+    return 0;
+  }
   if (cmd === 'check') {
     const missing = missingReleaseFiles(readdirSync(a));
     if (missing.length) {
@@ -299,11 +343,26 @@ function main(argv) {
     process.stdout.write(composeReleaseNotes(notes));
     return 0;
   }
+  // REL7: the pull requests between the previous release and <tag> ITSELF,
+  // whatever is checked out - release-notes.yml runs this from main, and a
+  // release's own commit may predate this command.
+  if (cmd === 'renotes') {
+    let notes;
+    try {
+      try { git(['rev-parse', '--verify', '--quiet', `refs/tags/${a}^{commit}`]); } catch { throw new Error(`no tag ${a} in this checkout`); }
+      notes = pullRequestNotesSince(previousReleaseTag(a, git, a), { to: a });
+    } catch (e) {
+      console.error(`the notes could not be read - the release is left as it is: ${String(e?.stderr || e?.message || e).trim()}`);
+      return 1;
+    }
+    process.stdout.write(renotedBody(readFileSync(b, 'utf8'), composeReleaseNotes(notes)));
+    return 0;
+  }
   if (cmd === 'latest') {
     console.log(String(shouldMarkLatest(a, b)));
     return 0;
   }
-  console.error('usage: desktopRelease.mjs check <dir> | notes <tag> | latest <tag> [<current>]');
+  console.error('usage: desktopRelease.mjs alias <dir> | check <dir> | notes <tag> | renotes <tag> <body-file> | latest <tag> [<current>]');
   return 2;
 }
 

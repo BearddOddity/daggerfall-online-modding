@@ -662,12 +662,13 @@ test('WB11 the plumbing, read: the world host sends a blow on one of his host as
   assert.match(m, /onHostHit: \(hit\) => !!host\.onHostHit\?\.\(hit\),/);
   assert.match(d, /for \(const hb of gateHostBodies\(\)\) \{ hb\._backFacing = false; live\.push\(hb\); \}/, 'the swing meets them');
   assert.match(d, /if \(foe\.host != null\) \{ hitEnemy = true; swingOnHost\(foe, damage, lookDir\); continue; \}/);
-  assert.match(d, /const hb = gateHostBodies\(\)\.find\(\(q\) => missileHitsCapsule\(m\.pos, q\.ai\.feet, q\.ai\.height, q\.ai\.radius\)\);/, 'the shaft');
+  assert.match(d, /const hb = gateHostBodies\(\)\.find\(\(q\) => !struckBy\(q\) && missileHitsCapsule\(m\.pos, q\.ai\.feet, q\.ai\.height, q\.ai\.radius\)\);/, 'the shaft');   // PIN MOVED (TECH1's follow-up, bible/05-Combat/Weapon-Techniques.md): a body a piercing shaft has struck is passed, so one overlapping it under the shaft is met
   assert.match(d, /castAtHost: opts\.gateHost \? \(sp, i\) => spellOnHost\(sp, i\) : null,/, 'the spell');
-  assert.match(d, /const landOnHost = \(hb, damage, r\) => !!opts\.onHostHit\?\.\(\{ i: hb\.host, d: damage, r \}\);/);
+  assert.match(d, /const landOnHost = \(hb, damage, r\) => \(sdRemnant \? sdRemnant\.echoHit\(\{ i: hb\.host, d: damage, r \}\) : !!opts\.onHostHit\?\.\(\{ i: hb\.host, d: damage, r \}\)\);/);   // PIN MOVED (SD8c): an Echo's in the Hour
   assert.match(g, /const crystals = \[\.\.\.crystalMarksFor\(sp\), \.\.\.hostMarksFor\(sp\)\];/);
   assert.match(g, /if \(mark\?\.host != null\) \{ try \{ return !!castAtHost\?\.\(sp, mark\.host\); \} catch \{ return false; \} \}/);
-  assert.match(r, /else if \(m\.k === 'ahit'\) this\._gateFan\(applyHostHit\(f, a\.sub, m\.i, m\.d, m\.r, a\.pose && !a\.pose\.dd \? this\._courtOf\(a\.pose\) : null, now, m\.q\)\);/, 'the relay judges it (AUDIT WB11 W3: by its blow\'s sequence)');
+  assert.match(r, /const at = a\.pose && !a\.pose\.dd && !bodyOut\(f\.players\[a\.sub\], line\.enforce\) \? this\._courtOf\(a\.pose\) : null;/, 'PIN MOVED (INT11): from where its pose stands, alive - by the pose\'s word and the count\'s');
+  assert.match(r, /else if \(m\.k === 'ahit'\) this\._gateFan\(applyHostHit\(f, a\.sub, m\.i, m\.d, m\.r, at, now, m\.q\)\);/, 'the relay judges it (AUDIT WB11 W3: by its blow\'s sequence)');
 });
 
 test('WB11 a whole Legion-Lord fight, stepped: Harriers in the first court, crumbled at the turn; Ward-Bearers as he lands in the second; Sappers there once its turn is done; Ward-Bearers again in the third - every word of the host the wire takes, and never more standing than the wire can name (mutants: a kind out of its phase)', () => {

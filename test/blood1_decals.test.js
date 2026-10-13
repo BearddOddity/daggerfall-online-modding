@@ -859,7 +859,10 @@ test('BLOOD1b: EVERY splash site hands its blow over, so the rate ladder actuall
   // WB11c: the eighteenth - a swing of mine that met one of the Legion-Lord's host (dungeonContext.js swingOnHost), its own blood.
   // REVENANT-FATE: the nineteenth and twentieth - an execution's burst (exteriorFoes.js executionBurst, dungeonContext.js
   // dungeonFateFrame), a blow of mine and the heaviest there is.
-  assert.equal(sites.length, 20, `twenty splash sites across six files - PEERFX1/PEERFX2's two are the sixteenth and seventeenth, WB11c's swing on his host the eighteenth, REVENANT-FATE's two executions the last (found ${sites.length})`);
+  // ARENA4: the twenty-first - a swing of mine that met my opponent on a relay's sand (dungeonContext.js swingOnRival), their blood.
+  // LW7: the twenty-second - a traveller of the living world's roads struck down (world.js livingStrikeRoad), the civilian's own rung, LETHAL_HIT.
+  // WILD1: the twenty-third - a strike of mine that landed on a fair player of the open zone (world.js wildResultIn), their blood.
+  assert.equal(sites.length, 23, `twenty-three splash sites across six files - PEERFX1/PEERFX2's two are the sixteenth and seventeenth, WB11c's swing on his host the eighteenth, REVENANT-FATE's two executions the nineteenth and twentieth, LW7's road the twenty-second, WILD1's open zone the last (found ${sites.length})`);
   for (const [f, args] of sites) {
     assert.ok(/bloodHit\(|LETHAL_HIT/.test(args),
       `${f}: a splash site that hands over no blow - the ladder would read it as a graze`);
@@ -1145,7 +1148,8 @@ test('BLOOD1b: a site that knows nothing about the swing says so, and gets the o
   // and the shaft that all three share - and WB4b's fifth, the swing on
   // the Burning Court's boss (his shaft is the shared shaft's) - and WB11c's sixth, the swing on one of his host
   // REVENANT-FATE: and the two executions - the player's blow on a beaten revenant, in the open world and underground
-  assert.equal(claimed, 8, 'exactly the eight sites that ARE the player’s own blow');
+  // ARENA4: and the ninth, the swing on my opponent on a relay's sand (dungeonContext.js swingOnRival)
+  assert.equal(claimed, 9, 'exactly the nine sites that ARE the player’s own blow');
 });
 
 test('BLOOD1b: the gib law - ten chunks thrown UP, falling at three times gravity, landing for good', () => {
@@ -1477,7 +1481,7 @@ test('BLOOD1b by source: a moved batch moves its BOUNDS, and the corner table ha
   assert.match(fn, /const bounds = \(batch\.bounds && batch\.bounds\.length === 4\) \? batch\.bounds : \(batch\.bounds = new Float32Array\(4\)\);/,
     'minted once, on the first move only, and written in place after');
   // ...and it writes rather than reallocating
-  assert.match(fn, /gl\.bufferSubData\(gl\.ARRAY_BUFFER, 0, verts, 0, count \* 20\);/);
+  assert.match(fn, /gl\.bufferSubData\(gl\.ARRAY_BUFFER, batch\._arena \? batch\._q0 \* BB_QUAD_VERT_BYTES : 0, verts, 0, count \* 20\);/);   // PIN MOVED (PERF-ARENA): a still batch's corners are its arena's range - a gib's (dynamic) its own buffer's, from 0, as before
   assert.doesNotMatch(fn, /createBuffer|createVertexArray|bufferData\(/, 'nothing is rebuilt on a move');
   // ...and it cannot write past the buffer it was given
   assert.match(fn, /Math\.min\(centers\.length, batch\._quads \?\? 0\)/, 'bounded by the quads the batch actually holds');
@@ -1723,7 +1727,7 @@ test('BLOOD1b by source: the three melee sites hand the swing over, and the shaf
       if (/swing:/.test(argsAt(s, m.index + m[0].length - 1) ?? '')) swung++;
     }
   }
-  assert.equal(swung, 5, 'exactly the five sites that ARE a player’s melee swing (WB4b: the fourth, on the Burning Court’s boss; WB11c: the fifth, on one of his host)');
+  assert.equal(swung, 6, 'exactly the six sites that ARE a player’s melee swing (WB4b: the fourth, on the Burning Court’s boss; WB11c: the fifth, on one of his host; ARENA4: the sixth, on my opponent on a relay’s sand)');
 });
 
 test('BLOOD1 AUDIT: dispose is TERMINAL, the art may arrive after the throw, and an empty list is not a full one', () => {
@@ -2360,7 +2364,7 @@ test('BLOOD1 AUDIT 3: a mark on streamed terrain lies on the DRAWN ground, and t
   assert.match(world, /const collider = new Collider\(heightAt, surfaceAt\);/, 'the world host hands both');
   assert.match(world, /return surfaceHeightAt\(p\.samples, lx, lz, p\._stride \?\? 1\) \+ t\[1\];/, 'the drawn ground is the grass placer’s own sampler, on the pixel the point is in');
   // the ray walk: one translation array a bucket, and no boxed origin
-  assert.equal((world.match(/\(\(o\) => \(\) => state\.pixelTranslation\(px, py, o\)\)\(\[0, 0, 0\]\)/g) ?? []).length, 6, 'every bucket translation reuses its own array');   // TACT1: the sixth is the pixel's cover, in the pixel's own frame   // WOD2: the fourth is World of Daggerfall's models, whose sites open the pixel's bucket (a location's pixel never has one); WOD4: the fifth is the camp at Privateer's Hold's
+  assert.equal((world.match(/\(\(o\) => \(\) => state\.pixelTranslation\(px, py, o\)\)\(\[0, 0, 0\]\)/g) ?? []).length, 7, 'every bucket translation reuses its own array');   // GOTHWAY-BOARDS: the seventh is a Gothway Garden board's mesh (one a board), the patch's own   // TACT1: the sixth is the pixel's cover, in the pixel's own frame   // WOD2: the fourth is World of Daggerfall's models, whose sites open the pixel's bucket (a location's pixel never has one); WOD4: the fifth is the camp at Privateer's Hold's
   assert.doesNotMatch(world, /\(\) => state\.pixelTranslation\(px, py\)[,)]/, 'no bucket allocates a translation per call');
   const col = read('src/player/collider.js');
   const box = col.slice(col.indexOf('export function segmentHitsBox('), col.indexOf('\n}', col.indexOf('export function segmentHitsBox(')));

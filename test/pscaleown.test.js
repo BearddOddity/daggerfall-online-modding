@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import './modsOff.js';
 import { PARTY_ME, noteFighter, foeFighters, partyFoeLoses, partyFoeHeals, partyFoeHits, _resetPartyScaleForTests } from '../src/systems/partyScale.js';
+import { partyOnlyQuestShare } from '../src/scenes/questFoeHost.js';   // QUEST-OWNER: the dungeon's quest seam, narrowed to the party (ownShare)
 
 const D = readFileSync(new URL('../src/scenes/dungeonContext.js', import.meta.url), 'utf8');
 const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
@@ -28,7 +29,7 @@ function helpers() {
 const tagOf = (f) => (f.questBehaviour && !f.questBehaviour.private ? { q: 'M0B00Y16', s: '_vampire_' } : null);
 function side(authority, foes, layout = 1) {
   const h = helpers();
-  const scope = { foes, _layoutFoes: layout, _authority: authority, opts: { questShare: () => ({ tagOf }) }, playerEntity: { maxHealth: 100 }, partyFoeLoses, partyFoeHits, partyFoeHeals, foeFighters, performance };
+  const scope = { foes, _layoutFoes: layout, _authority: authority, partyOnlyQuestShare, opts: { questShare: () => ({ tagOf }) }, playerEntity: { maxHealth: 100 }, partyFoeLoses, partyFoeHits, partyFoeHeals, foeFighters, performance };
   return mount(h.src, scope, `return { _sharedFoe, _runsFoe, fightN, _weighHit, healFoe, door: (foe, healthDamage, bypassShield = false, _whole = false) => { ${h.door} } };`);
 }
 const mk = (over = {}) => ({ entity: { health: 100, maxHealth: 200 }, ...over });
@@ -51,7 +52,8 @@ test('PSCALE-OWN: my shared quest\'s foe underground is as tough as the party st
   }
   // the record: the own lane's (roomRecord), `n` because it is shared - what a party member's puppet reads
   assert.match(strip(D), /if \(!f\.dead && _sharedFoe\(f\)\) \{ const n = fightN\(f\); if \(n > 1\) r\.n = n; \}/);
-  assert.match(strip(D), /const r = roomRecord\(f, f\._ownSeq, full \|\| !!heirOf\);/, 'the own lane\'s frame is that record');
+  // PIN MOVED (AUDIT MW-NPC II K3): the own lane's records carry the owner's look seed (`true`, roomRecord's `seeded`)
+  assert.match(strip(D), /const r = roomRecord\(f, f\._ownSeq, full \|\| !!heirOf, true\);/, 'the own lane\'s frame is that record');
 });
 
 test('PSCALE-OWN: a party member\'s quest foe stood here reads its owner\'s count - its blow on me weighed by it, a heal left to its owner, never counted on my screen (seat or none)', () => {

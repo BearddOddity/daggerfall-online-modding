@@ -31,8 +31,8 @@
  {
   "name": "GRASS-PATH1-every-tile-is-marked-whether-the-painter-wrote-it-or-not",
   "file": "src/world/roadPainter.js",
-  "old": "      const ctx = { tilemap, i, x, y, ground, rect: locationRect, paths };",
-  "new": "      const ctx = { tilemap, i, x, y, ground, rect: locationRect, paths };\n      if (paths) paths[i] = 1;",
+  "old": "      ctx.i = i; ctx.x = x; ctx.y = y; ctx.ground = ground;",
+  "new": "      ctx.i = i; ctx.x = x; ctx.y = y; ctx.ground = ground;\n      if (paths) paths[i] = 1;",
   "tests": [
    "test/grasspath.test.js"
   ]
@@ -58,7 +58,7 @@
  {
   "name": "GRASS-WET1-a-blade-stands-in-the-water-again",
   "file": "src/scenes/world.js",
-  "old": "        if (waterCorners(byte, WATER_DRAW_MASK_TABLE)) {\n          const puddle = PUDDLE_RECORDS.includes(rec) ? groundPuddles.get(p.groundArchive)?.[rec] : null;\n          if (!puddle || puddleWetAt(puddle, byte, lx / 6.4 - tx, lz / 6.4 - tz)) return null;\n        }",
+  "old": "        if (waterCorners(byte, WATER_DRAW_MASK_TABLE)) {\n          const puddle = PUDDLE_RECORDS.includes(rec) ? groundPuddles.get(ga)?.[rec] : null;\n          if (!puddle || puddleWetAt(puddle, byte, lx / 6.4 - tx, lz / 6.4 - tz)) return null;\n        }",
   "new": "",
   "tests": [
    "test/grasspath.test.js"
@@ -96,8 +96,8 @@
  {
   "name": "WATER-DRAW1-the-pass-takes-the-feets-table-back",
   "file": "src/render/waterSurface.js",
-  "old": "export function buildWaterIndices(bytes, stride = 1, table = WATER_DRAW_MASK_TABLE, tileDim = 128) {",
-  "new": "export function buildWaterIndices(bytes, stride = 1, table = buildWaterMaskTable(), tileDim = 128) {",
+  "old": "export function buildWaterIndices(bytes, stride = 1, table = WATER_DRAW_MASK_TABLE, tileDim = 128, width = tileDim, height = tileDim) {",
+  "new": "export function buildWaterIndices(bytes, stride = 1, table = buildWaterMaskTable(), tileDim = 128, width = tileDim, height = tileDim) {",
   "tests": [
    "test/grasspath.test.js"
   ]

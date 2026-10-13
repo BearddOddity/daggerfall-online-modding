@@ -71,26 +71,32 @@
     "new": "(s) => s.id === specId)",
     "tests": [
       "test/audit29_laws.test.js",
-      "test/audit29_service.test.js"
-    ]
+      "test/audit29_service.test.js",
+      "test/craft3_five.test.js"
+    ],
+    "note": "CRAFT3's re-judge: survived on main too - nothing pinned that a choice still `later` (the Trophy Hunter, the Couturier, the Saddler) is refused; pinned in craft3_five's law."
   },
   {
-    "name": "AUDIT29-A3-no-account-day",
+    "name": "AUDIT29-A3-the-account-day-again",
     "file": "server-account/src/professions.js",
-    "old": "        AND (SELECT COUNT(*) FROM node_harvests WHERE player = ?1 AND profession = ?9 AND day = ?6) < ?16\n",
-    "new": "",
+    "old": "      WHERE (?15 = 0 OR",
+    "new": "      WHERE (SELECT COUNT(*) FROM node_harvests WHERE player = ?1 AND profession = ?9 AND day = ?6) < 120\n        AND (?15 = 0 OR",
     "tests": [
-      "test/audit29_service.test.js"
-    ]
+      "test/audit29_service.test.js",
+      "test/cap_off.test.js"
+    ],
+    "note": "RETIRED by CAP-OFF (2026-10-07, Mac: \"Remove the cap on life skills\"): A3's account day is gone and its pin turned (a fifth character's harvest past 120 is credited) - the mutant puts the day back, and the turned pins kill it. It was the mutant that removed the day."
   },
   {
     "name": "AUDIT29-A5-invented-dungeons-unbounded",
     "file": "server-account/src/professions.js",
-    "old": "        AND (?17 = 0 OR (SELECT COUNT(*) FROM node_harvests WHERE player = ?1 AND day = ?6 AND deep_unconfirmed = 1) < ?18)\n",
-    "new": "",
+    "old": "(?15 = 0 OR (SELECT COUNT(*) FROM node_harvests WHERE player = ?1 AND day = ?6 AND deep_unconfirmed = 1) < ?16)",
+    "new": "1",
     "tests": [
-      "test/audit29_service.test.js"
-    ]
+      "test/audit29_service.test.js",
+      "test/cap_off.test.js"
+    ],
+    "note": "CAP-OFF (2026-10-07, Mac: \"Remove the cap on life skills\") (PIN MOVED, re-aimed by content): the bound kept - the WHERE's first now, its numbers ?15 and ?16."
   },
   {
     "name": "AUDIT29-A4-a-dissent-unwritten",
@@ -113,29 +119,32 @@
   {
     "name": "AUDIT29-A14-the-harvest-xp-offered",
     "file": "server-account/src/professions.js",
-    "old": "        MAX(0, MIN(?12, ?19 - COALESCE((SELECT xp FROM prof_tracks WHERE player = ?1 AND char_id = ?4 AND profession = ?9), 0))),",
+    "old": "        MAX(0, MIN(?12, ?17 - COALESCE((SELECT xp FROM prof_tracks WHERE player = ?1 AND char_id = ?4 AND profession = ?9), 0))),",
     "new": "        ?12,",
     "tests": [
       "test/audit29_service.test.js"
-    ]
+    ],
+    "note": "CAP-OFF (2026-10-07, Mac: \"Remove the cap on life skills\") (PIN MOVED, re-aimed by content): the track's bound is ?17 now."
   },
   {
     "name": "AUDIT29-A14-the-smelt-xp-offered",
     "file": "server-account/src/professions.js",
-    "old": "        MAX(0, MIN(?8 + f * ?11, ${Number(cap)} - COALESCE((SELECT xp FROM prof_tracks WHERE player = ?1 AND char_id = ?2 AND profession = '${r.xp ?? 'smithing'}'), 0))), ?9, ?10, f, ?12",
+    "old": "        MAX(0, MIN(?8 + f * ?11, ${Number(cap)} - COALESCE((SELECT xp FROM prof_tracks WHERE player = ?1 AND char_id = ?2 AND profession = '${trackOf(r.xp ?? 'smithing')}'), 0))), ?9, ?10, f, ?12",
     "new": "        ?8 + f * ?11, ?9, ?10, f, ?12",
     "tests": [
       "test/audit29_service.test.js"
-    ]
+    ],
+    "note": "CRAFT3: re-aimed by content."
   },
   {
     "name": "AUDIT29-A7-the-smith-s-rank-unasked",
     "file": "server-account/src/professions.js",
-    "old": "smeltXp(out.tier, count, ranks[r.xp] ?? 0)",
+    "old": "smeltXp(out.tier, count, rank)",
     "new": "smeltXp(out.tier, count)",
     "tests": [
       "test/audit29_service.test.js"
-    ]
+    ],
+    "note": "CRAFT3: re-aimed by content."
   },
   {
     "name": "AUDIT29-A2-a-change-any-track-s",
@@ -195,7 +204,7 @@
   {
     "name": "AUDIT29-C1-every-press-a-read",
     "file": "src/net/profBook.js",
-    "old": "      if (_refresh) return _refresh;\n",
+    "old": "      if (_refresh?.key === key) return _refresh.promise;\n",
     "new": "",
     "tests": [
       "test/audit29_client.test.js"
@@ -284,9 +293,10 @@
   },
   {
     "name": "AUDIT29-B2-a-forge-sold-anywhere",
+    "note": "WAGONS2 (FINAL AUDIT, PIN MOVED): re-aimed by content - a hired trader is offered and sold in a home alone (a caravan's or a ship's had it paid for, never working).",
     "file": "src/ui/decorPanel.js",
-    "old": "export const stationsOffered = () => DECOR_STATIONS.filter((k) => !PROF_STATIONS.includes(k) || forgeOffered());",
-    "new": "export const stationsOffered = () => DECOR_STATIONS.filter(() => true);",
+    "old": "export const stationsOffered = (trader = true) => DECOR_STATIONS.filter((k) => (k === VENDOR_STATION ? trader && forgeOffered() : !PROF_STATIONS.includes(k) || forgeOffered()));",
+    "new": "export const stationsOffered = (trader = true) => DECOR_STATIONS.filter(() => trader || true);",
     "tests": [
       "test/audit29_client.test.js"
     ]
@@ -313,7 +323,7 @@
   {
     "name": "AUDIT29-C1-through-the-wall",
     "file": "src/scenes/gatherHost.js",
-    "old": "    for (const c of seen) if (!deps.clear || deps.clear(pos, c.at, c.best.dungeon)) return c.best;",
+    "old": "    for (const c of seen) if (!deps.clear || deps.clear(pos, c.at, c.best.dungeon, c.best.interior)) return c.best;",
     "new": "    for (const c of seen) return c.best;",
     "tests": [
       "test/audit29_host.test.js"
@@ -376,11 +386,14 @@
   {
     "name": "AUDIT29-C4-the-node-stood-as-it-was",
     "file": "src/scenes/gatherHost.js",
-    "old": "      } else if (!a && nodeKeyOf) restandNode(nodeKeyOf);\n",
-    "new": "      }\n",
+    "old": "      else if (!a && nodeKeyOf) restandNode(nodeKeyOf);\n      return;\n    }",
+    "new": "      return;\n    }",
     "tests": [
       "test/audit29_host.test.js"
-    ]
+    ],
+    "note": "GATHER-SPEED/MARKET-SPEED (PIN MOVED): re-aimed by content - the reads batched.",
+    "equivalent": true,
+    "why": "GATHER-SPEED: a kept harvest's node went with its act (net/profBook.js `gone` - taken, or being counted), so the answer through the pump stands its pixel again over what it already shows; kept as the book's own word on the node. The lapse's and the refusal's stand-again are pinned and killed in test/gatherspeed.test.js."
   },
   {
     "name": "AUDIT29-C10-every-pixel-for-the-compass",
@@ -403,8 +416,8 @@
   {
     "name": "AUDIT29-C11-a-foot-inside-a-neighbour",
     "file": "src/scenes/mineHost.js",
-    "old": "        if (!onPixel(foot[0], foot[1]) || insideRocks(pieces, foot[0], foot[1])) continue;   // FOOT-IN\n",
-    "new": "        if (!onPixel(foot[0], foot[1])) continue;   // FOOT-IN\n",
+    "old": "        if (!onPixel(foot[0], foot[1]) || insideRocks(solid, foot[0], foot[1])) continue;   // FOOT-IN; ROCK-NEAR\n",
+    "new": "        if (!onPixel(foot[0], foot[1])) continue;   // FOOT-IN; ROCK-NEAR\n",
     "tests": [
       "test/audit29_host.test.js",
       "test/fb1001_rockfoot.test.js"

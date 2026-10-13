@@ -21,6 +21,8 @@ import { readFileSync } from 'node:fs';
 import { Renderer, WORLD_FRAME } from '../src/render/renderer.js';
 import { EL_LANE } from '../src/render/enhancedLighting.js';
 import { SHADOW_POINT_CASTERS, SHADOW_NEAR_CASTERS, SHADOW_DYNAMIC_HOLD, shadowCacheOn, spheresTouch, foldSignature } from '../src/render/shadowPass.js';
+import { SHADOW_TUNING } from '../src/render/shadowPass.js';
+SHADOW_TUNING.override = false;   // these tests pin EL8's schedule and DISC24-C's near-two card
 
 const rd = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const I = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
@@ -47,7 +49,9 @@ function recordingGl() {
   const canvas = { getContext: () => gl, clientWidth: 320, clientHeight: 200, width: 320, height: 200 };
   return { gl, calls, canvas };
 }
-const count = (calls, name) => calls.filter((c) => c[0] === name).length;
+/** CACHE-COPY: the faces of the cache copied into the live layers - one triangle each, drawn with the copy program (SC1's
+ *  blit until 2026-10-07: on Direct3D a depth blit out of a layer of an array was no copy - render/shadowPass.js _blitSlot) */
+const copies = (calls, sp) => { let n = 0, prog = null; for (const c of calls) { if (c[0] === 'useProgram') prog = c[1]; else if (c[0] === 'drawArrays' && prog === sp.programs.copy.p) n++; } return n; };
 
 /** A room: a bounded static mesh (two sub-meshes), a terrain tile, a lantern at the origin; the lane, no sun. */
 function stand() {
@@ -65,7 +69,7 @@ function stand() {
     r.setPointLights(lights, new Float32Array([1, 1, 1]));
     calls.length = 0;
     r.beginFrame(I, I, lightDir, WORLD_FRAME);
-    const st = { ...sp.stats, casters: sp.casters, index: [...sp.shadowIndex], blit: count(calls, 'blitFramebuffer') };
+    const st = { ...sp.stats, casters: sp.casters, index: [...sp.shadowIndex], blit: copies(calls, sp) };
     draw();
     r.drawScreenQuad({ id: 'ui' }, { x: 0, y: 0, w: 10, h: 10 });
     return st;
@@ -110,11 +114,14 @@ test('SC1: a mesh that MOVES is a dynamic - drawn alone over the blitted cache e
   st = frame(walking);
   assert.equal(st.staticFaces, 0, 'the cache stands');
   assert.equal(st.dynFaces, 6); assert.ok(st.pointDraws >= 1 && st.pointDraws <= 6, `the crate alone, in the faces that see it (${st.pointDraws})`);
-  assert.equal(st.blit, 6, 'over a fresh blit of the cache');
+  // PERF-FACE (PIN MOVED): over a fresh copy of the cache in the faces that held it last frame - standing where it stood,
+  // the faces it is drawn into now - and no other
+  assert.equal(st.blit, st.pointDraws, 'over a fresh copy of the cache, in the faces that held it');
+  const slot = r.shadows.casterOf[0], held = [...r.shadows._faceDyn.slice(slot * 6, slot * 6 + 6)].filter(Boolean).length;   // the lamp's faces that hold the crate
   // the walker leaves the room's draws (culled by the host): one blit, then nothing
   frame(still);
   st = frame(still);
-  assert.equal(st.pointDraws, 0); assert.equal(st.blit, 6, 'the cache back into the live layers');
+  assert.equal(st.pointDraws, 0); assert.equal(st.blit, held, 'the cache back into the live layers - every face that held the crate');
   st = frame(still);
   assert.equal(st.pointDraws, 0); assert.equal(st.blit, 0, 'and then nothing at all');
 });
@@ -179,7 +186,7 @@ test('SC1: STICKY SLOTS - a light keeps its slot, matched by position, when the 
   // DISC29-E: the cadence is the EYE's rank still; the lamps nearest the player's own card join it (they draw it
   // every frame - DISC24-C's law, ranked from the card now so an orbiting camera does not move its shadow)
   assert.match(rd('src/render/shadowPass.js'), /const near = nearestRank\(casters, L, f\.eye, rank\) < SHADOW_NEAR_CASTERS;/, 'the cadence by rank');
-  assert.match(rd('src/render/shadowPass.js'), /const selfNear = selfAt \? nearestRank\(casters, L, selfAt, rank, this\._selfHeld, this\._selfHeldN\) < SHADOW_NEAR_CASTERS : near;[^\n]*\n[^\n]*\n[^\n]*\n[^\n]*\n\s*const due = near \|\| selfNear \|\| \(this\.frameNo \+ k\) % SHADOW_FAR_CASTER_EVERY === 0;/, 'and the card\'s own two, every frame');
+  assert.match(rd('src/render/shadowPass.js'), /const selfNear = selfAt \? \(nearestRank\(casters, L, selfAt, rank, this\._selfHeld, this\._selfHeldN\) < selfLamps\) : near;[^\n]*\n[^\n]*\n[^\n]*\n[^\n]*\n\s*const due = SHADOW_TUNING\.steady \|\| near \|\| selfNear \|\| \(this\.frameNo \+ k\) % SHADOW_FAR_CASTER_EVERY === 0;/, 'and the card\'s own two, every frame');
 });
 
 test('SC1: a flat whose origin moves is a dynamic (per batch, on the batch), a still one is in the cache; the door restores the old path whole - every caster in range at the cadence into the live layers, no cache, no blit (mutants: the batch\'s word ignored; the door ignored)', () => {
@@ -203,13 +210,13 @@ test('SC1: a flat whose origin moves is a dynamic (per batch, on the batch), a s
   assert.equal(sp.cacheOn, false);
   frame(draw);
   st = frame(draw);
-  assert.equal(st.staticFaces, 0); assert.equal(st.dynFaces, 0); assert.equal(st.blit, 0, 'no cache, no blit');
+  assert.equal(st.staticFaces, 0); assert.equal(st.dynFaces, 0); assert.equal(st.blit, 0, 'no cache, no copy');
   assert.equal(st.facesDrawn, 6); assert.ok(st.pointDraws > 6 * 2 && st.pointDraws <= 6 * 4, `the old path: everything in range, six faces - the room one run (PERF-EXT2) (${st.pointDraws})`);
   st = frame(draw);
   assert.equal(st.facesDrawn, 6, 'and again every frame (the nearest slot)');
   r.setShadowCache(true);
   assert.equal(sp.cacheOn, true);
-  assert.equal(shadowCacheOn(''), true); assert.equal(shadowCacheOn('?shadowcache=off'), false);
+  assert.equal(shadowCacheOn(''), true); assert.equal(shadowCacheOn('?shadowcache=off'), false);   // CACHE-COPY: on unless asked off, as SC1 built it
   assert.match(rd('src/render/enhancedLighting.js'), /renderer\.setShadowCache\?\.\(shadowCacheOn\(search\)\);/, 'read at the lane\'s install, like the air\'s');
 });
 

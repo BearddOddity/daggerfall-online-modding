@@ -40,8 +40,8 @@ import { guildFastTravel } from '../src/systems/guildVariants.js';
 import {
   buildInkModel, buildInkMarks, paintInk, placeNames, zoomBand, clampView, scaleMinOf, zoomAt, viewCentredOn,
   toPaper, toMap, boundarySegments, linkSegments, landAt, roadChains, markKind, roundCorners,
-  paintInkStatic, paintInkOverlay, nameFont,
-  BAND_MARKS, BAND_NAMES, SCALE_MAX, PEN, GLYPH_R, paintGlyph,
+  paintInkStatic, paintInkOverlay, nameFont, HARBOUR_PEN, HARBOUR_HALO,
+  BAND_MARKS, BAND_NAMES, SCALE_MAX, PEN, GLYPH_R, paintGlyph, spacedName,   // TAMRIEL1: the region name's spelling
 } from '../src/ui/inkMap.js';
 import { PARTY_MARK_CSS } from '../src/ui/partyMapMarks.js';
 import { quadPlacement } from '../src/ui/quadMap.js';   // MAP3
@@ -55,7 +55,7 @@ import {
   travelMapFilters, travelMapPopUpState, setTravelMapPopUpState,
   travelMapSaveData, resetTravelMapState,
 } from '../src/systems/travelMapState.js';
-import { _resetForTests } from '../src/systems/uiPrefs.js';
+import { _resetForTests, setPref } from '../src/systems/uiPrefs.js';   // TAMRIEL1: the continent's switch, flipped Off
 // ENH-NOTICE3: the window's click-anywhere boxes ride the enhanced
 // notice panel now, so these pins read the stack the way
 // test/enhancedNotice.test.js does.
@@ -397,8 +397,8 @@ test('U61: the world host builds through the door, once, and gates on it', () =>
     'ONE construction seam, as G5 demanded');
   assert.doesNotMatch(src, /new TravelMapWindow\(/, 'no host constructs past the door');
   assert.doesNotMatch(src, /travelMapArtLoaded/, 'hosts ask the DOOR, never the raw art');
-  assert.equal([...src.matchAll(/if \(!travelMapDoorReady\(\)\)/g)].length, 2,
-    'BOTH openers gate on the door predicate');
+  assert.equal([...src.matchAll(/if \(!travelMapDoorReady\(\)\)/g)].length, 4,
+    'EVERY opener gates on the door predicate');   // AUDIT IT1 W6 (PIN MOVED): the driver's map's, which now says why; PORTAL1 (PIN MOVED): and the Portal Stone's, which says why too
   const bag = src.slice(src.indexOf('createTravelMapWindow({'));
   assert.match(bag, /\bwoods,/, 'the ink rides the one dep bag');
   assert.match(bag, /getPlayerPixel: playerTravelOrigin/, '...and so does the player pixel');
@@ -1289,6 +1289,26 @@ test('MAP1 window: the selection - a click within 16 paper px of an inked mark s
   });
 });
 
+test('ORE-MAP window (FIELD BUGS 2026-10-11d #4, ui/oreMapTip.js): bare land answers with the host\'s ore card under the province\'s name - asked by its map pixel, with the window\'s own refresh to call when its witnessed state arrives; a place keeps its own answer, and with no card (offline, the sea) bare land answers as it always did (mutants: the card never asked; the card left off the answer; the refresh not handed)', () => {
+  withDocument(() => {
+    const mapDict = new Map();
+    for (const s of [summaryOf(3, 3, LOCATION_TYPES.TownCity)]) mapDict.set(s.id, s);
+    const maps = { regionCount: 1, getRegion: () => ({ mapNames: ['A', 'B', 'C', 'Wayrest'] }), getPoliticIndex: () => 128 };
+    const asked = [];
+    const card = { title: 'Ore here', lines: ['Veins: Iron, Lead, Sulphur, Gold, Ebony'] };
+    const win = open(mkWin({ mapDict, maps, oreAt: (px, py, again) => { asked.push([px, py, typeof again]); return px === 1 ? card : null; } }));
+    win._sheet.ensure();
+    win._view.scale = 8;
+    assert.deepEqual(win._hoverLabel(...toPaper(win._view, 1.5, 1.5)), { label: 'Alik\'r Desert', cursor: '', tip: { title: 'Ore here', lines: ['Veins: Iron, Lead, Sulphur, Gold, Ebony'] } });
+    assert.deepEqual(asked.at(-1), [1, 1, 'function'], 'asked by the map pixel, with the refresh');
+    assert.deepEqual(win._hoverLabel(...toPaper(win._view, 6.5, 7.5)), { label: 'Alik\'r Desert', cursor: '' }, 'no card: the province alone');
+    const n = asked.length;
+    assert.equal(win._hoverLabel(...toPaper(win._view, 3.5, 3.5))?.cursor, 'pointer', 'a place answers as itself');
+    assert.equal(asked.length, n, 'and is never asked its ore');
+    win.dispose();
+  });
+});
+
 test('HUB1 window: online a region hub\'s mark reads "Region : Location (Hub)" - "(Capital)" for a kingdom\'s own - and the I box opens with its title, known or not; offline, and on any other town, the label and the box are DFU\'s own (mutants: the word unread, the title dropped, the title only for a known town)', () => {
   withDocument(() => {
     const mapDict = new Map();
@@ -1327,6 +1347,42 @@ test('HUB1 window: online a region hub\'s mark reads "Region : Location (Hub)" -
   });
 });
 
+test('TIER1 window: online a dungeon\'s mark reads "Region : Location (Elite Dungeon, Small)" and the I box opens with the same phrase before DFU\'s refusal; offline, and on a place the host names no tier for, the label and the box are DFU\'s own (mutants: the tier unread on the label, or in the box)', () => {
+  withDocument(() => {
+    const mapDict = new Map();
+    const dun = summaryOf(3, 3, LOCATION_TYPES.DungeonLabyrinth);
+    const other = summaryOf(7, 7, LOCATION_TYPES.DungeonKeep);
+    for (const s of [dun, other]) mapDict.set(s.id, s);
+    const maps = { regionCount: 1, getRegion: () => ({ mapNames: ['A', 'B', 'C', 'Old Ruin'] }), getPoliticIndex: () => 128 };
+    const run = (tierAt) => {
+      const win = open(mkWin({ mapDict, maps, ...(tierAt ? { tierAt } : {}) }));
+      win._sheet.ensure();
+      win._view.scale = 8;
+      const at = (x) => toPaper(win._view, x + 0.5, x + 0.5);
+      const label = (x) => win._hoverLabel(...at(x))?.label;
+      win._pickAt(...at(3));
+      win._displayLocationInfo();
+      const rows = win._info?.rows ?? [];
+      win._info = null;
+      win._pickAt(...at(7));
+      win._displayLocationInfo();
+      const otherRows = win._info?.rows ?? [];
+      const out = { label: label(3), otherLabel: label(7), rows, otherRows };
+      win.dispose();
+      return out;
+    };
+    const online = run((s) => (s.mapID === dun.mapID ? { tier: 'elite', text: 'Elite Dungeon', size: 'Small' } : null));
+    assert.equal(online.label, 'Daggerfall : Old Ruin (Elite Dungeon, Small)');
+    assert.equal(online.otherLabel, 'Daggerfall : Old Ruin', 'a place the host names no tier for reads as DFU reads it');
+    assert.equal(online.rows[0], 'Elite Dungeon, Small', 'the box opens with the tier - a dungeon\'s box is DFU\'s refusal, and the tier is known all the same');
+    assert.match(online.rows[1], /^You have no knowledge of /, '...and the refusal stays');
+    assert.ok(!online.otherRows.includes('Elite Dungeon, Small'));
+    const offline = run(null);
+    assert.equal(offline.label, 'Daggerfall : Old Ruin', 'offline no tier is named');
+    assert.deepEqual(offline.rows, offline.otherRows, 'and the box is DFU\'s for both');
+  });
+});
+
 test('MAP1 window: pan, wheel and keys move the VIEW under a clamp, the search glides to its pick, and the layout lays the sheet on PAPER of a 4:3 stage (mutants: pan-unclamped, zoom-not-at-cursor, layout-off-paper)', () => {
   withDocument(() => {
     globalThis.innerWidth = 1600; globalThis.innerHeight = 900;
@@ -1347,11 +1403,17 @@ test('MAP1 window: pan, wheel and keys move the VIEW under a clamp, the search g
       const pw = sw * (PAPER.x1 - PAPER.x0), ph = sh * (PAPER.y1 - PAPER.y0);
       assert.ok(Math.abs(win._paper.w - pw) < 1e-9 && Math.abs(win._paper.h - ph) < 1e-9, 'the canvas is the paper\'s rectangle');
       assert.equal(win._chrome.ink.style.left, `${sw * PAPER.x0}px`);
-      assert.equal(win._view.scale, scaleMinOf(win._limits()), 'at rest the whole bay is on the sheet');
+      // TAMRIEL1: the rest is the BAY's own fit (the continent's frame round it is where the zoom goes), centred on
+      // the Bay; test/tamriel.test.js holds the frame's own laws and the switch's Off, where this is contain again
+      assert.equal(win._view.scale, win._bayFit(), 'at rest the whole bay is on the sheet');
+      assert.ok(win._view.scale > scaleMinOf(win._limits()), '...and the frame round it has room to zoom out into');
       const rest = { ...win._view };
-      // a nudge past the edge is clamped
+      // a nudge past the edge is clamped - TAMRIEL1: the edge is the continent's frame, not the Bay's
       win._nudge(-500, 0);
-      assert.equal(win._view.ox, rest.ox, 'the map cannot leave the paper westward');
+      assert.equal(win._view.ox, rest.ox - 500, 'the map pans west onto the continent');
+      win._nudge(-1e6, 0);
+      assert.equal(win._view.ox, win._limits().mapX0, 'the map cannot leave the paper westward past the frame');
+      win._setView(rest);
       // zoom about a paper point: the pixel under it holds (the paper's
       // centre, where the clamp has room on every side)
       const [hx, hy] = [win._paper.w / 2, win._paper.h / 2];
@@ -1363,7 +1425,10 @@ test('MAP1 window: pan, wheel and keys move the VIEW under a clamp, the search g
       win.input('Equal');
       assert.ok(win._view.scale > rest.scale * 2, '+ zooms');
       win.input('Minus'); win.input('Minus'); win.input('Minus'); win.input('Minus');
-      assert.equal(win._view.scale, rest.scale, '- bottoms out at contain');
+      assert.ok(win._view.scale < rest.scale, '- goes out past the Bay onto the continent (TAMRIEL1)');
+      for (let i = 0; i < 40; i++) win.input('Minus');
+      assert.equal(win._view.scale, scaleMinOf(win._limits()), '- bottoms out at contain - of the frame');
+      win._setView(rest);
       // a search pick glides: the GOAL is set at the focus scale, centred on the place, and the view follows
       win._searchPick({ name: 'Wayrest', regionName: 'Wayrest', pos: { x: 700, y: 300 }, summary: summaryOf(700, 300, LOCATION_TYPES.TownCity) });
       assert.equal(win._selected?.name, 'Wayrest');
@@ -1576,16 +1641,17 @@ test('MAP2 ports: the filter is the mod\'s law (portsFilterAllows over hasPort) 
     win.input('KeyP');
     assert.equal(win._sheet.ensure().marks.length, 2, 'and back');
     assert.equal(win._findLocations('B')[0]?.name, 'B', 'and so is the hamlet, to the find box');
-    // the harbour glyph: beside a port at mid and near, never at far, and
-    // only while the mod restricts ships to ports
+    // the harbour glyph: beside a port the band inks. PIN MOVED (PORT-MAP, 2026-10-04, Mac: "Also ports don't show on
+    // my map"): at EVERY band - far too, where the map opens - haloed then inked in the full pen; none only when the
+    // sheet is asked none (the window always asks: test/heldmap.test.js PORT-MAP)
     const harbours = (band, scale, ports) => {
       const ctx = recordingCtx();
       paintInk(ctx, win._sheet.ensure(), { ox: 0, oy: 0, scale }, { paperW: 200, paperH: 200, band, ports });
-      return ctx.calls.filter((c) => c.fn === 'arc' && c.lineWidth === 1.1).length;
+      return ctx.calls.filter((c) => c.fn === 'arc' && c.lineWidth === HARBOUR_PEN).length;
     };
     assert.equal(harbours('near', 10, true), 1, 'one anchor, beside the port');
-    assert.equal(harbours('far', 1, true), 0, 'none at far');
-    assert.equal(harbours('near', 10, false), 0, 'none while ships may sail from anywhere');
+    assert.equal(harbours('far', 1, true), 1, 'at far too');
+    assert.equal(harbours('near', 10, false), 0, 'none when the sheet is asked none');
     win.dispose();
     // per-open (departure 6): a fresh window opens with the filter off
     const again = mkWin(modDeps());
@@ -1817,7 +1883,7 @@ test('TV1: the sheet\'s Overworld door - shown only where the host can lift the 
   // the world host hands both reads, and the commit is the one home every hook fires from
   const w = read('src/scenes/world.js');
   assert.match(w, /onTravelView: \(\) => \{ travelView\?\.enter\(\); \},/);
-  assert.match(w, /travelViewAllowed: \(\) => !!travelView && travelViewAllowed\(\)\.ok,/);
+  assert.match(w, /travelViewAllowed: \(\) => !extra\.immersive && !!travelView && travelViewAllowed\(\)\.ok,/);   // IT1 (PIN MOVED): a driver's map has no Overworld door
   assert.match(read('src/ui/heldMap.js'), /else if \(c\?\.kind === 'travelView'\) this\.deps\.onTravelView\?\.\(\);/);
 });
 
@@ -3317,5 +3383,124 @@ test('MAP-FIT1: a sheet whose corners fall off the screen goes back to the paint
       assert.equal(bad.calls.filter((c) => c[0] === 'hold').length, 1);
       w2.dispose();
     } finally { delete globalThis.innerWidth; delete globalThis.innerHeight; }
+  });
+});
+
+// ── TAMRIEL1 (2026-10-08, bible/03-World/Tamriel.md): THE CONTINENT ROUND THE BAY, through the window ──────────
+// Mac: "the entirety of tamriel that connects accurately to Daggerfall. Not actually traversalable but used and
+// connected as a gigantic map ... seen by players ingame", "Performance should also not be affected". The pure laws
+// are test/tamriel.test.js's; here the window: its limits carry the frame, its rest is the Bay's own fit, a pan goes
+// out onto the continent and no further, the continent is inked beyond the Bay and NOT inked while the view is on it,
+// a hover beyond the Bay names the continent and a press there picks nothing, and the switch's Off is the sheet as it
+// was - the clamp at the Bay's own edge.
+test('TAMRIEL1 window: the frame round the Bay - the rest at the Bay\'s fit, the pan out to the frame\'s edge, the continent inked only past the Bay, the hover beyond it, nothing picked there; Off is contain on the Bay', () => {
+  withDocument(() => {
+    globalThis.innerWidth = 1600; globalThis.innerHeight = 900;
+    try {
+      const bay = { mapSize: { width: 1000, height: 500 }, woods: { heightMapBuffer: new Uint8Array(500000).fill(10) } };
+      const win = open(mkWin(bay));
+      const lim = win._limits();
+      assert.equal(lim.mapW, 6000); assert.equal(lim.mapH, 3750);
+      assert.equal(lim.mapX0, -862); assert.equal(lim.mapY0, -975, 'the frame, in the Bay\'s coordinates');
+      assert.equal(win._view.scale, win._bayFit(), 'at rest, the Bay\'s own fit');
+      const mid = toMap(win._view, win._paper.w / 2, win._paper.h / 2);
+      assert.ok(Math.abs(mid[0] - 500) < 1e-6 && Math.abs(mid[1] - 250) < 1e-6, 'centred on the Bay');
+      // the static paint while the view is on the Bay: the Bay's own ink and not one stroke of the continent
+      const inkOf = () => {
+        const ctx = recordingCtx();
+        win._chrome.ink.getContext = () => ctx;
+        win._staticKey = ''; win._dirty = true; win._paint();
+        delete win._chrome.ink.getContext;
+        return ctx.calls;
+      };
+      const spaced = spacedName;
+      const names = (calls) => calls.filter((c) => c.fn === 'fillText').map((c) => c.args[0]);
+      win._setView({ ox: 100, oy: 50, scale: 3 });
+      const onBay = inkOf();
+      assert.ok(!names(onBay).includes(spaced('Skyrim')) && !names(onBay).includes('Solitude'), 'on the Bay the continent is not drawn');
+      // out past the Bay's fit: the continent, and the Bay's own region names give way to the provinces'
+      for (let i = 0; i < 40; i++) win.input('Minus');
+      assert.equal(win._view.scale, scaleMinOf(lim), 'zoomed out to the frame\'s contain');
+      const out = inkOf();
+      assert.ok(names(out).includes(spaced('Skyrim')) && names(out).includes('Solitude'), 'the continent is inked');
+      assert.ok(!names(out).some((n) => n === spaced('Daggerfall') || n === spaced('Wayrest')), 'the Bay\'s sixty-two names are not');
+      // a pan goes out onto the continent and stops at the frame
+      win._setView({ ox: 100, oy: 50, scale: 3 });
+      win._nudge(-600, -600);
+      assert.ok(win._view.ox < 0 && win._view.oy < 0, 'west and north of the Bay');
+      win._nudge(-1e6, -1e6);
+      assert.equal(win._view.ox, lim.mapX0); assert.equal(win._view.oy, lim.mapY0);
+      // a hover beyond the Bay names the continent; a press there picks nothing
+      win._setView({ ox: -1500, oy: -1200, scale: 0.4 });
+      const [sx, sy] = toPaper(win._view, -800, -600);
+      const label = win._hoverLabel(sx, sy);
+      assert.ok(label && /beyond the Bay|Ocean|Sea/.test(label.label), `the continent answers: ${label?.label}`);
+      assert.equal(label.cursor, '');
+      win._pickAt(sx, sy);
+      assert.equal(win._selected, null, 'not traversable: nothing picked');
+      win.dispose();
+      // Off: the sheet as it was - contain on the Bay, the clamp at its edge, the hover beyond it silent
+      setPref('tamrielMap', false);
+      try {
+        const off = open(mkWin(bay));
+        assert.equal(off._limits().mapX0, undefined);
+        assert.equal(off._view.scale, scaleMinOf(off._limits()), 'contain on the Bay');
+        const rest = { ...off._view };
+        off._nudge(-500, 0);
+        assert.equal(off._view.ox, rest.ox, 'held at the Bay\'s own edge');
+        off._setView({ ox: 0, oy: 0, scale: 2 });
+        assert.equal(off._hoverLabel(...toPaper(off._view, -5, 10)), null);
+        const calls = (() => { const ctx = recordingCtx(); off._chrome.ink.getContext = () => ctx; off._staticKey = ''; off._dirty = true; off._paint(); delete off._chrome.ink.getContext; return ctx.calls; })();
+        assert.ok(!names(calls).includes(spaced('Skyrim')), 'no continent');
+        off.dispose();
+      } finally { setPref('tamrielMap', true); }
+    } finally { delete globalThis.innerWidth; delete globalThis.innerHeight; }
+  });
+});
+
+test('MAP-SCALE (FIELD BUGS 2026-10-09e, "icons and text too small on high resolutions", a 1440p monitor): the paper is the fitted rectangle over the map\'s scale and the backing keeps every device pixel; the chrome is zoomed by the same; a pointer comes back over it in both lanes, the card\'s offsets too; a fixed choice of 1 is the sheet as it was (mutants: MAP-SCALE-paper-at-full-size, MAP-SCALE-pointer-not-divided, MAP-SCALE-hands-box-full-size, MAP-SCALE-tip-not-divided, MAP-SCALE-chrome-unzoomed)', () => {
+  withDocument((doc) => {
+    const make = doc.createElement;
+    doc.createElement = (...a) => { const n = make(...a); n.style.setProperty = (k, v) => { n.style[k] = v; }; return n; };
+    globalThis.innerWidth = 2560; globalThis.innerHeight = 1440;
+    try {
+      setPref('mapScale', 'auto');
+      const g = heldStageRect(2560, 1440);
+      const pw = g.w * (PAPER.x1 - PAPER.x0), ph = g.h * (PAPER.y1 - PAPER.y0);
+      const win = open(mkWin({ mapSize: { width: 1000, height: 500 }, woods: { heightMapBuffer: new Uint8Array(500000).fill(10) } }));
+      const k = 1.35;   // 1440 / 1080, to the twentieth
+      assert.equal(win._paper.k, k);
+      assert.ok(Math.abs(win._paper.w - pw / k) < 1e-9 && Math.abs(win._paper.h - ph / k) < 1e-9, 'the paper is the 1080p paper the names were drawn on');
+      assert.equal(win._paper.dpr, k, 'a paper pixel is k device pixels');
+      assert.equal(win._chrome.ink.width, Math.round(pw), 'the backing keeps every device pixel of the fitted sheet');
+      assert.equal(win._chrome.ink.style.width, `${pw}px`, 'and the canvas stands the fitted size on the screen');
+      assert.equal(win._chrome.root.style['--hm-ui'], String(k), 'the chrome zoomed by the same');
+      assert.deepEqual(win._paperPoint(135, 270), [100, 200], 'a client pixel is 1/k of a paper pixel');
+      assert.equal(win._view.scale, win._bayFit(), 'the rest is the Bay\'s fit on that paper');
+      // the card: placed in the screen's pixels and written in the zoomed box's own
+      win._showTip({ title: 'The gate', lines: ['A breach'] }, 270, 135);
+      assert.equal(win._chrome.tip.style.left, `${(270 + 16) / k}px`);
+      assert.equal(win._chrome.tip.style.top, `${(135 + 16) / k}px`);
+      // a fixed choice: 1 is the sheet as it was before the scale, on its next frame
+      setPref('mapScale', 1);
+      win.tick(0.05);
+      assert.equal(win._paper.k, 1);
+      assert.ok(Math.abs(win._paper.w - pw) < 1e-9);
+      assert.deepEqual(win._paperPoint(135, 270), [135, 270]);
+      win.dispose();
+      // THE HANDS LANE: the held paper's matrix maps the paper's own pixels, so the canvas's box is the paper's
+      setPref('mapScale', 'auto');
+      const holder = holderStub({ corners: () => TRAPEZIUM });
+      const w2 = open(mkWin({ ...bayDeps(), holder }));
+      assert.equal(w2._lane, 'hands');
+      assert.equal(w2._paper.k, k);
+      assert.equal(w2._chrome.ink.style.width, `${w2._paper.w}px`);
+      assert.equal(w2._chrome.ink.style.transform, quadPlacement(w2._paper.w, w2._paper.h, TRAPEZIUM).css);
+      const tr = w2._paperPoint(650, 300);
+      assert.ok(Math.abs(tr[0] - w2._paper.w) < 1e-6 && Math.abs(tr[1]) < 1e-6, 'the top-right corner is the paper\'s (w, 0)');
+      w2.dispose();
+      const css = read('src/ui/enhancedStyle.js');
+      assert.match(css, /\.hmroot \{ --hm-ui: 1; \}\n\.hmroot > :not\(\.hmstage\) \{ zoom: var\(--hm-ui, 1\); \}/, 'every piece over the sheet zoomed as one');
+    } finally { setPref('mapScale', 'auto'); delete globalThis.innerWidth; delete globalThis.innerHeight; }
   });
 });

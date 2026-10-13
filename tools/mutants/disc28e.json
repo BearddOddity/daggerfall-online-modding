@@ -537,11 +537,12 @@
   {
     "name": "SHIP-SAIL-popup-built-unpriced",
     "file": "src/ui/travelPopUp.js",
-    "old": "    this.coordsOnly = !!deps.coordsOnly;\n    this.refresh();",
-    "new": "    this.coordsOnly = !!deps.coordsOnly;",
+    "old": "      if (refusal) { this._itText = IT_TEXT[refusal]; this.top = 'itPush'; }\n    }\n    this.refresh();",
+    "new": "      if (refusal) { this._itText = IT_TEXT[refusal]; this.top = 'itPush'; }\n    }",
     "tests": [
       "test/disc28e_shipport.test.js"
-    ]
+    ],
+    "note": "IT1 (PIN MOVED): re-aimed by content - Immersive Travel’s arm sits beside the line this record mutates."
   },
   {
     "name": "SHIP-SAIL-guard-after-pricing",
@@ -735,8 +736,8 @@
   {
     "name": "FPS-VSYNC-sub-rail-counts-live-only",
     "file": "src/ui/enhancedMenu.js",
-    "old": "paneKeys(catId).filter(drawsFlat).length;",
-    "new": "paneKeys(catId).filter((k) => tierOf(k) === 'live').length;",
+    "old": "if (isSettingItem(item)) { if (!featureForControl('settings', item) && drawsHere(item, ctx.pause)) n++; }",
+    "new": "if (isSettingItem(item)) { if (!featureForControl('settings', item) && tierOf(item) === 'live') n++; }",
     "tests": [
       "test/disc28e_vsync.test.js"
     ]

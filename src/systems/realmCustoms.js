@@ -32,16 +32,22 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import { callInEmpireDebt, SHIP_TYPES, SHIP_INTERIOR_MAP_IDS, LOAN_AMNESTY } from './banking.js';
-import { interiorSceneName } from './sceneCache.js';   // RESTORE: a deed's room, by its own name
+import { interiorSceneName, LOOT_CONTAINER_TYPES } from './sceneCache.js';   // RESTORE: a deed's room, by its own name; AUDIT REST III B4: a shop's shelf told from a chest
 import { BUILDING_KEY_0 } from './talkTopics.js';   // RESTORE: the no-key key a ship's room is filed under
 import { firstRestorable } from './saveSlots.js';   // RESTORE: the offline character a realm one came from, on this device
 import { deductGold } from './court.js';
-import { LEVELING_VIRTUE, newCharacterLevelingSystem } from './oblivionLeveling.js';   // LEVEL-ONLINE: a character crossing levels the Oblivion way
+import { LEVELING_CLASSIC, newCharacterLevelingSystem } from './oblivionLeveling.js';   // LEVEL-ONLINE-2: a character crossing levels the classic way
+import { levelUpSkillSumAnchor } from './advancement.js';   // LEVEL-ONLINE-2: ...from the start of the level it has
 import { isGoldPieces } from './inventory.js';
+import { crossFleetData } from './fleet.js';   // AUDIT SHIPYARDS L1-2: Come Sail Away's ships cross as a DFU deed does - kept, never sold
+import { COME_SAIL_AWAY_VENDOR } from './comeSailAway.js';   // ...her placed boats' record, by its vendor
 // AUDIT REALM2 S1: the allowance and the measure live in the law the service reads too (net/realmGoldLaw.js), which holds
 // a customs character's first save to them - re-exported here, their home before it; AUDIT REALM2 T2, T3 and T5's
 // counting with them (every container, a boat's hold, a deed at what the realm's bank pays)
+import { REST_ITEM, restItemsOnline } from './restItems.js';   // AUDIT REST-PARTY B4: the supplies stay offline while their online sources are shut (REST-LOOT: open since 2026-10-05; the switch is the way back)
 import { liquidWorthOf, stashedItemLists, carriedItemLists, liquidWealthOf, deedsOf, customsAllowance, CUSTOMS_WEALTH_BASE, CUSTOMS_WEALTH_PER_LEVEL, CUSTOMS_HOUSE_PRICE } from '../net/realmGoldLaw.js';
+import { cardWorthOf, cardRecordWorth, decorOwnOf, isCardRecord, customsCardAllowance } from '../net/cardWorthLaw.js';   // CARDS9: the cards' customs, one law with the service's first save; AUDIT CARDS-6 A1/A2: a pack's worth, and the decor
+import { binderOf, binderDecks, collectionOf, deckHeldRefusal } from './iliacItems.js';   // AUDIT CARDS-6 A9: the copies the binder's decks need, kept last
 
 export { stashedItemLists, liquidWealthOf, deedsOf, customsAllowance, CUSTOMS_WEALTH_BASE, CUSTOMS_WEALTH_PER_LEVEL, CUSTOMS_HOUSE_PRICE };
 const lists = (/** @type {any[]} */ ...ls) => ls.filter(Array.isArray);
@@ -70,6 +76,10 @@ export function applyCustoms(snap) {
   const accounts = Array.isArray(snap.bankAccounts) ? snap.bankAccounts : [];
   const call = callInEmpireDebt(accounts, { deductGold: (/** @type {number} */ n) => deductGold(snap, n) }, { cap: 0, nowMinutes: Math.floor(snap.classicMinutes ?? 0) });
   const crossed = crossDeeds(snap);
+  // AUDIT SHIPYARDS L1-2: and every ship of Come Sail Away's, by number - the Fleet's records, the placed boats, every deed
+  // and parts item wherever it lies - crossed: she sails in the realm, and no shipyard there buys her
+  const fleet = snap.modData && typeof snap.modData === 'object'
+    ? crossFleetData(snap.modData, [...carriedItemLists(snap), ...stashedItemLists(snap)], snap.modData[COME_SAIL_AWAY_VENDOR]?.placedBoats ?? null) : 0;
   const allowance = customsAllowance(snap.level);
   const wealth = liquidWealthOf(snap);
   let excess = Math.max(0, wealth - allowance);
@@ -90,32 +100,171 @@ export function applyCustoms(snap) {
     if (!excess) break;
     a.accountGold -= take(a.accountGold ?? 0);
   }
-  for (const list of lists(snap.wagonItems, snap.items)) takeFrom(list);
+  for (const list of lists(snap.wagonItems, snap.bagItems, snap.items)) takeFrom(list);   // BAG1: the bag's materials too
   if (excess) snap.goldPieces = Math.max(0, (snap.goldPieces ?? 0) - take(snap.goldPieces ?? 0));
   // the records customs emptied leave their lists, in place - a list is held by its container, its pile or its piece
   for (const list of carriedItemLists(snap)) {
     for (let i = list.length - 1; i >= 0; i--) if (emptied.has(list[i])) list.splice(i, 1);
   }
-  return { called: call.called, paid: call.paid, owed: call.owed, wealth, allowance, taken: wealth - liquidWealthOf(snap), crossed };
+  // AUDIT REST-PARTY B4: REST6's supplies (1700-1706) stay behind while every online source of them is shut
+  // (restItems.js restItemsOnline: the templates ship a release before any shelf, pile or trade carries one, so a
+  // client a build behind never meets one) - customs is a door too, and an offline shelf's Bedroll walked in through it,
+  // usable, droppable and tradeable online. The offline character keeps them: customs runs on the realm's copy.
+  // REST-LOOT (2026-10-05): the sources are open, so a character's own walk in; this stands behind the switch.
+  let restKept = 0;
+  if (!restItemsOnline()) {
+    const strip = (/** @type {any[]} */ list) => {
+      let n = 0;
+      for (let i = list.length - 1; i >= 0; i--) if (REST_ITEM_IDS.has(list[i]?.templateIndex)) { list.splice(i, 1); n++; }
+      return n;
+    };
+    const scenes = Array.isArray(snap.sceneCache?.scenes) ? snap.sceneCache.scenes : [];
+    // AUDIT REST III B4: THE LINE IS SAID OF THE CHARACTER'S OWN. Every list a save holds is stripped, as before, but a
+    // shop's shelf in the scene cache, a dungeon's own loot pile and a dead foe's pack were never the character's: one
+    // who had only looked at a General Store's shelf heard "Your rest supplies will stay with your offline character".
+    // (A chest, a dropped pile, the ship's hold: what is in them, the character put there - the port's supplies ride
+    // no house loot.)
+    const foreign = new Set();
+    for (const sc of scenes) for (const c of sc?.lootContainers ?? []) if (c?.containerType === LOOT_CONTAINER_TYPES.ShopShelves && Array.isArray(c.items)) foreign.add(c.items);
+    for (const pile of snap.world?.piles ?? []) if (Array.isArray(pile?.items)) foreign.add(pile.items);
+    for (const foe of snap.world?.foes ?? []) if (foe?.dead && Array.isArray(foe.items)) foreign.add(foe.items);
+    // AUDIT REST II H9: and the repairer's counter (save.js otherItems - restored to the pack's owner on the way in)
+    for (const list of new Set([...carriedItemLists(snap), ...(Array.isArray(snap.otherItems) ? [snap.otherItems] : [])])) {
+      const n = strip(list);
+      if (!foreign.has(list)) restKept += n;
+    }
+    // AUDIT REST III B2: AND WHAT STANDS AS THE OWNER'S OWN DECOR (DECOR2a's decorOwn, by piece id - an item set down in
+    // the offline house or the ship): online, the piece taken down or the house sold hands it back to the pack
+    // (worldModes.js decorReturnStrays, sceneCache.js takeSceneOwn) - the door B4 and H9 shut, open. The item stays
+    // offline, and the piece it stood as goes with it.
+    for (const sc of scenes) {
+      const own = sc?.decorOwn && typeof sc.decorOwn === 'object' ? sc.decorOwn : null;
+      for (const id of own ? Object.keys(own) : []) {
+        if (!REST_ITEM_IDS.has(own[id]?.templateIndex)) continue;
+        delete own[id];
+        if (Array.isArray(sc.decor)) sc.decor = sc.decor.filter((/** @type {any} */ p) => p?.id !== id);
+        restKept++;
+      }
+    }
+  }
+  const decks = heldDecksOf(snap);   // AUDIT CARDS-6 A9: the binder's decks the pack backs before the cards' customs...
+  const cards = cardCustoms(snap);   // CARDS9: and the cards, at their worth
+  const decksShort = decks.filter((d) => deckHeldRefusal(d.cards, snap.items)).length;   // ...and those it left naming a card that stayed
+  return { called: call.called, paid: call.paid, owed: call.owed, wealth, allowance, taken: wealth - liquidWealthOf(snap), crossed, fleet, restKept, cardsKept: cards.kept, cardWorth: cards.worth, cardAllowance: cards.allowance, decksShort };
 }
 
 /**
- * LEVEL-ONLINE (2026-09-30, Mac: "Do not allow people to use daggerfall leveling in online. Characters currently using
- * it online can keep it."): A CHARACTER COMING IN IS A NEW ONLINE CHARACTER, so it crosses onto Oblivion's bar - the
- * one law a new character's system goes through (oblivionLeveling.js newCharacterLevelingSystem). It is run at the
- * Bring online door beside applyCustoms, not inside it - customs is the gold and the deeds, and its report keeps
- * saying only that (ui/enhancedMenu.js bringOnline/customsNow say this line first). The bar starts empty,
- * as a new character's does; the character's level, skills and any level-up already earned are kept (the Oblivion
- * window takes a pending one, which reads the same readyToLevelUp and pendingLevel). Customs runs on the realm's COPY,
- * so the offline character keeps Daggerfall's leveling offline; a character already online never passes here again.
- * Answers whether it switched.
+ * CARDS9 (bible/11-Multiplayer/Tavern-Cards.md section 32): THE CARDS' CUSTOMS, in place (the realm's copy, as all of
+ * customs is). A character brings cards worth no more than customsCardAllowance(level) (net/cardWorthLaw.js - the
+ * starter deck's worth and a sum a level); past it the DEAREST card goes first, one card at a time off its stack, until
+ * the rest fit - a stash's before the wagon's before the pack's (customs' own order, carriedItemLists). The offline
+ * character keeps every card. Answers `{ kept, worth, allowance }`: the cards that stayed behind, the worth carried
+ * before, the allowance.
+ *
+ * AUDIT CARDS-6 A1: A SEALED PACK IS TAKEN AS A CARD, at its worth (net/cardWorthLaw.js CARD_PACK_WORTH, among the cards
+ * by it - the dearest first, one rule): customs had read template 581 alone, and a pack crossed to open online.
+ * AUDIT CARDS-6 A2: AND WHAT STANDS AS THE OWNER'S OWN DECOR (DECOR2a's decorOwn, decorOwnOf) is taken FIRST among its
+ * worth - out of the pack's reach, as a stash is - the item stays offline and the piece it stood as goes with it (REST
+ * III B2's way with the rest supplies): online, the piece taken down or the house sold hands it back to the pack.
+ * AUDIT CARDS-6 A9: WITHIN A WORTH, THE COPIES NO DECK NEEDS GO FIRST. The sort kept the lists' order, and the chargen
+ * gift's stacks lead the pack, so customs took the starter deck's cards before the found cards beside them and left the
+ * binder's "Starter Deck" naming cards the realm character no longer held. A card in the pack is spare while the pack
+ * holds more of it than the deck that names the most of it (iliacItems.js binderDecks); one outside the pack is spare
+ * already (a deck is dealt from the pack - deckHeldRefusal). What a deck still lost is said (applyCustoms' `decksShort`,
+ * customsLines): the table deals no deck its binder cannot back, and says why (ui/cardBinderPage.js DECK_REFUSAL_WORDS
+ * 'not held').
+ * @param {any} snap
+ */
+export function cardCustoms(snap) {
+  const allowance = customsCardAllowance(snap?.level);
+  const worth = cardWorthOf(snap);
+  let over = worth - allowance, kept = 0;
+  if (over <= 0) return { kept, worth, allowance };
+  const pack = Array.isArray(snap.items) ? snap.items : null;
+  /** @type {Map<string, number>} */
+  const need = new Map();
+  for (const d of binderDecks(binderOf(pack))) {
+    const n = new Map();
+    for (const id of d.cards) n.set(id, (n.get(id) ?? 0) + 1);
+    for (const [id, k] of n) need.set(id, Math.max(need.get(id) ?? 0, k));
+  }
+  const have = collectionOf(pack);
+  const unit = (/** @type {any} */ rec) => cardRecordWorth({ ...rec, stackCount: 1 });
+  /** @type {{ rec: any, inPack: boolean, left: () => boolean, takeOne: () => void }[]} */
+  const held = [];
+  for (const { scene, id, rec } of decorOwnOf(snap)) {
+    if (!(unit(rec) > 0)) continue;
+    held.push({
+      rec, inPack: false, left: () => scene.decorOwn?.[id] === rec,
+      takeOne: () => {
+        if ((rec.stackCount ?? 1) > 1) { rec.stackCount -= 1; return; }
+        delete scene.decorOwn[id];
+        if (Array.isArray(scene.decor)) scene.decor = scene.decor.filter((/** @type {any} */ p) => p?.id !== id);
+      },
+    });
+  }
+  for (const list of carriedItemLists(snap)) {
+    for (const rec of list) {
+      if (!(unit(rec) > 0)) continue;
+      held.push({
+        rec, inPack: list === pack, left: () => list.includes(rec),
+        takeOne: () => { if ((rec.stackCount ?? 1) > 1) rec.stackCount -= 1; else list.splice(list.indexOf(rec), 1); },
+      });
+    }
+  }
+  held.sort((a, b) => unit(b.rec) - unit(a.rec));   // stable: the decor's, then the lists' own order, within a worth
+  const spare = (/** @type {any} */ h) => !h.inPack || !isCardRecord(h.rec) || (have.get(h.rec.card) ?? 0) > (need.get(h.rec.card) ?? 0);
+  for (let i = 0; i < held.length && over > 0;) {
+    const w = unit(held[i].rec);
+    let j = i;
+    while (j < held.length && unit(held[j].rec) === w) j++;
+    for (const sparesOnly of [true, false]) {
+      for (let k = i; k < j && over > 0; k++) {
+        const h = held[k];
+        while (over > 0 && h.left() && (!sparesOnly || spare(h))) {
+          h.takeOne();
+          if (h.inPack && isCardRecord(h.rec)) have.set(h.rec.card, (have.get(h.rec.card) ?? 1) - 1);
+          over -= w;
+          kept++;
+        }
+      }
+    }
+    i = j;
+  }
+  return { kept, worth, allowance };
+}
+/** AUDIT CARDS-6 A9: the binder's decks the pack backs - every card each names, held (iliacItems.js deckHeldRefusal). */
+const heldDecksOf = (/** @type {any} */ snap) => binderDecks(binderOf(snap?.items)).filter((d) => !deckHeldRefusal(d.cards, snap?.items));
+const REST_ITEM_IDS = new Set(Object.values(REST_ITEM));
+
+/**
+ * LEVEL-ONLINE (2026-09-30), REVERSED BY LEVEL-ONLINE-2 (2026-10-06, Mac: "Oblivion should be locked. Currently players
+ * are forced into oblivion"): A CHARACTER COMING IN IS A NEW ONLINE CHARACTER, so it crosses onto the online law's
+ * system - Daggerfall's - the one law a new character's system goes through (oblivionLeveling.js
+ * newCharacterLevelingSystem). It is run at the Bring online door beside applyCustoms, not inside it - customs is the
+ * gold and the deeds, and its report keeps saying only that (ui/enhancedMenu.js bringOnline/customsNow say this line
+ * first). An Oblivion character's bar is dropped and its skill sum re-anchored at the START of the level it has
+ * (advancement.js levelUpSkillSumAnchor) - Daggerfall's sum was never its measure, so read raw it could pay out
+ * several levels at once or owe them; a level-up already earned is kept (the anchor is the pending level's, and the
+ * Daggerfall window takes the same readyToLevelUp and pendingLevel). Customs runs on the realm's COPY, so the offline
+ * character keeps Oblivion's leveling offline. A Daggerfall character (or a save from before ORL1, which reads as
+ * one) crosses untouched. LEVEL-ONLINE-3 (2026-10-06, Mac: "Can we somehow switch people who have oblivion leveling
+ * online"): THE REALM BOOT runs it too (scenes/world.js `releveled`, beside the loan amnesty), so a character born
+ * online on Oblivion's bar under LEVEL-ONLINE is switched at its next join, its first checkpoint keeping it; once
+ * switched it reads as Daggerfall's and passes untouched. Answers whether it switched.
  * @param {any} snap
  */
 export function crossLeveling(snap) {
-  if (snap.levelingSystem === LEVELING_VIRTUE) return false;
-  snap.levelingSystem = newCharacterLevelingSystem(snap.levelingSystem, { online: true });
+  const system = newCharacterLevelingSystem(snap.levelingSystem, { online: true });
+  if ((snap.levelingSystem ?? LEVELING_CLASSIC) === system) return false;
+  snap.levelingSystem = system;
   snap.levelProgress = 0;
   snap.levelRollUp = 0;
+  const level = Number.isFinite(snap.level) ? snap.level : 1;
+  const target = snap.readyToLevelUp === true ? level + 1 : level;
+  if (Number.isFinite(snap.currentLevelUpSkillSum)) {
+    snap.startingLevelUpSkillSum = levelUpSkillSumAnchor(snap.currentLevelUpSkillSum, target);
+  }
   return true;
 }
 
@@ -181,6 +330,9 @@ export function reclaimCustomsDeeds(realm, offline) {
     const name = interiorSceneName(slot.mapId, slot.buildingKey);
     if (!permanent.has(name) || houses[region]?.buildingKey > 0) continue;
     houses[region] = { ...houses[region], regionIndex: region, location: slot.location ?? '', mapId: slot.mapId, buildingKey: slot.buildingKey, crossed: true };
+    // WD3 (AUDIT WD3 S2): the deed's town layout crosses with it - its key names a building only in that layout
+    delete houses[region].layout;
+    if (typeof slot.layout === 'string' && slot.layout) houses[region].layout = slot.layout;
     piecesBack(name);
     back.houses.push(slot.location ?? '');
   }
@@ -213,10 +365,11 @@ export function reclaimLines(/** @type {{ houses: string[], ship: boolean, piece
   return [`Customs had kept back ${what}. ${back.houses.length + (back.ship ? 1 : 0) > 1 ? 'They are' : 'It is'} yours again, with every piece in ${back.houses.length + (back.ship ? 1 : 0) > 1 ? 'them' : 'it'}. The realm's bank does not buy back what came through customs.`];
 }
 
-/** LEVEL-ONLINE: the door's words for a Daggerfall-levelling character coming in. */
+/** LEVEL-ONLINE-2: the door's words for an Oblivion-levelling character coming in. */
 export const LEVELING_CROSS_LINE = Object.freeze({
-  before: 'Online characters level the Oblivion Remastered way: this character will level by the skill bar from here on.',
-  after: 'Online, this character levels the Oblivion Remastered way, by the skill bar.',
+  before: 'Online characters level the classic way: this character will level by its skills from here on, starting from its current level.',
+  after: 'Online, this character levels the classic way, by its skills.',
+  switched: 'Online characters now level the classic way: you will level by your skills from here on, starting from your current level.',
 });
 
 /** CUSTOMS-CARRY (2026-09-29): what the door promises before customs runs, whatever it finds - what crosses beside the
@@ -230,7 +383,7 @@ export const CUSTOMS_PROMISE = Object.freeze([
 /** What customs did, in the Online door's words - or, `before` it runs (FIELD 2026-09-29, Dracula/Valentin: "HOW TF WAS
  *  I SUPPOSED TO KNOW YALL WOULD FORCE THE LOANS TO BE PAID"), what it will do: the same report off a copy customs ran
  *  on, told ahead, and the door's promise under it. */
-export function customsLines({ called, owed, wealth, allowance, taken, crossed = [] }, { before = false } = {}) {
+export function customsLines({ called, owed, wealth, allowance, taken, crossed = [], fleet = 0, restKept = 0, cardsKept = 0, cardWorth: cardsWorth = 0, cardAllowance = 0, decksShort = 0 }, { before = false } = {}) {
   const lines = [];
   if (called > 0) {
     lines.push(before
@@ -246,6 +399,13 @@ export function customsLines({ called, owed, wealth, allowance, taken, crossed =
   const houses = crossed.filter((d) => d === 'house').length;
   const what = [crossed.includes('ship') ? 'your ship' : '', houses > 1 ? `${houses} houses` : houses ? 'your house' : ''].filter(Boolean).join(' and ');
   if (what) lines.push(`${what[0].toUpperCase()}${what.slice(1)} ${before ? 'will come' : 'came'} with you, every piece in ${crossed.length > 1 ? 'them' : 'it'}; the realm's bank does not buy back what comes through customs.`);
+  // AUDIT SHIPYARDS L1-2: Come Sail Away's ships come too, by number - sailed in the realm, never sold there
+  if (fleet > 0) lines.push(`${fleet === 1 ? 'Your boat' : `Your ${fleet} boats`} ${before ? 'will come' : 'came'} with you; no shipyard in the realm buys a boat that comes through customs.`);
+  if (restKept > 0) lines.push(`Your rest supplies ${before ? 'will stay' : 'stayed'} with your offline character - they are not yet sold in the realm.`);   // AUDIT REST-PARTY B4; AUDIT REST II H13: the Tonics, Salts, Draughts and Candles are rest supplies, not camping
+  // CARDS9: the cards past the allowance, the dearest first
+  if (cardsKept > 0) lines.push(`Your cards are worth ${cardsWorth} gold; the realm lets a character of this level bring ${cardAllowance}. ${cardsKept} ${cardsKept === 1 ? 'card' : 'cards'}, the dearest, ${before ? 'will stay' : 'stayed'} with your offline character.`);
+  // AUDIT CARDS-6 A9: and a binder's deck left naming a card that stayed - the table deals it again once the binder holds it
+  if (decksShort > 0) lines.push(`${decksShort === 1 ? 'One deck' : `${decksShort} decks`} in your binder ${before ? 'will name' : decksShort === 1 ? 'names' : 'name'} cards that ${before ? 'stay' : 'stayed'} behind; the table deals a deck only when your binder holds every card it names.`);
   if (!lines.length) lines.push(before ? 'Customs finds nothing to settle.' : 'Customs found nothing to settle.');
   return before ? [...lines, ...CUSTOMS_PROMISE] : lines;
 }

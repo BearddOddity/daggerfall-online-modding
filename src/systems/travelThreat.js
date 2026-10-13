@@ -13,12 +13,15 @@
 // one the traveller is inside holds the journey at walking pace until they leave it. The governor slows a journey, it
 // never stops one (the encounter does that - travelOptions.js `encounter`).
 //
-// The Travel Options spinner stays the player's: the host clamps what reaches the clock (TV2's own law,
-// systems/travelGovernor.js - the lower of the two holds), and the travel panel says it is held, and why.
+// The ground's rate stays the journey's (RATE-LAW, systems/timeScale.js travelRateOf): the host clamps what reaches the
+// clock (TV2's own law, systems/travelGovernor.js - the lower of the two holds), and the travel panel says it is held,
+// and why.
 //
 // PURE: where the enemies are, the way and the pace in; a cap out. Metres, relative to the traveller's feet, in the
 // scene's axes (a heading's forward is (sin yaw, cos yaw), as the drive's own yaw).
 // ═══════════════════════════════════════════════════════════════════
+
+import { paceNow } from './travelPace.js';   // PACE-DIALS: the near-enemies pace is the player's dial
 
 /** Real seconds of warning the traveller always has before an enemy's reach. OW6-LATE (2026-09-29, the player: "when you
  *  go near enemies it slows you down waaaay to early - its good that it does it but still"): 2, was 5 - the hold begins
@@ -49,8 +52,18 @@ export function metresToReach(dx, dz, reach, heading) {
   return enter >= 0 ? enter : Infinity;   // both crossings behind: it is behind the traveller
 }
 
-/** Down to the spinner's own ladder - 1, 2, 3, 4, 5, then fives (travelControlUI.js's steps) - never under walking pace. */
+/** Down to the old spinner's own ladder - 1, 2, 3, 4, 5, then fives - never under walking pace. */
 export const threatStep = (n) => (n >= 5 ? Math.floor(n / 5) * 5 : Math.max(1, Math.floor(n)));
+
+/** ENEMY-PACE (the player: "a second time multiplier for when you're near an enemy"), FIXED BY RATE-LAW (2026-10-04,
+ *  Mac: "Remove travel options dials"): the slowest pace the clock runs at with an enemy holding it - the enemies' cap
+ *  still eases a journey down toward them, never under this. It was the panel's second stepper, whose own default it
+ *  keeps; the stepper is gone. */
+export const JOURNEY_FOE_PACE = 5;
+/** The enemies' cap on the rate asked (`want`), floored at the near-enemies pace and never over the ask. PACE-DIALS
+ *  (2026-10-06, the player: "the nearby enemy timer to set to 60x max"): the floor is the player's dial again
+ *  (systems/travelPace.js `foe`: 5..60, x100 on a road alone) - JOURNEY_FOE_PACE its default. */
+export const foePaced = (cap, want) => Math.min(want, Math.max(cap, paceNow('foe') ?? JOURNEY_FOE_PACE));
 
 /**
  * THE CAP: the highest time scale at which the traveller, at `speedMps` (their own unscaled pace, the motor's), takes

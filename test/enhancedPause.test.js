@@ -458,7 +458,8 @@ test('PX22: the timer PX5 designed is still there, and only when there is one', 
   // and the whole thing collapsed into `scenes/questBridge.js`.
   const bridge = read('src/scenes/questBridge.js');
   assert.match(bridge, /if \(r\.clockEnabled && !r\.clockFinished && Number\.isFinite\(r\.remainingTimeInSeconds\) && clockCounts\(q, r\)\)/);   // DEAD-CLOCK re-aim: a clock that counts
-  assert.match(bridge, /const left = r\.liveRemainingSeconds\(q\);/, 'QT-LIVE1: the remainder as of NOW, off the clock\'s own arithmetic');
+  // PIN MOVED (QUEST-SHELF, 2026-10-08): a quest set aside shows its clock as it stopped - no time counts while it is away
+  assert.match(bridge, /const left = isShelved\(q\) \? r\.remainingTimeInSeconds : r\.liveRemainingSeconds\(q\);/, 'QT-LIVE1: the remainder as of NOW, off the clock\'s own arithmetic');
   assert.match(bridge, /Math\.min\(clockSeconds, left\)/, 'the TIGHTEST clock');
   assert.equal((bridge.match(/clockSeconds = clockSeconds == null/g) ?? []).length, 1, 'once, in one place');
   // ...and NO host walks it any more, derived rather than listed.
@@ -546,7 +547,10 @@ test('PX26: the pause window lands on the page the door was pressed for', () => 
     'the reset runs first, then the landing');
   // The tabbed window IS the pause home face, so a landing sets the
   // TAB and leaves the section alone.
-  assert.match(menu, /if \(\['quests', 'stats', 'system'\]\.includes\(at\)\) pauseTab = at;/);
+  // PIN MOVED (HOLDINGS, bible/03-World/Holdings.md): the tabs a landing may name are the strip's own list, Holdings among
+  // them (test/holdings.test.js pins the strip)
+  assert.match(menu, /if \(PAUSE_TAB_IDS\.includes\(at\)\) pauseTab = at;/);
+  assert.match(menu, /export const PAUSE_TAB_IDS = Object\.freeze\(PAUSE_TABS\.map\(\(\[id\]\) => id\)\);/);
   assert.doesNotMatch(mount.slice(0, mount.indexOf('render()')), /section = 'journal'/);
   const door = read('src/ui/pauseDoor.js');
   assert.match(door, /at: hooks\.at \?\? null/);

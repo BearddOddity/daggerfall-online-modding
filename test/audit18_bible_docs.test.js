@@ -41,10 +41,12 @@ const SRC_FILES = walk('src', '.js');
 const BIBLE_FILES = walk('bible', '.md');
 
 // ---------------------------------------------------------------------------
-// 1. Home.md's open-flags list resolves - every citation, on the exact line.
+// 1. Home.md's open-flags list resolves - every entry, to a line of its file.
+// CITE-ANCHOR: an entry names its file and quotes its flag; the words are
+// the address (a number was a claim about every line above the flag).
 // ---------------------------------------------------------------------------
 
-const FLAG_ENTRY = /^- `(src\/[^`:]+):(\d+)` - (.*)$/;
+const FLAG_ENTRY = /^- `(src\/[^`:]+)` - (.*)$/;
 
 /** The doc quotes the source line trimmed, optionally with its `// ` gone,
  *  and may truncate with a trailing "...". */
@@ -56,7 +58,7 @@ function citationMatches(rawLine, quoted) {
   return candidates.some((c) => (truncated ? c.startsWith(want) : c === want));
 }
 
-test('AUDIT 18: every open-flags citation in Home.md points at the line it quotes', () => {
+test('AUDIT 18: every open-flags entry in Home.md quotes a line its file holds', () => {
   const home = lines('bible/Home.md');
   const wrong = [];
   let seen = 0;
@@ -64,13 +66,9 @@ test('AUDIT 18: every open-flags citation in Home.md points at the line it quote
     const m = FLAG_ENTRY.exec(l);
     if (!m) continue;
     seen++;
-    const [, file, no, quoted] = m;
-    if (!existsSync(join(root, file))) { wrong.push(`${file}:${no} - file does not exist`); continue; }
-    const src = lines(file);
-    if (!citationMatches(src[Number(no) - 1] ?? '', quoted.trim())) {
-      const real = src.map((s, i) => (citationMatches(s, quoted.trim()) ? i + 1 : 0)).filter(Boolean);
-      wrong.push(`${file}:${no} quotes "${quoted.trim()}" - really at ${real.join(',') || '(nowhere)'}`);
-    }
+    const [, file, quoted] = m;
+    if (!existsSync(join(root, file))) { wrong.push(`${file} - file does not exist`); continue; }
+    if (!lines(file).some((s) => citationMatches(s, quoted.trim()))) wrong.push(`${file} quotes "${quoted.trim()}" - no line of it reads so`);
   }
   // Guard against the list silently emptying out - a regex that stopped
   // matching would make this test vacuous. Deliberately NOT an exact count:
@@ -90,17 +88,21 @@ test('AUDIT 18: the open-flags list and the FLAGGED/INTERIM sites in src/ agree 
   // another, which is two rules the day one of them moves - and one
   // moved: the guard went red the moment the tool learned that an
   // identifier and a quotation are not open work. One home, both sides.
-  const inSrc = new Set();
+  // CITE-ANCHOR: a site is its file and its words, counted - two flags in one
+  // file that read alike are two entries, and each must be there.
+  const inSrc = [];
   for (const f of SRC_FILES) {
-    for (const n of flagLines(readFileSync(join(root, f), 'utf8'))) inSrc.add(`${f}:${n}`);
+    const src = readFileSync(join(root, f), 'utf8'), at = src.split('\n');
+    for (const n of flagLines(src)) inSrc.push(`${f} - ${at[n - 1].trim().replace(/^\/\/\s*/, '')}`);
   }
-  const inDoc = new Set();
+  const inDoc = [];
   for (const l of lines('bible/Home.md')) {
     const m = FLAG_ENTRY.exec(l);
-    if (m) inDoc.add(`${m[1]}:${m[2]}`);
+    if (m) inDoc.push(`${m[1]} - ${m[2].trim()}`);
   }
-  const missing = [...inSrc].filter((s) => !inDoc.has(s));
-  const extra = [...inDoc].filter((s) => !inSrc.has(s));
+  const less = (a, b) => { const left = [...b]; return a.filter((s) => { const i = left.indexOf(s); if (i < 0) return true; left.splice(i, 1); return false; }); };
+  const missing = less(inSrc, inDoc);
+  const extra = less(inDoc, inSrc);
   assert.deepEqual(missing, [], `flagged in src/ but absent from Home.md's list:\n${missing.join('\n')}`);
   assert.deepEqual(extra, [], `listed in Home.md but not flagged in src/:\n${extra.join('\n')}`);
 });
@@ -630,7 +632,7 @@ test('AUDIT 39r: the foreign-pass count is the real call-site count', () => {
   // channels are a pass of their own on both exterior hosts - eleven across seven.
   const hosts = ['src/scenes/world.js', 'src/scenes/exterior.js']
     .reduce((n, f) => n + read(f).split('renderer.markForeignPass();').length - 1, 0);
-  assert.equal(hosts, 25, 'twenty-five host call sites across the eighteen passes (WB12d: the faithful\'s rite\'s smoke, the world host alone, after the gate\'s fire; CROWN-HALL: the banners\' cloth in a castle\'s throne room, the dungeon\'s hook) (LOOT11: the lines of light over a find, the world host alone - the street\'s own pass and the modes\' hook, drawn in the dungeon and the interior arms; UNDER-LOOK, FIELD BUGS 2026-10-01: the water body and the sun\'s shafts under the sea, the world host alone, after the arrows; GUILD1d: the guild halls\' banners beside their doors, the world host alone, after the duel walls; WB9g: Dagon\'s Fire at a wearer\'s feet, the world host alone, after each mode\'s opaque world; TV4: the curtains from above, the world host alone, under the travel view; DUEL1: the duel ring\'s wall, the world host alone; WB2: the Oblivion Gate\'s fire and beacon, the world host alone; WB4a: the Burning Court boss\'s telegraph, the world host alone, drawn in the dungeon arm; WB6a: the Deadlands\' sea and sky round the court, the world host alone, drawn in the dungeon arm; GR1: the lab\'s grass; WIND3: the wisps, WEATHER2d: the sand, BOLT: the lightning\'s channels, one seam per exterior host each; DW-C: Iliac Puddle No More\'s surfaces, the world host alone - its floors and its sky fog ride the sky\'s seam; OH-C: There\'s a Hole in the Bottom of the Ocean\'s surface core and miasma, the world host alone - its opaque discs ride the sky\'s seam with the floors; the overworld map\'s seam went with it in MAP1)');
+  assert.equal(hosts, 34, 'thirty-four host call sites across the twenty-four passes (SD-LOOK: the Rift\'s window, its floor light and its halos, the world host alone, drawn in the dungeon arm after the flats - PIN MOVED; HAZE1: Heat Haze\'s ring, WINDFALL1: Windfall\'s leaves and snow, one seam per exterior host each) (SD8d: the Brass Remnant\'s blows on the arena\'s floor - the gate\'s telegraph pass at a second call site, the world host alone, drawn in the dungeon arm - PIN MOVED; SD5b: the Shattered Hour\'s sky, the world host alone, drawn in the dungeon arm - PIN MOVED; SD2c: the Hollow\'s omen, the world host alone, after the rite\'s smoke - PIN MOVED; HOTFIX 1003l: the arena floor\'s sky, through the world host\'s drawSky; WB12d: the faithful\'s rite\'s smoke, the world host alone, after the gate\'s fire; CROWN-HALL: the banners\' cloth in a castle\'s throne room, the dungeon\'s hook) (LOOT11: the lines of light over a find, the world host alone - the street\'s own pass and the modes\' hook, drawn in the dungeon and the interior arms; UNDER-LOOK, FIELD BUGS 2026-10-01: the water body and the sun\'s shafts under the sea, the world host alone, after the arrows; GUILD1d: the guild halls\' banners beside their doors, the world host alone, after the duel walls; WB9g: Dagon\'s Fire at a wearer\'s feet, the world host alone, after each mode\'s opaque world; TV4: the curtains from above, the world host alone, under the travel view; DUEL1: the duel ring\'s wall, the world host alone; WB2: the Oblivion Gate\'s fire and beacon, the world host alone; WB4a: the Burning Court boss\'s telegraph, the world host alone, drawn in the dungeon arm; WB6a: the Deadlands\' sea and sky round the court, the world host alone, drawn in the dungeon arm; GR1: the lab\'s grass; WIND3: the wisps, WEATHER2d: the sand, BOLT: the lightning\'s channels, one seam per exterior host each; DW-C: Iliac Puddle No More\'s surfaces, the world host alone - its floors and its sky fog ride the sky\'s seam; OH-C: There\'s a Hole in the Bottom of the Ocean\'s surface core and miasma, the world host alone - its opaque discs ride the sky\'s seam with the floors; the overworld map\'s seam went with it in MAP1)');
   const ev = read('bible/07-Rendering/Enhanced-Visuals-Arc.md').replace(/\s+/g, ' ');
   assert.ok(!ev.includes('three passes change programs behind the renderer\'s back'),
     'the EV arc is counting three passes again');

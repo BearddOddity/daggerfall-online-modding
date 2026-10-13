@@ -6,8 +6,8 @@
 // (ui/questJournal.js) and the history (ui/playerHistory.js) are
 // separate classic windows built at four sites between them:
 //
-//   ui/charSheetNav.js:"walk and the notebook"   the sheet's LOGBOOK button
-//   ui/charSheetNav.js:"? () => new QuestJournalWindow"   the sheet's HISTORY button
+//   ui/charSheetNav.js:"? () => new QuestJournalWindow"   the sheet's LOGBOOK button
+//   ui/charSheetNav.js:"history: () => new"   the sheet's HISTORY button
 //   scenes/world.js:"on the entity; the"    the world host's own logbook
 //   scenes/dungeonContext.js the dungeon's
 //
@@ -41,6 +41,7 @@ import { mountEnhancedChunk } from './enhancedChunk.js';   // MENU1: the one laz
 import { registerOverlay } from './enhancedOverlays.js';   // PX28: Tab puts it away
 import { QuestJournalWindow, questJournalArtLoaded } from './questJournal.js';
 import { PlayerHistoryWindow, playerHistoryArtLoaded } from './playerHistory.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export { questJournalArtLoaded, playerHistoryArtLoaded };
 
@@ -68,7 +69,13 @@ export const historyDoorReady = () => isEnhanced() || playerHistoryArtLoaded();
  *                         can answer; a host without one leaves them
  *                         unset, which is the same nothing a
  *                         CanFindPlace miss produces
- *   section               'quests' | 'notes' | 'messages' | 'history' - where the
+ *   people                LW7c, OURS not DFU's: () => the living world's
+ *                         People page (systems/livingWorld/people.js
+ *                         peoplePage: friends, enemies, known - each with
+ *                         its name, town and words), or omitted - the
+ *                         enhanced window's People section draws only
+ *                         where it is handed over (the living world on)
+ *   section               'quests' | 'notes' | 'messages' | 'history' | 'people' - where the
  *                         ENHANCED window opens. The classic windows
  *                         are two, so this is also which of them the
  *                         classic skin gets.
@@ -98,6 +105,7 @@ export const historyDoorReady = () => isEnhanced() || playerHistoryArtLoaded();
  */
 export function createChronicleWindow(deps = {}) {
   const section = deps.section ?? 'notes';
+  noteFirstUse(section === 'notes' ? 'notebook' : 'quests');   // TUT1
   if (isEnhanced() && typeof document !== 'undefined') {
     if (!chronicleDoorReady()) return null;
     return enhancedChronicleOverlay(deps, section);

@@ -50,11 +50,14 @@ import { publishBootParams, BOOT_DOOR_KEYS } from './systems/onlineLane.js';   /
 // renames chunks, so a page held open across one is holding a map of a
 // build that is gone. Recoverable, and the law of that is its own file.
 import { staleChunkAction, RELOAD_KEY, STALE_CHUNK_TEXT } from './systems/staleChunk.js';
+import { loseGlContext, onPageGone, releaseGlContexts } from './render/glRelease.js';   // GL-LEAK: a leaf - the entry's reach is unchanged
 
 async function boot() {
   installFramePacer();   // FPS-VSYNC: first, before any loop asks for a frame - a no-op but in the app with the wait lifted
+  installCursor();   // CLASSIC-CURSOR: DFU's own arrow on the classic skin, from the first frame - it needs no game data
   const canvas = document.getElementById('c');
   const renderer = new Renderer(canvas);
+  onPageGone(() => { pageGoing = true; loseGlContext(renderer.gl); });   // GL-LEAK: the game's own context, let go as the page goes
   renderer.setRetroSource(retroFrameConfig);   // RETRO1: DFU's retro mode - asked once per world frame, so the settings screen's change lands on the next
   renderer.setRenderScaleSource(renderScaleSetting);   // PERF-SCALE: the world's share of the window's pixels - asked once per world frame, and retro wins
   const params = new URLSearchParams(location.search);
@@ -81,8 +84,8 @@ async function boot() {
   // FB0930-TITLE: a boot's steps name themselves in the title, and a null step is the boot done - the bare name, so
   // the window does not say "loading the saved game" for the rest of the session.
   const status = (msg) => {
-    if (msg == null) { document.title = 'Daggerfall Online'; return; }
-    document.title = `Daggerfall Online - ${msg}`;
+    if (msg == null) { document.title = 'DFO Online'; return; }
+    document.title = `DFO Online - ${msg}`;
   };
   // Data gate: readers load user-supplied ARENA2 at runtime
   // (Port-Doctrine) - dev serves it via middleware, production asks
@@ -99,8 +102,6 @@ async function boot() {
   let _data = null;
   const ensureData = () => (_data ??= (async () => {
     await ensureArena2();
-    // The classic pointer for every surface (fire-and-forget; never traps).
-    installCursor(getBytes);
   })());
   // M-EXT: ?music opens the replacement-music pick. It goes through
   // ensureData() FIRST and not around it: the picker needs the same
@@ -182,8 +183,16 @@ async function boot() {
     // PAD-DOOR (2026-09-27, Discord - an AYN Thor: "unable to select online, load game anything"): the intro, the menu
     // and its windows answer a controller - the d-pad moves, A presses, B backs out (ui/menuPad.js) - until a game is
     // chosen, when the scene's own pad layer takes over.
-    const { attachMenuPad } = await import('./ui/menuPad.js');
-    const detachMenuPad = attachMenuPad();
+    // PAD-CURSOR: and the stick is the game's own cursor here - its law and the gauntlet handed in, because the
+    // door's loop is a leaf the desktop launcher serves alone (DA12)
+    const [{ attachMenuPad }, { padDoorCursorLaw }, { GAUNTLET_POINT }] = await Promise.all([
+      import('./ui/menuPad.js'), import('./systems/padCursor.js'), import('./ui/plusCursor.js'),
+    ]);
+    const detachMenuPad = attachMenuPad({ cursor: { law: padDoorCursorLaw, art: GAUNTLET_POINT } });
+    // SND2: the door's presses sound as the game's do - the click's sound bank read through this file's data gate, the
+    // reader handed in (ui/uiClickSound.js names no data module: the HUD imports it). Not awaited, and a missing bank
+    // boots nothing.
+    import('./ui/uiClickSound.js').then((m) => m.wakeUiClickSound(getBytes)).catch(() => {});
     // INTRO2: the cinematic and menu share ONE music session. The final
     // splash holds for the player's tap; opening the menu ducks the track,
     // choosing a game closes it before any in-game or classic video audio.
@@ -230,6 +239,15 @@ async function boot() {
     else params.delete('realm');
     if (choice === 'online-new') params.set('realmnew', '1');
     else params.delete('realmnew');
+    // HOUSE-WAITS (FIELD BUGS 2026-10-09f): a waiting house answered on the Online page - its member is born online
+    // through the world host's own birth door (`legacyborn`, in the seat the line keeps). The same SET-or-DELETE law.
+    const { takePickedLegacyBirth } = await import('./ui/enhancedMenu.js');
+    const legacyBirth = choice === 'online-new' ? takePickedLegacyBirth() : null;
+    if (legacyBirth) {
+      params.set('legacyborn', String(legacyBirth.personId));
+      params.set('region', legacyBirth.region);
+      params.set('loc', legacyBirth.loc);
+    } else { params.delete('legacyborn'); params.delete('region'); params.delete('loc'); }
     // TR3: the Test Room door - the pane answers 'test:<preset>' and
     // the world host seeds the character and the armory off the same
     // testRoom home the pane showed. The param family follows F12's
@@ -249,6 +267,11 @@ async function boot() {
     const { testStartsOutdoors } = await import('./systems/testRoom.js');
     if (testStartsOutdoors(params.get('test'))) params.delete('classic');
     else params.set('classic', '1');
+    // FB1012d BIRTH-START (Discord, "Odd family tree behavior": "the game spat them out near Privateer's Hold instead of
+    // starting them at the family's seat"): a member born from the Online page's waiting house is born in the place their
+    // birth names (`region`/`loc` - the line's seat), as the world's own Succession's birth is (places.js birthSearch drops
+    // `classic`). With the classic start asked, the world host stood them in the start cell's Privateer's Hold first.
+    if (legacyBirth) params.delete('classic');
     // MAC-N3: THE DECIDED PARAMS ARE THE URL before the world boots.
     // `online` above was set on this in-memory copy alone, and the
     // online lane (systems/onlineLane.js isOnlinePage - the read under
@@ -411,6 +434,14 @@ function crashOverlay(msg) {
   return el;
 }
 
+// GL-LEAK (FIELD BUGS 2026-10-03, Swololo: "GPU memory leaks that do not lower down even after closing the tab"): every
+// GL context the page holds - the game's, the held map's ink, the gate's veil, the intro's - let go AS THE PAGE GOES
+// (render/glRelease.js), not when a collector reaches its canvas: on Firefox the context lives in the GPU process. Not
+// for a page the browser keeps to come back to (`persisted` - the back-forward cache, which world.js's own pagehide
+// keeps working); the unload guard's question is answered before pagehide fires.
+let pageGoing = false;
+addEventListener('pagehide', (e) => { if (!e.persisted) releaseGlContexts(); });
+
 addEventListener('error', (e) => crashOverlay(crashText(e.error, e) || e.message));
 addEventListener('unhandledrejection', (e) => crashOverlay(`unhandled rejection\n${crashText(e.reason)}`));
 
@@ -421,6 +452,7 @@ addEventListener('unhandledrejection', (e) => crashOverlay(`unhandled rejection\
 // cause must read as signal, never as silent black).
 document.getElementById('c')?.addEventListener('webglcontextlost', (e) => {
   e.preventDefault();
+  if (pageGoing) return;   // GL-LEAK: let go on purpose as the page goes - no "context lost" over a closing tab
   const el = crashOverlay('graphics context lost (usually memory pressure on phones)\n\ntap here to reload');
   // AUDIT 68 S02-contextlost-tap-dead: PL3 made the report click-through,
   // so the promised tap fell to the dead canvas. This one takes taps, and

@@ -61,6 +61,22 @@ else app.setPath('userData', path.join(app.getPath('appData'), 'Daggerfall JavaS
 const FRAME_SWITCHES = frameRateSwitches(app.getPath('userData'));
 for (const s of FRAME_SWITCHES) app.commandLine.appendSwitch(s);
 
+// PERF-GPU1 (2026-10-10, a player via Mac: 5 fps in every room "with the graphics all low", playable only at 800x600):
+// THE DISCRETE GPU. On a laptop with two GPUs Chromium draws on whichever the system hands a browser - the integrated
+// one, as often as not - and the game drew there at a fraction of the card's speed, with nothing on screen saying
+// so but the FPS counter's GPU line. Chromium's own switch asks for the high-performance GPU wherever there are two
+// (one GPU: no change); the page's context asks for it too (render/renderer.js, powerPreference), for the browser
+// build. Before the app is ready, as every switch.
+app.commandLine.appendSwitch('force_high_performance_gpu');
+
+// PERF-GC1 (2026-10-10, Dudey: "big problems are caused by many players causing severe stutter"): THE YOUNG
+// GENERATION'S ROOM. A crowd's frame leaves about a megabyte of short-lived garbage (bible/07-Rendering/
+// Performance-Crowd.md), and V8's default 16 MB semi-space fills - and is swept - several times a second. 32 MB halves
+// the sweeps; a sweep's cost is what survives it, not the room. The peer lab, forty peers, steady frames: the layers'
+// mean 2.2-2.6 ms -> 2.0 (64 MB: 1.8, kept smaller for the low-memory machines). The picture is untouched; the browser
+// build keeps the browser's own. Before the app is ready, as every switch.
+app.commandLine.appendSwitch('js-flags', '--max-semi-space-size=32');
+
 // ONE instance per userData. Two shells over the same Saves folder
 // hold two independent storage indexes that go mutually stale (the
 // tmp names are pid-scoped so nothing corrupts, but each window shows
@@ -293,9 +309,20 @@ const fileResponse = (p, mime) => net.fetch(pathToFileURL(p).toString(), { bypas
 // storage, and the same traversal law.
 const LAUNCHER_DIR = path.join(__dirname, 'launcher');
 const LAUNCHER_URL = 'dagger://launcher/index.html';
+// DA12: the controller loop is the game's own front door's (src/ui/menuPad.js) - ONE module, packed beside the
+// launcher's page (package.json build.files) and read from the source tree when the shell runs unpacked.
+const MENU_PAD = app.isPackaged ? path.join(LAUNCHER_DIR, 'menuPad.js') : path.join(__dirname, '..', 'src', 'ui', 'menuPad.js');
+// AUDIT BR5: the launcher's wordmark is the product's logo, and the logo is the GAME's own file
+// (src/assets/branding/dfo-online.png, BR5) - packed beside the launcher's page as the pad module is and read from
+// the source tree unpacked, so the launcher can never draw a logo the game does not.
+const LAUNCHER_LOGO = app.isPackaged ? path.join(LAUNCHER_DIR, 'dfo-online.png') : path.join(__dirname, '..', 'src', 'assets', 'branding', 'dfo-online.png');
 async function serveLauncherFile(parts) {
-  const p = path.normalize(path.join(LAUNCHER_DIR, parts.length ? parts.join('/') : 'index.html'));
-  if (!p.startsWith(LAUNCHER_DIR + path.sep)) return new Response('forbidden', { status: 403 });
+  const p = parts.length === 1 && parts[0] === 'menuPad.js'
+    ? MENU_PAD
+    : parts.length === 1 && parts[0] === 'dfo-online.png'
+      ? LAUNCHER_LOGO
+      : path.normalize(path.join(LAUNCHER_DIR, parts.length ? parts.join('/') : 'index.html'));
+  if (p !== MENU_PAD && p !== LAUNCHER_LOGO && !p.startsWith(LAUNCHER_DIR + path.sep)) return new Response('forbidden', { status: 403 });
   try {
     const body = await fs.promises.readFile(p);
     return new Response(body, { headers: { 'Content-Type': MIME[path.extname(p).toLowerCase()] ?? 'application/octet-stream' } });
@@ -389,10 +416,10 @@ const RELEASES_PAGE = 'https://github.com/Lattymoy/daggerfall-js-source/releases
 const { isNewerRelease } = require('./lib/updateCheck.cjs');
 const { updateTransport } = require('./lib/autoUpdate.cjs');
 const { UNLOAD_ASK, leaves, restartAsk, reinstallAsk, installFailedAsk, goesAhead } = require('./lib/shellDialogs.cjs');
-const { latestDownloadUrl, manualDownloadFile } = require('./lib/downloads.cjs');
+const { latestDownloadUrl, releaseAssetUrl, manualDownloadFile } = require('./lib/downloads.cjs');
 const {
   CHECK_TIMEOUT_MS, RECHECK_MS, INSTALL_NOTICE_MS, INSTALL_GIVEUP_MS, DOWNLOAD_STALL_MS, DETECT_DEADLINE_MS, JUDGE_DEADLINE_MS, PICK_DEADLINE_MS,
-  initialState, reduce, nextStep, viewOf, newsFrom, cachedNews, notArena2Detail, installAttemptFor,
+  initialState, reduce, nextStep, viewOf, newsFrom, cachedNews, notArena2Detail, installAttemptFor, directPlay,
 } = require('./lib/launcherState.cjs');
 
 /** Which transport THIS copy updates by - lib/autoUpdate.cjs's table
@@ -629,9 +656,16 @@ function installFailed() {
     .then(({ response }) => { if (goesAhead(response)) shell.openExternal(ownDownloadUrl()); });
 }
 
+/** BR5: this copy's own download as the latest release last LISTED it
+ *  (fetchLatestRelease) - so Reinstall follows a file the product's name
+ *  was taken off, which the name this copy was built with cannot. */
+let listedDownload = null;
+
 /** This copy's own installer, the newest, by the name that never moves
- *  (REL5) - or the release page where there is no one file to name. */
+ *  (REL5) - or the release page where there is no one file to name. BR5:
+ *  the release's own link to it first, where one was read. */
 function ownDownloadUrl() {
+  if (listedDownload) return listedDownload;
   const file = manualDownloadFile({ platform: process.platform, portable: !!process.env.PORTABLE_EXECUTABLE_DIR, packaged: app.isPackaged });
   return file ? latestDownloadUrl(file) : RELEASES_PAGE;
 }
@@ -696,14 +730,14 @@ async function checkForUpdatesViaUpdater() {
   tellBox({
     type: 'info',
     message: `You're up to date`,
-    detail: `Daggerfall Online v${app.getVersion()} is the latest release.`,
+    detail: `DFO Online v${app.getVersion()} is the latest release.`,
   });
 }
 
 /** { tag, url, download } of the latest release, or null on any failure.
- *  `download` is this copy's own installer by the name that never moves
- *  (REL5) - the dmg, the portable exe - or the release page where there
- *  is no one file to name. */
+ *  `download` is this copy's own installer - the dmg, the portable exe -
+ *  as the release lists it (BR5), else by the name that never moves
+ *  (REL5), or the release page where there is no one file to name. */
 async function fetchLatestRelease() {
   try {
     const res = await net.fetch(RELEASES_LATEST_API, {
@@ -716,7 +750,10 @@ async function fetchLatestRelease() {
     const url = typeof json?.html_url === 'string' && /^https:\/\/github\.com\//.test(json.html_url)
       ? json.html_url : RELEASES_PAGE;
     const file = manualDownloadFile({ platform: process.platform, portable: !!process.env.PORTABLE_EXECUTABLE_DIR, packaged: app.isPackaged });
-    return tag ? { tag, url, download: file ? latestDownloadUrl(file) : url } : null;
+    // BR5: the file as the release itself lists it, by its name or by the way it runs - a rename of the product reaches this copy
+    const listed = file ? releaseAssetUrl(json, file) : null;
+    if (tag && listed) listedDownload = listed;
+    return tag ? { tag, url, download: file ? listed ?? latestDownloadUrl(file) : url } : null;
   } catch { return null; }
 }
 
@@ -762,7 +799,7 @@ async function checkForUpdates() {
     tellBox({
       type: 'info',
       message: `You're up to date`,
-      detail: `Daggerfall Online v${app.getVersion()} is the latest release.`,
+      detail: `DFO Online v${app.getVersion()} is the latest release.`,
     });
     return;
   }
@@ -1000,7 +1037,7 @@ async function createWindow({ onShown = null } = {}) {
     width: 1280,
     height: 800,
     backgroundColor: '#111111',
-    title: 'Daggerfall Online',
+    title: 'DFO Online',
     show: !onShown,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -1087,7 +1124,7 @@ const LAUNCHER_LINKS = Object.freeze({
   steam: 'https://store.steampowered.com/app/1812390/',
   gog: 'https://www.gog.com/game/the_elder_scrolls_chapter_ii_daggerfall',
   site: 'https://daggerfalljs.dev/',
-  discord: 'https://discord.gg/daggerfallonline',
+  discord: 'https://discord.gg/jM2JdwSM8w',
   // the landing page's own link for the game files a Mac player can get (L5-3)
   zip: 'https://forums.dfworkshop.net/viewtopic.php?t=2360',
 });
@@ -1119,7 +1156,7 @@ function openLauncherWindow() {
     fullscreenable: false,
     show: false,
     backgroundColor: '#0a0c11',
-    title: 'Daggerfall Online',
+    title: 'DFO Online',
     webPreferences: {
       preload: path.join(__dirname, 'launcherPreload.cjs'),
       contextIsolation: true,
@@ -1399,6 +1436,30 @@ function runLauncher() {
   advanceLauncher();
 }
 
+/** DA12: `--play` - the game without the launcher (launcherState directPlay). The saved folder is judged in a
+ *  process of its own first, as the launcher's is (R2-D1); one that is not whole opens the launcher instead,
+ *  whose card names what is wrong. Then the game, and the update check the launcher would have run - its
+ *  answer the game's to hear (onUpdaterEvent, tellNotice), installed at quit (autoInstallOnAppQuit). */
+let directStarting = false;
+async function runDirect(dir) {
+  directStarting = true;
+  try {
+    if (dir) {
+      const r = folderAnswer(await askArena2({ op: 'judge', dir }, { deadline: JUDGE_DEADLINE_MS }));
+      if (!r.dir) { runLauncher(); return; }
+      setArena2(r.dir);
+    } else setArena2(null);
+    saveConfig({ ...loadConfig(), lastPlayed: app.getVersion() });
+    // AUDIT DA12: not awaited - the window stands from createWindow's first line, and its load (and a clear's reload)
+    // is no reason to hold the update check, nor its failure a reason to skip it
+    createWindow().catch(() => {});
+  } finally { directStarting = false; }
+  if (!updateChecksEnabled()) return;
+  if (currentUpdateTransport() === 'updater') askUpdater().catch(() => {});
+  else noticeCheck().then(tellNotice, () => {});
+  startRechecks();
+}
+
 // The launcher's two words. Only ITS window is heard, and only these
 // actions; a link is a name from LAUNCHER_LINKS, never a URL from the page.
 ipcMain.on('launcher:ready', (e) => { if (fromLauncher(e)) renderLauncher(); });
@@ -1507,9 +1568,12 @@ app.whenReady().then(() => {
   // game. It used to be a native folder dialog before any window, and a
   // check that installed on quit and told no one. DA10: and it waits for
   // Play, with the patch notes and the player's options.
-  runLauncher();
+  // DA12: `--play` (a game manager's, a couch's) goes past it, straight into the game, when there is nothing to ask.
+  const direct = directPlay(process.argv, loadConfig());
+  if (direct === null) runLauncher();
+  else runDirect(direct);
   // DA10: a dock click with no window open (macOS keeps the app alive) opens the launcher, as a launch does
-  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) runLauncher(); });
+  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0 && !directStarting) runLauncher(); });
 });
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

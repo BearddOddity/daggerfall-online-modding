@@ -68,7 +68,7 @@ test('TV5 host wiring: the far places are rebuilt on a pixel (or a reach) change
   assert.ok(((i, j) => i >= 0 && j >= 0 && i < j)(w.indexOf('let tvFar = { at: null, near: -1, list: [] };'), w.indexOf('tvFar = { at: null, near: -1, list: [] };   // TV5: nor the far places')), 'BOOT-TDZ: declared above the load that clears it');
   assert.match(w, /if \(tvFar\.at && tvFar\.at\.x === at\.x && tvFar\.at\.y === at\.y && tvFar\.near === near && tvFar\.dg === dg\) return tvFar\.list;/);
   assert.match(w, /farPlaces\(\{ at, near, settlements: \(_tvSettlements \?\?= settlementPixels\(locationIndex\)\), summaryOf: tvPlaceSummary \}\)/);
-  assert.match(w, /marks\.push\(\{ key: f\.key, at: tvSceneKept\(f, f\.x, f\.z, TV_PLACE_LIFT\), label: f\.summary\.name, sub: farDistanceText\(km\), kind: 'far', pick: true, edge: true \}\);/);
+  assert.match(w, /marks\.push\(\{ key: f\.key, at: tvSceneKept\(f, f\.x, f\.z, TV_PLACE_LIFT\), label: f\.summary\.name, sub: farDistanceText\(km\), kind: 'far', pick: true, edge: true, hub: carriageTown\(f\.summary\.mapId\), tip: seatTipAt\(f\.summary\.mapId\) \}\);/);   // PIN MOVED (FIELD BUGS 2026-10-04e OW-HUBS, SEAT-TIP)
   assert.match(w, /const farEnd = endKey \? `far:\$\{tvTrip\.plan\.summary\.mapId\}` : null;/, 'the journey\'s own end is the flag\'s, not a plate at the edge');
   assert.match(w, /for \(const f of travelViewFarPlaces\(\)\) \{\n\s*if \(f\.key === farEnd\) continue;/);
   assert.match(w, /const plate = tvPlates\.list\.find\(\(p\) => p\.key === key\) \?\? tvFar\.list\.find\(\(p\) => p\.key === key\)( \?\? tvDng\.list\.find\(\(p\) => p\.key === key && p\.summary\))?;/);   // TV6: and a found dungeon's
@@ -102,7 +102,10 @@ function fakeDoc({ rects = null, w = 1280, h = 720 } = {}) {
   const doc = { defaultView: win, fonts: null };
   const rectReads = { n: 0 };
   const box = (r) => { rectReads.n++; return r ?? { width: 0, height: 0 }; };
-  if (rects) doc.querySelectorAll = () => (rects.others ?? []).map((r) => ({ getBoundingClientRect: () => box(r) }));
+  // These lightweight boxes model only the furniture query. Returning them for the HUD
+  // editor's unrelated selectors caused a timing-dependent crash when its sweep became due.
+  if (rects) doc.querySelectorAll = (selector) => selector === '.hud-top, .hud-bottom, .hud-quick, .travelpanel-bar, .travelpanel-junction, .dftouch-btn, .qtrack'
+    ? (rects.others ?? []).map((r) => ({ getBoundingClientRect: () => box(r) })) : [];
   const mk = (tag) => {
     const n = {
       tagName: tag.toUpperCase(), className: '', textContent: '', id: '', children: [], style: { setProperty() {} }, ownerDocument: doc,
@@ -290,13 +293,14 @@ test('EDGE-FURNITURE readout: marks behind the camera stand ABOVE the bar with t
     assert.ok(at('far:ahead').y0 + 24 >= panel.bottom + 12, `ahead: its arrow below the panel (${at('far:ahead').y0 + 24})`);
     const side = at('far:side');
     assert.ok(!over(side.x0, side.y0, side.x1, side.y1, bar), `the side's low mark keeps its label off the bar (${JSON.stringify(side)})`);
-    assert.ok(settled > 0 && settled <= 8 && rectReads.n === settled, `thirty frames: measured on the first two, then not again (${settled}, then ${rectReads.n} box reads)`);
+    // FILTERS-LEFT (2026-10-06): a measure reads the filters' own block too - five boxes where it read four
+    assert.ok(settled > 0 && settled <= 10 && rectReads.n === settled, `thirty frames: measured on the first two, then not again (${settled}, then ${rectReads.n} box reads)`);
     hud.updateTravelViewHud({ ...f, trip: 'To Ripwych, by the road' }); hud.updateTravelViewHud({ ...f, trip: 'To Ripwych, by the road' });
-    assert.equal(rectReads.n - settled, 4, 'a journey\'s line in the bar (a taller bar): measured again the next frame');
+    assert.equal(rectReads.n - settled, 5, 'a journey\'s line in the bar (a taller bar): measured again the next frame');
     hud.hideTravelViewHud(); hud.showTravelViewHud({}, doc);
     const before = rectReads.n;
     hud.updateTravelViewHud(f);
-    assert.equal(rectReads.n - before, 4, 'shown again: measured again at once - the bar, its Return and the two pieces');
+    assert.equal(rectReads.n - before, 5, 'shown again: measured again at once - the bar, its Return, the two pieces and the filters\' block');
   } finally { hud.disposeTravelViewHud(); }
   // the pieces it measures are the HUD's own - a class renamed in the style sheet would leave a mark under it unseen
   const h = rd('src/ui/travelViewHud.js'), css = rd('src/ui/enhancedStyle.js');

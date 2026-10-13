@@ -137,11 +137,12 @@
   {
     "name": "DECOR1-a-move-rewrites-what-it-is",
     "file": "server-account/src/decor.js",
-    "old": "UPDATE ${S.table} SET place = ? WHERE map_id = ? AND building_key = ? AND id = ? AND ${S.owns}`)\n    .bind(placeJson(pl), ",
-    "new": "UPDATE ${S.table} SET place = ?, model = 99999 WHERE map_id = ? AND building_key = ? AND id = ? AND ${S.owns}`)\n    .bind(placeJson(pl), ",
+    "old": "UPDATE ${S.table} SET place = ? WHERE map_id = ? AND building_key = ? AND id = ? AND yard = ? AND ${S.owns}`)\n    .bind(placeJson(pl), ",
+    "new": "UPDATE ${S.table} SET place = ?, model = 99999 WHERE map_id = ? AND building_key = ? AND id = ? AND yard = ? AND ${S.owns}`)\n    .bind(placeJson(pl), ",
     "tests": [
       "test/decor1.test.js"
-    ]
+    ],
+    "note": "AUDIT YARD-HEIGHT (PIN MOVED, re-aimed by content: one write of a piece at a time)."
   },
   {
     "name": "DECOR1-the-rate-unread",
@@ -173,8 +174,8 @@
   {
     "name": "DECOR1-the-cap-not-a-conflict",
     "file": "server-account/src/index.js",
-    "old": "const status = r.error === 'decor-cap' || r.error === 'yard-cap' || r.error === 'decor-taken' || r.error === 'guild-treasury-full' ? 409",
-    "new": "const status = r.error === 'yard-cap' || r.error === 'decor-taken' || r.error === 'guild-treasury-full' ? 409",
+    "old": "const status = r.error === 'decor-cap' || r.error === 'yard-cap' || r.error === 'decor-taken' || r.error === 'guild-treasury-full' || r.error === 'vendor-stocked' ? 409",
+    "new": "const status = r.error === 'yard-cap' || r.error === 'decor-taken' || r.error === 'guild-treasury-full' || r.error === 'vendor-stocked' ? 409",
     "tests": [
       "test/decor1.test.js"
     ]
@@ -200,8 +201,8 @@
   {
     "name": "DECOR1-a-marker-kept",
     "file": "src/systems/decorCatalogue.js",
-    "old": "a === EDITOR_FLATS_ARCHIVE || r < 0",
-    "new": "r < 0",
+    "old": "a === EDITOR_FLATS_ARCHIVE || r < 0) continue;\n        add({ model: null, flat: [a, r] });",
+    "new": "r < 0) continue;\n        add({ model: null, flat: [a, r] });",
     "tests": [
       "test/decor1.test.js"
     ]
@@ -227,8 +228,8 @@
   {
     "name": "DECOR1-the-count-unkept",
     "file": "src/systems/decorCatalogue.js",
-    "old": "    if (had) had.count++;",
-    "new": "    if (had) had.count = 1;",
+    "old": "    else had.count++;",
+    "new": "    else had.count = 1;",
     "tests": [
       "test/decor1.test.js"
     ]
@@ -254,8 +255,8 @@
   {
     "name": "DECOR1-a-shared-name-unnumbered",
     "file": "src/systems/decorCatalogue.js",
-    "old": "list.forEach((e, i) => { e.name = list.length > 1 ? `${e.base} ${i + 1}` : e.base; });",
-    "new": "list.forEach((e) => { e.name = e.base; });",
+    "old": "      for (let k = i; k < j; k++) list[k].name = lone ? list[k].base : `${list[k].base} ${taken + k - i + 1}`;",
+    "new": "      for (let k = i; k < j; k++) list[k].name = list[k].base;",
     "tests": [
       "test/decor1.test.js"
     ]

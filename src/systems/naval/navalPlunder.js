@@ -6,8 +6,8 @@
 // A HOLD IS LOTS. A ship carries one lot for each tier of its class's cargo (navalShips.js `cargo`, 1-4), each lot a
 // draw of DFU's treasure tables under a key that fits her trade (HOLD_KEYS): a pirate's plunder is gold, jewels and
 // arms ('S', 'E', 'Q'), a merchantman's cloth, spices and books ('Q', 'N', 'P', 'J'), a navy's its armoury ('T', 'F',
-// 'J'). A flagship's last lot is the captain's strongbox - 'J', whatever her trade. The keys are drawn from the
-// ship's seed, so the hold is the same whoever takes her.
+// 'J'). A flagship's last lot is the captain's strongbox - 'J', whatever her trade; a legend's last two (ETHER-LEGENDS).
+// The keys are drawn from the ship's seed, so the hold is the same whoever takes her.
 //
 // THE CAPTOR'S CHOICE is Black Flag's, in Daggerfall's words - one of:
 //   Repair   - her timber and cordage to your own ship: REPAIR_SHARE of your hull and sails made good
@@ -18,10 +18,19 @@
 //
 // FLOTSAM. A ship sunk rather than taken gives up FLOTSAM_OF her lots as casks afloat (navalShots.js dropFlotsam),
 // each a lot of her hold; a boat that sails through one hauls it into its own cargo.
+//
+// SALVAGE (2026-10-03, Mac: "allow sunken vessels to provide nessecary materials so you dont have to rely on the port") -
+// beside her casks a sunk ship leaves her WRECKAGE afloat: a floater as a cask is, its lot SALVAGE_LOT. A boat that sails
+// through it (or a swimmer who reaches it) hauls in what a carpenter and a gunner can use - her timber, pitch and canvas
+// as CARPENTER'S STORES (navalStores.js), SALVAGE_SHARE of her hull's whole in their work (navalYard.js STORE_POINTS), at
+// least one; and her dry powder as SALVAGE_BARRELS fire barrels, for a stern that rolls them. What the yard sold, the sea
+// now gives back: a captain who sinks what she meets mends her ship and fills her barrels without making port.
 
 import { mulberry32 } from '../../combat/bloodArt.js';
 import { NOTORIETY } from './navalLaw.js';
 import { HULL_PRICES } from '../comeSailAwayBoat.js';   // SHIP-CLAIM: a claimed prize's deed, at a share of her hull's price
+import { hullBuild } from './navalShips.js';
+import { STORE_POINTS } from './navalYard.js';
 
 export const HOLD_KEYS = Object.freeze({
   pirate: Object.freeze(['S', 'E', 'Q']),
@@ -30,6 +39,11 @@ export const HOLD_KEYS = Object.freeze({
 });
 /** The flagship's strongbox. */
 export const STRONGBOX_KEY = 'J';
+/** ETHER-LEGENDS (AUDIT CAPTAIN'S SEA D15): a legend's last lots are her captain's strongboxes - two to a flagship's one,
+ *  the richest hold at sea (a flagship's beat hers). */
+export const LEGEND_STRONGBOXES = 2;
+/** How many of a ship's last lots are strongboxes: a legend's LEGEND_STRONGBOXES, a flagship's one, else none. */
+export const strongboxesOf = (shipClass) => (shipClass?.legend ? LEGEND_STRONGBOXES : shipClass?.flagship ? 1 : 0);
 /** AUDIT NAV1 (online #15): every key a lot can be drawn under, once - a cask says its lot on the wire by its row here. */
 export const LOT_KEYS = Object.freeze([...new Set([...Object.values(HOLD_KEYS).flat(), STRONGBOX_KEY])]);
 /** The captor's choices (AUDIT NAV1 B13: her papers the fourth). @type {readonly ('repair'|'powder'|'press'|'papers')[]} */
@@ -70,8 +84,27 @@ export function holdKeys(shipClass, seed) {
   const lots = Math.max(1, Math.min(4, shipClass.cargo | 0));
   const out = [];
   for (let i = 0; i < lots; i++) out.push(keys[Math.floor(rng() * keys.length) % keys.length]);
-  if (shipClass.flagship) out[out.length - 1] = STRONGBOX_KEY;
+  for (let i = Math.max(0, lots - strongboxesOf(shipClass)); i < lots; i++) out[i] = STRONGBOX_KEY;
   return out;
+}
+
+/** SALVAGE: the wreckage's lot - never one of LOT_KEYS (a hold's draw); the wire says it on a key of its own. */
+export const SALVAGE_LOT = 'salvage';
+/** SALVAGE: her stores' work as a share of her hull's whole, and the fire barrels her powder fills. */
+export const SALVAGE_SHARE = 0.4;
+export const SALVAGE_BARRELS = 2;
+/** Whether a floater's lot is a wreck's salvage. */
+export const isSalvage = (lot) => lot === SALVAGE_LOT;
+/**
+ * SALVAGE: what a sunk ship's wreckage gives up - `{ stores, barrels }`: her stores (SALVAGE_SHARE of her hull's points
+ * in a store's work, at least one) and her powder (SALVAGE_BARRELS for a hull that carried guns). Nothing for no class.
+ */
+export function salvageOf(shipClass) {
+  if (!shipClass) return { stores: 0, barrels: 0 };
+  return {
+    stores: Math.max(1, Math.round((shipClass.hullHp * SALVAGE_SHARE) / STORE_POINTS)),
+    barrels: hullBuild(shipClass.hull).gun ? SALVAGE_BARRELS : 0,
+  };
 }
 
 /** The lots that float free when she sinks: FLOTSAM_OF of them, at least one - the first of her keys. */
@@ -86,9 +119,9 @@ export function flotsamKeys(shipClass, seed) {
  */
 export function drawHold(shipClass, seed, generate) {
   const items = [];
-  const keys = holdKeys(shipClass, seed);
+  const keys = holdKeys(shipClass, seed), boxes = strongboxesOf(shipClass);
   keys.forEach((key, i) => {
-    const strongbox = !!shipClass.flagship && i === keys.length - 1;
+    const strongbox = i >= keys.length - boxes;
     for (const it of generate(key, holdTier(shipClass, strongbox)) ?? []) items.push(it);
   });
   return items;

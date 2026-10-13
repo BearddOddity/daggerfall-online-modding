@@ -587,9 +587,11 @@ test('RAID3 client: standing in a raided town at a relay that keeps raids, I say
   assert.equal(log.words.at(-1).w.n, 2, 'a word the session refused is said again');
   const n = log.words.length;
   at.town = null;
+  at.pixel = { x: 201, y: 100 };   // FIELD BUGS 2026-10-11g RAID-WORD (PIN MOVED): past the rect ON the town's pixel a raid I fought is still said
   frame(1);
   assert.equal(log.words.length, n, 'out of the town: nothing');
   at.town = { regionIndex: 3, locationIndex: 7 };
+  at.pixel = { x: 200, y: 100 };
   at.relay = false;
   at.wall += RAID_WORD_MS;
   frame(1);
@@ -706,6 +708,6 @@ test('RAID3 the world host by source: the raid system is told whether the relay 
   assert.match(w, /if \(tab\.room === SOCIAL_ROOM\) link\.onRaid = \(f, room\) => \(f\.k === 'tw' \? offerRaidTowns\(link, f\.h\) : raidRelayWord\(f, room\)\);/);   // RAID-ROLL: the hub's ask for the towns table beside it
   const relay = rd('server/src/index.js');
   assert.match(relay, /if \(path === RAID_INTERNAL_CLEAN\) return this\._raidCleanInternal\(request\);/);
-  assert.match(relay, /if \(await this\._raidSweep\(Date\.now\(\)\)\) \{ if \(riteDue\) await this\._riteArm\(Date\.now\(\) \+ RITE_TELL_RETRY_MS\); return; \}/);   // WB12d: never past the rite's retry (AUDIT BROKER-CAGE R4: the local renamed off riteOwed)
+  assert.match(relay, /if \(await this\._raidSweep\(Date\.now\(\)\)\) \{ if \(riteDue\) await this\._riteArm\(Date\.now\(\) \+ RITE_TELL_RETRY_MS\); if \(sdOwed\) await this\._sdCellArm\(Date\.now\(\) \+ SD_TELL_RETRY_MS\); return; \}/);   // WB12d: never past the rite's retry (AUDIT BROKER-CAGE R4: the local renamed off riteOwed)
   assert.match(relay, /if \(!this\._spend\(ws, now, raidGate, 'raidBucket', 'raidDrops', 'too many raid frames'\)\) return;\n\s+if \(!isCellRoom\(a\.key\)\) \{ this\._junk\(ws\); return; \}/);
 });

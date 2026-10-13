@@ -157,7 +157,7 @@ export function shimmyGait(travel, stride, centre, width) {
 }
 
 /** A limb's slot in the frame's answer. */
-const limb = () => ({ at: null, fingers: null, palm: null, toe: null, w: 0, pole: null, curl: 0, shrug: 0, hang: 0 });
+const limb = () => ({ at: null, fingers: null, palm: null, toe: null, w: 0, pole: null, curl: 0, shrug: 0, hang: 0, releaseAtReach: false });
 
 /**
  * The climb, a frame at a time, for one body. `update(dt, c)` takes the climb's snapshot (climbRigInput for the own
@@ -198,7 +198,15 @@ export class ClimbPose {
     this.w = ease(this.w, on ? 1 : 0, on ? POSE.IN_TAU : POSE.OUT_TAU, dt);
     if (this.w < 1e-3 && !on) { this.reset(); return this.out; }
     out.w = this.w;
-    if (!on) return out;   // easing out: the last frame's targets, fading
+    if (!on) {
+      // The motor removes a finished move before the renderer sees its final frame. A slow frame can skip the
+      // vault's release window altogether; retain the body's ease-out, but never fade an already finished grip.
+      if (this.moveRef?.kind === 'vault' && this.moveRef.t >= 1) {
+        out.hands.L.w = 0;
+        out.hands.R.w = 0;
+      }
+      return out;   // other exits keep the last frame's targets, fading
+    }
     // the body's travel on the wall since the last frame (a teleport is none)
     const feet = c.track ?? c.feet;   // the gait reads the body's own way, never a moving hold's carry
     let d = [0, 0, 0];
@@ -512,6 +520,9 @@ export class ClimbPose {
       h.curl = 0.15;
       h.pole = norm(add(scale(fr.n, 0.8), scale(fr.right, 0.3 * lat)));
       h.w = smooth(t / 0.12) * (1 - smooth((t - 0.55) / 0.25));
+      // The capsule rises above the top before this clock lets go. Both modelled views must also release when their
+      // own shoulder can no longer reach the world hold; the first-person map retains its distance beside the ray.
+      h.releaseAtReach = true;
     }
     for (const s of ['L', 'R']) {
       const lat = s === 'R' ? 1 : -1;

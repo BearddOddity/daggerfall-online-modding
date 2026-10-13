@@ -46,7 +46,7 @@ const PUBLIC_ALLOWLIST = new Map([
   ['src/assets/intro/interkarma.webp', 'U65 credit artwork identifying Interkarma / Daggerfall Unity; recovered unchanged'],
   ['src/assets/intro/nexus.webp', 'U65 credit artwork identifying Nexus Mods; recovered unchanged'],
   ['src/assets/intro/theme.mp3', 'U65 original theme recording; recovered unchanged at Mac\'s request'],
-  ['src/assets/branding/daggerfall-online.png', 'BR4: Mac\'s supplied Daggerfall Online logo, 2026-09-27, his own cut with alpha; original PNG bytes, no ARENA2 data'],
+  ['src/assets/branding/dfo-online.png', 'BR5: Mac\'s supplied DFO Online logo, 2026-10-11, his own file with alpha, cut to its painted bounds with every pixel inside unchanged; no ARENA2 data'],
   // THE SITE'S PICTURES (U60c) WERE RETIRED with the DA site cleanup
   // (Mac, 2026-08-31): the landing page carries no raster at all now -
   // landing.test.js pins <img> absent - so the three menu screens,
@@ -71,11 +71,24 @@ const PUBLIC_ALLOWLIST = new Map([
   // the GrimoireUI pack ("The screenshot of the parchment is a spritesheet to be used for the loot menu (grimoire
   // UI)"), 106x180, cut at its two gold rules by ui/classicLootPanel.js.
   ['public/art/grimoire-loot-parchment.png', "OURS - Mac's own parchment for the GrimoireUI loot panel (DISC22-C, 2026-09-24); no ARENA2 pixel in it"],
+  ['public/art/grimoire-wood.jpg', "WOOD-HD (2026-10-10): the DFO Grimoire boards' wood, cut from the empty desk beside the book in Mac's own screenshot of the DFO Grimoire character sheet, its light flattened and made seamless; [Mac: record where that build's desk painting came from and its permission here]"],
+  ['public/art/grimoire-desk.jpg', "DESK-HD (2026-10-10): the DFO Grimoire front door's desk as an earlier build drew it, lifted from Mac's own screenshot of that build (\"it looks way better use this one\"), its doors' words and the wordmark taken off; [Mac: record where that build's desk painting came from and its permission here]"],
+  ['public/art/grimoire-dial-chest.png', "GRIM7 (2026-10-10): the treasure chest Dudey supplied for the DFO Grimoire dial's Items door (made with ChatGPT, handed over in the GRIM pass), cut from its dark ground along its outline; no ARENA2 pixel in it"],
+  // TEXT-FONT (2026-10-11): the Dyslexic choice of the enhanced skin's Text font (ui/textFont.js) - not art, a typeface
+  ['public/fonts/opendyslexic/opendyslexic-latin-400-normal.woff2', "TEXT-FONT: OpenDyslexic (Abbie Gonzalez), SIL Open Font License 1.1 - its latin regular, as @fontsource/opendyslexic 5.3.0 ships it; no ARENA2 pixel in it"],
+  ['public/fonts/opendyslexic/opendyslexic-latin-700-normal.woff2', "TEXT-FONT: OpenDyslexic's latin bold, the same package and licence"],
+  ['public/fonts/opendyslexic/OFL.txt', 'TEXT-FONT: the font\'s SIL Open Font License, which travels with it'],
   ['public/art/gun-idle.png', "OURS - Mac's own weapon art for the gun lab (2026-09-19); no ARENA2 pixel in it"],
   ['public/art/gun-fire-sheet.webp', "OURS - Mac's own six-frame fire sheet for the gun lab (2026-09-19); no ARENA2 pixel in it"],
   ['public/art/gun-paperdoll.png', "OURS - Mac's own weapon art for the gun lab (2026-09-19), baked down and cut for the doll's hand by tools/gunPaperdoll.mjs; no ARENA2 pixel in it"],
   ['public/art/gun-ammo.png', "OURS - Mac's own ammunition art for the gun lab (2026-09-19), baked down by tools/gunPaperdoll.mjs; no ARENA2 pixel in it"],
+  // THUNDERLOCK-ART + GILDED1 (2026-10-07): the gun's list picture and the Hourlock's gold pair, each DERIVED from the
+  // doll layer above by tools/gunIcons.mjs (test/thunderlockart.test.js re-runs it and holds them pixel for pixel)
+  ['public/art/gun-icon.png', "OURS - gun-paperdoll.png (Mac's own art) with the fist's gap healed from its own pixels and trimmed, by tools/gunIcons.mjs; no ARENA2 pixel in it"],
+  ['public/art/gun-icon-gilded.png', 'OURS - gun-icon.png laid on a gold-leaf ramp by tools/gunIcons.mjs (the Hourlock\'s list picture); no ARENA2 pixel in it'],
+  ['public/art/gun-paperdoll-gilded.png', 'OURS - gun-paperdoll.png laid on a gold-leaf ramp by tools/gunIcons.mjs (the Hourlock\'s doll layer); no ARENA2 pixel in it'],
   ['public/sfx/SOURCES.md', 'documentation - where every sound in this folder came from, with its license'],
+  ['public/sfx/spell-heal.wav', "IMPACTFX HEAL-FILE: the owner's chosen heal sound (02_Heal_02.wav, 2026-10-05), softened; 22050Hz 16-bit mono - SOURCE/LICENSE TO BE CONFIRMED in public/sfx/SOURCES.md"],
   ['public/sfx/fire-shotgun.wav', 'CC0 (Freesound 473846, LilMati), public domain - baked to DAGGER.SND\'s 11025Hz 8-bit by tools/sndify.mjs; see public/sfx/SOURCES.md'],
   ['public/sfx/fire-20gauge.wav', 'CC0 (Freesound 427595, michorvath), public domain - baked to DAGGER.SND\'s 11025Hz 8-bit by tools/sndify.mjs; see public/sfx/SOURCES.md'],
   ['public/sfx/fire-musket.wav', 'CC0 (Freesound 244345, Willlewis), public domain - baked to DAGGER.SND\'s 11025Hz 8-bit by tools/sndify.mjs; see public/sfx/SOURCES.md'],
@@ -402,6 +415,8 @@ const PUBLIC_ALLOWLIST = new Map([
   ['src/assets/mw/source/Pellet_Shot.fbx', "OURS - Mac's own Blender export of the Dwarven Thunderlock, committed so the two files below are a DERIVATION the gate can re-run rather than a blob"],
   ['src/assets/mw/meshes/thunderlock.nif', "OURS - Mac's own Dwarven Thunderlock model, baked to a Morrowind NIF by tools/nifWrite.mjs; a Bethesda format, no Bethesda data"],
   ['src/assets/mw/textures/thunderlock.dds', 'OURS - generated from that mesh\'s own geometry by tools/meshTexture.mjs (position, normal and cast occlusion); no image input, no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/meshes/thunderlock_gilded.nif', "OURS - the same baked mesh as thunderlock.nif (GILDED1, the Hourlock's twin), naming its own texture, by tools/bakeThunderlock.mjs; a Bethesda format, no Bethesda data"],
+  ['src/assets/mw/textures/thunderlock_gilded.dds', 'OURS - generated from that mesh\'s own geometry by tools/meshTexture.mjs on its gold-leaf bands (GILDED_BANDS); no image input, no ARENA2 or Morrowind pixel in it'],
   // MW-BRIG1 (2026-09-29): the Steel Brigandine, the port's own worn
   // model, supplied by Mac for the Morrowind body. Unlike the
   // Thunderlock it carries a PAINTED texture (the FBX names it
@@ -413,6 +428,179 @@ const PUBLIC_ALLOWLIST = new Map([
   ['src/assets/mw/source/Brigandine_Steel.png', "SUPPLIED - the brigandine's texture as Mac supplied it with the mesh (the FBX's Steel.png), committed as the DDS's source"],
   ['src/assets/mw/meshes/brigandine_steel.nif', 'SUPPLIED - the brigandine, baked to a Morrowind NIF by tools/bakeBrigandine.mjs (skinned from the body at bind time, MW-BRIG2); a Bethesda format, no Bethesda data'],
   ['src/assets/mw/textures/brigandine_steel.dds', 'SUPPLIED - Brigandine_Steel.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  // MW-BRIG4 (2026-10-09): Mac's nine paintings of the brigandine's unwrap, one per metal the jerkin is a brigandine in
+  ['src/assets/mw/source/Brigandine_Iron.png', "SUPPLIED - the Iron brigandine's painting as Mac sent it (2026-10-09, his 1 of nine - tan with dark rivets), committed as its DDS's source"],
+  ['src/assets/mw/meshes/brigandine_iron.nif', 'SUPPLIED - the brigandine mesh written naming the Iron painting by tools/bakeBrigandine.mjs (MW-BRIG4); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/textures/brigandine_iron.dds', 'SUPPLIED - Brigandine_Iron.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/source/Brigandine_Silver.png', "SUPPLIED - the Silver brigandine's painting as Mac sent it (2026-10-09, his 7 of nine - deep blue with silver rivets), committed as its DDS's source"],
+  ['src/assets/mw/meshes/brigandine_silver.nif', 'SUPPLIED - the brigandine mesh written naming the Silver painting by tools/bakeBrigandine.mjs (MW-BRIG4); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/textures/brigandine_silver.dds', 'SUPPLIED - Brigandine_Silver.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/source/Brigandine_Elven.png', "SUPPLIED - the Elven brigandine's painting as Mac sent it (2026-10-09, his 6 of nine - green with white rivets), committed as its DDS's source"],
+  ['src/assets/mw/meshes/brigandine_elven.nif', 'SUPPLIED - the brigandine mesh written naming the Elven painting by tools/bakeBrigandine.mjs (MW-BRIG4); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/textures/brigandine_elven.dds', 'SUPPLIED - Brigandine_Elven.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/source/Brigandine_Dwarven.png', "SUPPLIED - the Dwarven brigandine's painting as Mac sent it (2026-10-09, his 9 of nine - deep blue with gold rivets), committed as its DDS's source"],
+  ['src/assets/mw/meshes/brigandine_dwarven.nif', 'SUPPLIED - the brigandine mesh written naming the Dwarven painting by tools/bakeBrigandine.mjs (MW-BRIG4); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/textures/brigandine_dwarven.dds', 'SUPPLIED - Brigandine_Dwarven.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/source/Brigandine_Mithril.png', "SUPPLIED - the Mithril brigandine's painting as Mac sent it (2026-10-09, his 3 of nine - light blue with teal rivets), committed as its DDS's source"],
+  ['src/assets/mw/meshes/brigandine_mithril.nif', 'SUPPLIED - the brigandine mesh written naming the Mithril painting by tools/bakeBrigandine.mjs (MW-BRIG4); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/textures/brigandine_mithril.dds', 'SUPPLIED - Brigandine_Mithril.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/source/Brigandine_Adamantium.png', "SUPPLIED - the Adamantium brigandine's painting as Mac sent it (2026-10-09, his 2 of nine - tan with red rivets), committed as its DDS's source"],
+  ['src/assets/mw/meshes/brigandine_adamantium.nif', 'SUPPLIED - the brigandine mesh written naming the Adamantium painting by tools/bakeBrigandine.mjs (MW-BRIG4); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/textures/brigandine_adamantium.dds', 'SUPPLIED - Brigandine_Adamantium.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/source/Brigandine_Ebony.png', "SUPPLIED - the Ebony brigandine's painting as Mac sent it (2026-10-09, his 8 of nine - red with light rivets), committed as its DDS's source"],
+  ['src/assets/mw/meshes/brigandine_ebony.nif', 'SUPPLIED - the brigandine mesh written naming the Ebony painting by tools/bakeBrigandine.mjs (MW-BRIG4); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/textures/brigandine_ebony.dds', 'SUPPLIED - Brigandine_Ebony.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/source/Brigandine_Orcish.png', "SUPPLIED - the Orcish brigandine's painting as Mac sent it (2026-10-09, his 5 of nine - green with dark rivets), committed as its DDS's source"],
+  ['src/assets/mw/meshes/brigandine_orcish.nif', 'SUPPLIED - the brigandine mesh written naming the Orcish painting by tools/bakeBrigandine.mjs (MW-BRIG4); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/textures/brigandine_orcish.dds', 'SUPPLIED - Brigandine_Orcish.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/source/Brigandine_Daedric.png', "SUPPLIED - the Daedric brigandine's painting as Mac sent it (2026-10-09, his 4 of nine - red with dark rivets), committed as its DDS's source"],
+  ['src/assets/mw/meshes/brigandine_daedric.nif', 'SUPPLIED - the brigandine mesh written naming the Daedric painting by tools/bakeBrigandine.mjs (MW-BRIG4); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/textures/brigandine_daedric.dds', 'SUPPLIED - Brigandine_Daedric.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  // MW-STEEL1 (2026-10-06): Mac's steel plate, the whole classic set for the Morrowind body, supplied as two Blender
+  // exports of one scene (New_Ship.fbx, the open helm; New_Ship1.fbx, the closed). His scene also carried the body it
+  // was fitted on - Morrowind's own Breton head and neck, out of a "Morrowind_TPose_Models" pack - and those are
+  // Bethesda's meshes, so they are NOT committed: tools/fbxStrip.mjs took them out, every other record byte for byte,
+  // and only their bounds are kept (tools/bakeSteelPlate.mjs SCENE_BODY). MW-STEEL2 (2026-10-07): the plate
+  // skirt under the breastplate, stripped with them while its painting was missing, is kept since Mac sent the picture
+  // ("This is the missing texture for the morrowind steel armor's skirt"), and baked like the rest. The armour itself is Mac's export
+  // as given; three of its objects are named for the meshes they were modelled from (Imperial_Silver_Cuirass_67_Male,
+  // Imperial_Steel_Left_Gauntlet_20_Male, Breton_Male), so whether the geometry and the paintings are his own work or
+  // carry a licence of their own is Mac's to confirm (bible/04-Characters/Steel-Plate.md). tools/bakeSteelPlate.mjs
+  // re-makes every mesh and texture below from these sources, and test/mwsteel1.test.js holds it to the bytes. MW-STEEL4
+  // (2026-10-07): every mesh is skinned at the bake to Morrowind's Bip01 bones, its inverse binds the bind of the vendored
+  // retail skeleton (vendor/weapon-sheathing, Greatness7's, credited) - numbers of a skeleton, no Bethesda geometry.
+  ['src/assets/mw/source/Steel_Plate.fbx', "SUPPLIED - Mac's Blender export of the steel plate with the closed helm (steel_armor.fbx, 2026-10-09 - MW-STEEL5), committed as it came: it carries no Morrowind head or neck; committed so the files below are a DERIVATION the gate can re-run"],
+  ['src/assets/mw/source/Steel_Plate_Open_Helm.fbx', "SUPPLIED - the open helm alone out of Mac's first export (New_Ship.fbx, 2026-10-06), every other object - and the Morrowind Breton head and neck it was fitted on - stripped by tools/fbxStrip.mjs (MW-STEEL5); a DERIVATION's source"],
+  ['src/assets/mw/source/Steel_Plate_Cuirass.png', "SUPPLIED - the breastplate's painting as Mac sent it (his steelbreastplate texture), committed as its DDS's source"],
+  ['src/assets/mw/source/Steel_Plate_Pauldron.png', "SUPPLIED - the pauldrons' painting as Mac sent it (his steelpauldrons texture), committed as its DDS's source"],
+  ['src/assets/mw/source/Steel_Plate_Gauntlet.png', "SUPPLIED - the gauntlets' painting as Mac sent it (his newgloves texture), committed as its DDS's source"],
+  ['src/assets/mw/source/Steel_Plate_Greave.png', "SUPPLIED - the greaves' painting as Mac sent it (his steelpants texture), committed as its DDS's source"],
+  ['src/assets/mw/source/Steel_Plate_Boot.png', "SUPPLIED - the boots' painting as Mac sent it (his BOOTS texture), committed as its DDS's source"],
+  ['src/assets/mw/source/Steel_Plate_Helm.png', "SUPPLIED - the helm's painting as Mac sent it (his helmet texture), committed as its DDS's source"],
+  ['src/assets/mw/source/Steel_Plate_Visor.png', "SUPPLIED - the closed helm's visor and plume, painted as Mac sent it (his helmetface texture), committed as its DDS's source"],
+  ['src/assets/mw/source/Steel_Plate_Skirt.png', "SUPPLIED - the plate skirt's painting as Mac sent it (the steelpelvis texture, 2026-10-07 - MW-STEEL2), committed as its DDS's source"],
+  ['src/assets/mw/meshes/steel_plate_cuirass.nif', 'SUPPLIED - the steel plate\'s breastplate, baked to a Morrowind NIF by tools/bakeSteelPlate.mjs (skinned at the bake in retail\'s bind - MW-STEEL4); a Bethesda format - the geometry Mac\'s export as given'],
+  ['src/assets/mw/meshes/steel_plate_skirt.nif', 'SUPPLIED - the steel plate\'s skirt of plates under the breastplate, baked by tools/bakeSteelPlate.mjs (MW-STEEL2; skinned at the bake in retail\'s bind - MW-STEEL4); a Bethesda format - the geometry Mac\'s export as given'],
+  ['src/assets/mw/meshes/steel_plate_pauldron_right.nif', 'SUPPLIED - the steel plate\'s right pauldron, baked by tools/bakeSteelPlate.mjs; a Bethesda format - the geometry Mac\'s export as given'],
+  ['src/assets/mw/meshes/steel_plate_pauldron_left.nif', 'SUPPLIED - the steel plate\'s left pauldron, baked by tools/bakeSteelPlate.mjs; a Bethesda format - the geometry Mac\'s export as given'],
+  ['src/assets/mw/meshes/steel_plate_gauntlet_right.nif', 'SUPPLIED - the steel plate\'s right gauntlet, baked by tools/bakeSteelPlate.mjs; a Bethesda format - the geometry Mac\'s export as given'],
+  ['src/assets/mw/meshes/steel_plate_gauntlet_left.nif', 'SUPPLIED - the steel plate\'s left gauntlet, baked by tools/bakeSteelPlate.mjs; a Bethesda format - the geometry Mac\'s export as given'],
+  ['src/assets/mw/meshes/steel_plate_greave_right.nif', 'SUPPLIED - the steel plate\'s right greave, baked by tools/bakeSteelPlate.mjs; a Bethesda format - the geometry Mac\'s export as given'],
+  ['src/assets/mw/meshes/steel_plate_greave_left.nif', 'SUPPLIED - the steel plate\'s left greave, baked by tools/bakeSteelPlate.mjs; a Bethesda format - the geometry Mac\'s export as given'],
+  ['src/assets/mw/meshes/steel_plate_boot_right.nif', 'SUPPLIED - the steel plate\'s right boot, baked by tools/bakeSteelPlate.mjs; a Bethesda format - the geometry Mac\'s export as given'],
+  ['src/assets/mw/meshes/steel_plate_boot_left.nif', 'SUPPLIED - the steel plate\'s left boot, baked by tools/bakeSteelPlate.mjs; a Bethesda format - the geometry Mac\'s export as given'],
+  ['src/assets/mw/meshes/steel_plate_helm_open.nif', 'SUPPLIED - the steel plate\'s open helm, baked by tools/bakeSteelPlate.mjs; a Bethesda format - the geometry Mac\'s export as given'],
+  ['src/assets/mw/meshes/steel_plate_helm_closed.nif', 'SUPPLIED - the steel plate\'s closed helm, its shell and its visor two shapes of one part, baked by tools/bakeSteelPlate.mjs; a Bethesda format - the geometry Mac\'s export as given'],
+  ['src/assets/mw/textures/steel_plate_cuirass.dds', 'SUPPLIED - Steel_Plate_Cuirass.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/steel_plate_pauldron.dds', 'SUPPLIED - Steel_Plate_Pauldron.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/steel_plate_gauntlet.dds', 'SUPPLIED - Steel_Plate_Gauntlet.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/steel_plate_greave.dds', 'SUPPLIED - Steel_Plate_Greave.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/steel_plate_boot.dds', 'SUPPLIED - Steel_Plate_Boot.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/steel_plate_helm.dds', 'SUPPLIED - Steel_Plate_Helm.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/steel_plate_visor.dds', 'SUPPLIED - Steel_Plate_Visor.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/steel_plate_skirt.dds', 'SUPPLIED - Steel_Plate_Skirt.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  // MW-EBONY1 (2026-10-09): Mac's ebony plate - one Blender export with nothing of Bethesda's in it, seven paintings
+  ['src/assets/mw/source/Ebony_Plate.fbx', "SUPPLIED - Mac's Blender export of the ebony plate (ebony_armor.fbx, 2026-10-09), committed as it came: it carries no Morrowind head or neck; committed so the files below are a DERIVATION the gate can re-run"],
+  ['src/assets/mw/source/Ebony_Plate_Cuirass.png', "SUPPLIED - the ebony cuirass's painting as Mac sent it (his ebonybreastplate texture, matched to its piece by the UV islands it traces), committed as its DDS's source"],
+  ['src/assets/mw/source/Ebony_Plate_Skirt.png', "SUPPLIED - the ebony skirt's painting as Mac sent it (his EBONYPELVIS texture, matched to its piece by the UV islands it traces), committed as its DDS's source"],
+  ['src/assets/mw/source/Ebony_Plate_Pauldron.png', "SUPPLIED - the ebony pauldron's painting as Mac sent it (his ebonyshoulders texture, matched to its piece by the UV islands it traces), committed as its DDS's source"],
+  ['src/assets/mw/source/Ebony_Plate_Gauntlet.png', "SUPPLIED - the ebony gauntlet's painting as Mac sent it (his ebonygauntlets texture, matched to its piece by the UV islands it traces), committed as its DDS's source"],
+  ['src/assets/mw/source/Ebony_Plate_Greave.png', "SUPPLIED - the ebony greave's painting as Mac sent it (his ebonypants texture, matched to its piece by the UV islands it traces), committed as its DDS's source"],
+  ['src/assets/mw/source/Ebony_Plate_Boot.png', "SUPPLIED - the ebony boot's painting as Mac sent it (his ebonyboots texture, matched to its piece by the UV islands it traces), committed as its DDS's source"],
+  ['src/assets/mw/source/Ebony_Plate_Helm.png', "SUPPLIED - the ebony helm's painting as Mac sent it (his ebony helmet texture, matched to its piece by the UV islands it traces), committed as its DDS's source"],
+  ['src/assets/mw/meshes/ebony_plate_cuirass.nif', 'SUPPLIED - the ebony cuirass, baked from Ebony_Plate.fbx by tools/bakeEbonyPlate.mjs, skinned to the retail bind (MW-EBONY1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/meshes/ebony_plate_skirt.nif', 'SUPPLIED - the ebony skirt, baked from Ebony_Plate.fbx by tools/bakeEbonyPlate.mjs, skinned to the retail bind (MW-EBONY1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/meshes/ebony_plate_pauldron_right.nif', 'SUPPLIED - the ebony pauldron right, baked from Ebony_Plate.fbx by tools/bakeEbonyPlate.mjs, skinned to the retail bind (MW-EBONY1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/meshes/ebony_plate_pauldron_left.nif', 'SUPPLIED - the ebony pauldron left, baked from Ebony_Plate.fbx by tools/bakeEbonyPlate.mjs, skinned to the retail bind (MW-EBONY1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/meshes/ebony_plate_gauntlet_right.nif', 'SUPPLIED - the ebony gauntlet right, baked from Ebony_Plate.fbx by tools/bakeEbonyPlate.mjs, skinned to the retail bind (MW-EBONY1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/meshes/ebony_plate_gauntlet_left.nif', 'SUPPLIED - the ebony gauntlet left, baked from Ebony_Plate.fbx by tools/bakeEbonyPlate.mjs, skinned to the retail bind (MW-EBONY1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/meshes/ebony_plate_greave_right.nif', 'SUPPLIED - the ebony greave right, baked from Ebony_Plate.fbx by tools/bakeEbonyPlate.mjs, skinned to the retail bind (MW-EBONY1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/meshes/ebony_plate_greave_left.nif', 'SUPPLIED - the ebony greave left, baked from Ebony_Plate.fbx by tools/bakeEbonyPlate.mjs, skinned to the retail bind (MW-EBONY1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/meshes/ebony_plate_boot_right.nif', 'SUPPLIED - the ebony boot right, baked from Ebony_Plate.fbx by tools/bakeEbonyPlate.mjs, skinned to the retail bind (MW-EBONY1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/meshes/ebony_plate_boot_left.nif', 'SUPPLIED - the ebony boot left, baked from Ebony_Plate.fbx by tools/bakeEbonyPlate.mjs, skinned to the retail bind (MW-EBONY1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/meshes/ebony_plate_helm.nif', 'SUPPLIED - the ebony helm, baked from Ebony_Plate.fbx by tools/bakeEbonyPlate.mjs, skinned to the retail bind (MW-EBONY1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/textures/ebony_plate_cuirass.dds', 'SUPPLIED - Ebony_Plate_Cuirass.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/ebony_plate_skirt.dds', 'SUPPLIED - Ebony_Plate_Skirt.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/ebony_plate_pauldron.dds', 'SUPPLIED - Ebony_Plate_Pauldron.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/ebony_plate_gauntlet.dds', 'SUPPLIED - Ebony_Plate_Gauntlet.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/ebony_plate_greave.dds', 'SUPPLIED - Ebony_Plate_Greave.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/ebony_plate_boot.dds', 'SUPPLIED - Ebony_Plate_Boot.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/ebony_plate_helm.dds', 'SUPPLIED - Ebony_Plate_Helm.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/source/Cloak.fbx', "SUPPLIED - Mac's Blender export of the cloak (New_Ship-1.fbx, 2026-10-09 - MW-CLOAK1), committed as it came: the cloak alone, no Morrowind body; committed so the files below are a DERIVATION the gate can re-run"],
+  ['src/assets/mw/source/Cloak_Blue.png', "SUPPLIED - Mac's blue painting of the cloak (2026-10-09 - MW-CLOAK1), committed as it came"],
+  ['src/assets/mw/source/Cloak_Grey.png', "SUPPLIED - Mac's grey painting of the cloak (2026-10-09 - MW-CLOAK1), committed as it came"],
+  ['src/assets/mw/source/Cloak_Red.png', "SUPPLIED - Mac's red painting of the cloak (2026-10-09 - MW-CLOAK1), committed as it came"],
+  ['src/assets/mw/source/Cloak_Dark_Brown.png', "SUPPLIED - Mac's dark brown painting of the cloak (2026-10-09 - MW-CLOAK1), committed as it came"],
+  ['src/assets/mw/source/Cloak_Purple.png', "SUPPLIED - Mac's purple painting of the cloak (2026-10-09 - MW-CLOAK1), committed as it came"],
+  ['src/assets/mw/source/Cloak_Light_Brown.png', "SUPPLIED - Mac's light brown painting of the cloak (2026-10-09 - MW-CLOAK1), committed as it came"],
+  ['src/assets/mw/source/Cloak_White.png', "SUPPLIED - Mac's white painting of the cloak (2026-10-09 - MW-CLOAK1), committed as it came"],
+  ['src/assets/mw/source/Cloak_Green.png', "SUPPLIED - Mac's green painting of the cloak (2026-10-09 - MW-CLOAK1), committed as it came"],
+  ['src/assets/mw/meshes/cloak_blue.nif', 'SUPPLIED - the cloak in its blue painting, baked from Cloak.fbx by tools/bakeCloak.mjs, skinned to the retail bind (MW-CLOAK1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/meshes/cloak_grey.nif', 'SUPPLIED - the cloak in its grey painting, baked from Cloak.fbx by tools/bakeCloak.mjs, skinned to the retail bind (MW-CLOAK1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/meshes/cloak_red.nif', 'SUPPLIED - the cloak in its red painting, baked from Cloak.fbx by tools/bakeCloak.mjs, skinned to the retail bind (MW-CLOAK1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/meshes/cloak_dark_brown.nif', 'SUPPLIED - the cloak in its dark brown painting, baked from Cloak.fbx by tools/bakeCloak.mjs, skinned to the retail bind (MW-CLOAK1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/meshes/cloak_purple.nif', 'SUPPLIED - the cloak in its purple painting, baked from Cloak.fbx by tools/bakeCloak.mjs, skinned to the retail bind (MW-CLOAK1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/meshes/cloak_light_brown.nif', 'SUPPLIED - the cloak in its light brown painting, baked from Cloak.fbx by tools/bakeCloak.mjs, skinned to the retail bind (MW-CLOAK1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/meshes/cloak_white.nif', 'SUPPLIED - the cloak in its white painting, baked from Cloak.fbx by tools/bakeCloak.mjs, skinned to the retail bind (MW-CLOAK1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/meshes/cloak_green.nif', 'SUPPLIED - the cloak in its green painting, baked from Cloak.fbx by tools/bakeCloak.mjs, skinned to the retail bind (MW-CLOAK1); a Bethesda format, no Bethesda data'],
+  ['src/assets/mw/textures/cloak_blue.dds', 'SUPPLIED - Cloak_Blue.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/cloak_grey.dds', 'SUPPLIED - Cloak_Grey.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/cloak_red.dds', 'SUPPLIED - Cloak_Red.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/cloak_dark_brown.dds', 'SUPPLIED - Cloak_Dark_Brown.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/cloak_purple.dds', 'SUPPLIED - Cloak_Purple.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/cloak_light_brown.dds', 'SUPPLIED - Cloak_Light_Brown.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/cloak_white.dds', 'SUPPLIED - Cloak_White.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  ['src/assets/mw/textures/cloak_green.dds', 'SUPPLIED - Cloak_Green.png mip-chained to an uncompressed DDS by tools/meshTexture.mjs writeDds; no ARENA2 or Morrowind pixel in it'],
+  // GALLEON (2026-10-01): the new galleon, Mac's own model of hull 2 (the
+  // Small Ship), supplied as three Blender exports of one scene - the same
+  // geometry, only their creation stamps differ, so one is committed. The
+  // FBX is the source; tools/bakeGalleon.mjs re-makes galleon.json from it
+  // (its parts in the boat's frame, triangulated), and
+  // test/galleon_model.test.js holds the bake to the bytes. Her pictures
+  // carry no file at all: world/galleonArt.js paints them at load, from
+  // nothing but numbers - no ARENA2 pixel.
+  ['src/assets/galleon/source/New_Ship.fbx', "SUPPLIED - Mac's Blender export of the new galleon (2026-10-01; his second, New_Ship_Even_EVEN_newer.fbx, over it 2026-10-02), committed so galleon.json is a DERIVATION the gate can re-run"],
+  ['src/assets/galleon/galleon.json', 'SUPPLIED - New_Ship.fbx baked to the boat\'s frame by tools/bakeGalleon.mjs; geometry only, no ARENA2 or Come Sail Away data'],
+  // SHIPS-2 (2026-10-07, Mac: "implement both of these new ship placement models"): MAC'S CARRACK AND HIS TINY SHIP,
+  // supplied as three Blender exports - New_Ship_2.fbx, New_Ship_2_Shutter.fbx and Tiny_Ship.fbx, the newest holding
+  // both ships and the shutter in their places, so it alone is committed. tools/bakeCarrack.mjs and
+  // tools/bakeLargeBoat.mjs re-make their JSON from it (tools/shipBake.mjs), and test/ships2_bake.test.js holds both
+  // to the bytes. Their pictures carry no file: world/carrackArt.js and world/largeBoatArt.js paint them at load.
+  ['src/assets/ships/source/Tiny_Ship.fbx', "SUPPLIED - Mac's Blender export of the new carrack and the new large boat in one scene (2026-10-07; the newest of the three he sent), committed so carrack.json and largeBoat.json are DERIVATIONS the gate can re-run"],
+  ['src/assets/ships/carrack.json', 'SUPPLIED - Tiny_Ship.fbx\'s carrack baked to the boat\'s frame by tools/bakeCarrack.mjs; geometry only, no ARENA2 or Come Sail Away data'],
+  ['src/assets/ships/largeBoat.json', 'SUPPLIED - Tiny_Ship.fbx\'s large boat baked to the boat\'s frame by tools/bakeLargeBoat.mjs; geometry only, no ARENA2 or Come Sail Away data'],  ['src/assets/sunbaby/todd.jpg', 'SUPPLIED - a photograph of Todd Howard that Mac supplied for the sun baby event (SUNBABY3, 2026-10-04), cropped to the face and recompressed by ImageMagick; no ARENA2 pixel in it - a third-party photo, not the port own art, kept at his explicit request'],
+  // GATE-FBX (2026-10-09, Mac: "replace the oblivion gate model with this handcrafted model which also needs texturing"):
+  // MAC'S OBLIVION GATE, supplied as one Blender export of his whole "Oblivion Models" scene - the gate one object of
+  // it, committed whole as the ships' scenes are. tools/bakeGate.mjs re-makes the JSON from it (tools/shipBake.mjs), and
+  // test/gatefbx.test.js holds it to the bytes. Its pictures carry no file: world/gateArt.js paints them at load.
+  ['src/assets/gate/source/Oblivion_Gate.fbx', "SUPPLIED - Mac's Blender export of his Oblivion models' scene, the gate (Cube.1688) among them (2026-10-09), committed so oblivionGate.json is a DERIVATION the gate can re-run"],
+  ['src/assets/gate/oblivionGate.json', 'SUPPLIED - Oblivion_Gate.fbx\'s gate baked to the gate\'s frame by tools/bakeGate.mjs; geometry only, no ARENA2 data'],
+  // WAGONS1 (2026-10-09, Mac: "Here are 3 new models that will need to be textured"): MAC'S THREE WAGONS, supplied as
+  // four saves of one Blender scene ("wagons.blend") - the newest committed whole, as the ships' scenes are.
+  // tools/bakeWagons.mjs re-makes the three JSONs from it (tools/shipBake.mjs), and test/wagons1_bake.test.js holds them
+  // to the bytes. Their pictures carry no file: world/wagonArt.js paints them at load.
+  ['src/assets/wagons/source/Wagon_Cart_Tiny_1.fbx', "SUPPLIED - Mac's Blender export of his wagons' scene, the Wagon Cart, the Open Wagon and the Caravan among its stations (2026-10-09; the newest of the four he sent), committed so the three wagon JSONs are DERIVATIONS the gate can re-run"],
+  ['src/assets/wagons/cart.json', "SUPPLIED - Wagon_Cart_Tiny_1.fbx's Wagon Cart baked to the wagon's frame by tools/bakeWagons.mjs; geometry only, no ARENA2 or Horse Cart and Cargo data"],
+  ['src/assets/wagons/openWagon.json', "SUPPLIED - Wagon_Cart_Tiny_1.fbx's Open Wagon baked to the wagon's frame by tools/bakeWagons.mjs; geometry only, no ARENA2 or Horse Cart and Cargo data"],
+  ['src/assets/wagons/caravan.json', "SUPPLIED - Wagon_Cart_Tiny_1.fbx's Caravan baked to the wagon's frame by tools/bakeWagons.mjs; geometry only, no ARENA2 or Horse Cart and Cargo data"],
+  // MEADOW1 (2026-10-06, Mac: "These are 4 textures I want to blend into our grass system", then a bush): THE
+  // MEADOW'S FIVE SPRITES, supplied by Mac as indexed PNGs and committed as he supplied them. Nothing ships them:
+  // tools/bakeMeadow.mjs bakes them into render/meadowArt.js, and test/grassmeadow.test.js holds that module to
+  // them texel for texel. Their colours are not looked up in any palette at runtime - the sprites carry their own.
+  ['src/assets/grass/source/tuft-tall.png', "SUPPLIED - Mac's tall grass tuft for the meadow grass (MEADOW1, 2026-10-06), 32x32 indexed, his own PNG bytes - his own pixel art, no ARENA2 pixel in it (his word, AUDIT MEADOW1 2026-10-06)"],
+  ['src/assets/grass/source/tuft-short.png', "SUPPLIED - Mac's short grass tuft for the meadow grass (MEADOW1, 2026-10-06), 32x32 indexed, his own PNG bytes - his own pixel art, no ARENA2 pixel in it (his word, AUDIT MEADOW1 2026-10-06)"],
+  ['src/assets/grass/source/flowers.png', "SUPPLIED - Mac's flower tuft for the meadow grass (MEADOW1, 2026-10-06), 32x32 indexed, his own PNG bytes - his own pixel art, no ARENA2 pixel in it (his word, AUDIT MEADOW1 2026-10-06)"],
+  ['src/assets/grass/source/tuft-dry.png', "SUPPLIED - Mac's dry grass tuft for the meadow grass (MEADOW1, 2026-10-06), 32x32 indexed, his own PNG bytes - his own pixel art, no ARENA2 pixel in it (his word, AUDIT MEADOW1 2026-10-06)"],
+  ['src/assets/grass/source/bush.png', "SUPPLIED - Mac's bush for the meadow grass (MEADOW1, 2026-10-06), 64x64 indexed, his own PNG bytes - his own pixel art, no ARENA2 pixel in it (his word, AUDIT MEADOW1 2026-10-06)"],
+  // COATS3D (2026-10-11, the owner: "The first image is for the horse itself and the second is for the tail"): THE
+  // COURSER, a rigged horse supplied as five saves of one Blender rig and two pictures painted for its own UV layout -
+  // the newest whole save committed, as the ships' and the wagons' scenes are. tools/bakeHorse.mjs re-makes
+  // courser.json from it, and test/coats3d_horse3d.test.js holds it to the bytes. The pictures ship as supplied: the
+  // runtime dyes them per look (world/horseRig.js) and writes nothing back.
+  ['src/assets/horse/source/courser.fbx', "SUPPLIED - the owner's Blender export of the Courser horse rig (idle.fbx, 2026-10-11; idle-1.fbx the same bytes, walk/trot/gallop.fbx subsets of it), committed so courser.json is a DERIVATION the gate can re-run"],
+  ['src/assets/horse/courser.json', "SUPPLIED - courser.fbx baked to the armature's frame by tools/bakeHorse.mjs; geometry, skin and gaits only, no ARENA2 data"],
+  ['src/assets/horse/body.png', "SUPPLIED - the owner's body picture for the Courser (COATS3D, 2026-10-11), 256x256 indexed, as sent - a hide painted for the 3D model's own UV islands, no ARENA2 pixel in it (Daggerfall's horse is a sprite; this painting has no sprite's silhouette)"],
+  ['src/assets/horse/hair.png', "SUPPLIED - the owner's mane and tail picture for the Courser's nine alpha cards (COATS3D, 2026-10-11), 512x512 RGBA, as sent - no ARENA2 pixel in it"],
 ]);
 
 test('doctrine: nothing ships out of public/ or src/assets/ that is not provably ours', () => {
@@ -478,6 +666,10 @@ test('doctrine: no raster of game data is tracked anywhere in the repo', () => {
 // Checked BOTH WAYS (AUDIT 27 F302's lesson: a row is a CLAIM, and a
 // claim about a file that is not there is not one) - see the pins
 // below.
+/** VE4: the mark a row carries when its pixels ARE a render of game data - Port-Doctrine's one exception. */
+const VE4_DERIVED = "Port-Doctrine's one exception (Mac, 2026-10-05): Daggerfall's own textures, repainted by the mod's author, carried on Mac's approval";
+/** ALIKR1 / SNOWFALL1: the second exception's mark - the desert's and the winter's ground, its own approval. */
+const ENVIRONS_DERIVED = "Port-Doctrine's second exception (Mac, 2026-10-08): Daggerfall's own desert and winter ground tiles, repainted by the packs' authors, carried on Mac's approval";
 const BUNDLE_ART = new Map([
   // FORAGE1 (2026-09-28): Foraging's seven pictures - the author's own
   // pixel art (tools, a wood bundle, an egg), no Daggerfall record - taken
@@ -542,6 +734,11 @@ const BUNDLE_ART = new Map([
   ['public/art/dfu-icons/',
     { manifest: 'vendor/dfu-icons/dfu-icons.files.json',
       why: "THIRD-PARTY - Daggerfall Unity (Daggerfall Workshop, MIT); HUDInteractionModeIcon's four icon sets (icon, classic, colour, mono - steal, grab, info, talk), byte for byte from Assets/Resources/Icons at the commit the listing pins (see vendor/dfu-icons/README.md)" }],
+  // CLASSIC-CURSOR (FIELD BUGS 2026-10-03): Daggerfall Unity's OWN default cursor - DFU-authored art out of Unity's
+  // Resources folder, MIT, never ARENA2 data (DFU reads no cursor from the game's files). Generated from the pinned commit.
+  ['public/art/dfu-cursor/',
+    { manifest: 'vendor/dfu-cursor/dfu-cursor.files.json',
+      why: "THIRD-PARTY - Daggerfall Unity (Daggerfall Workshop, MIT); the defaultCursor ProjectSettings names, Assets/Resources/Cursor2.png, byte for byte at the commit the listing pins (see vendor/dfu-cursor/README.md)" }],
   // SKIN2 (2026-09-25, Mac: "Implement these as new skin options"): Mac's ExistingClasses archive, twenty redrawn
   // enemy-class sheets worn as on-foot skins. A LOOSE-FILE pack (no .dfmod), so GrimoireUI's way: the listing
   // generated from the archive is the authority - and these names were changed on the way in (three port archive
@@ -569,6 +766,36 @@ const BUNDLE_ART = new Map([
   ['vendor/iliac-puddle-no-more/Flats/',
     { manifest: 'vendor/iliac-puddle-no-more/iliac-puddle-no-more.dfmod.json',
       why: "THIRD-PARTY - Iliac Puddle No More 1.2.2 (jet082); the mod's own seven fish, decoded from the bundle's Texture2D objects (DXT5, the first mip - the pixels the game samples) by tools/iliacPuddleAssets.mjs (see the vendor README)" }],
+  // VE4 (2026-10-05, Mac: "Approved and yes", then "Put it in the codebase"): VANILLA ENHANCED - THE ONE DERIVED PACK.
+  // Every row above carries a modder's OWN art, and several say so against this very rule. These carry Daggerfall's
+  // textures repainted, which A RENDER OF GAME DATA IS GAME DATA forbids - and which Mac approved: Port-Doctrine records
+  // the exception and names its directory. So each row says it is derived, and the pins below hold the mark to the
+  // directories that paragraph names. Each directory answers to its own generated listing (tools/vanillaEnhancedVendor.mjs
+  // writes it from the mod's repository at the pinned commit, every file's source path and sha256 beside it), so the
+  // both-ways derivation above holds for it as for every other bundle.
+  ['public/art/vanilla-enhanced/base/',
+    { manifest: 'vendor/vanilla-enhanced/base.files.json', derived: VE4_DERIVED,
+      why: "THIRD-PARTY - Vanilla Enhanced - Base 3.4.7 (carademono), carried on Mac's word of the author's permission; Daggerfall's own textures remastered - the terrain's tile sets, the nature flats, the city walls and the dungeons - the 1,246 PNGs its manifest names, byte for byte from github.com/drcarademono/vanilla-enhanced at the commit the listing pins (see vendor/vanilla-enhanced/README.md for the open permission record)" }],
+  ['public/art/vanilla-enhanced/masked-roads/',
+    { manifest: 'vendor/vanilla-enhanced/masked-roads.files.json', derived: VE4_DERIVED,
+      why: "THIRD-PARTY - Vanilla Enhanced - Masked Roads 3.4.7 (carademono & Kokey), carried on Mac's word of the author's permission; the road tiles - its own nine PNGs, and the 21 slices of its texture arrays no PNG it or the Base ships draws, each the repository's source picture for the slice, proved within BC7's error of it (see vendor/vanilla-enhanced/README.md)" }],
+  ['public/art/vanilla-enhanced/snowless-swamps-and-jungles/',
+    { manifest: 'vendor/vanilla-enhanced/snowless-swamps-and-jungles.files.json', derived: VE4_DERIVED,
+      why: "THIRD-PARTY - Vanilla Enhanced - Snowless Swamps and Jungles 3.4.7 (carademono), carried on Mac's word of the author's permission; the swamps' and jungles' ground and buildings without snow - the 160 PNGs its manifest names, byte for byte (see vendor/vanilla-enhanced/README.md)" }],
+  // ALIKR1 / SNOWFALL1 (2026-10-08, Mac: "We have permission to use and implement everything into the codebase. These
+  // should be on by default and integrate into our enhanced environments seamlessly"): THE SECOND EXCEPTION - two more
+  // packs of Daggerfall's ground repainted, each directory answering to the listing tools/environmentModsExtract.mjs
+  // writes from the archive (every file and its sha256), each row carrying the second exception's own mark.
+  ['public/art/sands-of-the-alikr/',
+    { manifest: 'vendor/sands-of-the-alikr/sands-of-the-alikr.files.json', derived: ENVIRONS_DERIVED,
+      why: "THIRD-PARTY - Sands of the Alik'r 2 (Nexus mod 1390; its archive names no author), carried on Mac's word of the author's permission; Daggerfall's desert ground under the author's sand - the pack's 47 loose TEXTURE.002 records, byte for byte (see vendor/sands-of-the-alikr/README.md for the open permission record)" }],
+  ['public/art/snowfall/',
+    { manifest: 'vendor/snowfall/snowfall.files.json', derived: ENVIRONS_DERIVED,
+      why: "THIRD-PARTY - Snowfall 1.0.5 (demifiend000), carried on Mac's word of the author's permission; the 168 winter ground records its bundle packages (TEXTURE.103, .303, .403 - Daggerfall's winter tiles under the author's snow), its snow albedo and its three surface masks, decoded losslessly from the bundle's Texture2D and TextAsset objects (see vendor/snowfall/README.md)" }],
+  // WINDFALL1: the mod's own three pictures - leaves and a snowflake, the author's pixels (no Daggerfall record).
+  ['vendor/windfall/Textures/',
+    { manifest: 'vendor/windfall/windfall.files.json',
+      why: "THIRD-PARTY - Windfall 1.0.0 (demifiend000), carried on Mac's word of the author's permission; the mod's own leaf sheets and snowflake, RGBA32 with one mip in the bundle - each PNG is the texture exactly (see vendor/windfall/README.md)" }],
 ]);
 /** The basenames each bundle manifest names, lowercased. Memoised: the
  *  membership test runs once per tracked raster and the manifest is
@@ -627,6 +854,42 @@ test('doctrine EOTB0: the derivation is not vacuous - a stranger and a loss both
   // artwork dropped into the mod's folder
   assert.equal(bundleArt(`${dir}112364/logo.png`), false, 'a file the manifest never named must not pass as the mod\u2019s');
   assert.equal(bundleArt(`${dir}112364/112364_0-0.png`), true, 'and one it did must pass');
+});
+
+// \u2500\u2500 VE4: A DERIVED ROW IS THE EXCEPTION PORT-DOCTRINE RECORDS, AND ONLY IT \u2500\u2500
+//
+// Every other row is a CLAIM that the art is the modder's own. Vanilla
+// Enhanced's rows say the opposite - it IS Daggerfall's art, repainted -
+// and stand on Mac's approval alone. An approval is bounded by what it
+// approved: the doctrine's exception paragraph names the directory, and a
+// derived row anywhere else, or a named directory with no row, reddens.
+const DOCTRINE = 'bible/01-Overview/Port-Doctrine.md';
+/** The directories Port-Doctrine's exception paragraph names - every backticked `public/` path on its line. */
+function exceptionDirs() {
+  // ALIKR1/SNOWFALL1: every exception paragraph's line - THE ONE EXCEPTION (Vanilla Enhanced) and THE SECOND EXCEPTION
+  const lines = readFileSync(join(root, DOCTRINE), 'utf8').split('\n').filter((l) => /^\s+\*\*THE (?:ONE|SECOND) EXCEPTION\b/.test(l));
+  return lines.flatMap((line) => [...line.matchAll(/`(public\/[^`]+\/)`/g)].map((m) => m[1]));
+}
+/** The mark each directory's approval gave it: Vanilla Enhanced's rows the first exception's, the environment packs' the
+ *  second's - a row in one exception wearing the other's mark is a row approved by the wrong approval. */
+const markFor = (dir) => (dir.startsWith('public/art/vanilla-enhanced/') ? VE4_DERIVED : ENVIRONS_DERIVED);
+/** The derived rows standing outside every directory the exception names. */
+const derivedOutside = (rows, dirs) => [...rows].filter(([dir, r]) => r.derived && !dirs.some((d) => dir.startsWith(d))).map(([dir]) => dir);
+
+test('doctrine VE4: a derived row stands inside the exception Port-Doctrine records, and every row inside it says it is derived', () => {
+  const dirs = exceptionDirs();
+  assert.deepEqual(dirs, ['public/art/vanilla-enhanced/', 'public/art/sands-of-the-alikr/', 'public/art/snowfall/'], 'the doctrine names three directories, under two approvals');
+  assert.deepEqual(derivedOutside(BUNDLE_ART, dirs), [], 'repainted game data outside the approved directory');
+  for (const d of dirs) assert.ok([...BUNDLE_ART].some(([dir, r]) => r.derived && dir.startsWith(d)), `${d} is approved and no row carries it`);
+  // and inside it nothing passes as the port's own: every row there says what it is
+  for (const [dir, r] of BUNDLE_ART) if (dirs.some((d) => dir.startsWith(d))) assert.equal(r.derived, markFor(dir), `${dir} sits in the exception and does not say so - in its own approval's words`);
+  for (const f of PUBLIC_ALLOWLIST.keys()) assert.ok(!dirs.some((d) => f.startsWith(d)), `${f}: an allow-list row inside the exception`);
+});
+
+test('doctrine VE4: the bound is not vacuous - a derived row outside the named directory reddens, and with no approval every one does', () => {
+  const rogue = new Map([...BUNDLE_ART, ['public/art/someone-elses-repaint/', { manifest: 'x', derived: VE4_DERIVED, why: 'THIRD-PARTY - x' }]]);
+  assert.deepEqual(derivedOutside(rogue, exceptionDirs()), ['public/art/someone-elses-repaint/']);
+  assert.deepEqual(derivedOutside(rogue, []), [...rogue].filter(([, r]) => r.derived).map(([d]) => d));
 });
 
 test('doctrine: no DERIVED raster is tracked either, whatever it is wearing', () => {

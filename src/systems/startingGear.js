@@ -28,13 +28,15 @@
 //   enhanced 16-slot item list.
 
 import { addItem, addGoldPieces } from './inventory.js';   // E4: gold is the counter, not a bag stack
+import { giveWallet, isWalletItem } from './walletItem.js';   // WALLET1: the wallet rides the port's own tail
 import { equipItem } from './equip.js';
 import { templateByIndex, mintCondition, setItemFields } from './itemTemplates.js';   // MAC-N1: SetItem's name + value, the one export
 import { CLOTHING_DYES } from '../characters/dyes.js';
 import { createWeapon } from '../combat/enemyEquipment.js';   // ItemBuilder.CreateWeapon's one home (the arrow arm)
 import { getBool } from './settings.js';   // SETT: PlayerTorchFromItems
 import { survivalOn } from './survival/switch.js';   // AUDIT SURV E: the survival kit reaches the character chargen makes
-import { startingProvisions } from './survival/items.js';
+import { startingProvisions, startingCampfire } from './survival/items.js';
+import { sharedClockOn } from './worldTick.js';   // REST2: online the Campfire is the rest's
 
 // ItemEnums template indices
 const SHORT_SHIRT_M = 165, CASUAL_PANTS_M = 151;
@@ -149,6 +151,12 @@ export function assignStartingGear(entity, { classIndex = 0, isCustom = false, r
  *  a mod's kit alike (RRI2's assignSkillEquipment), after the bag. */
 export function addSurvivalProvisions(entity, added = []) {
   if (survivalOn()) for (const it of startingProvisions()) { addItem(entity.items, it); added.push(it); }
+  // REST2: online the Campfire is the rest's - a character set out with the arc Off still carries one
+  else if (sharedClockOn()) { const it = startingCampfire(); if (it) { addItem(entity.items, it); added.push(it); } }
+  // WALLET1: and the wallet, whatever the switches (systems/walletItem.js) - the kit a new character sets out with holds
+  // one, as a character from before the wallet is given one ONCE as its save is restored (save.js restorePlayer, the
+  // save's `walletGift` mark - PORTAL-GIFT's shape; AUDIT 625 W4: not every load, nor any character that has none)
+  if (giveWallet(entity)) added.push(entity.items.find(isWalletItem));
   return added;
 }
 

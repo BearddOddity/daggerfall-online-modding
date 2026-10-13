@@ -33,6 +33,7 @@ import { QuestResourceBehaviour } from '../systems/quest/resourceBehaviour.js';
 import { questNameIn } from '../systems/quest/machine.js';   // AUDIT CURSE-SYNC: IsProtectedQuest's name test, one home
 import { applySpell } from '../systems/effects.js';
 import { GENDERS } from '../characters/nameHelper.js';
+import { mendedFoeSpot } from '../systems/quest/markerCuration.js';   // SEALED-SAVE (FIELD BUGS 2026-10-05c): a saved quest foe follows its moved marker
 
 export function questFoeGender(foe) { return foe.gender === GENDERS.Female ? 'female' : 'male'; }
 
@@ -206,6 +207,61 @@ export function questShareTag(machine, f, partied) {
   return { q: quest.questName, s };
 }
 
+/** DESYNC-ZERO (2026-10-09, the owner: "monster desyncs should never happen in dungeons and outside"): EVERY QUEST'S
+ *  FOE RIDES - a private quest's too. Its tag names the quest and the Foe as a shared one's does, and `pv: 1` says no
+ *  party shares it: everyone in the place stands it, anyone may strike it (its owner's quest counts the kill - it dies
+ *  on the owner's machine), and a member of its owner's party whose own copy holds the same quest counts it too
+ *  (partyQuestFoe). A world quest's foe is not here - it rides as an encounter's (CURSE-SYNC). */
+export function questPrivateTag(machine, f) {
+  const b = f?.questBehaviour;
+  if (!b || !machine || isWorldQuestFoe(f)) return null;
+  const quest = machine.getQuest?.(b.questUID) ?? null;
+  const s = b.targetSymbol?.name;
+  if (!quest || quest.questTombstoned || typeof s !== 'string' || typeof quest.questName !== 'string') return null;
+  return { q: quest.questName, s, pv: 1 };
+}
+
+/** QUEST-OWNER (2026-10-12, Mac: "quest mobs that get spawned in dungeons to only appear for the questowner or the
+ *  questowners party so he gets credit, same for the main quest", then "Yes quest monsters always owner and its party"):
+ *  A QUEST'S FOE IS ITS OWNER'S AND ITS OWNER'S PARTY'S - underground, in a building and in the open air alike (world.js
+ *  hands every pool the narrowed seam; the dungeon narrows what it is handed again, which changes nothing). DESYNC-ZERO stood every quest foe for everyone in the place (a private one tagged `pv`), and let
+ *  anyone strike it - so in a dungeon every player's copy of the same quest stood its monsters there side by side
+ *  (the main quest's above all: its dungeons are fixed, never a random pick, so every player on that step of it meets
+ *  in the same one), a stranger could take the kill, and the foe hunted strangers who could not stop it. This copy of
+ *  the host's seam (`seam` - world.js questShareSeam) narrows the three doors to the party: a player stands
+ *  another's quest foe only when that player is a party member (`accepts`), only a party member's blow lands on mine
+ *  and mine hunts only the party (`peerMayHit`). Everything else - the tags, the kill and injury credit (already a
+ *  party member's alone), the heirs, the orphan law - is the seam's own, read off it live. The same object for the
+ *  same seam. */
+const _partyOnlySeams = new WeakMap();
+export function partyOnlyQuestShare(seam) {
+  if (!seam) return null;
+  let w = _partyOnlySeams.get(seam);
+  if (!w) {
+    const member = (id) => id != null && !!seam.partyPeer?.(id);
+    const accepts = (from, tag) => member(from) && (typeof seam.accepts === 'function' ? !!seam.accepts(from, tag) : true);
+    const peerMayHit = (id, f) => member(id) && !!seam.peerMayHit?.(id, f);
+    // every other door read off the seam at the moment it is asked (the host may change one), these two narrowed
+    w = new Proxy(seam, { get: (t, k) => (k === 'accepts' ? accepts : k === 'peerMayHit' ? peerMayHit : t[k]) });
+    _partyOnlySeams.set(seam, w);
+  }
+  return w;
+}
+
+/** DESYNC-ZERO (the owner: "when a party member kills the quest monsters it also counts for the quest owner or everyone
+ *  who also has this quest ... in the SAME party"): my Foe for a party member's quest foe - my copy kept in step with the
+ *  party (sharedQuestFoe), or else any live copy of the same quest I hold, by name, and its Foe by symbol. The CALLER
+ *  asks only for a party member's foe. */
+export function partyQuestFoe(machine, tag) {
+  if (!machine || !tag || typeof tag.q !== 'string' || typeof tag.s !== 'string') return null;
+  const linked = sharedQuestFoe(machine, tag);
+  if (linked) return linked;
+  const quest = machine.sharedCandidateNamed?.(tag.q) ?? null;
+  if (!quest || quest.questTombstoned || !quest.resources) return null;
+  for (const r of quest.resources.values()) if (r.isFoe && r.symbol?.name === tag.s) return r;
+  return null;
+}
+
 /** CURSE-SYNC (2026-09-27, the bug-reports channel: "Monsters aren't syncing ... The ghost on daggerfall ... We all had
  *  to kill them ... And everyone had to kill thier ow[n]"). A WORLD QUEST'S FOES ARE THE WORLD'S. S0000977, the Curse of
  *  Daggerfall, is no player's story: the tutorial starts it for every character as it ends (_TUTOR__'s `_no_`: `start
@@ -314,7 +370,7 @@ export function creditKeptKills(machine, ledger, owner, rows, now) {
   if (!machine || !ledger || !owner || !Array.isArray(rows)) return 0;
   let n = 0;
   for (const r of rows) {
-    const foe = sharedQuestFoe(machine, r);
+    const foe = partyQuestFoe(machine, r);   // DESYNC-ZERO: a linked copy, or any copy of the same quest this member holds
     if (!foe || !ledger.credit(owner, r.q, r.s, r.i, now)) continue;
     if (!foe.injuredTrigger) foe.setInjured?.();
     foe.incrementKills?.();
@@ -323,15 +379,34 @@ export function creditKeptKills(machine, ledger, owner, rows, now) {
   return n;
 }
 
-/** QUEST-PARTY: whether the member who shared quest `questName` - still in my party - stands within `radius` of me:
- *  then that member's copy stands the quest's foes and mine stands none (a wave counts here as placed). */
-export function partnerStandsQuestFoes({ questName, sharerOf, inMyParty, peers, accountOfPeer, myFeet, radius = QUEST_SHARE_RADIUS }) {
+/** QUEST-PARTY: whether the member who shared quest `questName` - still in my party - stands within `radius` of me
+ *  AND (VERMIN-SHARED) that member's copy stands a foe of the wave's own Foe here: then mine stands none (the wave
+ *  counts here as placed). The two copies are two quests, each wave on its own clock and gated by its own tasks; the
+ *  sharer standing near was taken for its copy standing the wave, and a copy whose wave was elsewhere - another
+ *  `pick one of`, a window open, a link a reload dropped - left the party with nothing to fight (The Exterminator in a
+ *  guild hall: "nothing seems to have spawned"). Otherwise this copy stands its own wave, as CreateFoe.TryPlacement
+ *  always places (CreateFoe.cs:183-212). `symbol` is the wave's Foe (its symbol's name), `foes` this pool's records. */
+export function partnerStandsQuestFoes({ questName, symbol, sharerOf, inMyParty, peers, accountOfPeer, myFeet, foes, radius = QUEST_SHARE_RADIUS }) {
   const sharer = questName ? sharerOf(questName) : null;
   if (!sharer || !inMyParty(sharer) || !myFeet) return false;
   for (const p of peers ?? []) {
     if (!p || accountOfPeer(p.id) !== sharer || !Array.isArray(p.feet)) continue;
     const dx = p.feet[0] - myFeet[0], dz = p.feet[2] - myFeet[2];
-    if (dx * dx + dz * dz <= radius * radius) return true;
+    if (dx * dx + dz * dz <= radius * radius) return sharerFoeStands({ foes, sharer, questName, symbol, accountOfPeer });
+  }
+  return false;
+}
+
+/** VERMIN-SHARED: a live foe of `sharer`'s (an account, never null - partnerStandsQuestFoes' own gate) for quest
+ *  `questName`'s Foe `symbol` stands in this pool - a puppet whose owner (a cell's and a building's pool name it in
+ *  `puppet`, a dungeon's own lane in `_ownFrom`) is that account and whose quest word (`_pupQuest`, the frame's `qf`)
+ *  names that quest and that Foe. */
+function sharerFoeStands({ foes, sharer, questName, symbol, accountOfPeer }) {
+  for (const f of foes ?? []) {
+    if (f.dead) continue;   // a body stands no wave (a puppet let go is dead too - removePuppet)
+    const tag = f._pupQuest;   // a puppet's alone: my own foes carry their behaviour, a taken one is cleared (adopt)
+    if (!tag || tag.q !== questName || tag.s !== symbol) continue;
+    if (accountOfPeer(f.puppet ?? f._ownFrom) === sharer) return true;
   }
   return false;
 }
@@ -396,4 +471,20 @@ export function reviveQuestBehaviour(machine, data) {
   b.restoreSaveData(data);
   if (!b.questUID || b.targetSymbol == null) return null;   // :214-217 - QuestSpawn = false; Destroy(questResourceBehaviour)
   return b;
+}
+
+/** SEALED-SAVE (FIELD BUGS 2026-10-05c; "Haunted House quest has enemy under the floor"): how near a restored quest foe
+ *  stands to its marker's old spot to be its - a sealed cellar's breadth, on the old spot's level (a storey is ~3 m; the
+ *  hatch's near side stands 3.15 m over the report's cellar). */
+export const SEALED_SAVE_REACH_M = 6, SEALED_SAVE_LEVEL_M = 1.5;
+/** SEALED-SAVE: a building's restored quest foe the save stood at the spot the load's mend moved its marker FROM
+ *  (markerCuration.js mendedFoeSpot) stands where the marker stands now - the floor base `ctx.parentPt` maps, `lift`
+ *  above it, as the interior host's standFoe stands it; anywhere else, or with no context, null (it stands where it
+ *  was). worldModes.js restoreInteriorPools hands it to the pool's restore. */
+export function restandMendedQuestFoe(machine, ctx, behaviour, feet, lift) {
+  const m = ctx ? mendedFoeSpot(machine, behaviour) : null;
+  if (!m) return null;
+  const was = ctx.parentPt(m.from.x, m.from.y + lift, m.from.z);
+  if (Math.abs(feet[1] - was[1]) > SEALED_SAVE_LEVEL_M || Math.hypot(feet[0] - was[0], feet[2] - was[2]) > SEALED_SAVE_REACH_M) return null;
+  return ctx.parentPt(m.to.x, m.to.y + lift, m.to.z);
 }

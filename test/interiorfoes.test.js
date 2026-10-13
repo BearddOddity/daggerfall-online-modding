@@ -144,8 +144,9 @@ test('IF: an interior swing can now MEET an enemy - the tally and the no-enemy s
   // AUDIT 39r MOVED THIS ANCHOR AGAIN: the interior rig now takes the
   // paralysis flag its two above-ground siblings take (WeaponManager
   // .cs:235-239 - ShowWeapons(false) and no swing), so both ends of
-  // the slice carry the options bag.
-  const swing = WM.slice(WM.indexOf('for (const ev of (overlayHeld ? [] : interiorWeapon.frame(dt, { paralyzed })))'));
+  // the slice carry the options bag. TELL6e MOVED IT ONCE MORE: the flag takes the knockdown beside the paralysis
+  // (systems/blowEffects.js knockedDown - no swing while down).
+  const swing = WM.slice(WM.indexOf('for (const ev of (overlayHeld ? [] : interiorWeapon.frame(dt, { paralyzed: paralyzed || knockedDown() })))'));
   const body = swing.slice(0, swing.indexOf('interiorWeapon.draw({ paralyzed })'));
   assert.match(body, /interiorFoes\?\.resolvePlayerHit\(interiorWeapon\.playerWeapon/, 'the pool is asked FIRST');
   assert.match(body, /tallySwingSkills\(playerEntity, interiorWeapon\.playerWeapon\.weapon\);\n\s+continue;/,
@@ -224,10 +225,11 @@ test('IF: quest foes stand from BUILDING MARKERS too - DFU\'s second path into a
   // this slice built. (Found by the scout sweep AFTER the first
   // commit: the flag was worded differently enough to survive the
   // grep that found the other four.)
-  assert.match(WM, /standFoe: \(\{ foe, gender, position, behaviour \}\) => \{\n\s+if \(!interiorCtx \|\| !interiorFoes\) return null;/);
+  assert.match(WM, /standFoe: \(\{ quest, marker, foe, gender, position, behaviour \}\) => \{\n\s+if \(!interiorCtx \|\| !interiorFoes\) return null;/);   // QUEST-MARKERS: the site's marker, for the backstop
   // ROGUE-IMP re-aim: the marker is the flat's base on the floor, handed over as FEET (test/rogueimp.test.js)
-  assert.match(WM, /interiorFoes\.spawnFoe\(foe\.foeType, interiorCtx\.parentPt\(position\.x, position\.y \+ INTERIOR_MARKER_FEET_LIFT, position\.z\)/,
-    'parented exactly as this host\'s own flats are');
+  assert.match(WM, /const feet = standSpot\(interiorCtx\.parentPt\(position\.x, position\.y \+ INTERIOR_MARKER_FEET_LIFT, position\.z\), lifted,/,
+    'parented exactly as this host\'s own flats are');   // QUEST-MARKERS: through the building's backstop
+  assert.match(WM, /interiorFoes\.spawnFoe\(foe\.foeType, feet, \{/);
   assert.match(WM, /gender, questBehaviour: behaviour, feetGiven: true,/, 'and the resource behaviour binds at the stand');
   // the behaviour joins the scene walk and leaves with the teardown,
   // the dungeon adapter's own shape

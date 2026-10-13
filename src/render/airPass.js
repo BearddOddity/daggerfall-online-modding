@@ -98,7 +98,9 @@ import { CLOUD_SHADOW_GLSL } from './cloudShadow.js';   // VC6c: a covered sun t
 import { BAYER_GLSL, BAYER_MEAN } from './orderedDither.js';   // EL6: the port's one Bayer - the dither at the byte, the AO's rotation
 import { spherePlanes, recordVisible, subMeshVisible, batchVisible, ZERO_ORIGIN } from './bounds.js';   // EL5: the emission replay culls by the records' spheres too (a leaf's import: bounds.js touches no GL)
 import { billboardKey } from './billboardKey.js';   // AUDIT 68 S16-bbkey-stale-shadow-reach: re-keyed here, however the batch reached the records
+import { windfallLawOn, swayShare } from './windfallSway.js';   // WINDFALL1: a flat's lean under Windfall's law, as the main pass drew it
 import { pageParam } from '../systems/pageQuery.js';   // PERF-URL: the page's query, parsed once a search
+import { GLASS_INTERIOR, GLASS_EXTERIOR, RW_SEED_GLSL } from './realWindows.js';   // RW1: an interior's declared glass, which the emission replay never blooms - FINAL AUDIT: nor a dark room's
 
 /** The kill door: `?air=off` keeps EL1 and EL2 and drops the three effects. */
 export function airOn(search = globalThis.location?.search ?? '') {
@@ -259,6 +261,13 @@ export const AIR_ADAPT_MIN = 0.7;
 export const AIR_ADAPT_MAX = 1.8;
 export const AIR_ADAPT_OPEN = 0.6;
 export const AIR_ADAPT_CLOSE = 3.0;
+/** FLICKER-FIX (2026-10-02): THE CALMER EYE. With Steady shadows on the eye adapts at this share of its usual rate, in both
+ *  directions: a shadow that pops for a few frames moves the scene's mean luminance, and the eye (closing in a third of a
+ *  second) rippled with it, which read as the whole picture breathing. The rates are uniforms, so this is no shader change.
+ *  shadowPass.js sets `calm` once a frame from the Calmer eye switch (STEADY-BALANCE: its own chip, off by default - it
+ *  rode Steady shadows, and opening at a third of the rate held a dark room dark and a candle's glare for seconds). */
+export const AIR_CALM_RATE = 0.35;
+export const AIR_TUNING = { calm: false };
 /** EL4: the 8-bit encodings - log2 luminance over [-12, 4] stops, log2
  *  multiplier over [-2, 2]. */
 export const AIR_LUM_LOG_RANGE = Object.freeze([-12, 4]);
@@ -1138,14 +1147,20 @@ bool occluded() {
 export const EMIT_MESH_FS = `#version 300 es
 precision highp float;
 in vec2 vUV;
+in vec3 vNormal;
+in vec3 vWorldPos;
 uniform sampler2D uEmissionTex;
 uniform vec3 uEmissionColor;
+uniform mat4 uModel;
+uniform float uRoomsLit;   // WAGONS2 (FINAL AUDIT): exterior glass with a room behind it - only a lit room's blooms
 ${CODEC_GLSL}
 ${DEPTH_GLSL}
 ${EMIT_OCCLUSION_GLSL}
+${RW_SEED_GLSL}
 out vec4 outColor;
 void main() {
   if (occluded()) discard;   // EL6
+  if (uRoomsLit > 0.5 && rwLitSeed(normalize(vNormal), vWorldPos, uModel[3].xyz, vUV) > RW_LIT_SHARE) discard;   // the room drawn dark (render/realWindows.js): no amber halo round it
   outColor = vec4(airDecode(texture(uEmissionTex, vUV).rgb * uEmissionColor), 1.0);   // AUDIT-EL F20: linear, like the glares and the bright pass beside it
 }`;
 export const EMIT_BB_FS = `#version 300 es
@@ -1275,8 +1290,8 @@ export class AirPass {
       box: P(QUAD_VS, BOX_FS, ['uSrc', 'uTexel', 'uBlurRange', 'uStrength', 'uDepth', 'uProjInfo', 'uRect', 'uCanvas']),
       gauss: P(QUAD_VS, GAUSS_FS, ['uSrc', 'uDir']),
       shaft: P(QUAD_VS, SHAFT_FS, ['uDepth', 'uSun', 'uShaftParams', 'uSunColor', 'uProjInfo', 'uRect', 'uCanvas', 'uEye', 'uCloudShadowMap', 'uCloudShadowRect', 'uSunOn', 'uViewRot', 'uCloudSky', 'uCloudSkyOn', 'uLightDir', 'uHaze']),   // VC6c: the cloud in front of the sun; VC7b: the sky map's gaps and the haze
-      emitMesh: P(opts.vs.mesh, EMIT_MESH_FS, ['uProj', 'uView', 'uModel', 'uEmissionTex', 'uEmissionColor', 'uDepth', 'uProjInfo', 'uRect', 'uCanvas', 'uBloomSize']),
-      emitBb: P(opts.vs.bb, EMIT_BB_FS, ['uProj', 'uView', 'uRight', 'uUp', 'uOrigin', 'uSize', 'uTex', 'uEmissionTex', 'uFlatWind', 'uSway', 'uDepth', 'uProjInfo', 'uRect', 'uCanvas', 'uBloomSize']),
+      emitMesh: P(opts.vs.mesh, EMIT_MESH_FS, ['uProj', 'uView', 'uModel', 'uEmissionTex', 'uEmissionColor', 'uDepth', 'uProjInfo', 'uRect', 'uCanvas', 'uBloomSize', 'uRoomsLit']),
+      emitBb: P(opts.vs.bb, EMIT_BB_FS, ['uProj', 'uView', 'uRight', 'uUp', 'uOrigin', 'uSize', 'uTex', 'uEmissionTex', 'uFlatWind', 'uSway', 'uWindfallSway', 'uWindfallAxis', 'uDepth', 'uProjInfo', 'uRect', 'uCanvas', 'uBloomSize']),   // WINDFALL1: and the mod's law
       glare: P(GLARE_VS, GLARE_FS, ['uProj', 'uView', 'uCenter', 'uSize', 'uDepth', 'uColor', 'uProjInfo', 'uRect', 'uCanvas']),
       // EL4
       lum: P(QUAD_VS, LUM_FS, ['uFrame', 'uPrev', 'uRect', 'uCanvas', 'uVol']),   // AUDIT VOL1: the eye sees the glow
@@ -1356,7 +1371,7 @@ export class AirPass {
     this.adaptIndex = 0;
     this.grade = new Float32Array([AIR_BLOOM_STRENGTH, 1, AIR_VIGNETTE, AIR_CONTRAST]);
     this.adaptParams = new Float32Array([0, AIR_ADAPT_KEY, AIR_ADAPT_MIN, AIR_ADAPT_MAX]);
-    this.adaptRates = new Float32Array([AIR_ADAPT_OPEN, AIR_ADAPT_CLOSE]);
+    this.adaptRates = new Float32Array([AIR_ADAPT_OPEN, AIR_ADAPT_CLOSE]); /** @type {Float32Array|null} */ this._calmRates = null;   // FLICKER-FIX: the calm eye's rates, filled on first use
     this.canvas = new Float32Array(2);
     this.rect = new Float32Array(4);
     this._fullRect = new Float32Array(4);   // AUDIT RETRO1 B4: an unprepared frame's rect - its whole image
@@ -1473,6 +1488,7 @@ export class AirPass {
     const gl = this.gl;
     gl.deleteTexture(k.tex); for (const d of k.depths) gl.deleteTexture(d); for (const f of k.fbos) gl.deleteFramebuffer(f);
     if (k.aoDepth) { gl.deleteTexture(k.aoDepth); gl.deleteFramebuffer(k.aoFbo); }   // GRASS-LIT
+    if (k.uwFbo) { gl.deleteTexture(k.uwColor); gl.deleteTexture(k.uwDepth); gl.deleteFramebuffer(k.uwFbo); }   // WATER-NEXT 2
   }
   /**
    * GRASS-LIT (2026-10-01): THE OCCLUSION'S DEPTH, TAKEN BEFORE THE GRASS. The AO is read off the frame's depth at the
@@ -1507,6 +1523,43 @@ export class AirPass {
     gl.bindFramebuffer(gl.FRAMEBUFFER, F.fbo);   // the frame's own, read and draw, as the world left it
     F.aoTaken = true;
     return true;
+  }
+  /**
+   * WATER-NEXT 2 (2026-10-07): WHAT LIES UNDER THE WATER. The water refracts the scene behind its surface and measures
+   * the water's depth off it - and the frame's colour and depth are the very images it draws into, which no program
+   * may sample while they are bound. So, once a world frame, before its first water draw: one blit of both into a
+   * copy of the frame's own formats (the colour LINEAR, the depth NEAREST - a blit of depth must be). The water reads
+   * the copy; the frame goes on as it stood. A no-op with no frame bound.
+   * @returns {{color: WebGLTexture, depth: WebGLTexture, w: number, h: number}|null}
+   */
+  snapshotUnderWater() {
+    const F = this.frame;
+    if (!F || !this.f || !this.fresh) return null;
+    const gl = this.gl;
+    if (!F.uwFbo) {
+      const tex = (fmt, filter) => {
+        const t = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, t);
+        gl.texStorage2D(gl.TEXTURE_2D, 1, fmt, F.w, F.h);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        return t;
+      };
+      F.uwColor = tex(gl.RGBA8, gl.LINEAR);
+      F.uwDepth = tex(gl.DEPTH_COMPONENT24, gl.NEAREST);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      F.uwFbo = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, F.uwFbo);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, F.uwColor, 0);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, F.uwDepth, 0);
+    }
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, F.fbo);
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, F.uwFbo);
+    gl.blitFramebuffer(0, 0, F.w, F.h, 0, 0, F.w, F.h, gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT, gl.NEAREST);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, F.fbo);   // the frame's own, read and draw, as the world left it
+    return { color: F.uwColor, depth: F.uwDepth, w: F.w, h: F.h };
   }
   /** PERF-SCALE (the review): free a slot's frame image - the world stopped drawing into an image of its own (retro
    *  off, the render scale back at 100%; Renderer._dropWorldImage), so the image-sized frame is not held for the rest
@@ -1627,6 +1680,15 @@ export class AirPass {
    * could not see it (they drive no frame), and only the field probe did.
    */
   setCloudShadow(deck) { this.cloudShadow = deck ?? null; }
+  /** SD-LOOK (2026-10-08, bible/11-Multiplayer/Super-Dungeons-Look.md "The shared kit"): THE SCENE'S GRADE for the resolve
+   *  about to run - `{ adaptKey, adaptMax, bloom, vignette, contrast }`, each optional; null (or a field left out) is the
+   *  lane's default (AIR_ADAPT_KEY, AIR_ADAPT_MAX, AIR_BLOOM_STRENGTH, AIR_VIGNETTE, AIR_CONTRAST). The renderer hands it
+   *  every resolve, so a frame that never asked gets the defaults back. The Shattered Hour holds the eye down (its void
+   *  black, not lifted to grey-brown by an eye opening on the dark). */
+  setGrade(g) {
+    this.grade[0] = g?.bloom ?? AIR_BLOOM_STRENGTH; this.grade[2] = g?.vignette ?? AIR_VIGNETTE; this.grade[3] = g?.contrast ?? AIR_CONTRAST;
+    this.adaptParams[1] = g?.adaptKey ?? AIR_ADAPT_KEY; this.adaptParams[3] = g?.adaptMax ?? AIR_ADAPT_MAX;
+  }
 
   /** LA-POST6 (2026-09-27, Mac: "look for flickering issues"): THE FLOATING ORIGIN MOVED by `offset` - the host's
    *  recentre, every world position p now p + offset (ShadowPass.shiftOrigin's convention: a record's matrix[12] +=
@@ -1809,6 +1871,7 @@ export class AirPass {
 
   _replayEmission(f, sp, vp, depthOn) {
     const gl = this.gl, P = this.programs, T = this.targets;
+    f.bindVao?.(null);   // RW1 (AUDIT): the images' quads bind their own VAO behind the renderer's back - its shadow still named a mesh's, so the first replay's bind of that mesh was skipped and drew from the quad (GL 1282, "no element array buffer bound")
     const planes = spherePlanes(vp, this._planes);   // EL5: the eye's frustum - what it cannot see cannot bloom
     let bound = null;
     for (let i = 0; i < sp.count; i++) {
@@ -1822,10 +1885,12 @@ export class AirPass {
           const sm = mesh.subMeshes[k];
           const emis = sm._evEmis;
           if (!emis || emis === f.blackTex) continue;   // nothing to bloom: the main pass resolved no mask, or the black one
+          if (sm._evWin === GLASS_INTERIOR) continue;   // RW1: an interior's declared glass rides the emission unit and is never an emission - it glows nowhere (render/realWindows.js)
           if (!subMeshVisible(planes, r, k)) continue;   // EL5
           if (bound !== P.emitMesh) { bound = P.emitMesh; gl.useProgram(bound.p); gl.uniformMatrix4fv(bound.uProj, false, vp); gl.uniformMatrix4fv(bound.uView, false, this._identityView); gl.uniform1i(bound.uEmissionTex, 1); this._emitDepth(bound, depthOn, T); }
           if (!vaoBound) { gl.uniformMatrix4fv(P.emitMesh.uModel, false, r.matrix); f.bindVao(mesh.vao); vaoBound = true; }
           gl.uniform3fv(P.emitMesh.uEmissionColor, sm._evEmisWhite ? this._white : f.windowEmission);
+          gl.uniform1f(P.emitMesh.uRoomsLit, f.windowRooms && sm._evWin === GLASS_EXTERIOR ? 1 : 0);   // WAGONS2 (FINAL AUDIT): a room behind it - its own lit test
           gl.activeTexture(gl.TEXTURE1);
           gl.bindTexture(gl.TEXTURE_2D, emis);
           gl.drawElements(gl.TRIANGLES, sm.primitiveCount * 3, gl.UNSIGNED_INT, sm.startIndex * 4);
@@ -1833,28 +1898,32 @@ export class AirPass {
         }
       } else if (r.kind === 2) {
         for (const b of r.batches) {
-          if (!b?.vao || b._dead || b.conceal || b.emissionOff) continue;   // CSA-B: a flat whose emission is black has nothing to bloom
-          if (!batchVisible(planes, b)) continue;   // EL5
+          if (!b?.vao || b._dead || b.conceal || b.castOnly || b.emissionOff) continue;   // MWNPC5b: a cast-only flat (a foe in its body) blooms nothing either   // CSA-B: a flat whose emission is black has nothing to bloom
+          // PERF-ORDER (2026-10-11): the emission map asked FIRST - Knightstale by night handed this loop 636 flats a frame
+          // and 3 had one; each of the three tests only skips, so the flats drawn are the same, and the sphere is asked of three
           const key = billboardKey(b);
           const emis = f.emissionTextures.get(key);
+          if (!emis) continue;
+          if (!batchVisible(planes, b)) continue;   // EL5
           const tex = f.textures.get(key);
-          if (!emis || !tex) continue;
+          if (!tex) continue;
           if (bound !== P.emitBb) {
             bound = P.emitBb; gl.useProgram(bound.p);
             gl.uniformMatrix4fv(bound.uProj, false, vp); gl.uniformMatrix4fv(bound.uView, false, this._identityView);
             gl.uniform1i(bound.uTex, 0); gl.uniform1i(bound.uEmissionTex, 1);
             gl.uniform4fv(bound.uFlatWind, r.flatWind);
+            if (r.wfAxis) { gl.uniform4fv(bound.uWindfallSway, r.wfSway); gl.uniform4fv(bound.uWindfallAxis, r.wfAxis); }   // WINDFALL1: the mod's law, as the flats were drawn
             this._emitDepth(bound, depthOn, T);
           }
           gl.uniform3fv(P.emitBb.uRight, r.right); gl.uniform3fv(P.emitBb.uUp, r.up);   // the camera basis the batch was drawn with
           const o = b.origin || ZERO_ORIGIN;   // AUDIT 68 S16-v-replay-origin-alloc
           gl.uniform3f(P.emitBb.uOrigin, o[0], o[1], o[2]);
           gl.uniform2f(P.emitBb.uSize, b.size.w, b.size.h);
-          gl.uniform1f(P.emitBb.uSway, b.sway || 0);
+          gl.uniform1f(P.emitBb.uSway, swayShare(b, windfallLawOn(r.windfall)));   // WINDFALL1: the mod's mask under its law
           gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex);
           gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, emis);
           f.bindVao(b.vao);
-          gl.drawElements(gl.TRIANGLES, b.indexCount, gl.UNSIGNED_INT, 0);
+          gl.drawElements(gl.TRIANGLES, b.indexCount, gl.UNSIGNED_INT, b._ibOff | 0);   // PERF-ARENA: a still batch's range of its arena's indices
           this.stats.emitDraws++;
         }
       }
@@ -1989,7 +2058,8 @@ export class AirPass {
     gl.activeTexture(gl.TEXTURE0);
     this.adaptParams[0] = dt;
     gl.uniform4fv(P.adapt.uAdaptParams, this.adaptParams);
-    gl.uniform2fv(P.adapt.uAdaptRates, this.adaptRates);
+    if (AIR_TUNING.calm) { this._calmRates ??= new Float32Array(2); this._calmRates[0] = this.adaptRates[0] * AIR_CALM_RATE; this._calmRates[1] = this.adaptRates[1] * AIR_CALM_RATE; }   // FLICKER-FIX
+    gl.uniform2fv(P.adapt.uAdaptRates, AIR_TUNING.calm ? this._calmRates : this.adaptRates);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     this.adaptIndex = 1 - this.adaptIndex;
     }

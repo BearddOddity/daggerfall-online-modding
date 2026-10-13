@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { webcrypto } from 'node:crypto';
 import { fakeRoom } from './fakeRoom.mjs';
-import { TITLES, GLYPHS, RENOWN_MAX, SEAT_TITLES, AURAS, claimsValid, mintToken, verifyToken, importPublicKeyB64 } from '../src/net/identityToken.js';
+import { TITLES, GLYPHS, RENOWN_MAX, titleClaimed, AURAS, ARENA_RATING_MAX, CHARACTER_LEVEL_MAX, claimsValid, mintToken, verifyToken, importPublicKeyB64 } from '../src/net/identityToken.js';
 import {
   TITLE_TEXT, TITLE_RGBA, TITLE_GRADIENT, GLYPH_RGBA, GLYPH_GRADIENT, GLYPH_DETAIL, GLYPH_EDGE_W, GLYPH_MARK, GLYPH_PATH,
   GLYPH_STROKE, FONT_GLYPH_MIN, FONT_GLYPH_MAX, cssRgba, cssGradient, titleBadge, glyphBadges, glyphSvgNode, glyphArtNode,
@@ -143,7 +143,7 @@ test('SHADOW-FANG grant: SirMcMobdon alone holds it, case-folded, title and glyp
   assert.equal(titleWorn(row('SirMcMobdon', { title: 'shadowfang' }), env), 'shadowfang');
   assert.equal(equipRefusal('shadowfang', row('SirMcMobdon'), env), null, 'theirs to wear');
   assert.equal(equipRefusal('apostle', row('SirMcMobdon'), env), 'not-held');
-  assert.deepEqual(wardrobeOf(row('sirmcmobdon', { title: 'shadowfang' }), env, nowS), { titles: ['shadowfang'], title: 'shadowfang', glyphs: ['shadowfang'], auras: [], aura: null, insignia: [] });   // WB9g: and no aura, no insignia bought
+  assert.deepEqual(wardrobeOf(row('sirmcmobdon', { title: 'shadowfang' }), env, nowS), { titles: ['shadowfang'], title: 'shadowfang', glyphs: ['shadowfang'], auras: ['shadowcloak'], aura: null, insignia: [] });   // WB9g: and no insignia bought; SHADOW-CLOAK (PIN MOVED): the list holds the Holo Shadow Cloak now, held but not worn until they put it on
   for (const h of ['Dutchess', 'SquidKamer', 'Lattymoy', 'Stranger']) {
     assert.ok(!titlesHeld(row(h), env).includes('shadowfang'), `${h} does not hold it`);
     assert.ok(!glyphsOf(row(h), env, nowS).includes('shadowfang'));
@@ -166,7 +166,7 @@ test('SHADOW-FANG token and relay: a token may carry the title and the glyph and
   // id, a mute and the Renown cap - inside wire.js's TOKEN_RE (a 640-character body since world149; 512 before) and the verifier's 1024; and
   // (the merge) GUILD1c's three guild claims at their shapes' bounds (guildLaw.js GUILD_ID_RE, GUILD_TAG_RE, GUILD_MEMBER_RE)
   const TOKEN_RE = new RegExp(/const TOKEN_RE = \/(.+)\/;/.exec(rd('src/net/wire.js'))[1]);
-  const longest = TITLES.reduce((a, t) => (t.length > a.length ? t : a), '');
+  const longest = TITLES.filter((t) => !titleClaimed(t)).reduce((a, t) => (t.length > a.length ? t : a), '');   // PIN MOVED (CHAP4c): the longest that rides alone - a claimed title rides with its claim, below
   const guild = { gi: `g${'z'.repeat(10)}`, gt: 'WWWW', gm: `m${'9'.repeat(15)}` };
   const wide = await mintToken({ s: 'a'.repeat(40), n: 'W'.repeat(NAME_MAX), k: 'linked', t: longest, g: [...GLYPHS], mu: nowS + 10 ** 9, lv: RENOWN_MAX, ...guild }, kp.privateKey, { subtle, nowS });
   assert.equal(JSON.parse(Buffer.from(wide.split('.')[1], 'base64url').toString()).gm, guild.gm, 'the guild rides it');
@@ -175,9 +175,12 @@ test('SHADOW-FANG token and relay: a token may carry the title and the glyph and
   assert.ok((await verifyToken(wide, pub, { subtle, nowS })).ok);
   // SEASON1 part two (world149): AND EVERY OPTIONAL CLAIM AT ONCE - the longest seat title with its claim at its bounds,
   // the longest aura, the realm's word and a Season's banner ribbon beside the rest. The old 512 refused this one.
-  const seatT = SEAT_TITLES.reduce((a, t) => (t.length > a.length ? t : a), '');
+  // CRYSTAL-FIST AUDIT: AND THE ARENA'S TWO - the season's rating (`ar`, every registered account's) and the character's
+  // level (`cl`, every account with a realm character) at their widest, which this token had left out; with them it is
+  // 639 of 640 once the crystalfist glyph joined, so the NEXT word into the vocabulary trips this pin rather than a hello
+  const seatT = TITLES.filter(titleClaimed).reduce((a, t) => (t.length > a.length ? t : a), '');   // PIN MOVED (CHAP4c): the longest claimed title - a chapter's seat's now, the seats' before
   const aura = AURAS.reduce((a, x) => (x.length > a.length ? x : a), '');
-  const widest = await mintToken({ s: 'a'.repeat(40), n: 'W'.repeat(NAME_MAX), k: 'linked', t: seatT, ts: [0xffffffff, 9999], g: [...GLYPHS], au: aura, mu: nowS + 10 ** 9, lv: RENOWN_MAX, ...guild, rc: 1, rb: [15, 14] }, kp.privateKey, { subtle, nowS });
+  const widest = await mintToken({ s: 'a'.repeat(40), n: 'W'.repeat(NAME_MAX), k: 'linked', t: seatT, ts: [0xffffffff, 9999], g: [...GLYPHS], au: aura, mu: nowS + 10 ** 9, lv: RENOWN_MAX, ...guild, rc: 1, rb: [15, 14], ar: ARENA_RATING_MAX, cl: CHARACTER_LEVEL_MAX }, kp.privateKey, { subtle, nowS });
   assert.ok(widest.split('.')[1].length > 512, `past the old bound (${widest.split('.')[1].length})`);
   assert.ok(TOKEN_RE.test(widest), `every claim at once passes the hello (${widest.split('.')[1].length} of 640)`);
   assert.ok(widest.length <= 1024);
@@ -241,8 +244,9 @@ test('SHADOW-FANG over a head: the name layer paints the title once when it CHAN
   for (const k of TITLE_PAINT_KEYS) if (k !== 'color') assert.equal(title.style[k], '', `the gradient's ${k} is cleared`);
   layer.render({ points: [pt({})] });
   for (const k of TITLE_PAINT_KEYS) assert.equal(title.style[k], '', 'no title, no paint');
-  // the chat line and the profile card paint through the same law
-  assert.match(rd('src/ui/chatPanel.js'), /const titleSpan = \(badge, cls\) => paintTitle\(el\('span', cls, badge\.text\), badge\);/);
+  // the profile card paints through the same law - and the chat line paints no title at all (TITLE-C, 2026-10-12, Mac:
+  // "remove titles from appearing in the chat"; it painted one through this law until then)
+  assert.doesNotMatch(rd('src/ui/chatPanel.js'), /paintTitle|titleBadge/, 'TITLE-C: the chat draws no title');
   assert.match(rd('src/ui/profileWindow.js'), /head\.append\(paintTitle\(el\('div', 'dfprofile-title', v\.title\.text\), v\.title\)\);/);
 });
 

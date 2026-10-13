@@ -282,7 +282,8 @@ test('OWS2 pool: a hull\'s rig, built once off SpawnBoat and never placed - its 
   assert.equal(pool.hullRig(1), null, 'before the models: nothing');
   assert.equal(await pool.preload(), true);
   const lb = pool.hullRig(1);
-  const b = new Boat(1, 0); spawnBoat(b, ctxFor({ position: [0, 0, 0], rotation: [0, 0, 0, 1] }));
+  // SHIPS-2: SpawnBoat over the pool's own models (its hull 1 Mac's Tiny Ship - this file's MODELS are the mod's alone)
+  const b = new Boat(1, 0); spawnBoat(b, { ...ctxFor({ position: [0, 0, 0], rotation: [0, 0, 0, 1] }), models: pool.models });
   assert.deepEqual(lb.nodes, b.Nodes.map((n) => [...n.localPosition]), 'SpawnBoat\'s own nodes');
   assert.deepEqual([lb.sails, lb.crewed, lb.packable], [1, false, true], 'the Large Boat: one lateen, no crew, packs');
   assert.equal(pool.hullRig(1), lb, 'built once');
@@ -365,7 +366,8 @@ test('OWS2 host wiring by source: the boat a journey crosses in; the plan asked 
   assert.match(w, /csaHelmPress\(CSA_BOAT_ACTIONS\.disembark\);/);
   assert.match(w, /if \(csaRuntime\.state\.disembarking == null && !csaRuntime\.isSailing\(\)\) tvSeaAshore\(\);/);
   // SHIP-PACK (PIN MOVED): a ship packs at her landfall too - with her deed in the pack, else she is left moored
-  assert.match(w, /if \(tvSea\.means\?\.again && boat\.packable && csaPassengersOn\(boat\) === 0 && !csaRuntime\.deedMissing\(boat\)\) csaCall\(\(\) => csaRuntime\.PackBoat\(boat, true\)\);/);
+  // PIN MOVED (HOLD-WEIGHT, FIELD BUGS 2026-10-05c): and only parts her bearer can carry (test/fb1005c_holdweight.test.js)
+  assert.match(w, /if \(tvSea\.means\?\.again && boat\.packable && csaPassengersOn\(boat\) === 0 && !csaRuntime\.deedMissing\(boat\) && !csaRuntime\.partsTooHeavy\(boat\)\) csaCall\(\(\) => csaRuntime\.PackBoat\(boat, true\)\);/);
   assert.match(w, /if \(!Number\.isFinite\(h\) \|\| h < tvSeaY\(\) \+ 0\.2\) continue;/);
   // the journey over: the hand off the helm, the sails down
   assert.match(w, /if \(csaRuntime\?\.isSailing\(\) && csaRuntime\.state\.sailPosition > 0\) csaHelmPress\(CSA_BOAT_ACTIONS\.toggleSail\);/);

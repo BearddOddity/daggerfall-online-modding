@@ -209,10 +209,10 @@ test('ROADS 3: the network rides both terrain kernels and the world host builds 
   const fs = await import('node:fs');
   const worker = fs.readFileSync('src/world/terrainGenWorker.js', 'utf8');
   assert.match(worker, /m\.t === 'roads'/, 'the worker accepts the network');
-  assert.match(worker, /generatePixelTerrain\(\{ \.\.\.m, woods, roads \}\)/, 'and hands it to the kernel on every job');
+  assert.match(worker, /generatePixelTerrain\(\{ \.\.\.m, woods, roads, sites, climates \}\)/, 'and hands it to the kernel on every job');   // LANDFORM4: beside the sites
   const client = fs.readFileSync('src/world/terrainGenClient.js', 'utf8');
   assert.match(client, /setRoads\(settlements, onStats = null, switches = null\)/, 'the client has the door (ROADS 24: the switches ride it)');
-  assert.equal((client.match(/roads: this\._roads \?\? null/g) || []).length, 3,
+  assert.equal((client.match(/roads: this\._roads \?\? null/g) || []).length, 6,   // LANDFORM1-3: and the three paths a promotion's grid takes here - its ghost rows are cut along the same network
     'every same-thread path - direct, worker-error, and dying-worker drain - carries it');
   // AUDIT ROADS F2: the worker BUILDS; this thread builds only on a
   // fallback path, and every one of the three calls _roadsFallback first.
@@ -849,7 +849,7 @@ test('ROADS 25: a pixel says whether a network was present, and the host rebuild
   assert.equal(typeof generatePixelTerrain, 'function');
   const world = read('src/scenes/world.js');
   // The host keeps it on the pixel entry...
-  assert.match(world, /const \{ samples, tilemap, positions, normals, tilemapBytes, avg, nature, withRoads[^}]*\} = await terrainGen\.generate\(/);
+  assert.match(world, /const \{ samples, tilemap, positions, normals, bed: carved, tilemapBytes, avg, nature, withRoads[^}]*\} = await terrainGen\.generate\(/);
   assert.match(world, /^\s+withRoads,\s+\/\/ ROADS 25/m);
   // ...and when the network lands, tears down every pixel built without
   // one so the stream rebuilds it - on BOTH arrival paths, since the

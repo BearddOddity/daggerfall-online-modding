@@ -193,8 +193,8 @@
   {
     "name": "OW3-J6-mw-body-ungrown",
     "file": "src/player/mwView.js",
-    "old": "grow: face?.grow > 1 ? face.grow : 1, up: face?.up ?? null });",
-    "new": "grow: 1, up: face?.up ?? null });",
+    "old": "grow: face?.grow > 1 ? face.grow : 1, up: face?.up ?? null, horse });",
+    "new": "grow: 1, up: face?.up ?? null, horse });",
     "tests": [
       "test/eotb_view.test.js"
     ],
@@ -203,8 +203,8 @@
   {
     "name": "OW3-J6-grow-ignored",
     "file": "src/combat/fpArm.js",
-    "old": "const u = (grow > 1 ? grow : 1) / MW_UNITS_PER_METER;",
-    "new": "const u = 1 / MW_UNITS_PER_METER;",
+    "old": "const thirdUnit = (grow) => (grow > 1 ? grow : 1) / MW_UNITS_PER_METER;",
+    "new": "const thirdUnit = (grow) => 1 / MW_UNITS_PER_METER;",
     "tests": [
       "test/prbow1_bow.test.js"
     ],
@@ -273,8 +273,8 @@
   {
     "name": "OW3-J8-law-misbound",
     "file": "src/scenes/world.js",
-    "old": "routeGround((x, y) => maps.getClimateIndex(x, y), (x, y) => woods.getHeightMapValue(x, y), WATER_BYTE)",
-    "new": "routeGround((x, y) => woods.getHeightMapValue(x, y), (x, y) => maps.getClimateIndex(x, y), WATER_BYTE)",
+    "old": "      (x, y) => (tvWildFree(x, y) && woods.getHeightMapValue(x, y) > WATER_BYTE ? 0 : maps.getClimateIndex(x, y)),\n      (x, y) => { const h = woods.getHeightMapValue(x, y); return tvWildFree(x, y) && h > WATER_BYTE ? WATER_BYTE + 8 : h; },",
+    "new": "      (x, y) => { const h = woods.getHeightMapValue(x, y); return tvWildFree(x, y) && h > WATER_BYTE ? WATER_BYTE + 8 : h; },\n      (x, y) => (tvWildFree(x, y) && woods.getHeightMapValue(x, y) > WATER_BYTE ? 0 : maps.getClimateIndex(x, y)),",
     "tests": [
       "test/tv2_click_to_move.test.js"
     ],

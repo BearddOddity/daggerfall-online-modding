@@ -66,7 +66,8 @@ transcribed as the reference.
 - **The pack keeps each piece's static lanes.** Of the fourteen floats a
   corner, eight never change between frames - the diffuse, the UV and
   the emission are the authored vertex's - and only the position and
-  the face normal follow the pose. The eight are resolved ONCE per piece
+  the normal follow the pose (the face normal then; since MW-SMOOTH the
+  mesh's own posed normal where it authors one). The eight are resolved ONCE per piece
   through the same `diffuseAt`/`emissiveAt` (one home for the colour
   law) into a lane buffer on the piece, keyed on the arrays they were
   read from, so a wardrobe rebuild that hands the piece new colours
@@ -584,3 +585,14 @@ hundred-odd integers, no allocation - and the meshes, and then the
 queued ground, go down near to far. Same law as above, finished: the
 nearest thing enters the depth buffer first and everything behind it
 is rejected before its shader runs. 2 mutants, 2 dead.
+
+## MWNPC1 - the skin on the GPU (2026-10-09)
+
+The open item every section above ends on - "GPU skinning still removes the skin's cost outright" - is closed for
+the third-person body, the player's and every peer's: the stream is uploaded once, a pose writes a palette (an
+affine a bone, kilobytes), and the character vertex shader blends; `?gpuskin=off` is the bisect back. The
+first-person arm keeps the CPU skin. The record, the laws it keeps and its proof (the GLSL run beside the CPU skin in
+a real page, 0 texels apart) are `04-Characters/Morrowind-NPCs.md` section 6, the first slice of the MW-NPC arc. Still
+open from this page: the build is a long main-thread task - MWNPC3 (section 8 there) shares its parse across bodies and drops a
+peer's reach sweep; a build gate across lanes is MWNPC4's. MWNPC2 (section 7 there) closed the other: every
+seen body's picture is taken in ONE bind of the sprite target now, a tile each, where each body took its own pass.

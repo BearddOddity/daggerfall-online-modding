@@ -121,21 +121,23 @@ test('HCC hosts: world.js - the frame, the draw, the origin, the ray, the plaque
     /ready: \(\) => walkMode && playerSpawned && !_teleporting && !_traveling/,
     /isOnShip: \(\) => isOnShip\(playerEntity, playerEntity\.boardShipPosition \?\? null, playerTravelPixel\(\)\)/,
     /ratio: \(\) => SCENE_MAP_RATIO/, /dungeonId: \(\) => modes\?\.roomIdentity\?\.\(\)\?\.mapId \?\? null/,
-    /wagonWeight: \(\) => totalWeight\(playerEntity\.wagonItems \?\? \[\]\), wagonKgLimit: \(\) => WAGON_KG_LIMIT/,
+    /wagonWeight: \(\) => totalWeight\(playerEntity\.wagonItems \?\? \[\]\), wagonKgLimit: \(\) => wagonKgFor\(playerEntity\)/,   // PIN MOVED (WAGONS1): the driven wagon's capacity
     /travelOptionsActive: \(\) => \(travelOptions \? !!travelOptions\.isTravelActive : null\)/,
     /new InputMessageBoxWindow\(\{ lines: \[\], label, value, maxCharacters/,
     /isQualifyingThreatState\(true, !!f\.ai\.isHostile, f\.entity\?\.team === 'PlayerAlly', isLocalPlayerTarget\(f\.ai\.target\), !!f\.ai\.detected\)/,
     // AUDIT HCC H1: LateUpdate ONCE a frame, in every mode - the modal branch, and the exterior frame before the world pass
     /hcc\.setEnabled\(hccOn\(\)\); if \(hcc\.enabled\) hccPollSettings\(nowMs\); hcc\.frame\(dt, cam\.pos, gamePaused\(\) \? 0 : dt \* (?:worldTimeScale|hccTimeScale)\(\)\);/,   // AUDIT HCC (branch audit): the runtime's Time.deltaTime - held by the pause, scaled with the world
     /hccTick\(dt, now\);[^\n]*\n\s+townTalk\.frame\(dt\);\n\s+renderer\.resolveFrame\(\);[^\n]*\n\s+capturePendingScreenshot\(canvas\);/,   // AUDIT RETRO1 E5: the frame shown before its shot
-    /hccTick\(dt, now\);[^\n]*\n\s+renderer\.setClearColor\(SKY_CLEAR\);/,
+    // PIN MOVED (WAGONS3): before the camera, which sits on the bench of the wagon it just stood - and so before the world pass
+    /hccTick\(dt, now\);\n(?:\s+\/\/[^\n]*\n)*\s+_driverSeat = walkMode && playerSpawned && player\.transportMode === TRANSPORT_MODES\.Cart && [^\n]*hcc\.driverSeat\(\) : null;\n\s+if \(_driverSeat\) cam\.pos = /,
     /if \(hcc\.enabled && _mode\(\) === 'exterior'\) livePersonBatches\.push\(\.\.\.hcc\.batches\(\)\);/,
     // AUDIT HCC K2/K3: GetKeyDown is the frame's edge ring, behind HandleConfiguredHotkeys' IsPlayingGame / LoadInProgress gate
     // KB1: and the key is the registry's action - the mod's TextKey is no longer parsed
     /const hccActionPressed = \(action\) => !gamePaused\(\) && !pointerSurfaces\.size && !_loading && pressed\(latch\.edge, keys, action\);/,
     // AUDIT HCC U6: the mod's HUD label, where the plaque is not already naming the horse
     /horseNameTooltip\.set\(tipOn \? hcc\.tooltipText\(cam\.pos, /,
-    /camps\.draw\(renderer\);[^\n]*\n\s+hcc\.draw\(renderer\);/, /camps\.offsetAll\(r\.offset\);[^\n]*\n\s+hcc\.offsetAll\(r\.offset\);/,
+    // PIN MOVED (PERF-WAGON): the tents asked the street's view test too
+    /camps\.draw\(renderer, null, yardCull\);[^\n]*\n\s+hcc\.draw\(renderer, null, tvf \? \{ selfGrow: tvf\.grow, grow: peerGrow \} : undefined, yardCull\);/, /camps\.offsetAll\(r\.offset\);[^\n]*\n\s+hcc\.offsetAll\(r\.offset\);/,
     /const _hccPick = pickActivatableHit\(cam\.pos, useFwd, hcc\.targets\(\), collider\);/, /horseCart: _hccPick,/,
     /else if \(_race\.horseCartWins\) \{ hcc\.activate\(_hccPick\.key, _hccPick\.distance, \(l\) => townTalk\.say\(l\), \(\) => setMidScreenText\(tooFarAwayText\(\)\), plaqueActionFor\(_hccPick\.key\)\); \}/,   // ACT-MENU: and the verb the plaque lit
     /\(key\) => hcc\.hoverName\(key\),/, /horseCart: pickActivatableHit\(cam\.pos, _hd, hcc\.targets\(\), collider\),/,
@@ -143,17 +145,20 @@ test('HCC hosts: world.js - the frame, the draw, the origin, the ray, the plaque
     /modData: \{ \[HCC_VENDOR\]: hccRuntime\.getSaveData\(\), \.\.\.modSaveRecords\(\) \},/,   // WA1: every registered mod's record beside it
     /autoBuildArms\(playerEntity\);[^\n]*\n\s+hccRuntime\.handleStartLoad\(\);/,
     /const hccRecord = extras\.modData\?\.\[HCC_VENDOR\] \?\? null;\n\s+if \(hccRecord\) hccRuntime\.restoreSaveData\(hccRecord\);/,
-    /horseCartSave: \(\) => hccRuntime\.getSaveData\(\),/, /horseCartLoad: \(rec\) => \{ hccRuntime\.handleStartLoad\(\); if \(rec\) hccRuntime\.restoreSaveData\(rec\); \},/,
+    /horseCartSave: \(\) => hccRuntime\.getSaveData\(\),/, /horseCartLoad: \(rec\) => \{ hccRuntime\.handleStartLoad\(\); upkeep\.reset\(\); if \(rec\) hccRuntime\.restoreSaveData\(rec\); \},/,
     /if \(!_loadedGame\) hccRuntime\.handleNewGame\(\);/, /horseCart: hccRuntimeOn,\s+\/\/ HCC: the runtime's transition handlers/,
     // AUDIT HCC H2: the travel map's journey (the mod's one subscription), and the online respawn treated as one
-    /if \(_traveling\) return;\n(?:\s*\/\/[^\n]*\n)*\s+hccRuntimeOn\(\)\?\.handlePreFastTravel\(\);\n\s+let hccPostDue = true;[^\n]*\n\s+_traveling = true;/,
-    /travelStart, modEvent: 'travel' \}\);\n\s+hccPostDue = false; hccRuntimeOn\(\)\?\.handlePostFastTravel\(\);/, /if \(hccPostDue\) hccRuntimeOn\(\)\?\.handlePostFastTravel\(\);[^\n]*\n\s+_traveling = false;/,
+    /let hccPostDue = false;[\s\S]*?try \{\s+hccRuntimeOn\(\)\?\.handlePreFastTravel\(\);\s+hccPostDue = true;[^\n]*\n\s+_traveling = true;/,
+    /hccPostDue = false; hccRuntimeOn\(\)\?\.handlePostFastTravel\(\);/, /try \{ if \(hccPostDue\) hccRuntimeOn\(\)\?\.handlePostFastTravel\(\); \}\s+finally \{\s+_traveling = false;/,
     /hccRuntimeOn\(\)\?\.handlePreFastTravel\(\);\n\s+try \{\n\s+if \(ohReturn\) \{[^\n]*\n\s+else await _teleportToPixel\(land\.x, land\.y, null, \{ reposition: REPOSITION\.RandomStartMarker \}\);\n\s+\} finally \{ hccRuntimeOn\(\)\?\.handlePostFastTravel\(\); \}/,   // AUDIT OH-F B5: the abyss's way up beside it
     /exteriorFoes\.foesFrame\(full, _hccDirty \|\| csaMoved \|\| csaAboardMoved( \|\| bandMoved)? \|\| navalMoved( \|\| seaRaidMoved)?\)/, /if \(cell && full\) frame\.c = camps\.wireRecords\(campToWire\); if \(cell && \(full \|\| _hccDirty\)\) \{ frame\.hv = hcc\.wireRecord\(campToWire\); _hccDirty = false; \}/,
     /if \(isCellRoom\(online\.room\)\) \{ const ids = ownerIds\(\); if \(ids\) camps\.sweepOwners\(ids, now, FOES_STALE_MS\); \}[^\n]*\n\s*if \(isCellRoom\(online\.room\)\) \{ const ids = ownerIds\(\); if \(ids\) hcc\.sweepOwners\(ids, now, FOES_STALE_MS\); \}/,
     /exteriorFoes\.setOnHcc\(\(from, hv, at\) => hcc\.applyOwner\(from, hv, campToScene, at\), \(\) => hcc\.clearPeers\(\)\);/,
     /horseCart: \(\) => hccRuntimeOn\(\),\s+\/\/ HCC: TrailingWagonTransportWindow/, /horseCart: hccRuntimeOn,\s+\/\/ HCC: the wagon's storage access is the runtime's word/,
   ]) assert.match(w, re, `world.js lost ${re}`);
+  // WAGONS3: the exterior frame's LateUpdate before the camera and before the world pass (the clear colour opens it)
+  { const at = w.indexOf('    hccTick(dt, now);\n    // WAGONS3'), cam0 = w.indexOf('const mwv0 = mwViewFrame({'), clear = w.indexOf('renderer.setClearColor(SKY_CLEAR);   // INCIDENT 2026-09-04');
+    assert.ok(at > 0 && at < cam0 && cam0 < clear, 'world.js: hccTick, then the camera, then the world pass'); }
   assert.equal((w.match(/hcc\.clearPeers\(\)/g) ?? []).length, 1, 'the peers\' teams clear wherever the pool\'s puppets do - the pool\'s own clearPuppets hook, so the pinned room-change and leave lines stand as they were');
   assert.match(w, /if \(!seam\) \{ exteriorFoes\.clearPuppets\(\);/); assert.match(w, /online\.leave\(\); exteriorFoes\.clearPuppets\(\); modes\?\.clearOwnPuppets\?\.\(\); _foesRoom = null;/);   // QUEST-PARTY phase 3b: and a building's
 });
@@ -166,15 +171,20 @@ test('HCC hosts: exterior.js mirrors the same seams over the fixed city (no stre
     /streaming: \{ isReady: \(\) => true, isInit: \(\) => false, mapPixelX: \(\) => _locPixel\.x, mapPixelY: \(\) => _locPixel\.y, ratio: \(\) => 1 \/ GLOBAL_SCALE \}/,
     /isOnShip: \(\) => false/,
     /hcc\.setEnabled\(hccOn\(\)\); if \(hcc\.enabled\) hccPollSettings\(nowMs\); hcc\.frame\(dt, cam\.pos, gamePaused\(\) \? 0 : dt \* (?:worldTimeScale|hccTimeScale)\(\)\);/,   // AUDIT HCC (branch audit): the runtime's Time.deltaTime - held by the pause, scaled with the world
-    /hccTick\(dt, now\);[^\n]*\n\s+townTalk\.frame\(dt\);/, /hccTick\(dt, now\);[^\n]*\n\s+renderer\.setClearColor\(SKY_CLEAR\);/,
+    /hccTick\(dt, now\);[^\n]*\n\s+townTalk\.frame\(dt\);/,
+    /hccTick\(dt, now\);\n\s+_driverSeat = walkMode && player\.transportMode === TRANSPORT_MODES\.Cart && [^\n]*hcc\.driverSeat\(\) : null;\n\s+if \(_driverSeat\) cam\.pos = /,   // PIN MOVED (WAGONS3): before the camera
     /if \(hcc\.enabled\) personBatches\.push\(\.\.\.hcc\.batches\(\)\);/,
     /const hccActionPressed = \(action\) => !gamePaused\(\) && pressed\(latch\.edge, keys, action\);/,
-    /camps\.draw\(renderer, texRemap\);[^\n]*\n\s+hcc\.draw\(renderer, texRemap\);/,
+    /camps\.draw\(renderer, texRemap, streetCull\);[^\n]*\n\s+hcc\.draw\(renderer, texRemap, undefined, streetCull\);/,   // PIN MOVED (PERF-WAGON): the fixed city's tents and wagons asked its own frame's view test (PERF-TEAMS wired the world host alone)
     /const _hccPick = pickActivatableHit\(cam\.pos, useFwd, hcc\.targets\(\), collider\);/, /horseCart: _hccPick,/,
     /else if \(_race\.horseCartWins\) \{ hcc\.activate\(_hccPick\.key, _hccPick\.distance, \(l\) => townTalk\.say\(l\), \(\) => setMidScreenText\(tooFarAwayText\(\)\), plaqueActionFor\(_hccPick\.key\)\); \}/,   // ACT-MENU: and the verb the plaque lit
     /\(key\) => hcc\.hoverName\(key\),/, /horseCart: pickActivatableHit\(cam\.pos, _hd, hcc\.targets\(\), collider\),/,
     /horseCart: hccRuntimeOn,/, /horseCart: \(\) => hccRuntimeOn\(\),/,
   ]) assert.match(e, re, `exterior.js lost ${re}`);
+  // AUDIT WAGONS3 R6: the fixed city's LateUpdate before the camera and before the world pass too (the pin WAGONS3 moved
+  // off the clear colour for world.js alone)
+  { const at = e.indexOf('    hccTick(dt, now);\n    _driverSeat'), cam0 = e.indexOf('? mwViewFrame({ fpEye: cam.pos, feet: player.feetAt(), yaw: cam.yaw, pitch: cam.pitch,'), clear = e.indexOf('renderer.setClearColor(SKY_CLEAR);   // INCIDENT 2026-09-04');
+    assert.ok(at > 0 && at < cam0 && cam0 < clear, 'exterior.js: hccTick, then the camera, then the world pass'); }
   assert.doesNotMatch(e, /wireRecord|applyOwner|sweepOwners/, 'no room, no wire on this host');
   assert.doesNotMatch(e, /travelOptions/, 'and no Travel Options seam (ENH-NOTICE3 A: the journey is world.js\'s alone) - the runtime reads the absent seam as "no such mod"');
 });

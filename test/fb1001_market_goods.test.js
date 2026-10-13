@@ -27,6 +27,7 @@ import { MARK_WORTH_GOLD } from '../src/net/marksLaw.js';
 import { realmIo, createRealmSession, realmGoldAct } from '../src/systems/realmSaves.js';
 import { createMarketGoods } from '../src/systems/tradePack.js';
 import { createMarketTab } from '../src/ui/marketTab.js';
+import { createAcquireWatch } from '../src/systems/acquireWatch.js';
 import { generateRandomLoot, LOOT_MATRICES, validLootList, createRandomGem } from '../src/systems/loot.js';
 import { mintMaterialItem } from '../src/systems/profItems.js';
 import { MINED_KEYS, PLANT_GROUP_TEMPLATES } from '../src/net/professionLaw.js';
@@ -357,7 +358,14 @@ test('MARKET-ANY client: the pack side offers what may go and says why the rest 
   const words = eve.goods.goods().map((g) => [g.item.templateIndex, g.why]);
   assert.deepEqual(words, [[weapon.templateIndex, null], [570, 'bound to you'], [ARROW_TEMPLATE, 'arrows go in a quiver'], [armour.templateIndex, 'locked - unlock it first'],
     [9999, 'not a piece the market knows']]);
+  // INT1 (PIN MOVED): a piece of no template is one no honest client holds - the judge holds the trade of a character whose
+  // checkpoint carries one (server-account/src/judge.js) - so it says its word above and leaves the pack before the act
+  eve.entity.items.splice(4, 1);
   const sword = eve.entity.items[0];
+  // FIELD BUGS 2026-10-09b MARK-WIRE: the HUD's watcher marks every weapon in the pack `acquired` its first frame
+  // (ACQUIRE1), so the record the checkpoint carries has the mark and the offer (the wire's clamp) does not
+  createAcquireWatch().observe(eve.entity);
+  assert.equal(sword.acquired, true, 'the pack\'s weapon marked as the HUD marks it');
   const g = eve.goods.good(sword);
   assert.equal(g.pick, 0);
   // the piece leaves the pack only inside the hold: no checkpoint carries a pack without it while the record holds it
@@ -369,8 +377,8 @@ test('MARKET-ANY client: the pack side offers what may go and says why the rest 
   assert.equal(r.ok, true, JSON.stringify(r));
   assert.deepEqual(await during, { ok: false, error: 'held' }, 'taken inside the realm\'s hold - no checkpoint goes meanwhile');
   assert.ok(eve.session.seq >= seq + 2, 'the save checkpointed before the act, and the record one on by the act');
-  assert.deepEqual(eve.entity.items.map((it) => it.templateIndex), [570, ARROW_TEMPLATE, armour.templateIndex, 9999], 'out of the pack');
-  assert.deepEqual(s.record(eve.who).save.items.map((it) => it.templateIndex), [570, ARROW_TEMPLATE, armour.templateIndex, 9999], 'out of the record, the same');
+  assert.deepEqual(eve.entity.items.map((it) => it.templateIndex), [570, ARROW_TEMPLATE, armour.templateIndex], 'out of the pack');
+  assert.deepEqual(s.record(eve.who).save.items.map((it) => it.templateIndex), [570, ARROW_TEMPLATE, armour.templateIndex], 'out of the record, the same');
   // a refusal - the armour unlocked and offered in Drakes - puts it back
   setLocked(eve.entity.items[2], false);
   const a = eve.goods.good(eve.entity.items[2]);
@@ -427,8 +435,11 @@ test('MARKET-ANY tab: Goods after the Auctions - each piece its name, condition,
   const theirs = mintPiece({ recipe: 'dagger:iron', quality: 1, seed: 77, maker: 'Mac' }, 'fedcba9876543210');
   const eve = await playing(s, 'Eve', { items: [plain(weapon), sigilStone(), plain(armour), plain(own), plain(theirs)] });
   const mac = await s.registered('Mac');
-  for (const [who, p] of [[eve.who, own.provenance], [mac, theirs.provenance]]) {
-    s.raw.prepare(`INSERT INTO products (provenance, owner, char_id, maker, recipe, template, material, quality, seed, record, made_at) VALUES (?, ?, ?, 'x', 'dagger:iron', 113, 0, 1, 1, 'p1.x', ?)`).run(p, who.id, who.character, _now);
+  // INT2 (PIN MOVED): each row the piece's own template - the judge reads a crafted piece's provenance against the template
+  // the service minted it for (server-account/src/judge.js judgeProducts); PIN MOVED (its audit): and its own quality -
+  // a piece claiming a quality past its row's is no craft
+  for (const [who, piece] of [[eve.who, own], [mac, theirs]]) {
+    s.raw.prepare(`INSERT INTO products (provenance, owner, char_id, maker, recipe, template, material, quality, seed, record, made_at) VALUES (?, ?, ?, 'x', ?, ?, ?, ?, 1, 'p1.x', ?)`).run(piece.provenance, who.id, who.character, piece.recipe, piece.templateIndex, piece.material ?? 0, piece.quality, _now);
   }
   let root = null;
   const said = [];
@@ -459,14 +470,14 @@ test('MARKET-ANY tab: Goods after the Auctions - each piece its name, condition,
   // a crafted piece: Eve's own alone, the other named
   what.value = 'piece'; what.onchange();
   assert.deepEqual(opts(selects().find((x) => x.getAttribute('aria-label') === 'Crafted piece')).map((o) => o.value), [own.provenance]);
-  assert.match(text(), /1 crafted piece you hold names another owner in its maker's record: only that owner sells it as a crafted piece\. List it as a piece from your pack, for gold\./);
+  assert.match(text(), /1 crafted piece you hold is another player's by its maker's record - only they sell it as crafted\. List it from your pack for gold instead\./);   // AUDIT 657 D7: BOARD-UI (PIN MOVED): the words cut
   // a piece from the pack: the looted pieces and Mac's make; the stone and Eve's own make said
   selects().find((x) => x.getAttribute('aria-label') === 'What to list').value = 'item';
   selects().find((x) => x.getAttribute('aria-label') === 'What to list').onchange();
   const pick = selects().find((x) => x.getAttribute('aria-label') === 'Piece from your pack');
   assert.deepEqual(opts(pick).map((o) => o.textContent), [eve.goods.goodName(weapon), eve.goods.goodName(armour), eve.goods.goodName(theirs)]);
   assert.match(text(), new RegExp(`Not for the market: Deadlands Ember \\(bound to you\\); ${eve.goods.goodName(own)} \\(your own make - list it as a crafted piece\\)\\.`));
-  assert.match(text(), /A piece from your pack sells for gold alone\./);
+  assert.match(text(), /No fee to list\. Up for 72 hours on every board\. If it sells you get \d+ gold \(after a 1% fee and 5% tax\), collected at a bank\. It leaves your pack now and comes back if it does not sell\./);   // AUDIT 657 B9 (PIN MOVED): the 1% the sale's fee; BOARD-UI (PIN MOVED): its form says gold, its terms one line
   assert.equal(selects().some((x) => x.getAttribute('aria-label') === 'Currency'), false, 'no Drakes to choose');
   const price = [...root.querySelectorAll('input')].find((i) => i.getAttribute('data-focus') === 'list-price');
   price.value = '75'; price.oninput();

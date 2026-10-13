@@ -12,7 +12,11 @@
 //    behind the player in the new one. A body a place swept itself (a fast travel's clear) stands again the same way.
 //  - THE FOLLOW BRAIN is the motor's (enemyMotor.js `follow`, the navmesh's in enhancedMotor.js): no foe to fight,
 //    each keeps to the leader - the first nearer, the second a pace further - and one left CATCH_UP_M behind (or a
-//    floor away) is stood behind the player again.
+//    floor away) is stood behind the player again. COMPANION-TRAIL (FIELD BUGS 2026-10-04b): the layer drops a crumb
+//    every TRAIL_STEP_M the leader walks on a floor, the last TRAIL_MAX kept, and hands them to the motor
+//    (`follow.trail`) - out of sight of the leader a companion walks where the player walked, round the corner and
+//    through the doorway, never straight into the wall beside it. A new place, or a leader moved TRAIL_JUMP_M in one
+//    frame (a teleport, the floating origin's recentre), begins the trail again.
 //  - FIGHTING: each stands as the player's ally (allied: team PlayerAlly - enemyTargets.js getTargets), a `shipmate`
 //    none of the player's blows can reach (combat/friendlyFire.js), and a `companion` every hostile may fight.
 //  - KNOCKED OUT: the pools' death arms hold a companion at 1 and mark him (`_knockedOut`); here he is taken out and
@@ -33,8 +37,25 @@ export const CATCH_UP_DY = 6;
 /** How near each keeps to the leader (m): the first, then each after a pace further. */
 export const HEEL_M = 2.5;
 export const HEEL_STEP_M = 1.2;
+/** COMPANION-TRAIL: a crumb each this far the leader walks (m), the newest this many kept (48 m - past CATCH_UP_M),
+ *  and a leader moved this far in one frame (m) begins it again. */
+export const TRAIL_STEP_M = 0.75;
+export const TRAIL_MAX = 64;
+export const TRAIL_JUMP_M = 8;
 
 export const companionKeyOf = (c) => c.key ?? `${c.boat}:${c.name}`;
+/** FB1012d ALLY-RACE (bible/01-Overview/Field-Bugs-2026-10-12d.md): A COMPANION IS ONE PERSON - the seed his body's
+ *  race, face, head, hair and clothes are drawn by (characters/foeBodies.js ownPerson, which foeSeed reads before the
+ *  stand's own): a member's own where the party keeps one (a sworn revenant's - its record's, revenantCompanions.js
+ *  memberOf), else his party key's - his boat and his name, his for life (shipCrew.js handName) - so every door, every
+ *  load and every machine stands the same man. */
+export function companionPerson(c) {
+  if (Number.isInteger(c?.person) && c.person >= 0 && c.person <= 0xffffffff) return c.person;
+  const k = companionKeyOf(c);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < k.length; i++) h = Math.imul(h ^ k.charCodeAt(i), 0x01000193);
+  return h >>> 0;
+}
 
 /**
  * @param {{
@@ -44,15 +65,38 @@ export const companionKeyOf = (c) => c.key ?? `${c.boat}:${c.name}`;
  *     fx?: { arrive?: (rec: any) => void, leave?: (rec: any, done: () => void) => void, jump?: (rec: any, from: number[]) => void } } | null),
  *   leader: () => ({ feet: number[], yaw: number, grounded?: boolean } | null),
  *   now: () => number,
- *   onKnocked?: (c: any) => void,
+ *   onKnocked?: (c: any, by: any) => void,
  *   onStood?: (c: any, rec: any) => void,
+ *   seat?: (i: number, n: number) => ({ feet: number[], yaw: number } | null),
+ *   seatDraw?: (i: number, n: number) => ({ feet: number[], yaw: number, g: number } | null),
  * }} deps
+ *
+ * WAGONS1: `seat(i, n)` - where the `i`th of `n` rides when the player's wagon carries companions in its back
+ * (systems/wagonSeats.js companionSeats; null: on foot, at heel). A body with a seat takes no step (characters/
+ * enemyMotor.js update) and is never caught up: it is where the wagon is. WAGONS2: `seatDraw(i, n)` - where that seat
+ * is DRAWN (the wagon grown under the Overworld): the sprite stands there, the body on the seat itself.
  */
 export function createCrewAshore(deps) {
   /** @type {Map<string, { c: any, rec: any, remove: (rec: any) => void, has: ((rec: any) => boolean) | null, fx: any }>} */
   const stood = new Map();
   const pending = new Set();
   let placeKey, epoch = 0;
+  /** COMPANION-TRAIL: where the leader walked in this place, oldest first. @type {number[][]} */
+  const trail = [];
+  /** @type {number[]|null} the leader's feet the frame before */
+  let leaderWas = null;
+  /** COMPANION-TRAIL: the leader's feet this frame - moved TRAIL_JUMP_M since the last frame, the trail begins again;
+   *  on a floor, a crumb past TRAIL_STEP_M from the last. */
+  function drop(L) {
+    const f = L.feet;
+    if (leaderWas && Math.hypot(f[0] - leaderWas[0], f[1] - leaderWas[1], f[2] - leaderWas[2]) > TRAIL_JUMP_M) trail.length = 0;
+    leaderWas = [f[0], f[1], f[2]];
+    if (L.grounded === false) return;   // a jump's arc, a swim, a levitation leave no crumb in the air
+    const last = trail[trail.length - 1];
+    if (last && Math.hypot(f[0] - last[0], f[2] - last[2]) < TRAIL_STEP_M) return;
+    trail.push([f[0], f[1], f[2]]);
+    if (trail.length > TRAIL_MAX) trail.shift();
+  }
   /** AUDIT WK-M3: HIS SPELLS RIDE WITH HIM, as his health does. Each place stands a fresh body, so every effect on him -
    *  a gift of mine (COMPANION-KIT), a foe's poison - was lost at every door, dungeon, helm and sweep (a fast travel, a
    *  Recall, a respawn). A body leaving its place (lifted at a change of place, or swept by the place itself) leaves its
@@ -76,8 +120,12 @@ export function createCrewAshore(deps) {
     const [dx, dz] = companionSlot(L.yaw, i, n);
     return place.spot ? place.spot(L.feet, dx, dz) : [L.feet[0] + dx, L.feet[1], L.feet[2] + dz];
   }
+  /** WAGONS1: the motor's seat handle - the host's seat for the `i`th of `n`, read each step. */
+  const seatOf = (i, n) => () => deps.seat?.(i, n) ?? null;
+  /** WAGONS2: and where the draw stands it - the host's seat as the wagon is drawn (grown under the Overworld), or null. */
+  const seatDrawOf = (i, n) => () => deps.seatDraw?.(i, n) ?? null;
   /** The motor's follow handle: the leader's live feet, and how near this one keeps. */
-  const followOf = (i) => ({ feet: () => deps.leader()?.feet ?? null, stop: HEEL_M + i * HEEL_STEP_M });
+  const followOf = (i) => ({ feet: () => deps.leader()?.feet ?? null, stop: HEEL_M + i * HEEL_STEP_M, trail: () => trail });   // COMPANION-TRAIL
 
   /** One frame: the place read, the bodies there kept to the party, the missing stood. */
   function frame() {
@@ -86,9 +134,10 @@ export function createCrewAshore(deps) {
     party?.wake(now);
     const place = party && (party.party.length || stood.size) ? deps.place() : null;   // COMPANION-PORTAL: the last one sent away still leaves through its portal (no party: everyone out)
     const key = place ? place.key : undefined;
-    if (key !== placeKey) { liftAll(); placeKey = key; epoch++; }
+    if (key !== placeKey) { liftAll(); placeKey = key; epoch++; trail.length = 0; leaderWas = null; }   // COMPANION-TRAIL: a new place, a new trail
     if (!party) return;
     const L = deps.leader();
+    if (place && L) drop(L);   // COMPANION-TRAIL
     const list = party.party;
     // the bodies standing: knocked, swept, sent back, left behind
     for (const [k, s] of [...stood]) {
@@ -96,7 +145,7 @@ export function createCrewAshore(deps) {
       const i = list.indexOf(s.c);
       if (rec._knockedOut) {
         stood.delete(k); leave(s);   // COMPANION-PORTAL: carried off through a portal
-        if (party.knock(s.c.boat, s.c.name, now)) deps.onKnocked?.(s.c);
+        if (party.knock(s.c.boat, s.c.name, now)) deps.onKnocked?.(s.c, rec._knockedBy ?? null);   // RVN10 (Feud-Arc.md 21.1): and the foe whose blow it was
         continue;
       }
       // the place swept it - a cull, a remove, or (AUDIT CC-A1) a clear that empties the list and marks nobody (the
@@ -110,7 +159,9 @@ export function createCrewAshore(deps) {
       }
       rec.shipmate = true;
       rec.ai.follow = followOf(i);
-      if (place && L) {
+      rec.ai.seat = deps.seat ? seatOf(i, list.length) : null;   // WAGONS1
+      rec.ai.seatDraw = deps.seatDraw ? seatDrawOf(i, list.length) : null;   // WAGONS2: drawn in the grown wagon
+      if (place && L && !rec.ai.seat?.()) {
         const f = rec.ai.feet;
         // AUDIT CC-A3: a floor away counts only while the leader stands on one - levitating, swimming or in the air, the
         // body stood at his height would only fall and be stood up there again
@@ -140,6 +191,7 @@ export function createCrewAshore(deps) {
         if (!rec) return;
         if (was !== epoch || !party.isAshore(c.boat, c.name) || deps.party() !== party) { place.remove(rec); return; }   // the place changed under the stand, or he went back
         rec.companion = k;
+        rec.person = companionPerson(c);   // FB1012d ALLY-RACE: his own person in every place - never the stand's draw
         rec.shipmate = true;
         if (rec.entity) {
           rec.entity.name = /** @type {any} */ (c).title ?? c.name;   // REVENANT-COMPANION: a sworn one's own name
@@ -164,6 +216,8 @@ export function createCrewAshore(deps) {
     /** The companions standing here - their bodies (the bars' list). */
     bodies: () => [...stood.values()].map((s) => s.rec),
     /** Everyone out of the place (the naval arc switched off, a new game) - the party keeps them. */
-    clear() { liftAll(); placeKey = undefined; epoch++; },
+    clear() { liftAll(); placeKey = undefined; epoch++; trail.length = 0; leaderWas = null; },
+    /** COMPANION-TRAIL: the leader's crumbs in this place (tests). */
+    trail: () => trail,
   };
 }

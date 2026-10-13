@@ -142,8 +142,8 @@
   {
     "name": "WORLD-HOVER-a-null-frame-is-merely-skipped",
     "file": "src/ui/worldPlaque.js",
-    "old": "    blank(n);\n    return;\n  }\n  paint(n, frame, quickLootRow(frame), stats);",
-    "new": "    return;\n  }\n  paint(n, frame, quickLootRow(frame), stats);",
+    "old": "    blank(n);\n    return;\n  }\n  paint(n, win.frame, lit >= 0 ? lit - win.from : -1, stats);",
+    "new": "    return;\n  }\n  paint(n, win.frame, lit >= 0 ? lit - win.from : -1, stats);",
     "tests": [
       "test/worldhover.test.js"
     ]
@@ -189,8 +189,8 @@
   {
     "name": "WORLD-HOVER-the-signature-guard-retires",
     "file": "src/ui/worldPlaque.js",
-    "old": "  const sig = `${frameSignature(frame)}|${quickLootRow(frame)}|${statsSide(lastX, globalThis.innerWidth ?? 0)}`;\n  if (sig === shownSig) return;",
-    "new": "  const sig = `${frameSignature(frame)}|${quickLootRow(frame)}|${statsSide(lastX, globalThis.innerWidth ?? 0)}`;\n  if (false) return;",
+    "old": "  const sig = `${frameSignature(frame)}|${lit}|${win.from}|${statsSide(lastX, globalThis.innerWidth ?? 0)}|${actionLayout}`;\n  if (sig === shownSig) return;",
+    "new": "  const sig = `${frameSignature(frame)}|${lit}|${win.from}|${statsSide(lastX, globalThis.innerWidth ?? 0)}|${actionLayout}`;\n  if (false) return;",
     "tests": [
       "test/worldhover.test.js"
     ]
@@ -585,7 +585,7 @@
   {
     "name": "WORLD-HOVER-the-streaming-host-stops-naming-townsfolk",
     "file": "src/scenes/world.js",
-    "old": "      const t = mobilePersonName(_livePersons[Number(key.split(':')[1])]?.person?.nameNPC);",
+    "old": "      const t = mobilePersonName(_talkPersons()[Number(key.split(':')[1])]?.person?.nameNPC);",
     "new": "      const t = null;",
     "tests": [
       "test/worldhover.test.js"
@@ -675,8 +675,8 @@
   {
     "name": "WORLD-HOVER-the-street-s-doors-outlive-the-street",
     "file": "src/scenes/worldModes.js",
-    "old": "  const setMode = (next) => { dropDoorCache(); if (next !== mode) interiorWeapon.silenceTorch();   /* DISC6: the building's rig leaves the frame - its torch loop with it */ mode = next; };",
-    "new": "  const setMode = (next) => { if (next !== mode) interiorWeapon.silenceTorch();   /* DISC6: the building's rig leaves the frame - its torch loop with it */ mode = next; };",
+    "old": "  const setMode = (next) => { dropDoorCache(); if (next !== mode) interiorWeapon.silenceTorch();   /* DISC6: the building's rig leaves the frame - its torch loop with it */ if (next !== 'interior') closeCardWatches();   /* CARDS5: the watched tables' cloths go with the interior */ mode = next; if (next !== 'interior') { privateVisitRoom = null; privateVisitOwner = null; } };",
+    "new": "  const setMode = (next) => { if (next !== mode) interiorWeapon.silenceTorch();   /* DISC6: the building's rig leaves the frame - its torch loop with it */ if (next !== 'interior') closeCardWatches();   /* CARDS5: the watched tables' cloths go with the interior */ mode = next; if (next !== 'interior') { privateVisitRoom = null; privateVisitOwner = null; } };",
     "tests": [
       "test/worldhover.test.js"
     ]
@@ -711,8 +711,8 @@
   {
     "name": "WORLD-HOVER-a-quest-plant-stand-differentiates-again",
     "file": "src/systems/worldTooltips.js",
-    "old": "  return itemLongName(item, { differentiatePlantIngredients: false }) || null;",
-    "new": "  return itemLongName(item) || null;",
+    "old": "  return itemLongName(item, { differentiatePlantIngredients: false, getQuest }) || null;",
+    "new": "  return itemLongName(item, { getQuest }) || null;",
     "tests": [
       "test/worldhover.test.js"
     ]
@@ -729,17 +729,18 @@
   {
     "name": "WORLD-HOVER-the-dungeon-entrance-arm-loses-its-caller-again",
     "file": "src/scenes/worldModes.js",
-    "old": "      const entry = entries[key];\n      if (entry?.door?.doorType === DOOR_TYPE.DUNGEON_ENTRANCE) {\n        return staticDoorName('dungeonEntrance', { locationName: currentLocationName(), elite: !!entry.dfLocation?.elite });   // ELITE: 'Elite Dungeon' over its mouth\n      }\n",
+    "old": "      const entry = entries[key];\n      if (entry?.door?.doorType === DOOR_TYPE.DUNGEON_ENTRANCE) {\n        // ELITE: 'Elite Dungeon' over its mouth; TIER1: online every mouth says its tier and the size the room builds it\n        // at (systems/dungeonTier.js), offline the mod's own \"To <name>\"\n        const label = tierShown(host.dungeonOnline?.() ?? false) ? dungeonTierLabel(entry.dfLocation) : null;\n        return staticDoorName('dungeonEntrance', { locationName: currentLocationName(), tier: label?.tier ?? null, size: label?.size ?? null });\n      }\n",
     "new": "",
     "tests": [
       "test/worldhover.test.js"
-    ]
+    ],
+    "note": "TIER1 (re-aimed by content): the arm names the tier and the size online now."
   },
   {
     "name": "WORLD-HOVER-the-itemised-default-comes-back",
     "file": "src/systems/worldHover.js",
-    "old": "    if (!named?.title) return null;\n    const { shown, rest, empty } = hoverLines(contents?.(key) ?? null);\n    return frame(key, 'items', named.title, named.subs ?? [], shown, rest, empty);",
-    "new": "    const { shown, rest, empty } = hoverLines(contents?.(key) ?? null);\n    return frame(key, 'items', named?.title ?? 'Loot', named?.subs ?? [], shown, rest, empty);",
+    "old": "    if (!named?.title) return null;\n    // LOOT-SCROLL: EVERY row - the selection and the take index the whole pile; the plaque draws HOVER_MAX of them at a\n    // time (plaqueWindow), so the wheel reaches what the \"and N more\" tail used to hide\n    const { shown, rest, empty } = hoverLines(contents?.(key) ?? null, Infinity);\n    return frame(key, 'items', named.title, named.subs ?? [], shown, rest, empty);",
+    "new": "    // LOOT-SCROLL: EVERY row - the selection and the take index the whole pile; the plaque draws HOVER_MAX of them at a\n    // time (plaqueWindow), so the wheel reaches what the \"and N more\" tail used to hide\n    const { shown, rest, empty } = hoverLines(contents?.(key) ?? null, Infinity);\n    return frame(key, 'items', named?.title ?? 'Loot', named?.subs ?? [], shown, rest, empty);",
     "tests": [
       "test/worldhover.test.js"
     ]
@@ -747,7 +748,7 @@
   {
     "name": "WORLD-HOVER-outdoors-a-dropped-pile-loses-its-word",
     "file": "src/scenes/world.js",
-    "old": "    (key) => (typeof key === 'string' && key.startsWith('droppedLoot:')\n      ? { title: lootPileName(droppedLoot.contents?.(key) ?? null) } : null),\n",
+    "old": "    (key) => (typeof key === 'string' && key.startsWith('droppedLoot:')\n      ? { title: droppedLoot.labelFor?.(key) ?? lootPileName(droppedLoot.contents?.(key) ?? null) } : null),   // WILD1: a body's remains by its own name\n",
     "new": "",
     "tests": [
       "test/worldhover.test.js"
@@ -970,7 +971,9 @@
     "new": "  return `${f.key}|${f.kind}|${f.renown ?? ''}|${f.title}|${f.subs.join('\\u001f')}|${rows}|${f.empty ? 'e' : ''}${f.tone ? `|${f.tone}` : ''}`;",
     "tests": [
       "test/worldhover.test.js"
-    ]
+    ],
+    "equivalent": true,
+    "why": "FIELD BUGS 2026-10-11g LOOT-SCROLL: resolveHover mints every row of a pile, so no frame it signs carries a tail (`rest` is 0) - the tail's rows are in the signed rows, and a changed tail repaints through them (worldhover's 'a changed TAIL under the same visible rows repaints' holds it)"
   },
   {
     "name": "AUDIT-WH2-two-rows-run-together",
@@ -1011,8 +1014,8 @@
   {
     "name": "AUDIT-WH2-the-mode-flip-forgets-the-door-cache",
     "file": "src/scenes/worldModes.js",
-    "old": "  const setMode = (next) => { dropDoorCache(); if (next !== mode) interiorWeapon.silenceTorch();   /* DISC6: the building's rig leaves the frame - its torch loop with it */ mode = next; };",
-    "new": "  const setMode = (next) => { if (next !== mode) interiorWeapon.silenceTorch();   /* DISC6: the building's rig leaves the frame - its torch loop with it */ mode = next; };",
+    "old": "  const setMode = (next) => { dropDoorCache(); if (next !== mode) interiorWeapon.silenceTorch();   /* DISC6: the building's rig leaves the frame - its torch loop with it */ if (next !== 'interior') closeCardWatches();   /* CARDS5: the watched tables' cloths go with the interior */ mode = next; if (next !== 'interior') { privateVisitRoom = null; privateVisitOwner = null; } };",
+    "new": "  const setMode = (next) => { if (next !== mode) interiorWeapon.silenceTorch();   /* DISC6: the building's rig leaves the frame - its torch loop with it */ if (next !== 'interior') closeCardWatches();   /* CARDS5: the watched tables' cloths go with the interior */ mode = next; if (next !== 'interior') { privateVisitRoom = null; privateVisitOwner = null; } };",
     "tests": [
       "test/worldhover.test.js"
     ]
@@ -1038,7 +1041,7 @@
   {
     "name": "AUDIT-WH2-the-interior-pile-gets-the-invented-word-back",
     "file": "src/scenes/worldModes.js",
-    "old": "      if (key.startsWith('droppedLoot:')) return { title: lootPileName(interiorDropped.contents?.(key) ?? null) };",
+    "old": "      if (key.startsWith('droppedLoot:')) return { title: interiorDropped.labelFor?.(key) ?? lootPileName(interiorDropped.contents?.(key) ?? null) };   // .cs:534-548; WILD1: a body's remains by its own name",
     "new": "      if (key.startsWith('droppedLoot:')) return { title: 'Loot' };",
     "tests": [
       "test/worldhover.test.js"
@@ -1092,8 +1095,8 @@
   {
     "name": "AUDIT-WH2-the-dungeon-brazier-eats-the-press-again",
     "file": "src/scenes/dungeonContext.js",
-    "old": "      if (kind === 'camp' || kind === 'hearth') return camps.activate(key, mode) ? 1 : 0;",
-    "new": "      if (kind === 'camp') return camps.activate(key, mode) ? 1 : 0;",
+    "old": "      if (kind === 'camp' || kind === 'hearth') return camps.activate(key, mode, plaqueActionFor(key)) ? 1 : 0;",
+    "new": "      if (kind === 'camp') return camps.activate(key, mode, plaqueActionFor(key)) ? 1 : 0;",
     "tests": [
       "test/surv3_camps.test.js"
     ]

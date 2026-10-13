@@ -132,7 +132,10 @@ test('AUDIT CC-A5 (major): a hand home again stands on her deck - the last of th
   assert.equal(crew.ships()[0].life.standing(), 6);
   const w = rd('src/scenes/world.js');
   assert.match(w, /away: naval\?\.awayOf\?\.\(boat\) \?\? NO_HANDS_AWAY/, 'my boats always say who is away');
-  assert.match(rd('src/scenes/navalHost.js'), /if \(!boat\?\.uid \|\| !companions\.party\.length \|\| sailing\(\)\) return NO_HANDS_AWAY;/, 'none away: an empty set - and none while I sail (Mac: back on deck)');
+  // PIN MOVED (AUDIT CAPTAIN'S SEA C1): the rule moved into the host's one ashore set (`ashoreNames`), which the deck, her
+  // posts' worth, her answering hand and her card all read - the deck still answers the empty set, never null
+  assert.match(rd('src/scenes/navalHost.js'), /const ashoreNames = \(boat\) => \(boat\?\.uid && companions\.party\.length && !sailing\(\) \? companions\.awayOf\(boat\.uid\) : NO_HANDS_AWAY\);/, 'none away: an empty set - and none while I sail (Mac: back on deck)');
+  assert.match(rd('src/scenes/navalHost.js'), /const names = ashoreNames\(boat\);[^\n]*\n\s*if \(!names\.size\) return NO_HANDS_AWAY;/, 'the deck reads the one set');
 });
 
 test('AUDIT CC-A6 (major): the bars come down under a dungeon window - the overlay\'s early return draws them covered too', () => {
@@ -480,10 +483,10 @@ test('AUDIT CC-E2 (major): underground my companion rides the room\'s own lane (
   assert.match(d, /comp = validLooseSeqs\(data\.cp\);/);
   assert.match(d, /companionPuppet\(f, lo && comp\.has\(r\.i\), compNames\.get\(r\.i\)\); f\._heirElse/);   // PIN MOVED (AUDIT WK-U3): and named
   assert.match(d, /if \(coop\) opts\.onFoeHit\?\.\(\{ own: 1, to: foe\._ownFrom, k: _locationKey, i: foe\._ownI, \.\.\.coop \}\);/, 'own-lane bodies');
-  assert.match(d, /if \(coop\?\.al === 1\) opts\.onFoeHit\?\.\(\{ \.\.\.\(foe\._encId != null \? \{ i: foe\._encId, xs: 1 \} : \{ i: pi \}\), \.\.\.coop \}\);/, 'the room\'s foes, as a joiner');
+  assert.match(d, /if \(coop\?\.al === 1\) opts\.onFoeHit\?\.\(\{ \.\.\.\(foe\._encId != null \? \{ i: foe\._encId, xs: 1 \} : \{ i: foe\._surI \?\? pi \}\), \.\.\.coop \}\);/, 'the room\'s foes, as a joiner');
   assert.match(d, /if \(data\.fb === 1\) \{\n\s*if \(!f \|\| f\.dead \|\| f\.companion == null/, 'the foe\'s blow lands on my companion');
   assert.match(d, /rec\.hurtFromFoe = \(dmg, dir, striker = null\) => damageFoe\(rec, dmg, null, dir \?\? null, \{ fromPlayer: false, striker \}\);/);
-  assert.match(d, /dealDamage: \(tt, d\) => tt\.hurtFromFoe\?\.\(d, fwd, f\),/);
+  assert.match(d, /dealDamage: \(tt, d\) => tt\.hurtFromFoe\?\.\(blowScaled\(f\.ai, d\), fwd, f\),/);   // PIN MOVED (AUDIT ARENA-LADDER): a telegraphed blow's weight on it
 });
 
 test('AUDIT CC-E3/E4: a companion lifted on the street makes the next frame whole (the room lets him go at once); a ship another stands that strikes to my guns cheers my crew', async () => {
@@ -571,7 +574,7 @@ test('AUDIT CC-F3: grog and provisions by number - a gold a hand at least GROG_M
   assert.equal(top.rows.find((r) => r.id === 'grog').missing, 0);
   const o = provisionOffer({ stores: 0, stock: 13, morale: 40, crew: 24, crewed: true, gold: 1000 });
   for (const r of o.rows) assert.equal(r.cost, r.afford * r.price);
-  assert.equal(o.rows[0].afford, 2, 'two stores in a purse of 1000');
+  assert.equal(o.rows[0].afford, 3, 'three stores in a purse of 1000');   // PIN MOVED (TOUGHER-SHIPS): a store 314 gold (navalYard.js STORE_POINTS, REPAIR_PRICE)
   assert.equal(wantsRepair({ hull: 100, maxHull: 100, sail: 50, maxSail: 100 }), true, 'her canvas alone wants it');
   assert.equal(storesCount([mint(1), { ...mint(1), stackCount: 0 }]), 2, 'a stack of none counts one');
 });
@@ -630,7 +633,7 @@ test('AUDIT CC-F6: the crew\'s small print - their lines by spirits and a third 
   const mid = createShipCrew({ seed: 9, record: { morale: 50, hands: [] } });
   for (let i = 0; i < 50; i++) assert.equal(mid.line(), null, 'steady spirits keep their own words');
   const card = crewCard({ morale: 60, hands: [{ name: 'A', role: 'Bosun', fights: 1, boardings: 2 }] });
-  assert.ok(card.some((l) => l === 'A, Bosun - 1 fight, 2 boardings'));
+  assert.ok(card.some((l) => l === 'A, Bosun - 1 fight, 2 boardings - Seasoned'));   // PIN MOVED (CAPT-CREW): a hand's rank of service ends his line from Seasoned up (1 + 2 x 2 = 5 service)
   assert.ok(crewCard({ morale: 60, hands: [] }).includes('No hands aboard.'));
   // a port stay resets the sea's clock and the sea the port's
   const t = createShipCrew({ seed: 9 });

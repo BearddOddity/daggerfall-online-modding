@@ -40,7 +40,7 @@ test('CHAT-CHAN wire: one channel per politic region, whitelisted by enumeration
   assert.equal(chatRegionRoom(61), 'chat:region.61');
   for (const bad of [-1, 62, 1.5, NaN, null, undefined, '3']) assert.equal(chatRegionRoom(bad), null, `no region ${String(bad)}`);
   for (let i = 0; i < CHAT_REGION_COUNT; i++) assert.ok(isChatRoom(chatRegionRoom(i)), `region ${i}'s channel is one the relay opens`);
-  assert.equal(CHAT_ROOMS.size, 1 + CHAT_REGION_COUNT);
+  assert.equal(CHAT_ROOMS.size, 1 + CHAT_REGION_COUNT + 16 + CHAT_REGION_COUNT * 4 + 15);   // PIN MOVED, SCALE5c: and the hub's sixteen shards; part two: and each region's four; CHAT-LANG: and the fifteen language channels
   for (const bad of ['chat:region.62', 'chat:region.-1', 'chat:region.01', 'chat:region.x', 'chat:party.q123']) assert.equal(isChatRoom(bad), false, `${bad}: a list, not a prefix (AUDIT CHAT A1)`);
   assert.ok(isSocialRoom(SOCIAL_ROOM) && !isSocialRoom(chatRegionRoom(4)), 'a region\'s channel is no hub: it keeps no seats');
 
@@ -246,7 +246,7 @@ test('CHAT-CHAN log: a line the game says goes on EVERY tab as ONE line - peeked
   assert.equal(n.system, true, 'the game\'s, whatever the caller said');
   assert.equal(n.tab, null, 'said on no one tab');
   for (const tab of log.tabs) assert.equal(tab.messages.at(-1), n, `the same line object on ${tab.id}`);
-  assert.deepEqual(log.tabs.map((t) => t.unread), [1, 0, 0, 0, 0], 'unread where the player reads - the active tab');   // GUILD1c: five tabs
+  assert.deepEqual(log.tabs.map((t) => t.unread), [1, 0, 0, 0, 0, 0], 'unread where the player reads - the active tab');   // GUILD1c: five tabs; CHAT-LANG: six
   assert.equal(log.unreadTotal(), 1, 'the Chat button counts the line that arrived, not the line times the tabs');
   assert.equal(log.peek().length, 1, 'the peek draws it once');
   assert.equal(log.pushAll({ text: '' }), null, 'nothing to say: nothing kept');
@@ -288,7 +288,7 @@ test('CHAT-W log: the peek is the open tab\'s and the party\'s - a World line ne
 
 test('CHAT-P log: the Party tab starts off the bar, is put on and taken off by the host, cannot be selected while off, counts no unread while off, and taking it off the front hands the front to the first tab on the bar - read at once when the chat is open (mutants: the Party tab shown from the start; select into a hidden tab; the front left on a hidden tab; the hidden count on the badge)', () => {
   const log = new ChatLog({ now: () => 1 });
-  assert.deepEqual(log.tabs.map((t) => [t.id, t.shown]), [['world', true], ['region', true], ['party', false], ['guild', false], ['local', true]]);   // GUILD1c: the Guild tab starts off the bar too
+  assert.deepEqual(log.tabs.map((t) => [t.id, t.shown]), [['world', true], ['region', true], ['lang', false], ['party', false], ['guild', false], ['local', true]]);   // GUILD1c: the Guild tab starts off the bar too; CHAT-LANG: the Language tab until one is chosen
   assert.equal(log.select('party'), false, 'off the bar: not to the front');
   log.push('party', { id: 'b', name: 'B', text: 'early' });
   assert.equal(log.unreadTotal(), 0, 'a count on a tab nobody can see is on no badge');
@@ -333,7 +333,7 @@ test('CHAT-CHAN log: setRoom moves a tab\'s channel and names its PLACE, keeping
   assert.equal(log.setRoom('region', 'chat:region.17', 'Wayrest'), false);
   assert.equal(log.version, v2);
   assert.equal(log.setRoom('nowhere', 'x', 'y'), false);
-  assert.deepEqual(log.tabs.map((t) => t.link), [true, true, false, false, false], 'the World and Region tabs ride rooms of their own');   // GUILD1c: the Guild tab rides the hub's
+  assert.deepEqual(log.tabs.map((t) => t.link), [true, true, true, false, false, false], 'the World, Region and Language tabs ride rooms of their own');   // GUILD1c: the Guild tab rides the hub's
   assert.equal(regionJoinedText('Wayrest'), 'Region channel: Wayrest.');
 });
 
@@ -393,7 +393,8 @@ test('CHAT-CHAN commands: a slash is a channel\'s command, the list, a host comm
   assert.equal(unknownCommandText('pary'), 'There is no /pary command. /help lists them.');
   assert.equal(emptyCommandText('p'), '/p needs something to say.');
   assert.equal(hostMisuseText('red'), '/red needs something to say.');
-  assert.equal(hostMisuseText('unstuck'), '/unstuck takes nothing after it.');
+  assert.equal(hostMisuseText('unstuck'), '/unstuck takes nothing after it but cancel.', 'PVPUNSTUCK: the one word it takes');
+  assert.equal(hostMisuseText('ready'), '/ready takes nothing after it.');
 });
 
 // ─── THE ROSTERS ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -469,10 +470,10 @@ test('CHAT-CHAN panel: each tab says who it reaches (and the region\'s name), th
   assert.equal(tabs[1].title, `Wayrest - ${CHAT_TABS[1].hint}`);
   assert.equal(input.placeholder, 'Say something - Wayrest', 'the place a moving channel is');
   log.select('world');
-  assert.equal(tabs[2].style.display, 'none', 'CHAT-P: the Party tab is off the bar outside a party');
+  assert.equal(tabs[3].style.display, 'none', 'CHAT-P: the Party tab is off the bar outside a party');   // CHAT-LANG: the Language tab stands before it
   log.setShown('party', true);
   panel.render({});
-  assert.equal(tabs[2].style.display, '', 'and on it inside one');
+  assert.equal(tabs[3].style.display, '', 'and on it inside one');
 
   log.push('world', { id: 'a', name: 'A', text: 'on the World' });
   log.push('party', { id: 'b', name: 'B', text: 'to the party' });
@@ -480,7 +481,7 @@ test('CHAT-CHAN panel: each tab says who it reaches (and the region\'s name), th
   log.pushAll({ text: 'The server is restarting.' });
   panel.render({});
   // the unread count is the tab's spoken name (the eye gets a dot - tools/chatChanProbe.mjs looks at it)
-  assert.deepEqual(tabs.map((b) => b.attrs['aria-label']), ['World, 2 unread', 'Region', 'Party, 1 unread', 'Guild', 'Local, 1 unread'], 'the World line and the game\'s notice (unread on the active tab), a line each on Party and Local');   // GUILD1c: the Guild tab, off the bar and counting nothing
+  assert.deepEqual(tabs.map((b) => b.attrs['aria-label']), ['World, 2 unread', 'Region', 'Lang', 'Party, 1 unread', 'Guild', 'Local, 1 unread'], 'the World line and the game\'s notice (unread on the active tab), a line each on Party and Local');   // GUILD1c: the Guild tab, off the bar and counting nothing
   assert.ok(tabs.every((b) => one(b, 'dfchat-badge').attrs['aria-hidden'] === 'true'), 'the dot says nothing a second time');
   const peek = one(root, 'dfchat-peek').children;
   // CHAT-W: the open tab's line, the party's, the game's - the Local aside is Local's alone (it waits on its dot)
@@ -518,7 +519,8 @@ test('CHAT-CHAN host: the commands are tested in their order - the host\'s own f
   const parser = onSend.indexOf('parseChatLine(');
   assert.equal(parser, at('parseChatLine(expandShortcodes(text))'), 'the parser\'s first call is its one call, over the shortcodes\' emoji (EMOTE1)');
   assert.equal(onSend.split('parseChatLine(').length - 1, 1, 'and it is asked once');
-  assert.ok(at('/^\\/unstuck$/i') < at('const red = ') && at('const red = ') < at('parseModCommand(text)') && at('parseModCommand(text)') < at("/^\\/ready$/i") && at("/^\\/ready$/i") < parser, 'the host\'s own commands by their own tests, then the parser');
+  // PVPUNSTUCK: the host's /unstuck takes an optional "cancel" (a zone wait called off) - PIN MOVED to its new test, still first
+  assert.ok(at('/^\\/unstuck(\\s+cancel)?$/i') < at('const red = ') && at('const red = ') < at('parseModCommand(text)') && at('parseModCommand(text)') < at("/^\\/ready$/i") && at("/^\\/ready$/i") < parser, 'the host\'s own commands by their own tests, then the parser');
   assert.match(onSend, /if \(cmd\.kind === 'help'\) \{ for \(const line of HELP_LINES\) note\(line\); return 'read'; \}/);
   for (const k of ['unknown', 'empty', 'host']) assert.match(onSend, new RegExp(`if \\(cmd\\.kind === '${k}'\\) \\{ note\\([^)]*\\)\\); return false; \\}`), `${k}: refused in words, the line kept to be mended`);
   assert.match(onSend, /if \(cmd\.kind === 'channel'\) return chatSend\(cmd\.tab, cmd\.wrap === 'ooc' \? oocText\(cmd\.text\) : cmd\.text, tabId\);/);
@@ -529,7 +531,7 @@ test('CHAT-CHAN host: the commands are tested in their order - the host\'s own f
   assert.match(send, /if \(!social\?\.party\) return why\(NO_PARTY_TEXT\);\s*return socialLink\(\)\?\.sendChat\(text, \{ ch: 'party', me \}\) \?\? false;/);
   assert.match(w, /const chatRegionFrame = \(now\) => \{\s*if \(seatOut\(\)\) return;[^\n]*\s*const link = chatLinks\?\.get\('region'\);\s*if \(!link \|\| !chatLinks\.get\('world'\)\?\.chanOk\) return;/, 'never before the welcome says region rooms open');
   assert.match(w, /const room = nextRegionRoom\(_regionHold, chatRegionRoom\(index\), chatLog\.tab\('region'\)\.room, now\);/);
-  assert.match(w, /chatLog\.setRoom\('region', room, place\);\s*link\.join\(room\);\s*chatLog\.push\('region', \{ text: regionJoinedText\(place\), system: true \}\);/);
+  assert.match(w, /chatLog\.setRoom\('region', room, place\);\s*link\.join\(channelLinkRoom\(room\)\);[^\n]*\s*chatLog\.push\('region', \{ text: regionJoinedText\(place\), system: true \}\);/);
   assert.match(w, /const index = _questRegionIndex\(\);/, 'PlayerGPS.CurrentRegionIndex - the politic map\'s word, the quests\' own');
   assert.match(w, /social\.onNote = \(note, text\) => \{ if \(text\) chatLog\.push\(partyNoteTab\(note, social, tab\.id\), \{ text, system: true \}\); \};/);   // CHAT-P: net/chat.js partyNoteTab - the Party tab while a party is
   assert.match(w, /if \(\(tabId === 'party' \|\| tabId === 'region'\) && chanOld\(\)\) return CHAN_OLD_RELAY_TEXT;\s*if \(tabId === 'party' && !social\?\.party\) return NO_PARTY_TEXT;/, 'the strip says why a tab cannot talk');

@@ -203,7 +203,7 @@ test('G6: the flags ride the save, and a pre-G6 membership restores as unclaimed
 // =====================================================================
 // D9: KnightlyOrder.RestoreGuildData's armour-bit migration
 // (KnightlyOrder.cs:283-295), run on every load through save.js's
-// restoreMembershipBook (save.js:"const out = copyMembershipBook") from restorePlayer (save.js:"after restoring it").
+// restoreMembershipBook (save.js:"const restoreMembershipBook = (book)") from restorePlayer (save.js:"mortal: restoreMembershipBook").
 // =====================================================================
 test('D9: RestoreGuildData back-fills the armour bit for every rank BELOW the current one', () => {
   // the gate is `(flags & 4092) == 0` (:288) - NO new-style bit set

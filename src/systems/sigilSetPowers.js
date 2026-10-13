@@ -39,6 +39,22 @@
 //   Run Them Down, No Escape   the BLOW (a foe under half health; the marked foe); No Escape's mark is the KILL's
 //   Hold the Line, Iron Hide   the DAMAGE modifier (under half health; the ward's points); Iron Hide's ward the KILL's
 //
+// SERPENT-SET (2026-10-05) - THE OLD COIL'S OWN, Sethrakul's Coilscale (Sigil-Sets.md section 6c), through the same seams:
+//   Sea-Scale                  the FOLD
+//   Constrict                  the STRIKE listener tightens the coil (a weapon blow that LANDED on a foe, a bow's too);
+//                              the BLOW reads its stacks at the coiled foe; the KILL of that foe ends it - AUDIT 625 P3
+//                              (Mac: "A coil per foe"): every foe its own coil
+//   Shed Skin                  the HURT listener: a foe's blow that takes me under its line heals me
+//                              (systems/playerHeal.js, the loot's own heal)
+//
+// SD9d (2026-10-07) - THE BRASS OF NUMIDIUM, the Brass Remnant's own (bible/11-Multiplayer/Super-Dungeons.md section 11),
+// through the same seams:
+//   Dwemer Brass               the FOLD (magic and shock resistance)
+//   Gearward                   the DAMAGE modifier: while the gear is wound, a foe's BLOW (the door's mark - never a
+//                              fall, a poison's round or a spell) lands its share lighter, and the gear winds again
+//   The Hour Turns             a DEATH SAVE (Unbroken's door, tried after it): the killing blow leaves me at 1, and the
+//                              HURT listener heals its share as the door says so (the loot's own heal)
+//
 // THE CLOCK is real seconds (performance.now): an online session never
 // pauses, and a recovery is a thing a player times with a watch. What a
 // power remembers (a recovery, a halving window, the Rampage) lives here
@@ -49,12 +65,13 @@
 import { SKILLS, MAGIC_SKILLS } from './skills.js';
 import { registerEntityFold, registerWeaponBlowMod, newMods, EMPTY_MODS, NUMBER_BODY_PARTS } from './entityMods.js';
 import { registerPlayerStruckListener, registerPlayerStrikeListener } from '../combat/formulas.js';
-import { registerPlayerDamageMod, registerPlayerDeathSave, registerPlayerHurtListener, registerPlayerDoorOpen } from '../characters/playerEntity.js';
+import { registerPlayerDamageMod, registerPlayerDeathSave, registerPlayerHurtListener, registerPlayerDoorOpen, setFoeBlowProbe } from '../characters/playerEntity.js';
 import { registerPlayerKillListener } from './playerKills.js';
 import { registerSpellCostMod } from './spellcost.js';
+import { healMine } from './playerHeal.js';   // SERPENT-SET: Shed Skin heals through the loot's own heal
 import { registerAbsorptionChance } from './absorption.js';
 import { registerMagicRoundHook } from './worldTick.js';
-import { playerDoor } from './playerDoor.js';
+import { playerDoor, paidBack } from './playerDoor.js';   // BAL5: a blow paid back never kills
 import { hudText } from './notify.js';
 import { weaponSkillUsed } from '../characters/weapons.js';
 import { friendlyProtected } from '../combat/playerWeapon.js';
@@ -62,7 +79,7 @@ import { careerTolerance, EFFECT_FLAGS } from './spellcast.js';
 import { KNIGHT_CITY_WATCH } from '../characters/mobileTypes.js';
 import {
   wornSets, setsAwake, RAMPAGE_SECONDS, RAMPAGE_STACKS, CLEAVE_METRES, WRATH_BELOW, NOVA_METRES, WRATH_SECONDS,
-  RIPOSTE_SECONDS, MARK_METRES, MARK_SECONDS, BLOOD_SECONDS, BLOOD_STACKS,
+  RIPOSTE_SECONDS, MARK_METRES, MARK_SECONDS, BLOOD_SECONDS, BLOOD_STACKS, COIL_STACKS, COIL_SECONDS, SHED_BELOW,
 } from './sigilSets.js';
 
 // ── the session's memory, and its voice ────────────────────────────
@@ -76,13 +93,18 @@ const fresh = () => ({
   marked: null, markUntil: 0,         // RAID4b: the Thief-Taker's Garb (6) - the marked foe's entity
   blood: 0, bloodUntil: 0,            // RAID4b: Orcsbane Harness (4)
   ward: 0, wardReady: 0,              // RAID4b: Orcsbane Harness (6) - the ward's points left
+  coils: new WeakMap(),               // SERPENT-SET: Sethrakul's Coilscale (4) - AUDIT 625 P3: each foe's own coil, entity -> { n, until }
+  coilFoe: null,                      // the foe my last landed blow coiled - the one the states say
+  shedReady: 0,                       // SERPENT-SET: Sethrakul's Coilscale (6)
+  gearReady: 0,                       // SD9d: the Brass of Numidium (4) - when the gear is wound again
+  hourReady: 0, hourHeal: 0,          // SD9d: the Brass of Numidium (6) - its recovery, and the heal its save owes
   recovering: new Set(),              // the powers whose "ready again" is still to be said
 });
 let _s = fresh();
 /** The host's voice (scenes/world.js): a line on the HUD, and a sound by the power's name ('unbroken', 'wrath',
- *  'eventide'; RAID4b 'mark', 'ward'). The line defaults to the HUD's own door; the sound to none. */
+ *  'eventide'; RAID4b 'mark', 'ward'; SERPENT-SET 'shed'). The line defaults to the HUD's own door; the sound to none. */
 let _say = (line) => { hudText(line); };
-let _sound = null;
+let _sound = null;   // SD9d: and 'gear', 'hour'
 export function setSetPowersVoice({ say = null, sound = null } = {}) {
   if (typeof say === 'function') _say = say;
   _sound = typeof sound === 'function' ? sound : null;
@@ -126,6 +148,10 @@ export function setFold(entity) {
   if (keen) { add(m().stats, 'agility', keen.agility); add(m().skills, SKILLS.Archery, keen.archery); }
   const hide = t.get('orcsbane')?.[0];   // RAID4b: Thick-Skinned
   if (hide) { add(m().stats, 'endurance', hide.endurance); add(m().skills, SKILLS.BluntWeapon, hide.blunt); }
+  const scale = t.get('coilscale')?.[0];   // SERPENT-SET: Sea-Scale
+  if (scale) { add(m().resist, 'frost', scale.frost); add(m().stats, 'endurance', scale.endurance); }
+  const brass = t.get('numidium')?.[0];   // SD9d: Dwemer Brass
+  if (brass) { add(m().resist, 'magic', brass.magic); add(m().resist, 'shock', brass.shock); }
   return mods ?? EMPTY_MODS;
 }
 
@@ -136,6 +162,17 @@ export const rampageStacks = (now = _now()) => (now < _s.rampageUntil ? _s.rampa
  *  has run out. */
 export const bloodStacks = (now = _now()) => (now < _s.bloodUntil ? _s.blood : 0);
 export const markedFoe = (now = _now()) => (now < _s.markUntil && !(_s.marked?.health <= 0) ? _s.marked : null);   // AUDIT SETS L1: a mark on a body is none (a peer's kill of it reaches no setKill of mine)
+/** SERPENT-SET, AUDIT 625 P3 (Mac: "A coil per foe"): A FOE'S OWN COIL - its stacks now, none once its window has run
+ *  out, or over a body (a peer's kill of it reaches no setKill of mine: the mark's own law). One coil once, moved to
+ *  whichever foe a blow landed on last, so a swing that met two foes - a crowd's, a sweep's - unwound it on each in
+ *  turn and never built it; every foe holds its own now, each its stacks and its window. */
+export const coilStacksAt = (foe, now = _now()) => {
+  const c = foe && !(foe.health <= 0) ? _s.coils.get(foe) : null;
+  return c && now < c.until ? c.n : 0;
+};
+/** The foe my last landed blow coiled, while its coil holds, and its stacks (the states' - a card's, the pins'). */
+export const coiledFoe = (now = _now()) => (coilStacksAt(_s.coilFoe, now) ? _s.coilFoe : null);
+export const coilStacks = (now = _now()) => coilStacksAt(_s.coilFoe, now);
 const belowHalf = (e) => Number.isFinite(e?.health) && e.maxHealth > 0 && e.health < e.maxHealth / 2;
 const ranged = (w) => weaponSkillUsed(w?.templateIndex) === SKILLS.Archery;
 /** @type {WeakMap<object, number>} */
@@ -144,7 +181,7 @@ let _carry = new WeakMap();
  * MY weapon's blow at a foe: the per cents of Bloodfury (twice below half health), the Rampage's stacks, Nightfall at a
  * foe that had not noticed me (`info.unaware`) and the Wrath's fury - RAID4b: and Riposte (the one blow it sharpens,
  * spent by it), Run Them Down at a foe under half health, No Escape at the marked foe and Blood for Blood's stacks -
- * summed and taken of the whole blow with the fraction carried on the weapon; then the Burning Gate's sear, flat. And
+ * SERPENT-SET: and Constrict's stacks at the coiled foe - summed and taken of the whole blow with the fraction carried on the weapon; then the Burning Gate's sear, flat. And
  * from the same blow, Cleave: the nearest other foe within CLEAVE_METRES of the one struck takes its share of the blow
  * - a MELEE blow (never a bow's or the Thunderlock's). Nothing for a miss, a blow at a player (a duel), a peer's blow
  * resolved here, or a foe's.
@@ -171,6 +208,8 @@ export function setBlow(weapon, damage, attacker, target, info) {
   if (taker?.[2] && markedFoe(now) === target) pct += taker[2].more;   // RAID4b: No Escape
   const orcs = t.get('orcsbane');
   if (orcs?.[1]) pct += orcs[1].stack * bloodStacks(now);   // RAID4b: Blood for Blood
+  const coil = t.get('coilscale');
+  if (coil?.[1]) pct += coil[1].stack * coilStacksAt(target, now);   // SERPENT-SET: Constrict, at that foe's own coil (AUDIT 625 P3)
   let out = damage;
   if (pct > 0) {
     const key = weapon ?? attacker;
@@ -182,13 +221,26 @@ export function setBlow(weapon, damage, attacker, target, info) {
   out += flat;
   return out;   // AUDIT SET M2: Cleave shares the blow that LANDED - setStrike, at the formula's tail
 }
-/** AUDIT SET M2: MY MELEE BLOW, LANDED (formulas.js registerPlayerStrikeListener - the attack's final damage, after
- *  either core's crits, materials and armour): Cleave's share of it. Taken here, at the blow modifiers, the share was
- *  of a number PCAAO then reduced for the struck foe's armour alone, so its neighbour could take more than it did. */
+/** AUDIT SET M2: MY WEAPON'S BLOW, LANDED (formulas.js registerPlayerStrikeListener - the attack's final damage, after
+ *  either core's crits, materials and armour): Cleave's share of it, a MELEE blow's alone. Taken here, at the blow
+ *  modifiers, the share was of a number PCAAO then reduced for the struck foe's armour alone, so its neighbour could take
+ *  more than it did. SERPENT-SET: and Constrict's coil tightens - a bow's blow too (the tier says a weapon blow). */
 export function setStrike(attacker, target, damage, weapon) {
-  if (!(damage > 0) || !weapon || ranged(weapon)) return;
+  if (!(damage > 0) || !weapon) return;
+  coiled(attacker, target);
+  if (ranged(weapon)) return;
   const v = tierOf(attacker, 'ruhn', 1);
   if (v) cleave(target, (damage * v.share) / 100, weapon);
+}
+/** SERPENT-SET, CONSTRICT: a weapon blow of mine that LANDED on a foe tightens the coil on it - a stack more, up to
+ *  COIL_STACKS, its window renewed to COIL_SECONDS; a blow that lands on another foe starts that foe's own coil, and the
+ *  first keeps its own (AUDIT 625 P3, Mac: "A coil per foe"). Never on a player (a duel: the sets sleep), and only while
+ *  the tier is awake on me. */
+function coiled(attacker, target) {
+  if (!target || target.isPlayer || !tierOf(attacker, 'coilscale', 1)) return;
+  const now = _now();
+  _s.coils.set(target, { n: Math.min(COIL_STACKS, coilStacksAt(target, now) + 1), until: now + COIL_SECONDS });   // AUDIT 625 P3: its own
+  _s.coilFoe = target;
 }
 
 const flat2 = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
@@ -253,13 +305,15 @@ function landedBlow() {
   _blow = null;
   return b && _now() - b.at <= BLOW_WINDOW_S ? b : null;
 }
-/** Spite of the Spurned: the foe that struck me takes its share of what its blow took from me. */
+/** Spite of the Spurned: the foe that struck me takes its share of what its blow took from me - never its last point
+ *  (BAL5, bible/05-Combat/Balance-Arc.md section 11: the kill is mine to take, never the Spite's). */
 function spite(entity, blow, took) {
   const v = tierOf(entity, 'malacath', 1);
   if (!v || !(took > 0)) return;
   const door = playerDoor();
   const f = door?.foes().find((x) => x.entity === blow.attacker);
-  if (f) door.hurtFoe(f, Math.max(1, Math.round((took * v.back) / 100)));
+  const back = f ? paidBack(f, Math.max(1, Math.round((took * v.back) / 100))) : 0;
+  if (back > 0) door.hurtFoe(f, back);
 }
 
 // ── the damage I take: Unbroken's halving, Hold the Line, Iron Hide ──
@@ -285,11 +339,25 @@ export function setDamageMod(entity, dmg) {
     _s.ward -= took;
     d -= took;
   }
+  // SD9d: GEARWARD - a foe's blow (the door's mark, never a fall or a spell) while the gear is wound lands lighter, in whole
+  // points, and the gear winds again
+  const gear = d > 0 && (_pending || _pendingBoss) ? tierOf(entity, 'numidium', 1) : null;   // AUDIT SD: and a world boss's blow
+  if (gear) {
+    const now = _now();
+    if (now >= _s.gearReady) {
+      const cut = Math.round((d * gear.lighter) / 100);
+      if (cut > 0) {   // AUDIT SD: a blow too small to lighten by a whole point spends no winding
+        d -= cut;
+        _s.gearReady = now + gear.recover;
+        sound('gear');
+      }
+    }
+  }
   return d;
 }
 export function setDeathSave(entity) {
   const v = tierOf(entity, 'malacath', 2);
-  if (!v) return false;
+  if (!v) return hourTurns(entity);   // SD9d: no Bulwark worn - the Brass's own save (the two are never worn at once: 6 and 6 is past nine places)
   const now = _now();
   if (now < _s.unbrokenReady) return false;
   _s.unbrokenReady = now + v.recover;
@@ -300,14 +368,37 @@ export function setDeathSave(entity) {
   return true;
 }
 
+/** SD9d, THE HOUR TURNS: a blow that would kill me does not - the door leaves me at 1 - and, as it says so (setHurt), its
+ *  share of my health returns; then it recovers. */
+function hourTurns(entity) {
+  const v = tierOf(entity, 'numidium', 2);
+  if (!v) return false;
+  const now = _now();
+  if (now < _s.hourReady) return false;
+  _s.hourReady = now + v.recover;
+  _s.hourHeal = v.heal;
+  _s.recovering.add('hour');
+  sound('hour');
+  return true;
+}
+
 // AUDIT FINAL F10: THE DOOR TAKES THE MARK AS IT OPENS, not when a hurt lands. Only a landed hurt had taken it, so a
 // blow the door swallowed (the veto, Unbroken halving 1 to 0, a Shield spell's pool) or a party weighed to nothing left
 // it lying, and the next hurt inside the window - an orc's Fireball, a poison's round - was read as that blow: the
 // Wrath's Nova on a spell, Spite paying a rat for a fall.
 let _pending = null;
+/** AUDIT SD: A WORLD BOSS'S BLOW. The Brass Remnant strikes through the court's door, never the attack formula's struck
+ *  tail, so its blows carry no foe's mark - no reach power answers a world boss (Sigil-Sets.md section 8). The one
+ *  power its own set brings to the fight it drops in, Gearward, reads this mark of its own instead: the Remnant's
+ *  driver marks a body's own blow as it lands (scenes/sdRemnantBlows.js bodysBlow - never the Hour's magic, never the
+ *  burning brass); nothing else reads it. */
+let _bossBlowAt = -Infinity, _pendingBoss = false;
+export function setBossStruck() { _bossBlowAt = _now(); }
 function setDoorOpen(entity) {
   if (!entity?.isPlayer || entity.peer) return;
   _pending = landedBlow();
+  _pendingBoss = _now() - _bossBlowAt <= BLOW_WINDOW_S;
+  _bossBlowAt = -Infinity;
 }
 /** LOOT4 (the Loot arc, bible/06-Systems/Loot-Arc.md section 6): THE BLOW THIS HURT CARRIES - the foe's blow the door
  *  took as it opened (`{ attacker }`), or null: a fall, a poison's round, a spell. Read by a damage modifier asked before
@@ -321,14 +412,25 @@ const _landed = new Map();
 export function registerPlayerBlowLanded(name, fn) { if (typeof fn === 'function') _landed.set(name, fn); else _landed.delete(name); }
 
 // ── Wrath of the Warden: a blow that leaves me under the line ───────
-export function setHurt(entity, { before, after }) {
+export function setHurt(entity, { before, after, saved = false }) {
   if (!entity?.isPlayer || entity.peer) return;
   const blow = _pending;
   _pending = null;
+  _pendingBoss = false;   // AUDIT SD: the boss's mark is this hurt's alone
+  // SD9d: THE HOUR TURNS - the death it turned back said, and its share of my health returned, as the door left me at 1
+  // (whatever dealt it: the save is a death save's, a fall's as a blow's)
+  if (saved && _s.hourHeal > 0) {
+    const share = _s.hourHeal;
+    _s.hourHeal = 0;
+    const max = entity?.maxHealth;
+    const healed = max > 0 ? healMine(entity, (max * share) / 100) : 0;
+    say(healed > 0 ? `The Hour Turns! ${healed} health returns.` : 'The Hour Turns!');
+  }
   if (!blow) return;   // L3: a fall, a poison's tick, a spell's burn - no foe's blow, no Spite and no Wrath
   if (before - after > 0) for (const fn of _landed.values()) { try { fn(entity, blow.attacker, before - after); } catch { /* the loot is not the blow's problem */ } }   // LOOT4
   spite(entity, blow, before - after);
   if (before - after > 0) bloodied(entity);   // RAID4b: Riposte, Blood for Blood
+  shed(entity, before, after, saved);   // SERPENT-SET: Shed Skin
   const v = tierOf(entity, 'ruhn', 2);
   const max = entity?.maxHealth;
   if (!v || !(max > 0) || !(after > 0)) return;
@@ -354,6 +456,27 @@ function bloodied(entity) {
     _s.blood = Math.min(BLOOD_STACKS, bloodStacks(now) + 1);
     _s.bloodUntil = now + BLOOD_SECONDS;
   }
+}
+
+/** SERPENT-SET, SHED SKIN: a foe's blow that takes me under SHED_BELOW of my health - from at or over it, still standing,
+ *  and while it is ready - sheds my skin: its share of my health returns at once (systems/playerHeal.js), and it must
+ *  recover. A blow that kills me sheds nothing (the death is another tier's: Unbroken's), nor does a fall or a spell
+ *  (no foe's blow - setHurt's own law). AUDIT 625 P1: nor a killing blow a death save turned aside (`saved` - Unbroken,
+ *  Divine Grace: the door left me at 1, standing) - it was a killing blow, and the save was the save; Shed Skin on top
+ *  healed a second time and spent its recovery on a death it never met. */
+function shed(entity, before, after, saved = false) {
+  const v = tierOf(entity, 'coilscale', 2);
+  const max = entity?.maxHealth;
+  if (!v || !(max > 0) || !(after > 0) || saved) return;
+  const line = max * SHED_BELOW;
+  if (!(before >= line && after < line)) return;
+  const now = _now();
+  if (now < _s.shedReady) return;
+  _s.shedReady = now + v.recover;
+  _s.recovering.add('shed');
+  const healed = healMine(entity, (max * v.heal) / 100);
+  say(healed > 0 ? `Shed Skin! ${healed} health returns.` : 'Shed Skin!');
+  sound('shed');
 }
 
 /** The Nova: every live foe within NOVA_METRES of my feet takes `n` - never an ally or a foe at peace (H1), one on
@@ -412,6 +535,7 @@ export function setKill(entity = null) {
     sound('eventide');
   }
   if (entity && _s.marked === entity) _s.markUntil = 0;   // AUDIT SETS L1: the marked foe's own death ends its mark (its chip counted on over a body)
+  if (entity) _s.coils.delete(entity);   // SERPENT-SET: a coiled foe's death ends its coil (AUDIT 625 P3: its own - every other foe keeps theirs)
   if (t.get('thieftaker')?.[2]) markNext(door, entity, now);
   const hide = t.get('orcsbane')?.[2];
   if (hide && now >= _s.wardReady) {   // RAID4b: Iron Hide - a fresh ward, never one on top of another
@@ -459,6 +583,8 @@ const READY = Object.freeze({
   wrath: { at: () => _s.wrathReady, line: 'Wrath of the Warden is ready again.', set: 'ruhn', tier: 2 },
   eventide: { at: () => _s.eventideReady, line: 'Eventide is ready again.', set: 'nocturnal', tier: 2 },
   ward: { at: () => _s.wardReady, line: 'Iron Hide is ready again.', set: 'orcsbane', tier: 2, spent: () => !(_s.ward > 0) },   // RAID4b
+  shed: { at: () => _s.shedReady, line: 'Shed Skin is ready again.', set: 'coilscale', tier: 2 },   // SERPENT-SET
+  hour: { at: () => _s.hourReady, line: 'The Hour Turns is ready again.', set: 'numidium', tier: 2 },   // SD9d
 });
 export function setRound(entity) {
   if (!entity?.isPlayer || entity.peer || !_s.recovering.size) return;
@@ -481,6 +607,7 @@ registerPlayerDamageMod(SIGIL_SETS_POWER, setDamageMod);
 registerPlayerDeathSave(SIGIL_SETS_POWER, setDeathSave);
 registerPlayerHurtListener(SIGIL_SETS_POWER, setHurt);
 registerPlayerDoorOpen(SIGIL_SETS_POWER, setDoorOpen);   // AUDIT FINAL F10
+setFoeBlowProbe(() => _pending != null);   // FULL-GUARD (FIELD BUGS 2026-10-11b): the door asks this file's law of what a blow is
 registerPlayerKillListener(SIGIL_SETS_POWER, setKill);
 registerSpellCostMod(SIGIL_SETS_POWER, setCastCost);
 registerAbsorptionChance(SIGIL_SETS_POWER, setAbsorbChance);
@@ -498,6 +625,10 @@ export function setPowerStates(now = _now()) {
     // RAID4b: Riposte's window, Blood for Blood's stacks, No Escape's mark, Iron Hide's ward (its points) and recovery
     riposteLeft: left(_s.riposteUntil), blood: bloodStacks(now), bloodLeft: bloodStacks(now) ? left(_s.bloodUntil) : 0,
     markLeft: markedFoe(now) ? left(_s.markUntil) : 0, ward: _s.ward, wardRecoverLeft: left(_s.wardReady),
+    // SERPENT-SET: Constrict's stacks and window, Shed Skin's recovery
+    coil: coilStacks(now), coilLeft: coilStacks(now) ? left(_s.coils.get(_s.coilFoe).until) : 0, shedRecoverLeft: left(_s.shedReady),
+    // SD9d: Gearward's winding, The Hour Turns' recovery
+    gearLeft: left(_s.gearReady), hourRecoverLeft: left(_s.hourReady),
   };
 }
 
@@ -527,9 +658,13 @@ export function setHudChips(entity, now = _now()) {
     if (st.ward) out.push({ key: 'ward', set: 'orcsbane', name: 'Iron Hide', text: String(st.ward), state: 'active' });
     else if (st.wardRecoverLeft) out.push({ key: 'ward', set: 'orcsbane', name: 'Iron Hide', text: time(st.wardRecoverLeft), state: 'recovering' });
   }
+  // SERPENT-SET: Shed Skin's recovery, while it recovers
+  if (t.get('coilscale')?.[2] && st.shedRecoverLeft) out.push({ key: 'shed', set: 'coilscale', name: 'Shed Skin', text: time(st.shedRecoverLeft), state: 'recovering' });
+  // SD9d: The Hour Turns' recovery, while it recovers
+  if (t.get('numidium')?.[2] && st.hourRecoverLeft) out.push({ key: 'hour', set: 'numidium', name: 'The Hour Turns', text: time(st.hourRecoverLeft), state: 'recovering' });
   return out;
 }
 
 /** Tests only: a clock of their own (seconds), and every power fresh. */
 export function _setSetPowersClockForTests(fn) { _now = typeof fn === 'function' ? fn : () => performance.now() / 1000; }
-export function _resetSetPowersForTests() { _s = fresh(); _carry = new WeakMap(); _blow = null; _holdOwed = 0; _say = (line) => { hudText(line); }; _sound = null; }
+export function _resetSetPowersForTests() { _s = fresh(); _carry = new WeakMap(); _blow = null; _bossBlowAt = -Infinity; _pendingBoss = false; _holdOwed = 0; _say = (line) => { hudText(line); }; _sound = null; }

@@ -326,8 +326,8 @@
   {
     "name": "NAVF-still-drawn-twice",
     "file": "src/scenes/comeSailAwayPool.js",
-    "old": "      for (const c of still) if (!batch || !frame || !batch.nodes.has(c.node)) one(c.gpu, c.m);",
-    "new": "      for (const c of still) one(c.gpu, c.m);",
+    "old": "      for (const c of still) if (!batch || !frame || !batch.nodes.has(c.node)) one(c.gpu, made(c.rec));",
+    "new": "      for (const c of still) one(c.gpu, made(c.rec));",
     "tests": [
       "test/navaudit_frame.test.js"
     ]

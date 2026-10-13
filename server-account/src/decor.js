@@ -30,12 +30,14 @@
 import { accountKind, displayName, overRate } from './accounts.js';
 import { CHAR_ID_RE } from './service.js';
 import { homeMapIdOk, homeBuildingKeyOk } from '../../src/net/homeLaw.js';
-import { DECOR_CAP, DECOR_ID_RE, DECOR_OPS_MAX, DECOR_OPS_WINDOW_S, DECOR_STATION_FEES, decorPieceOf, decorPlaceOf, decorHiddenOf, decorRefund, DECOR_YARD_CAP, DECOR_YARDS_TOWN_MAX, decorYardPieceOf, decorYardPlaceOf } from '../../src/net/decorLaw.js';   // HOME-YARD: and a yard's
+import { DECOR_CAP, DECOR_ID_RE, DECOR_OPS_MAX, DECOR_OPS_WINDOW_S, DECOR_STATION_FEES, decorPieceOf, decorPlaceOf, decorHiddenOf, decorRefund, DECOR_YARD_CAP, DECOR_YARDS_TOWN_MAX, decorYardPieceOf, decorYardPlaceOf, decorYardHighOk, decorScaleOk } from '../../src/net/decorLaw.js';   // HOME-YARD: and a yard's; DECOR-FIGURE: a figure at its own size
 import { prepareRealmRecord, realmSideOf, realmActFirst, recordMovedOf, mustChange, dropObjects, dropIfUnnamed, REALM_ID_RE } from './realm.js';   // REALM P2.2b; AUDIT REALM L1-F2: the record asked first; AUDIT REALM2 S2/S3
 import { payFromSave, creditSave } from '../../src/net/realmGoldLaw.js';   // REALM P2.2b: the wallet's own order, over the record
 import { GUILD_TREASURY_MAX } from '../../src/net/guildLaw.js';   // GUILD1d: a hall's treasury's cap
 import { HALL_POWERS } from '../../src/net/hallLaw.js';   // GUILD1d: a hall's keepers
 import { SEAT_HALL_DECOR_CAP } from '../../src/net/townSeatLaw.js';   // SEAT-HALL: the Charter Room's pieces
+import { homeShownTo } from './homeVotes.js';   // AUDIT HOME-VOTE A3: a shunned home's room, its insiders' alone
+import { decorStaysShunned } from '../../src/net/homeVoteLaw.js';   // AUDIT HOME-VOTE B2: its hired trader stands
 
 /**
  * REALM P2.2b: WHAT A PIECE'S CHANGE COSTS, as the client's wallet pays it - placed: what it cost (`paid`); grown: the
@@ -213,12 +215,33 @@ async function writeDoor({ db, nowS }, player, { mapId, buildingKey, character }
  * first; never more than the cap.
  * @param {{db: any}} ctx
  */
-export async function decorOf({ db }, _player, { mapId, buildingKey, seat = false } = {}) {
+/** HOME-VENDOR: whether a home's trader (the piece `id` in town `mapId`) still has goods standing at it - its open
+ *  market listings (net/vendorLaw.js). A stocked trader is neither removed nor unmade: its stock would stand nowhere. */
+export async function vendorStocked(db, mapId, id) {
+  const r = await db.prepare(`SELECT COUNT(*) AS n FROM market_listings WHERE vendor_map = ? AND vendor_id = ? AND state = 'open'`).bind(mapId, id).first();
+  return Number(r?.n ?? 0) > 0;
+}
+
+/** AUDIT HOME-VOTE II A1: WHAT OF A SHUNNED HOME STANDS FOR A STRANGER - its hired traders (decorStaysShunned) with goods
+ *  on sale at them (vendorStocked): a shop. A trader with nothing on sale is a decoration like any other - any piece may
+ *  be made one, and a statue's licence kept it standing in a home the town voted down; a hall's is never stocked. */
+async function shopOf(db, mapId, pieces) {
+  const kept = [];
+  for (const p of pieces.filter(decorStaysShunned)) if (await vendorStocked(db, mapId, p.id)) kept.push(p);
+  return kept;
+}
+
+export async function decorOf({ db }, player, { mapId, buildingKey, seat = false } = {}) {
   if (!homeMapIdOk(mapId) || !homeBuildingKeyOk(buildingKey)) return { error: 'bad-home' };
   const S = storeOf(seat);   // SEAT-HALL: a palace's Charter Room, its own table - nothing taken out of a palace
   const { results = [] } = await db.prepare(`SELECT * FROM ${S.table} WHERE map_id = ? AND building_key = ? AND yard = 0
     ORDER BY placed_at, id LIMIT ?`).bind(mapId, buildingKey, S.cap).all();   // HOME-YARD: the room's alone
-  return { mapId, buildingKey, pieces: results.map(pieceOfRow).filter(Boolean), hidden: S.seat ? [] : await hiddenOf(db, mapId, buildingKey) };
+  const pieces = results.map(pieceOfRow).filter(Boolean);
+  // AUDIT HOME-VOTE A3: a home the town voted below zero is handed to anyone but its insiders as Daggerfall furnished it
+  // - no placed piece but its hired trader with goods on sale (a shop, never a decoration: B2, II A1), nothing taken out
+  // - by the service, so a build from before HOME-VOTE shows no more than the law (homeVotes.js homeShownTo)
+  if (!S.seat && !(await homeShownTo(db, mapId, buildingKey, player?.id))) return { mapId, buildingKey, pieces: await shopOf(db, mapId, pieces), hidden: [] };
+  return { mapId, buildingKey, pieces, hidden: S.seat ? [] : await hiddenOf(db, mapId, buildingKey) };
 }
 
 /**
@@ -233,12 +256,57 @@ export async function yardsOf({ db }, _player, { mapId } = {}) {
   const by = new Map();
   for (const row of results) {
     const p = pieceOfRow(row);
-    if (!p || !decorYardPieceOf(p)) continue;
+    if (!p || !decorYardPieceOf(p) || !decorYardHighOk(p)) continue;   // YARD-SWEEP: a tower's piece from before YARD-HEIGHT never served (migration 0109)
     if (!by.has(row.building_key)) by.set(row.building_key, []);
     by.get(row.building_key).push(p);
   }
   return { mapId, yards: [...by].map(([buildingKey, pieces]) => ({ buildingKey, pieces })) };
 }
+
+/**
+ * YARD-SHED (2026-10-06, the account service down - "D1_ERROR: D1 DB is overloaded. Requests queued for too long."): A
+ * TOWN'S YARDS, KEPT. The day before, the accounts database answered 17.4 million reads, 3.0 million of them this town's
+ * yards (43 rows each - 131 million rows), each behind its caller's session and player rows: 9 million reads for an
+ * answer every caller of a town gets alike, and in the outage 577 of the 930 requests the Worker saw in 45 s. So one
+ * isolate keeps each town's answer YARDS_KEPT_S, asks the database once for every caller of the same moment, and forgets
+ * a town a decor write here touched - an answer read before that write is never kept (`gen`). Bounded: past
+ * YARDS_KEPT_MAX towns the kept ones go, and are asked again.
+ */
+export const YARDS_KEPT_S = 30;
+export const YARDS_KEPT_MAX = 4096;
+/** @type {Map<number, { at: number, answer: any }>} */
+const keptYards = new Map();
+/** @type {Map<number, Promise<any>>} */
+const askingYards = new Map();
+/** @type {Map<number, number>} each town's writes here, counted - an answer asked before one is not kept */
+const yardWrites = new Map();
+/** A town's yards as yardsOf answers them, from this isolate's kept answer while it is YARDS_KEPT_S old or younger. */
+export async function yardsKept(ctx, mapId, nowS) {
+  if (!homeMapIdOk(mapId)) return { error: 'bad-home' };
+  const kept = keptYards.get(mapId);
+  if (kept && nowS - kept.at < YARDS_KEPT_S) return kept.answer;
+  const asking = askingYards.get(mapId);
+  if (asking) return asking;
+  const gen = yardWrites.get(mapId) ?? 0;
+  const ask = yardsOf(ctx, null, { mapId }).then((answer) => {
+    if (!('error' in answer) && (yardWrites.get(mapId) ?? 0) === gen) {
+      if (keptYards.size >= YARDS_KEPT_MAX && !keptYards.has(mapId)) keptYards.clear();
+      keptYards.set(mapId, { at: nowS, answer });
+    }
+    return answer;
+  }).finally(() => { if (askingYards.get(mapId) === ask) askingYards.delete(mapId); });
+  askingYards.set(mapId, ask);
+  return ask;
+}
+/** YARD-SHED: a town's kept yards let go - a decor write on it here (index.js, after every place, move, hide or remove). */
+export function forgetYards(mapId) {
+  if (!homeMapIdOk(mapId)) return;
+  keptYards.delete(mapId);
+  askingYards.delete(mapId);
+  yardWrites.set(mapId, (yardWrites.get(mapId) ?? 0) + 1);   // one count a town written here - as many as the towns (homeMapIdOk)
+}
+/** Tests: every kept town forgotten. */
+export function _resetYardsKept() { keptYards.clear(); askingYards.clear(); yardWrites.clear(); }
 
 /** BASE-HIDE: what the home's owner took out of the room (migration 0015) - projected on the way out, so a list the law
  *  would refuse is handed out as none. */
@@ -303,7 +371,8 @@ export async function placeDecor(ctx, player, { mapId, buildingKey, character, p
   const shut = await writeDoor(ctx, player, { mapId, buildingKey, character }, true);   // AUDIT REALM2 S2: a realm character's
   if (shut) return { error: shut };
   const sent = yard === true ? decorYardPieceOf(piece) : decorPieceOf(piece);   // HOME-YARD: outside, the yard's own law
-  if (!sent) return { error: 'bad-decor' };
+  if (yard === true && sent && !decorYardHighOk(sent)) return { error: 'yard-high' };   // YARD-HEIGHT: never a tower
+  if (!sent || !decorScaleOk(sent)) return { error: 'bad-decor' };   // DECOR-FIGURE: one of Daggerfall's people at its own size
   // GUILD1d: a hall holds the catalogue's pieces alone - never a keeper's own thing (whose would it be at the sale?);
   // GUILD-YARD (Seats-Arc 8.2): a guild's hall stands a yard, its keepers' as its rooms are - a palace's Charter Room none
   if (S.seat || await hallGuildOf(db, mapId, buildingKey)) {   // SEAT-HALL: a palace is a hall
@@ -384,7 +453,13 @@ export async function moveDecor(ctx, player, { mapId, buildingKey, character, id
   // gold or hold things (a piece the law refuses reads as nothing, and its cost would be owed at a sale)
   const was = pieceOfRow(row);
   if (!was || !decorPieceOf({ ...was, ...pl })) return { error: 'bad-decor' };
+  // DECOR-FIGURE: a figure moved to any size but its own is refused - one grown before this keeps its record's scale on a
+  // turn or a station (it is drawn at its own size all the same), and is brought back to it by any move of the placer's
+  if (!decorScaleOk({ ...was, ...pl }) && pl.scale !== was.scale) return { error: 'decor-figure' };   // AUDIT HOME-VOTE II C2: its own word - a stale copy's turn of a figure brought back to 1 on another device
+  // HOME-VENDOR: a trader with goods for sale stays one - its stock is bought at it alone (market.js)
+  if (was.station === 'vendor' && (pl.station ?? null) !== 'vendor' && await vendorStocked(db, mapId, id)) return { error: 'vendor-stocked' };
   if (row.yard === 1 && !decorYardPlaceOf(pl)) return { error: 'bad-decor' };   // HOME-YARD: a yard's piece stays a yard's
+  if (row.yard === 1 && !decorYardHighOk(pl)) return { error: 'yard-high' };   // YARD-HEIGHT: nor moved up into a tower
   const { delta, ledger } = decorGoldMove(was, pl, row.paid);   // AUDIT REALM L1-F3: half back of what records paid
   const hall = delta > 0 ? await S.guildOf(db, mapId, buildingKey) : null;
   if (hall) {
@@ -409,8 +484,10 @@ export async function moveDecor(ctx, player, { mapId, buildingKey, character, id
       refusal: async () => 'no-decor',
     });
   }
-  const r = await db.prepare(`UPDATE ${S.table} SET place = ? WHERE map_id = ? AND building_key = ? AND id = ? AND ${S.owns}`)
-    .bind(placeJson(pl), mapId, buildingKey, id, mapId, buildingKey, player.id, character).run();
+  // AUDIT YARD-HEIGHT Y7: the row as read - a room's piece removed and placed again in the yard under its id between the
+  // read and this write took a room's place past the yard's law (its height, its light and its craft)
+  const r = await db.prepare(`UPDATE ${S.table} SET place = ? WHERE map_id = ? AND building_key = ? AND id = ? AND yard = ? AND ${S.owns}`)
+    .bind(placeJson(pl), mapId, buildingKey, id, row.yard, mapId, buildingKey, player.id, character).run();
   if (!r?.meta?.changes) return { error: 'no-decor' };
   const now = await db.prepare(`SELECT * FROM ${S.table} WHERE map_id = ? AND building_key = ? AND id = ?`).bind(mapId, buildingKey, id).first();
   const piece = now ? pieceOfRow(now) : null;
@@ -435,6 +512,7 @@ export async function removeDecor(ctx, player, { mapId, buildingKey, character, 
     const row = await db.prepare(`SELECT * FROM ${S.table} WHERE map_id = ? AND building_key = ? AND id = ? AND ${S.owns}`)
       .bind(mapId, buildingKey, id, mapId, buildingKey, player.id, character).first();
     const was = row ? pieceOfRow(row) : null;
+    if (was?.station === 'vendor' && await vendorStocked(db, mapId, id)) return { error: 'vendor-stocked' };   // HOME-VENDOR
     const delta = was ? decorGoldMove(was, null, row.paid).delta : 0;   // AUDIT REALM L1-F3: half of what records paid
     const hall = delta > 0 ? await S.guildOf(db, mapId, buildingKey) : null;
     if (hall) {

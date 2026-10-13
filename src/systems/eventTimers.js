@@ -15,6 +15,8 @@
 import { gateAt, gateTimes, gatePhase, GATE_EVERY_DAYS, gameDayAt, GATE_DAY_MINUTES } from '../net/gateLaw.js';
 import { wallMsForClassicMinutes } from '../net/wire.js';
 import { seatWeekOf, seatWeekStartMs, seatPhaseOf, SEAT_RECKONING_MS, seasonOf, seatSeasonName, battleLengthMs, SIGN_CLOSES_MS, guildWords } from '../net/townSeatLaw.js';
+import { serpentAt, serpentTimes, serpentPhase, serpentBossOf, SERPENT_EVERY_DAYS } from '../net/serpentLaw.js';   // SERPENT-TIMERS: the sea serpent's day
+import { sdPhase, SD_COLLAPSE_MS } from '../net/sdLaw.js';   // SD2c: the Super dungeon's record, once it is news
 
 const DAY_MS = 86_400_000;
 
@@ -26,6 +28,8 @@ const capital = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 /**
  * @param {{ now: number,
  *           gate?: { place?: string|null, fellAt?: (day: number) => (number|null) } | null,
+ *           serpent?: { place?: string|null, fellAt?: (day: number) => (number|null) } | null,
+ *           sd?: { rec: any, name?: string|null, place?: string|null } | null,
  *           seatsOpen?: boolean, seats?: Array<any> | null, zero?: number | null, region?: string | null,
  *           raids?: Array<{ name: string, region?: string, type?: string, startMs: number, endMs: number, done?: boolean }> | null }} src
  */
@@ -49,6 +53,37 @@ export function eventTimerRows(src) {
   else if (phase === 'closed') live(`gate:${t.day}`, 'gate', 'Dagon\'s Breach sealed', t.wrathAt, place, 'Collapses when this runs out');
   // ...and the gate after it, once this one is under way
   if (phase !== 'quiet') coming(`gate:${t.day + GATE_EVERY_DAYS}`, 'gate', 'Next Dagon\'s Breach opens', gateTimes(t.day + GATE_EVERY_DAYS).openAt);
+
+  // ── THE SEA SERPENT (serpentLaw: every other game day at the dawn watch - every four real hours: the bells, the
+  // rising, its dive) ── SERPENT-TIMERS (2026-10-04, the owner: "This needs to happen" -
+  // the serpent was the one shared event the window did not count). Where it lies is said from its bells on, as the
+  // chat says it; the next serpent's rising stands beside it once this one is under way.
+  const s = serpentAt(now);
+  const sPhase = serpentPhase(s, now, src?.serpent?.fellAt?.(s.day) ?? null);
+  const sName = serpentBossOf(s.day).name;
+  const off = src?.serpent?.place ? `Off ${src.serpent.place}` : null;
+  if (sPhase === 'quiet') coming(`serpent:${s.day}`, 'serpent', `${sName} rises`, s.riseAt, null, 'The harbour bells ring 15 minutes before');
+  else if (sPhase === 'omen') coming(`serpent:${s.day}`, 'serpent', `${sName} rises`, s.riseAt, off, 'The harbour bells are ringing - its waters are ringed on your map');
+  // SERPENT4 (2026-10-11): its waters stand open until it dives - one row from its rising to its dive, the storm's breaking
+  // no instant a ship sails against
+  else if (sPhase === 'rising' || sPhase === 'hunt' || sPhase === 'late') live(`serpent:${s.day}`, 'serpent', `${sName} hunts`, s.soundAt, off, 'It dives when this runs out - sail out to join');
+  if (sPhase !== 'quiet') {
+    const nextDay = s.day + SERPENT_EVERY_DAYS;
+    coming(`serpent:${nextDay}`, 'serpent', 'Next sea serpent rises', serpentTimes(nextDay).riseAt);
+  }
+
+  // ── THE SUPER DUNGEON (net/sdLaw.js: the hub's one record) ── SD2c (bible/11-Multiplayer/Super-Dungeons.md section
+  // 4): a row once it is FOUND - news, by the finder's word - and none before (a Hollow that has only risen is a find:
+  // its omen in the sky and a word in its city's taverns, never a countdown that says one stands); its fading unbeaten
+  // while it stands, its collapse after the kill. Where it stands is the host's (`place`, its city), and its name.
+  const sdRec = src?.sd?.rec ?? null;
+  const sdNow = sdPhase(sdRec, now);
+  const sdName = src?.sd?.name || 'The Abyss Dungeon';
+  const sdWhere = src?.sd?.place ? `Near ${src.sd.place}` : null;
+  if (sdNow === 'found') live(`sd:${sdRec.s}`, 'super', `${sdName} stands`, sdRec.until, sdWhere, 'Found - it fades unbroken when this runs out');
+  else if (sdNow === 'fell') live(`sd:${sdRec.s}`, 'super', `${sdName} collapses`, sdRec.fellAt + SD_COLLAPSE_MS, sdWhere, 'Its Hour is broken - it folds in on itself when this runs out');
+  // SD19: the next one's rise, once this one is gone - never where (a Hollow risen is a find), only not before when
+  else if (sdNow === 'gone' && Number.isFinite(sdRec?.next) && sdRec.next > now) coming(`sd:${(sdRec.s ?? 0) + 1}`, 'super', 'An Abyss Dungeon rises', sdRec.next, null, 'Not before this - somewhere in the Bay, its omen burning brass over it');
 
   // ── THE TOWN RAIDS (the mod's day: each town's raid a two-hour classic window) ──
   // AUDIT TIMERS1 D3: the day rolls about twenty-two across the Iliac Bay - the window held them all, twenty-seven rows.
@@ -83,7 +118,7 @@ export function eventTimerRows(src) {
   // ── THE UTC DAY (the daily caps the service counts on its UTC day) ──
   // AUDIT TIMERS1 D10: the caps as they are - the Watch's only where the seats are open
   coming('daily', 'reset', 'Daily reset', (Math.floor(now / DAY_MS) + 1) * DAY_MS, '00:00 UTC',
-    `Gathering, hides, hauls, Marks and Court writs${src?.seatsOpen ? ', and the Watch' : ''}: their daily limits start again`);
+    `The day's nodes stand anew; rare hides, silver and Court writs${src?.seatsOpen ? ', and the Watch' : ''}: their daily limits start again`);   // CAP-OFF: gathering, hides and hauls keep no day's limit
 
   // ── THE SEAT WEEK (Muster, Reckoning, the Turning - Sunday 18:00 UTC) ──
   // AUDIT TIMERS1 D5: the seats' rows for an account the seats are open to (the service says, `seatBook.open`)

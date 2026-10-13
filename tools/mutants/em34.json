@@ -371,8 +371,8 @@
   {
     "name": "EM4-14-an-undiscovered-quest-residence-is-rung",
     "file": "src/ui/townSheet.js",
-    "old": "      if (!(b?.questName || b?.questMarked) || !found.has(b.buildingKey)) continue;   // RES-RING",
-    "new": "      if (!(b?.questName || b?.questMarked)) continue;   // RES-RING",
+    "old": "if (!named.has(b?.buildingKey) && (!(b?.questName || b?.questMarked) || !found.has(b.buildingKey))) continue;   // RES-RING",
+    "new": "if (!named.has(b?.buildingKey) && (!(b?.questName || b?.questMarked))) continue;   // RES-RING",
     "tests": [
       "test/townsheet.test.js"
     ],
@@ -470,12 +470,12 @@
   {
     "name": "EM7-2-the-plus-one-drifts",
     "file": "src/ui/townQuarters.js",
-    "old": "export const quarterOfType = (type) => (type == null ? null : quarterOf(type + 1));",
-    "new": "export const quarterOfType = (type) => (type == null ? null : quarterOf(type));",
+    "old": "const byteOfType = (type) => type + 1;",
+    "new": "const byteOfType = (type) => type;",
     "tests": [
       "test/townsheet.test.js"
     ],
-    "note": "A summary's type is the grid's byte MINUS one. Lose that and every name is lettered as the quarter next door."
+    "note": "A summary's type is the grid's byte MINUS one. Lose that and every name is lettered as the quarter next door. (PROF-FOUND, 2026-10-12: re-aimed to byteOfType, the plus-one's one home now that the opened shops' bytes are made from it too.)"
   },
   {
     "name": "EM7-3-the-wash-is-a-fill",

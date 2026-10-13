@@ -110,10 +110,10 @@ test('AUDIT 68 X4-foe-sink-provenance-dropped: the router hands the provenance t
   inside({ entity: mkEntity() }, false).hurt(6);
   inside({ entity: mkEntity(), _encounter: true }, false).hurt(4);
   inside({ entity: mkEntity() }).hurt(2);
-  assert.deepEqual(seen, [
-    { pool: 'watch', n: 6, opts: { fromPlayer: false } },
-    { pool: 'encounter', n: 4, opts: { fromPlayer: false, kind: 'spell' } },
-    { pool: 'watch', n: 2, opts: { fromPlayer: true } },
+  assert.deepEqual(seen, [   // PIN MOVED (TELL1: the blow's kind reaches the watch's door too, and whether it is a later round) (RVN3: and an encounter's a kill's whole and a landing's element)
+    { pool: 'watch', n: 6, opts: { fromPlayer: false, kind: 'spell', round: false } },
+    { pool: 'encounter', n: 4, opts: { fromPlayer: false, kind: 'spell', whole: false, round: false, element: null } },
+    { pool: 'watch', n: 2, opts: { fromPlayer: true, kind: 'spell', round: false } },
   ]);
   // and the dungeon's door onto its own sinks carries the second argument
   const dc = read('src/scenes/dungeonContext.js');
@@ -151,16 +151,21 @@ test('AUDIT 68 S22-door-repeated-block-identity: the second instance of a shared
   const shifted = lift(WORLD, '  const shiftedDoor = (entry) => {', '\n  };');
   const targets = lift(WORLD, '    doorTargets: () => buildingDoors.map((e) => ({', '\n    })),');
   const resolve = lift(WORLD, '    buildingDataForDoor: (hit) => {', '\n    },');
-  const host = new Function('buildingDoors', 'state', 'locationIndex', 'built', 'setLastLocationKeyTo', 'buildingDataForDoor', 'townTalk',
-    `${shifted}\nreturn ({\n${targets}\n${resolve}\n});`)(
+  // ARENA1: the door's location and exit group are arenaDoorTarget's (the pixel's town, or the arena's undercroft) - lifted too
+  const arenaTarget = lift(WORLD, '  function arenaDoorTarget(e) {', '\n  }');
+  const { homeTownBlocks } = await import('../src/systems/onlineHomes.js');   // HOME-PRICE: the door's building carries its town's size
+  const host = new Function('buildingDoors', 'state', 'locationIndex', 'built', 'setLastLocationKeyTo', 'buildingDataForDoor', 'townTalk', 'isUndercroftDoor', 'DOOR_TYPE', 'isArenaCity', 'undercroftLocation', '_undercrofts', 'homeTownBlocks',
+    `${shifted}\n${arenaTarget}\nreturn ({\n${targets}\n${resolve}\n});`)(
     buildingDoors, { pixelTranslation: () => [500, 0, -300] }, new Map([['4,4', dfLoc]]),
-    new Map([['4,4', { locBlocks: loc.blocks, locOrigin }]]), () => {}, talk.buildingDataForDoor, { directory: [] });
+    new Map([['4,4', { locBlocks: loc.blocks, locOrigin }]]), () => {}, talk.buildingDataForDoor, { directory: [] },
+    () => false, { DUNGEON_ENTRANCE: 2 }, () => false, () => null, new WeakMap(), homeTownBlocks);
   const [first, second] = host.doorTargets();
   assert.notEqual(second.door.matrix[12], at(RMB_SIDE + 10)[12], 'a door hit is world-frame');
   assert.equal(host.buildingDataForDoor(first).buildingKey, talk.makeBuildingKey(0, 0, 0));
   const b = host.buildingDataForDoor(second);
   assert.equal(b.buildingKey, talk.makeBuildingKey(1, 0, 0), 'the second copy\'s door is the second copy\'s building');
   assert.equal(b.nameSeed, 22, 'and its shop is the second pool draw, not the first\'s');
+  assert.equal(b.townBlocks, 2, 'HOME-PRICE: and its town\'s size, 2 x 1 blocks, off the door\'s own location');
   // the static-building arm (buildingUnderRay's pixel-local hit) agrees
   assert.equal(host.buildingDataForDoor({ dfBlock: B, recordIndex: 0, pixelKey: '4,4', door: { matrix: at(RMB_SIDE + 10) }, pixelLocal: true }).buildingKey, talk.makeBuildingKey(1, 0, 0));
 });
@@ -174,9 +179,9 @@ test('AUDIT 68 S22-ship-disembark-compensation: boarded after a highland recente
   const { STREAMING_TERRAIN_SCALE } = await import('../src/world/terrainSampler.js');
   // boardOrDisembark's own decision half, lifted: the transition and the landing it hands the teleport
   const arm = lift(WORLD, '    const here = playerTravelPixel();\n    const t = shipTransition(playerEntity, {', ' : null;\n');
-  const run = (playerEntity, here, feet, state) => new Function('shipTransition', 'shipMemory', 'shipRestorePos', 'REPOSITION', 'playerEntity', 'playerTravelPixel', 'player', 'cam', 'state', 'STREAMING_TERRAIN_SCALE',
+  const run = (playerEntity, here, feet, state) => new Function('shipTransition', 'shipMemory', 'shipRestorePos', 'REPOSITION', 'playerEntity', 'playerTravelPixel', 'player', 'cam', 'state', 'STREAMING_TERRAIN_SCALE', 'groundFrameHeight',
     `${arm}\nreturn { t, localPos, legacy: typeof legacy === 'undefined' ? undefined : legacy };`)(
-    ship.shipTransition, ship.shipMemory, ship.shipRestorePos, ship.REPOSITION, playerEntity, () => here, { pos: feet }, { yaw: 0.5 }, state, STREAMING_TERRAIN_SCALE);
+    ship.shipTransition, ship.shipMemory, ship.shipRestorePos, ship.REPOSITION, playerEntity, () => here, { pos: feet }, { yaw: 0.5 }, state, STREAMING_TERRAIN_SCALE, (y) => y);   // AUDIT LANDFORMS C1: the row off - DFU's frame is the ground's own
   const knight = { ownedShip: SHIP_TYPES.Small };
   const dock = { x: 210, y: 205 };
   // session 1: the highlands raised the eye past 500 - the streamer's vertical recenter

@@ -88,6 +88,19 @@ export const MOD_SETTINGS = Object.freeze({
       }),
     }),
   }),
+  // RSH1: READIED SPELLCASTING HANDS 1.3 (jefetienne, the World Tooltips author). The mod ships no modsettings - it is
+  // on when it is listed - so `Enabled` is the port's alone (MO1: on by default), and its description is written here.
+  'readied-spellcasting-hands': Object.freeze({
+    title: 'Readied Spellcasting Hands',
+    author: 'jefetienne',
+    keys: Object.freeze({
+      Enabled: Object.freeze({
+        default: true,
+        description: 'Your casting hands come up and hold while a readied spell waits for your click, where the screen '
+          + 'stood empty until the cast. Spells on yourself go at once and raise nothing.',
+      }),
+    }),
+  }),
   'seasons-iliac-bay': Object.freeze({
     title: 'Seasons of the Iliac Bay',
     author: 'RosyTheRascal',
@@ -98,6 +111,20 @@ export const MOD_SETTINGS = Object.freeze({
           return t('mods.seasonsIliacBay.Enabled.description', 'Seasonal looks for the trees, rocks and plants: autumn, spring and winter. The textures come from '
             + 'your own copy of the mod, added through Your own textures; without it the classic sprites are used.');
         },
+      }),
+    }),
+  }),
+  // LPT1 (2026-10-05): LOW POLY TREES 5 (SquidKamer). No modsettings of its own - 253 prefabs - so one switch: the
+  // port's Enabled, read once when the world loads (a flip reaches it as it next loads). The player's own online: it
+  // changes how the trees are drawn, never where they stand (bible/07-Rendering/Low-Poly-Trees.md).
+  'low-poly-trees': Object.freeze({
+    title: 'Low Poly Trees',
+    author: 'SquidKamer',
+    keys: Object.freeze({
+      Enabled: Object.freeze({
+        default: true,
+        description: 'The wilderness’s trees, bushes and stumps in 3D, made from the original game’s own tree pictures, '
+          + 'out to the whole view distance. They change with Seasons of the Iliac Bay and with winter.',
       }),
     }),
   }),
@@ -143,6 +170,15 @@ export const MOD_SETTINGS = Object.freeze({
             + 'across the Iliac Bay, with bandits, bears and treasure, and a camp outside Privateer’s Hold.');
         },
       }),
+      // WOD-PEAKS (2026-10-09, the owner of the pyramid massifs in the Wrothgarian Mountains: "i actually would prefer
+      // [them removed everywhere] BUT can you place more rounded not SUPER HUGE mountains?"): the port's own switch, off -
+      // the mod's Mountains layouts are ARCH3D pebbles stretched by hundreds and thousands into faceted spires up to 1.4 km
+      // tall (world/wodRockUv.js). The rounded mountains the land stands instead are the landforms' (world/landforms.js
+      // LANDFORM8). Online the room's (onlineLane.js): the layouts level the ground and stand collidable rock.
+      Mountains: Object.freeze({
+        default: false,
+        description: 'Stand the mod\'s mountain layouts - giant angular rock spires (the landforms raise rounded mountains instead).',
+      }),
     }),
   }),
   // AS1 (2026-09-25): AQUATIC SPRITES 1.0 (Cliffworms). No modsettings of
@@ -156,7 +192,7 @@ export const MOD_SETTINGS = Object.freeze({
       Enabled: Object.freeze({
         default: true,
         get description() {
-          return t('mods.aquaticSprites.Enabled.description', 'Seaweed, coral and shells placed in three flooded dungeon blocks. Daggerfall ships these sprites but '
+          return t('mods.aquaticSprites.Enabled.description', 'Seaweed, coral and shells placed in three flooded dungeon blocks. The original game ships these sprites but '
             + 'never uses them; they come from your own game files.');
         },
       }),
@@ -175,6 +211,34 @@ export const MOD_SETTINGS = Object.freeze({
             + 'railings. Below deck: quarters for you and the crew, a kitchen, a cargo hold, an armory, a shrine to '
             + 'Kynareth, and sailors to talk to.');
         },
+      }),
+    }),
+  }),
+  // WD3 (2026-10-01): BEAUTIFUL VILLAGES OF DAGGERFALL 1.4.2 and BEAUTIFUL
+  // CITIES OF DAGGERFALL 0.5.0 (carademono). No modsettings of their own -
+  // 7,317 and 410 places laid out again, their blocks with them - so one
+  // switch each: the port's Enabled, read once when the game loads
+  // (scenes/modWorldData.js latches it - a town never moves under the
+  // player), online the room's (systems/onlineLane.js).
+  'beautiful-villages': Object.freeze({
+    title: 'Beautiful Villages of Daggerfall',
+    author: 'carademono',
+    keys: Object.freeze({
+      Enabled: Object.freeze({
+        default: true,
+        description: 'Villages, hamlets, farms, manors and temples laid out again, and roadside taverns rebuilt. A '
+          + 'house, room or quest building you hold keeps its town as you found it.',
+      }),
+    }),
+  }),
+  'beautiful-cities': Object.freeze({
+    title: 'Beautiful Cities of Daggerfall',
+    author: 'carademono',
+    keys: Object.freeze({
+      Enabled: Object.freeze({
+        default: true,
+        description: 'The cities laid out again - districts, walls, gates, markets and docks. A house, room or quest '
+          + 'building you hold keeps its city as you found it.',
       }),
     }),
   }),
@@ -328,7 +392,7 @@ export const MOD_SETTINGS = Object.freeze({
       Enabled: Object.freeze({
         default: true,
         get description() {
-          return t('mods.comeSailAway.Enabled.description', 'Own and sail your own boat. Buy it as parts or as a deed, put it in the water (the deed near a port) '
+          return t('mods.comeSailAway.Enabled.description', 'Own and sail your own boat. Buy parts or a deed at a shipyard, put it in the water (the deed near a port) '
             + 'and take the helm: row with the oars or raise the sails and trim them to the wind, then pack it up '
             + 'to take with you. It carries what you and your cart carry, and it shows on the travel map.');
         },
@@ -597,7 +661,7 @@ export const MOD_SETTINGS = Object.freeze({
       Enabled: Object.freeze({
         default: true,
         get description() {
-          return t('mods.shieldWidget.Enabled.description', 'See your shield in first person, which classic Daggerfall never shows. It is drawn in its own metal, '
+          return t('mods.shieldWidget.Enabled.description', 'See your shield in first person, which the original game never shows. It is drawn in its own metal, '
             + 'gets battered as it wears, and moves out of the way when you sheathe, swing or cast.');
         },
       }),
@@ -977,9 +1041,9 @@ export const MOD_SETTINGS = Object.freeze({
           () => t('mods.eyeOfTheBeholder.skin.heavyFighterFemale', 'Heavy Fighter (female)')) }),
       'Graphics.ReadyStance': Object.freeze({ default: 2, options: lazyWords(() => t('mods.eyeOfTheBeholder.option.never', 'Never'), () => t('mods.eyeOfTheBeholder.option.whenIdle', 'When Idle'), () => t('mods.eyeOfTheBeholder.option.whenIdleOrMoving', 'When Idle or Moving')), get description() { return t('mods.eyeOfTheBeholder.Graphics.ReadyStance.description', 'Whether the sprite will change states when readying a weapon or spell'); } }),
       'Graphics.TurnToView': Object.freeze({ default: 2, options: lazyWords(() => t('mods.eyeOfTheBeholder.option.never', 'Never'), () => t('mods.eyeOfTheBeholder.option.onlyWhenAnimating', 'Only When Animating'), () => t('mods.eyeOfTheBeholder.option.whenWeaponReadied', 'When Weapon Readied'), () => t('mods.eyeOfTheBeholder.option.always', 'Always')), get description() { return t('mods.eyeOfTheBeholder.Graphics.TurnToView.description', 'Configure when the sprite turns to face the view'); } }),
-      'Graphics.AttackStrings': Object.freeze({ default: 3, options: lazyWords(() => localizedText('none', 'None'), () => t('mods.eyeOfTheBeholder.option.mirror', 'Mirror'), () => t('mods.eyeOfTheBeholder.option.pingPong', 'PingPong'), () => t('mods.eyeOfTheBeholder.option.mixed', 'Mixed')), get description() { return t('mods.eyeOfTheBeholder.Graphics.AttackStrings.description', 'Optional attack animations'); } }),
+      'Graphics.AttackStrings': Object.freeze({ default: 3, options: lazyWords(() => localizedText('none', 'None'), () => t('mods.eyeOfTheBeholder.option.mirror', 'Mirror'), () => t('mods.eyeOfTheBeholder.option.pingPong', 'PingPong'), () => t('mods.eyeOfTheBeholder.option.mixed', 'Mixed')), get description() { return t('mods.eyeOfTheBeholder.Graphics.AttackStrings.description', 'Optional attack animations. Every attack plays one stroke of the swing here, the two strokes alternating blow by blow, so PingPong plays as None and Mixed as Mirror.'); } }),
       'Graphics.MirrorTime': Object.freeze({ default: 3.0, min: 1, max: 5, float: true, get description() { return t('mods.eyeOfTheBeholder.Graphics.MirrorTime.description', 'Time before reverting the mirrored state. Set to 0 to disable.'); } }),
-      'Graphics.PingPongOffset': Object.freeze({ default: 1, min: -3, max: 3, get description() { return t('mods.eyeOfTheBeholder.Graphics.PingPongOffset.description', 'Adjusts the point in the animation where it starts playing backwards'); } }),
+      'Graphics.PingPongOffset': Object.freeze({ default: 1, min: -3, max: 3, get description() { return t('mods.eyeOfTheBeholder.Graphics.PingPongOffset.description', 'Adjusts the point in the animation where it starts playing backwards - inert here, as an attack plays one stroke and never plays backwards.'); } }),
       'Graphics.FirstPersonBillboard': Object.freeze({ default: 1, options: lazyWords(() => localizedText('none', 'None'), () => t('mods.eyeOfTheBeholder.option.shadowsOnly', 'Shadows Only'), () => t('mods.eyeOfTheBeholder.option.visible', 'Visible')), get description() { return t('mods.eyeOfTheBeholder.Graphics.FirstPersonBillboard.description', 'Visibility of the player billboard in first-person'); } }),
       'Graphics.ShowCart': Object.freeze({ default: true, get description() { return t('mods.eyeOfTheBeholder.Graphics.ShowCart.description', 'A 3D cart will follow your billboard when using the Cart Transport Mode'); } }),
       'Graphics.TorchOffset': Object.freeze({ default: 1, options: lazyWords(() => t('mods.eyeOfTheBeholder.option.vanilla', 'Vanilla'), () => t('mods.eyeOfTheBeholder.option.billboard', 'Billboard'), () => t('mods.eyeOfTheBeholder.option.selfie', 'Selfie')), get description() { return t('mods.eyeOfTheBeholder.Graphics.TorchOffset.description', 'Whether the torch follows the orientation of the sprite'); } }),
@@ -1121,7 +1185,7 @@ export const MOD_SETTINGS = Object.freeze({
       allowLuckIncrease: Object.freeze({ default: true, get description() { return t('mods.oblivionRemasterLeveling.allowLuckIncrease.description', 'Allow Luck to be increased by more than one point'); } }),
       luckIncreaseCost: Object.freeze({ default: 4, min: 1, max: 20, get description() { return t('mods.oblivionRemasterLeveling.luckIncreaseCost.description', 'Cost to upgrade Luck by one point'); } }),
       // The port's own, for Daggerfall's third tier of chosen skills.
-      primarySkillsImpact: Object.freeze({ default: 8, min: 0, max: 100, get description() { return t('mods.oblivionRemasterLeveling.primarySkillsImpact.description', 'Points given by a Primary Skill level up (100 points required to level up). Daggerfall has a tier of skills Morrowind does not, so this knob is the port’s own; it ships equal to the major skills’, which is where the mod’s own top tier sits.'); } }),
+      primarySkillsImpact: Object.freeze({ default: 8, min: 0, max: 100, get description() { return t('mods.oblivionRemasterLeveling.primarySkillsImpact.description', 'Points given by a Primary Skill level up (100 points required to level up). The original game has a tier of skills Morrowind does not, so this knob is the port’s own; it ships equal to the major skills’, which is where the mod’s own top tier sits.'); } }),
       majorSkillsImpact: Object.freeze({ default: 8, min: 0, max: 100, get description() { return t('mods.oblivionRemasterLeveling.majorSkillsImpact.description', 'Points given by a Major Skill level up (100 points required to level up)'); } }),
       minorSkillsImpact: Object.freeze({ default: 6, min: 0, max: 100, get description() { return t('mods.oblivionRemasterLeveling.minorSkillsImpact.description', 'Points given by a Minor Skill level up (100 points required to level up)'); } }),
       miscSkillsImpact: Object.freeze({ default: 2, min: 0, max: 100, get description() { return t('mods.oblivionRemasterLeveling.miscSkillsImpact.description', 'Points given by a Misc Skill level up (100 points required to level up)'); } }),
@@ -1148,7 +1212,7 @@ export const MOD_SETTINGS = Object.freeze({
       Enabled: Object.freeze({
         default: true,
         get description() {
-          return t('mods.travelOptions.Enabled.description', 'Choose between Daggerfall’s fast travel and a journey you actually travel, sped up to sixty times, '
+          return t('mods.travelOptions.Enabled.description', 'Choose between the original game’s fast travel and a journey you actually travel, sped up to sixty times, '
             + 'with a panel to steer it. Encounters and places along the way stop you, and you can follow the '
             + 'roads. Off brings back the classic travel map and fast travel only.');
         },
@@ -1200,10 +1264,12 @@ export const MOD_SETTINGS = Object.freeze({
       // with First-Person Travel on: a journey picked on the travel map is the Overworld's route - its planner, its legs,
       // its refusals (scenes/world.js tvRoutesJourneys) - walked in first person, the view not raised. OFF, the default:
       // First-Person Travel is the mod's own straight journey, the original travel option Mac asked back.
-      'GeneralOptions.FirstPersonTravelFollowsRoads': Object.freeze({ default: false, get description() { return t('mods.travelOptions.GeneralOptions.FirstPersonTravelFollowsRoads.description', 'With First Person Travel on, a journey picked on the travel map follows the roads and tracks as the Overworld’s journeys do - planned round the mountains, and refused where no way by land reaches - and is walked in first person, the Overworld view not raised. Off, it walks straight to its destination, as Travel Options does. Takes effect at once. (This port’s own switch - the mod has none.)'); } }),
-      'TimeAcceleration.DefaultStartingAcceleration': Object.freeze({ default: 4, options: Object.freeze(["1", "2", "3", "5", "10", "15", "20", "25", "30", "40", "50"]), get description() { return t('mods.travelOptions.TimeAcceleration.DefaultStartingAcceleration.description', "The initial time acceleration used after starting the game"); } }),
-      'TimeAcceleration.AlwaysUseStartingAcceleration': Object.freeze({ default: false, get description() { return t('mods.travelOptions.TimeAcceleration.AlwaysUseStartingAcceleration.description', "Always uses the default starting acceleration when initiating a journey, rather than value from the previous journey"); } }),
-      'TimeAcceleration.AccelerationLimit': Object.freeze({ default: 60, min: 10, max: 100, get description() { return t('mods.travelOptions.TimeAcceleration.AccelerationLimit.description', "The maximum limit allowed for time acceleration, road following is limited to half this amount"); } }),
+      'GeneralOptions.FirstPersonTravelFollowsRoads': Object.freeze({ default: false, get description() { return t('mods.travelOptions.GeneralOptions.FirstPersonTravelFollowsRoads.description', 'With First Person Travel on, a journey picked on the travel map follows the roads and tracks as the Overworld’s journeys do - planned by land, and refused where no way by land reaches - and is walked in first person, the Overworld view not raised. Off, it walks straight to its destination, as Travel Options does. Takes effect at once. (This port’s own switch - the mod has none.)'); } }),
+      // RATE-LAW (2026-10-04, Mac: "Remove travel options dials" / "Roads now travel at x100 and non roads at x60"): the
+      // mod's TimeAcceleration section (DefaultStartingAcceleration, AlwaysUseStartingAcceleration, AccelerationLimit)
+      // is not declared - the spinner it started and bounded is gone, and a journey runs at its ground's rate
+      // (systems/timeScale.js travelRateOf). The vendored modsettings.json keeps the three; test/to1_travelOptions.test.js
+      // names them as the one section the port leaves out.
       'Teleportation.EnablePaidTeleportation': Object.freeze({ default: false, get description() { return t('mods.travelOptions.Teleportation.EnablePaidTeleportation.description', "Enable paid Mages teleportation service for all guild members, before rank 8"); } }),
       // the shipped file's spacer section "__" carries no keys
       'RoadsIntegration.Enable': Object.freeze({ default: true, get description() { return t('mods.travelOptions.RoadsIntegration.Enable.description', "Enhances the travel map with larger location dots for cities & towns, and shows roads & tracks with toggle buttons"); } }),
@@ -1258,6 +1324,259 @@ export const MOD_SETTINGS = Object.freeze({
       'LocationColours.Village': Object.freeze({ default: '#a56446ff', color: true, get description() { return t('mods.travelOptions.LocationColours.description', "The colour shown on the travel map"); } }),
     }),
   }),
+  // IT1 (2026-10-04, the owner: "Actually lets let this be the next mod we integrate 1:1"): IMMERSIVE TRAVEL - kkgobkk's
+  // carriages outside the city gates, 1.5, its three sections restated verbatim (vendor/immersive-travel/modsettings.json),
+  // the author's own words and spellings, a null or empty description carried as empty. Read live: the map reads them
+  // as it opens (systems/immersiveTravel.js readImmersiveTravelSettings), the calculator as it bills - where the mod's
+  // static constructors read four of them once a session (the bible's page records it).
+  'immersive-travel': Object.freeze({
+    title: 'Immersive Travel',
+    author: 'kkgobkk',
+    keys: Object.freeze({
+      Enabled: Object.freeze({
+        default: true,
+        description: 'Carriage drivers wait outside the gates of the walled cities. Talk to one and pay the fare to fast '
+          + 'travel to a town or village; with Disable Normal Travel on, a carriage is the only fast travel there is.',
+      }),
+      // IT1: DEPARTURE FROM THE MOD'S SHIPPED DEFAULT (it ships true), on the owner's word that the carriage is instant
+      // travel "as an option" - TO-FIELD2's shape. On, the travel map refuses every trip to a place (the mod's
+      // ImmersiveTravelPopUp in DFU's) and Travel Options' walked journeys from the map go with it; online the room
+      // holds it off (systems/onlineLane.js). The key is still a key: turning it on restores the mod's own default.
+      'General.DisableNormalTravel': Object.freeze({ default: false, description: 'If this option is eabled, you will no longer be able to travel from the map and you will have to use ONLY carriages and ships.' }),
+      'General.DailyCarriageFee': Object.freeze({ default: 1, min: 0, max: 99, description: 'The fee you must pay to travel with a carriage for every day of travel' }),
+      'General.ClearerMapDots': Object.freeze({ default: true, description: 'Draws larger dots depending on town size in the travel map.' }),
+      'General.DrawRoads': Object.freeze({ default: true, description: 'Draw roads on the map (if the BasicRoads mod is installed and enabled).' }),
+      'General.DrawTracks': Object.freeze({ default: true, description: 'Draw dirt tracks on the map (if the BasicRoads mod is installed and enabled).' }),
+      'General.RegionLockedCarriages': Object.freeze({ default: false, description: 'Prevent carriages from travelling to a different region. You must travel from the capital city to leave the region.' }),
+      'ShipTravel.DisableShipTravelOutsideDocks': Object.freeze({ default: true, description: 'Prevents you from choosing ship transport mode during land travel' }),
+      'ShipTravel.DailyShipCost': Object.freeze({ default: 15, min: 0, max: 99, description: 'Daily cost of renting a ship. Only applies if the player doesn\'t own their own ship' }),
+      'ShipTravel.DailyCaptainFee': Object.freeze({ default: 10, min: 0, max: 99, description: 'Daily cost of hiring a ship captain and his crew to man a ship. You will have to pay a captain even if you own the ship.' }),
+      'ShipTravel.LimitedRangeInSmallDocks': Object.freeze({ default: true, description: 'Ships in smaller locations will only take you to ports in the same region. To travel to a different region you\'ll need to sail from a city' }),
+      'ShipTravel.ShowLargerDocks': Object.freeze({ default: true, description: 'Uses larger dots on the map for loactions with a dock' }),
+      'ShipTravel.ShowOnlyDocks': Object.freeze({ default: false, description: 'Hides every location on the map except those that have a dock' }),
+      'AllowedDestinations.Cities': Object.freeze({ default: true, description: '' }),
+      'AllowedDestinations.Covens': Object.freeze({ default: false, description: '' }),
+      'AllowedDestinations.Dungeons': Object.freeze({ default: false, description: '' }),
+      'AllowedDestinations.Graveyards': Object.freeze({ default: false, description: '' }),
+      'AllowedDestinations.Farms': Object.freeze({ default: false, description: '' }),
+      'AllowedDestinations.Hamlets': Object.freeze({ default: true, description: '' }),
+      'AllowedDestinations.Homes': Object.freeze({ default: false, description: '' }),
+      'AllowedDestinations.Temples': Object.freeze({ default: false, description: '' }),
+      'AllowedDestinations.Taverns': Object.freeze({ default: false, description: '' }),
+      'AllowedDestinations.Villages': Object.freeze({ default: true, description: '' }),
+    }),
+  }),
+  // PI1 (2026-10-07, Mac: "This is the next mod I would like to integrate (permission has been granted)"): PHYSICAL ITEMS
+  // - demifiend000's items in the world as themselves, 0.1.29, its five sections the port reads restated verbatim
+  // (vendor/physical-items/modsettings.json), the author's own words. Read live by the layer (systems/physicalItems.js
+  // readPhysicalItemsSettings, again whenever this store changes) - the mod reads them at its load and on a settings
+  // change (ApplySettings). NOT DECLARED: the Interaction section's four keys (the placement keys P, O and LeftControl,
+  // and Character Item Collision) - their placement is not ported (bible/06-Systems/Physical-Items.md), and a key the
+  // port never reads is a switch that does nothing.
+  'physical-items': Object.freeze({
+    title: 'Physical Items',
+    author: 'demifiend000',
+    keys: Object.freeze({
+      Enabled: Object.freeze({
+        default: true,
+        description: 'A fallen foe\'s gear lands round its body and is picked up a piece at a time; Shift-clicking a pack '
+          + 'item with no wagon or chest open drops it before you. Each shows its own picture, Magic or better outlined.',
+      }),
+      'Enemy Loot.Physical Enemy Drops': Object.freeze({ default: true, description: 'Show enabled enemy categories in the world. Corpse contents remain unchanged.' }),
+      'Enemy Loot.Impulse Strength': Object.freeze({ default: 200, min: 0, max: 400, description: 'Enemy launch strength in percent. 200 is the default and slider midpoint (the previous maximum); 400 doubles that launch velocity. 0 adds no launch velocity (items still fall). Does not affect player throws.' }),
+      'Enemy Categories.Weapons': Object.freeze({ default: true, description: 'Show weapons as physical enemy drops. Other Items covers remaining and unknown groups.' }),
+      'Enemy Categories.Arrows': Object.freeze({ default: true, description: 'Show arrows as physical enemy drops. Other Items covers remaining and unknown groups.' }),
+      'Enemy Categories.Armor': Object.freeze({ default: true, description: 'Show armor as physical enemy drops. Other Items covers remaining and unknown groups.' }),
+      'Enemy Categories.Clothing': Object.freeze({ default: true, description: 'Show clothing as physical enemy drops. Other Items covers remaining and unknown groups.' }),
+      'Enemy Categories.Ingredients': Object.freeze({ default: true, description: 'Show ingredients as physical enemy drops. Other Items covers remaining and unknown groups.' }),
+      'Enemy Categories.Gold': Object.freeze({ default: true, description: 'Show gold as physical enemy drops. Other Items covers remaining and unknown groups.' }),
+      'Enemy Categories.Potions': Object.freeze({ default: true, description: 'Show potions as physical enemy drops. Other Items covers remaining and unknown groups.' }),
+      'Enemy Categories.Books': Object.freeze({ default: true, description: 'Show books as physical enemy drops. Other Items covers remaining and unknown groups.' }),
+      'Enemy Categories.Gems': Object.freeze({ default: true, description: 'Show gems as physical enemy drops. Other Items covers remaining and unknown groups.' }),
+      'Enemy Categories.Jewellery': Object.freeze({ default: true, description: 'Show jewellery as physical enemy drops. Other Items covers remaining and unknown groups.' }),
+      'Enemy Categories.Maps': Object.freeze({ default: true, description: 'Show maps as physical enemy drops. Other Items covers remaining and unknown groups.' }),
+      'Enemy Categories.Magic Items': Object.freeze({ default: true, description: 'Show magic items as physical enemy drops. Other Items covers remaining and unknown groups.' }),
+      'Enemy Categories.Religious Items': Object.freeze({ default: true, description: 'Show religious items as physical enemy drops. Other Items covers remaining and unknown groups.' }),
+      'Enemy Categories.Quest Items': Object.freeze({ default: true, description: 'Show quest items as physical enemy drops. Other Items covers remaining and unknown groups.' }),
+      'Enemy Categories.Transportation': Object.freeze({ default: true, description: 'Show transportation as physical enemy drops. Other Items covers remaining and unknown groups.' }),
+      'Enemy Categories.Other Items': Object.freeze({ default: true, description: 'Show other items as physical enemy drops. Other Items covers remaining and unknown groups.' }),
+      'Item Sizes.Weapons': Object.freeze({ default: 0.8, min: 0.1, max: 1.5, float: true, step: 0.01, description: 'Base size for weapons. Detection volume scales with the sprite.' }),
+      'Item Sizes.Arrows': Object.freeze({ default: 0.32, min: 0.1, max: 1.5, float: true, step: 0.01, description: 'Base size for arrows. Detection volume scales with the sprite.' }),
+      'Item Sizes.Armor': Object.freeze({ default: 0.65, min: 0.1, max: 1.5, float: true, step: 0.01, description: 'Base size for armor. Detection volume scales with the sprite.' }),
+      'Item Sizes.Clothing': Object.freeze({ default: 0.52, min: 0.1, max: 1.5, float: true, step: 0.01, description: 'Base size for clothing. Detection volume scales with the sprite.' }),
+      'Item Sizes.Ingredients': Object.freeze({ default: 0.4, min: 0.1, max: 1.5, float: true, step: 0.01, description: 'Base size for ingredients. Detection volume scales with the sprite.' }),
+      'Item Sizes.Gold': Object.freeze({ default: 0.4, min: 0.1, max: 1.5, float: true, step: 0.01, description: 'Base size for gold. Detection volume scales with the sprite.' }),
+      'Item Sizes.Potions': Object.freeze({ default: 0.4, min: 0.1, max: 1.5, float: true, step: 0.01, description: 'Base size for potions. Detection volume scales with the sprite.' }),
+      'Item Sizes.Books': Object.freeze({ default: 0.4, min: 0.1, max: 1.5, float: true, step: 0.01, description: 'Base size for books. Detection volume scales with the sprite.' }),
+      'Item Sizes.Gems': Object.freeze({ default: 0.4, min: 0.1, max: 1.5, float: true, step: 0.01, description: 'Base size for gems. Detection volume scales with the sprite.' }),
+      'Item Sizes.Jewellery': Object.freeze({ default: 0.4, min: 0.1, max: 1.5, float: true, step: 0.01, description: 'Base size for jewellery. Detection volume scales with the sprite.' }),
+      'Item Sizes.Maps': Object.freeze({ default: 0.4, min: 0.1, max: 1.5, float: true, step: 0.01, description: 'Base size for maps. Detection volume scales with the sprite.' }),
+      'Item Sizes.Magic Items': Object.freeze({ default: 0.4, min: 0.1, max: 1.5, float: true, step: 0.01, description: 'Base size for magic items. Detection volume scales with the sprite.' }),
+      'Item Sizes.Religious Items': Object.freeze({ default: 0.4, min: 0.1, max: 1.5, float: true, step: 0.01, description: 'Base size for religious items. Detection volume scales with the sprite.' }),
+      'Item Sizes.Quest Items': Object.freeze({ default: 0.4, min: 0.1, max: 1.5, float: true, step: 0.01, description: 'Base size for quest items. Detection volume scales with the sprite.' }),
+      'Item Sizes.Transportation': Object.freeze({ default: 0.4, min: 0.1, max: 1.5, float: true, step: 0.01, description: 'Base size for transportation. Detection volume scales with the sprite.' }),
+      'Item Sizes.Other Items': Object.freeze({ default: 0.4, min: 0.1, max: 1.5, float: true, step: 0.01, description: 'Base size for other items. Detection volume scales with the sprite.' }),
+      'Weapon Sizes.Dagger': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for dagger. 0 uses the category size; scroll scaling still applies.' }),
+      'Weapon Sizes.Tanto': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for tanto. 0 uses the category size; scroll scaling still applies.' }),
+      'Weapon Sizes.Staff': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for staff. 0 uses the category size; scroll scaling still applies.' }),
+      'Weapon Sizes.Shortsword': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for shortsword. 0 uses the category size; scroll scaling still applies.' }),
+      'Weapon Sizes.Wakazashi': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for wakazashi. 0 uses the category size; scroll scaling still applies.' }),
+      'Weapon Sizes.Broadsword': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for broadsword. 0 uses the category size; scroll scaling still applies.' }),
+      'Weapon Sizes.Saber': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for saber. 0 uses the category size; scroll scaling still applies.' }),
+      'Weapon Sizes.Longsword': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for longsword. 0 uses the category size; scroll scaling still applies.' }),
+      'Weapon Sizes.Katana': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for katana. 0 uses the category size; scroll scaling still applies.' }),
+      'Weapon Sizes.Claymore': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for claymore. 0 uses the category size; scroll scaling still applies.' }),
+      'Weapon Sizes.Dai Katana': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for dai katana. 0 uses the category size; scroll scaling still applies.' }),
+      'Weapon Sizes.Mace': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for mace. 0 uses the category size; scroll scaling still applies.' }),
+      'Weapon Sizes.Flail': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for flail. 0 uses the category size; scroll scaling still applies.' }),
+      'Weapon Sizes.Warhammer': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for warhammer. 0 uses the category size; scroll scaling still applies.' }),
+      'Weapon Sizes.Battle Axe': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for battle axe. 0 uses the category size; scroll scaling still applies.' }),
+      'Weapon Sizes.War Axe': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for war axe. 0 uses the category size; scroll scaling still applies.' }),
+      'Weapon Sizes.Short Bow': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for short bow. 0 uses the category size; scroll scaling still applies.' }),
+      'Weapon Sizes.Long Bow': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for long bow. 0 uses the category size; scroll scaling still applies.' }),
+      'Weapon Sizes.Arrow': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for arrow. 0 uses the category size; scroll scaling still applies.' }),
+      'Armor Sizes.Cuirass': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for cuirass. 0 uses the category size; scroll scaling still applies.' }),
+      'Armor Sizes.Gauntlets': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for gauntlets. 0 uses the category size; scroll scaling still applies.' }),
+      'Armor Sizes.Greaves': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for greaves. 0 uses the category size; scroll scaling still applies.' }),
+      'Armor Sizes.Pauldrons': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for both left and right pauldrons. 0 uses the Armor category size.' }),
+      'Armor Sizes.Helm': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for helm. 0 uses the category size; scroll scaling still applies.' }),
+      'Armor Sizes.Boots': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for boots. 0 uses the category size; scroll scaling still applies.' }),
+      'Armor Sizes.Buckler': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for buckler. 0 uses the category size; scroll scaling still applies.' }),
+      'Armor Sizes.Round Shield': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for round shield. 0 uses the category size; scroll scaling still applies.' }),
+      'Armor Sizes.Kite Shield': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for kite shield. 0 uses the category size; scroll scaling still applies.' }),
+      'Armor Sizes.Tower Shield': Object.freeze({ default: 0.0, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Override longest visible artwork dimension for tower shield. 0 uses the category size; scroll scaling still applies.' }),
+    }),
+  }),
+  // HAZE1 / WINDFALL1 / SNOWFALL1 (2026-10-08, Mac: "We have permission to use and implement everything into the
+  // codebase. These should be on by default and integrate into our enhanced environments seamlessly"): demifiend000's
+  // three environment mods, their modsettings restated verbatim (vendor/heat-haze/, vendor/windfall/ and
+  // vendor/snowfall/ modsettings.json) - every name, default, range and description the mod's, section and name joined
+  // with a dot. Each mod's own Enabled (Heat Haze's in its one section, Windfall's and Snowfall's in General) IS the
+  // port's `Enabled`, the mod's switch, on by default (MO1), with the port's words for the Features row; a slider's
+  // `step` is the port's (the pane's grain), chosen so the mod's default sits on it. The three ride the enhanced
+  // outdoors (systems/heatHaze.js, systems/windfall.js, systems/snowfall.js say how).
+  'heat-haze': Object.freeze({
+    title: 'Heat Haze',
+    author: 'demifiend000',
+    keys: Object.freeze({
+      Enabled: Object.freeze({ default: true, description: 'Heat shimmer over the far desert by day in the enhanced outdoors: the distant land and the sky waver under a sunny sky, half as much under a cloudy one, fading in after sunrise and out before sunset.' }),
+      'Heat Haze.AllowSubtropical': Object.freeze({ default: false, description: 'Also allow heat haze in subtropical climates during sunny or cloudy daytime weather.' }),
+      'Heat Haze.Intensity': Object.freeze({ default: 1.5, min: 0.0, max: 3.0, float: true, step: 0.05, description: 'Maximum refraction displacement in screen pixels.' }),
+      'Heat Haze.FullStrengthDistance': Object.freeze({ default: 400.4, min: 50.0, max: 3000.0, float: true, step: 0.1, description: 'Radius in metres of the world-space haze ring around the player.' }),
+      'Heat Haze.RingHeight': Object.freeze({ default: 1006.0, min: 50.0, max: 1500.0, float: true, step: 2, description: 'Total vertical height in metres of the haze ring, including its soft top and bottom fades.' }),
+      'Heat Haze.NoiseScale': Object.freeze({ default: 4.5, min: 0.25, max: 6.0, float: true, step: 0.05, description: 'World-space density of the distortion field.' }),
+      'Heat Haze.AnimationSpeed': Object.freeze({ default: 4.0, min: 0.0, max: 4.0, float: true, step: 0.1, description: 'Speed of the rising-air motion.' }),
+    }),
+  }),
+  'windfall': Object.freeze({
+    title: 'Windfall',
+    author: 'demifiend000',
+    keys: Object.freeze({
+      Enabled: Object.freeze({ default: true, description: 'Wind in the enhanced outdoors that changes by the day: trees and plants sway and shiver by their kind, some days turn windy or stormy, gusts come and go with their own sound, leaves blow off the trees and snow off winter boughs.' }),
+      'General.WindDirectionDegrees': Object.freeze({ default: 35.0, min: 0.0, max: 360.0, float: true, step: 5, description: 'Optional heading offset added to the deterministic daily wind direction. INERT here: the enhanced outdoors\u2019 own wind gives the heading, so the trees, the leaves, the wisps and the rain all blow one way (WINDFALL1).' }),
+      'General.OverallWindyPeriodFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Overall natural windy-period probability. 100% uses the authored seasonal and regional distribution.' }),
+      'General.NaturalWindstormFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Chance that a qualifying natural windy period escalates to a 1-3 hour windstorm. 100% uses the authored 8% escalation chance.' }),
+      'General.GustFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Frequency of automatically scheduled breezes and gusts. 0% disables automatic events; 200% halves their delays.' }),
+      'General.GustStrength': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Strength of gust motion, gust particles, and strength-scaled gust audio. Baseline wind remains at 0%.' }),
+      'Normal.Strength': Object.freeze({ default: 0.2, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Overall normal-day vegetation response.' }),
+      'Normal.SwayAmountPercent': Object.freeze({ default: 1.4, min: 0.0, max: 8.0, float: true, step: 0.1, description: 'Slow crown displacement as a percentage of billboard height.' }),
+      'Normal.SwaySpeed': Object.freeze({ default: 0.2, min: 0.05, max: 1.5, float: true, step: 0.01, description: 'Slow sway cycles per second.' }),
+      'Normal.ShiverAmountPercent': Object.freeze({ default: 0.6, min: 0.0, max: 3.0, float: true, step: 0.05, description: 'Small high-frequency crown displacement as a percentage of billboard height.' }),
+      'Normal.ShiverSpeed': Object.freeze({ default: 0.6, min: 0.5, max: 8.0, float: true, step: 0.1, description: 'High-frequency shiver cycles per second.' }),
+      'Season Frequency.SpringFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Spring natural windy-period frequency.' }),
+      'Season Frequency.SummerFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Summer natural windy-period frequency.' }),
+      'Season Frequency.FallFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Fall natural windy-period frequency.' }),
+      'Season Frequency.WinterFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Winter natural windy-period frequency.' }),
+      'Regional Frequency.OceanFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Ocean-region natural windy-period frequency.' }),
+      'Regional Frequency.DesertFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Desert and Desert2 natural windy-period frequency.' }),
+      'Regional Frequency.MountainFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Mountain natural windy-period frequency.' }),
+      'Regional Frequency.RainforestFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Rainforest natural windy-period frequency.' }),
+      'Regional Frequency.SwampFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Swamp natural windy-period frequency.' }),
+      'Regional Frequency.SubtropicalFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Subtropical natural windy-period frequency.' }),
+      'Regional Frequency.MountainWoodsFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Mountain Woods natural windy-period frequency.' }),
+      'Regional Frequency.WoodlandsFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Woodlands natural windy-period frequency.' }),
+      'Regional Frequency.HauntedWoodlandsFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Haunted Woodlands natural windy-period frequency.' }),
+      'Regional Frequency.UnknownFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Fallback natural windy-period frequency for unknown climates.' }),
+      'Weather Frequency.SunnyFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Sunny-weather natural windy-period frequency.' }),
+      'Weather Frequency.CloudyFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Cloudy-weather natural windy-period frequency.' }),
+      'Weather Frequency.OvercastFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Overcast-weather natural windy-period frequency.' }),
+      'Weather Frequency.FogFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Fog-weather natural windy-period frequency.' }),
+      'Weather Frequency.RainFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Rain-weather natural windy-period frequency. This is separate from rain\'s 1.15 strength multiplier.' }),
+      'Weather Frequency.SnowFrequency': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Snow-weather natural windy-period frequency. This is separate from snow\'s 1.10 strength multiplier.' }),
+      'Windy Day.Strength': Object.freeze({ default: 0.2, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Overall windy-day vegetation response.' }),
+      'Windy Day.SwayAmountPercent': Object.freeze({ default: 2.6, min: 0.0, max: 8.0, float: true, step: 0.1, description: 'Slow crown displacement as a percentage of billboard height.' }),
+      'Windy Day.SwaySpeed': Object.freeze({ default: 0.6, min: 0.05, max: 1.5, float: true, step: 0.01, description: 'Slow sway cycles per second.' }),
+      'Windy Day.ShiverAmountPercent': Object.freeze({ default: 1.2, min: 0.0, max: 3.0, float: true, step: 0.05, description: 'Small high-frequency crown displacement as a percentage of billboard height.' }),
+      'Windy Day.ShiverSpeed': Object.freeze({ default: 1.1, min: 0.5, max: 8.0, float: true, step: 0.1, description: 'High-frequency shiver cycles per second.' }),
+      'Gust.Strength': Object.freeze({ default: 0.6, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Overall vegetation response at gust peak.' }),
+      'Gust.SwayAmountPercent': Object.freeze({ default: 2.6, min: 0.0, max: 8.0, float: true, step: 0.1, description: 'Slow crown displacement as a percentage of billboard height.' }),
+      'Gust.SwaySpeed': Object.freeze({ default: 0.8, min: 0.05, max: 1.5, float: true, step: 0.01, description: 'Slow sway cycles per second.' }),
+      'Gust.ShiverAmountPercent': Object.freeze({ default: 1.2, min: 0.0, max: 3.0, float: true, step: 0.05, description: 'Small high-frequency crown displacement as a percentage of billboard height.' }),
+      'Gust.ShiverSpeed': Object.freeze({ default: 1.7, min: 0.5, max: 8.0, float: true, step: 0.1, description: 'High-frequency shiver cycles per second.' }),
+      'Storm.Strength': Object.freeze({ default: 0.6, min: 0.0, max: 1.5, float: true, step: 0.01, description: 'Overall storm vegetation response.' }),
+      'Storm.SwayAmountPercent': Object.freeze({ default: 2.6, min: 0.0, max: 8.0, float: true, step: 0.1, description: 'Slow crown displacement as a percentage of billboard height.' }),
+      'Storm.SwaySpeed': Object.freeze({ default: 0.8, min: 0.05, max: 1.5, float: true, step: 0.01, description: 'Slow sway cycles per second.' }),
+      'Storm.ShiverAmountPercent': Object.freeze({ default: 1.2, min: 0.0, max: 3.0, float: true, step: 0.05, description: 'Small high-frequency crown displacement as a percentage of billboard height.' }),
+      'Storm.ShiverSpeed': Object.freeze({ default: 1.7, min: 0.5, max: 8.0, float: true, step: 0.1, description: 'High-frequency shiver cycles per second.' }),
+      'Presentation.AudioEnabled': Object.freeze({ default: true, description: 'Enable intermittent wind passages, gusts, and tree-ruffle sounds. No source loops.' }),
+      'Presentation.AudioVolume': Object.freeze({ default: 0.5, min: 0.0, max: 1.0, float: true, step: 0.01, description: 'Master mod wind and foliage volume before category and DFU sound-volume multipliers.' }),
+      'Presentation.RegularWindVolume': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Normal breeze and sustained windy/storm passage volume.' }),
+      'Presentation.GustVolume': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Short gust one-shot volume.' }),
+      'Presentation.FoliageRuffleVolume': Object.freeze({ default: 100.0, min: 0.0, max: 200.0, float: true, step: 5, description: 'Ambient and gust-triggered foliage-ruffle volume.' }),
+      'Presentation.LeavesEnabled': Object.freeze({ default: true, description: 'Enable ambient and gust-driven leaves in eligible climates and seasons.' }),
+      'Presentation.LeafAmount': Object.freeze({ default: 2.4, min: 0.0, max: 3.0, float: true, step: 0.05, description: 'Gust-driven leaf emission multiplier.' }),
+      'Presentation.AmbientLeafAmount': Object.freeze({ default: 1.0, min: 0.0, max: 3.0, float: true, step: 0.05, description: 'Ambient falling-leaf presence near trees. Windy days and storms use progressively higher base rates.' }),
+      'Presentation.SnowFlurriesEnabled': Object.freeze({ default: true, description: 'Enable light drifting and gust-blown snow around snow-covered winter trees.' }),
+      'Presentation.SnowFlurryAmount': Object.freeze({ default: 1.0, min: 0.0, max: 3.0, float: true, step: 0.05, description: 'Winter canopy-snow particle multiplier.' }),
+    }),
+  }),
+  'snowfall': Object.freeze({
+    title: 'Snowfall',
+    author: 'demifiend000',
+    keys: Object.freeze({
+      Enabled: Object.freeze({ default: true, description: 'Deep snow on the winter ground in the enhanced outdoors, thicker in the wild than in towns: it builds while snow falls and melts in clear weather, and you, foes and townsfolk leave tracks that fill in over time.' }),
+      'General.ActivationOverride': Object.freeze({ default: 0, options: Object.freeze(['Auto', 'Force On', 'Force Off']), description: 'Controls local deformation eligibility. Force On is for tuning; distance matching requires DFU to select a non-desert winter archive.' }),
+      'Surface.SnowRadius': Object.freeze({ default: 32.0, min: 16.0, max: 64.0, float: true, step: 1, description: 'Radius in metres of the local snow window. Larger values push the exact mixed-tile handoff farther away but reduce grid density at the same mesh resolution.' }),
+      'Surface.MeshResolution': Object.freeze({ default: 2, options: Object.freeze(['97', '129', '161']), description: 'Grid vertices per side. Rebuilds the snow mesh.' }),
+      'Surface.MaskResolution': Object.freeze({ default: 1, options: Object.freeze(['128', '256', '512']), description: 'Local deformation-mask pixels per side. Rebuilds the disposable local view; persisted tracks remain recorded.' }),
+      'Surface.RecenterDistance': Object.freeze({ default: 6.0, min: 2.0, max: 12.0, float: true, step: 0.25, description: 'Distance between internal off-screen window recycling. World-anchored samples should prevent a visible refresh.' }),
+      'Surface.MaxSnowSlope': Object.freeze({ default: 55.0, min: 30.0, max: 75.0, float: true, step: 1, description: 'Snow depth tapers over the final 10 degrees and reaches a flat coating at this slope.' }),
+      'Snowpack.SettlementMinimumDepth': Object.freeze({ default: 0.2, min: 0.1, max: 1.0, float: true, step: 0.01, description: 'Vanilla-location starting and minimum depth in metres, including towns, farms, homes, dungeons, religious sites, taverns and graveyards.' }),
+      'Snowpack.SettlementMaximumDepth': Object.freeze({ default: 0.4, min: 0.1, max: 1.0, float: true, step: 0.01, description: 'Vanilla-location maximum depth in metres. If below the selected minimum, the minimum is used.' }),
+      'Snowpack.WildernessMinimumDepth': Object.freeze({ default: 0.4, min: 0.1, max: 1.0, float: true, step: 0.01, description: 'Wilderness starting and minimum depth in metres.' }),
+      'Snowpack.WildernessMaximumDepth': Object.freeze({ default: 0.8, min: 0.1, max: 1.0, float: true, step: 0.01, description: 'Wilderness maximum depth in metres. If below the selected minimum, the minimum is used.' }),
+      'Snowpack.SnowfallDepthStep': Object.freeze({ default: 0.1, min: 0.01, max: 0.2, float: true, step: 0.001, description: 'Metres added per completed continuous snowfall interval.' }),
+      'Snowpack.SnowfallDepthHours': Object.freeze({ default: 3.0, min: 0.25, max: 24.0, float: true, step: 0.25, description: 'Continuous game hours of snow per depth step.' }),
+      'Snowpack.MeltDepthStep': Object.freeze({ default: 0.1, min: 0.01, max: 0.2, float: true, step: 0.001, description: 'Metres lost per completed continuous clear-weather interval.' }),
+      'Snowpack.MeltDepthHours': Object.freeze({ default: 72.0, min: 1.0, max: 240.0, float: true, step: 1, description: 'Continuous game hours without snow per melt step.' }),
+      'Snowpack.DebugSnowDepthOverride': Object.freeze({ default: 0.0, min: 0.0, max: 0.8, float: true, step: 0.01, description: 'Diagnostic: zero uses the snowpack; a positive value forces one depth across the physical snow surface.' }),
+      'Context.SettlementBoundaryFeather': Object.freeze({ default: 8.0, min: 0.0, max: 32.0, float: true, step: 0.5, description: 'Metres of depth transition outside supported vanilla-location rectangles. Player ships are excluded.' }),
+      'Context.LocationLoaderIntegration': Object.freeze({ default: true, description: 'Cap snow over authored Location Loader locations while leaving decorations at wilderness depth. Has no effect if Location Loader is absent.' }),
+      'Context.LocationLoaderMaximumDepth': Object.freeze({ default: 0.1, min: 0.1, max: 1.0, float: true, step: 0.01, description: 'Maximum snow depth in metres within an authored Location Loader footprint.' }),
+      'Context.LocationLoaderBoundaryFeather': Object.freeze({ default: 4.0, min: 0.0, max: 32.0, float: true, step: 0.5, description: 'Metres of cap transition outside an authored Location Loader footprint.' }),
+      'Basic Roads.Enabled': Object.freeze({ default: true, description: 'Apply shallow path snow and road shoulders when the supported dependency is ready.' }),
+      'Basic Roads.PathMaximumDepth': Object.freeze({ default: 0.1, min: 0.1, max: 1.0, float: true, step: 0.01, description: 'Absolute path snow cap in metres. Does not increase snow above the surrounding snowpack depth.' }),
+      'Basic Roads.PathFeather': Object.freeze({ default: 1.0, min: 0.0, max: 4.0, float: true, step: 0.1, description: 'Outward path-depth transition in metres.' }),
+      'Basic Roads.BermsEnabled': Object.freeze({ default: true, description: 'Modest static snow shoulders beside classified main roads, below all context caps.' }),
+      'Basic Roads.BermRise': Object.freeze({ default: 0.05, min: 0.0, max: 0.1, float: true, step: 0.001, description: 'Maximum extra shoulder height in metres, bounded by the local snowpack maximum.' }),
+      'Basic Roads.BermWidth': Object.freeze({ default: 2.0, min: 0.0, max: 4.0, float: true, step: 0.1, description: 'Snow-side shoulder width in metres; does not change road exclusion.' }),
+      'Visual.TextureWorldSize': Object.freeze({ default: 4.0, min: 1.0, max: 12.0, float: true, step: 0.25, description: 'World-space repeat size in metres for the snow tile.' }),
+      'Visual.CompressionDarkening': Object.freeze({ default: 0.18, min: 0.0, max: 0.5, float: true, step: 0.01, description: 'How strongly compressed snow darkens.' }),
+      'Visual.ImpressionStrength': Object.freeze({ default: 1.0, min: 0.0, max: 1.0, float: true, step: 0.01, description: 'Focuses compression into a narrower, deeper track centre. Zero is the linear stored profile; one is the full focused profile.' }),
+      'Visual.ImpressionShoulderWidth': Object.freeze({ default: 0.5, min: 0.0, max: 1.0, float: true, step: 0.01, description: 'Adds this many metres of gradual slope to each side of new player and NPC tracks. The nominal TrackWidth remains the compressed core.' }),
+      'Distance Prototype.Enabled': Object.freeze({ default: true, description: 'Enable both the middle physical surface and loaded-terrain blanket. Turning this off retains local deformation and packaged winter textures. Startup and travel still depend on terrain streaming.' }),
+      'Distance Prototype.DistantTracks': Object.freeze({ default: true, description: 'Show persisted tracks as low-cost darkened marks on the distance blanket out to 320 metres. The distant mesh is not displaced.' }),
+      'Player.TrackWidth': Object.freeze({ default: 0.7, min: 0.3, max: 1.4, float: true, step: 0.01, description: 'Compressed core width in metres. ImpressionShoulderWidth adds a sloped shoulder on each side.' }),
+      'Player.RemainingSnow': Object.freeze({ default: 0.18, min: 0.05, max: 0.8, float: true, step: 0.01, description: 'Fraction of snow depth left at the trench centre.' }),
+      'Player.StampSpacing': Object.freeze({ default: 0.25, min: 0.1, max: 0.8, float: true, step: 0.01, description: 'Movement in metres required before another segment is stamped.' }),
+      'NPC Tracks.Enabled': Object.freeze({ default: true, description: 'Allow grounded enemies and civilians to leave new tracks. Off preserves existing tracks and does not disable corpse impressions.' }),
+      'NPC Tracks.TrackWidth': Object.freeze({ default: 0.55, min: 0.3, max: 1.4, float: true, step: 0.01, description: 'Minimum width in metres of an NPC track.' }),
+      'NPC Tracks.RemainingSnow': Object.freeze({ default: 0.28, min: 0.05, max: 0.8, float: true, step: 0.01, description: 'Fraction of snow depth left at the NPC track centre.' }),
+      'NPC Tracks.StampSpacing': Object.freeze({ default: 0.5, min: 0.2, max: 1.5, float: true, step: 0.01, description: 'NPC movement in metres required before another segment is stamped.' }),
+      'Refill.PassiveRefillHours': Object.freeze({ default: 12.0, min: 0.0, max: 48.0, float: true, step: 1, description: 'Approximate game hours for fully compressed snow to refill; zero refills immediately.' }),
+      'Refill.SnowfallRefillHours': Object.freeze({ default: 1.5, min: 0.1, max: 12.0, float: true, step: 0.1, description: 'Approximate game hours for fully compressed snow to refill during active snowfall.' }),
+    }),
+  }),
   // HCC (2026-09-23, Mac: "Next mod I want to implement 1 to 1 and also
   // enhance its online integration functionality"): HORSE CART AND CARGO -
   // demifiend000's persistent horse and wagon, 1.0.0-rc12, its five
@@ -1296,6 +1615,33 @@ export const MOD_SETTINGS = Object.freeze({
       'WagonAccess.InteriorAccessDistance': Object.freeze({ default: 50, min: 10, max: 100, get description() { return t('mods.horseCartAndCargo.WagonAccess.InteriorAccessDistance.description', 'Interior Wagon Access Distance. Sets how close your wagon must be parked to a building or dungeon entrance to access it from inside.'); } }),
       'Hotkeys.QuickMountDismount': Object.freeze({ default: 'Alpha5', text: true, get description() { return t('mods.horseCartAndCargo.Hotkeys.QuickMountDismount.description', 'Quick Mount / Dismount. Mounts your last-used horse or wagon using the same range and ownership rules as the Transport menu. Pressing it while riding dismounts immediately. Click it and press a key to rebind; \u2715 clears it (None).'); } }),   // KB1: not read by the mod any more - the key is the registry's action (inputActions.js MOD_ACTIONS); a player's saved value is carried there once (migrateKeyBinds)
       'Hotkeys.SummonTransport': Object.freeze({ default: 'Alpha6', text: true, get description() { return t('mods.horseCartAndCargo.Hotkeys.SummonTransport.description', 'Summon Horse & Wagon. Teleports owned transport to a nearby layout while outdoors. Click it and press a key to rebind; \u2715 clears it (None).'); } }),   // KB1: not read by the mod any more - the key is the registry's action (inputActions.js MOD_ACTIONS); a player's saved value is carried there once (migrateKeyBinds)
+    }),
+  }),
+  // LEGACY1 (2026-10-05, bible/06-Systems/Legacy-Arc.md, Mac: "this is actually my DFU mod that I want to integrate"):
+  // PROJECT LEGACY 0.4.1 (Lattymoy, Ghð§† and Positronico). The mod's own "Family" section, its names and descriptions
+  // as modsettings.json ships them (vendor/project-legacy/modsettings.json) - but B14: the mod shipped Max Siblings 0
+  // and Siblings Probability 0, so a fresh install never rolled a sibling; the port ships 2 and 50. Its "Input" section
+  // (the G key and the second key) is the keybinding registry's (KB1, inputActions.js MOD_ACTIONS: LegacyFamily). The
+  // "Legacy" section is the port's own: the model a family founded without the chargen's answer takes, Arkay's toll in
+  // an Enduring family, the heirloom's chance at a Bloodline death, and whether the family stands in the world
+  // (LEGACY-HOME). `Enabled` is the port's (MO1: on).
+  'project-legacy': Object.freeze({
+    title: 'Project Legacy',
+    author: 'Lattymoy, Gh\u00f0\u00a7\u2020 and Positronico',
+    keys: Object.freeze({
+      Enabled: Object.freeze({
+        default: true,
+        description: 'Your family and its tree, and an heir to carry your line on. A Bloodline house makes each death final; '
+          + 'an Enduring one makes it cost years.',
+      }),
+      'Family.Descendants': Object.freeze({ default: 0, options: Object.freeze(['Random Descendants', 'Always have descendants']), description: 'Descendants Generation Probability' }),
+      'Family.Max Siblings': Object.freeze({ default: 2, min: 0, max: 10, description: 'The number of siblings that can generate at the same time.' }),
+      'Family.Siblings Probability': Object.freeze({ default: 50, min: 0, max: 100, description: 'The probability to generate siblings on the game.' }),
+      'Legacy.Model': Object.freeze({ default: 0, options: Object.freeze(['Enduring', 'Bloodline']), description: 'The model a family takes when it is founded around a character made before this mod (a new character answers at creation). Enduring: a death costs years. Bloodline: a death is final.' }),
+      'Legacy.Toll': Object.freeze({ default: 1, options: Object.freeze(['Light', 'Standard', 'Heavy']), description: 'Arkay\u2019s toll in an Enduring family: the years a death takes - 4%, 6% or 10% of the lifespan.' }),
+      'Legacy.Heirloom Chance': Object.freeze({ default: 50, min: 0, max: 100, description: 'The chance a Bloodline death leaves an heirloom for the heir to recover.' }),
+      // LEGACY-HOME (Legacy-Arc section 10b; Mac: "itll be default on but can be toggled off").
+      'Legacy.Family In World': Object.freeze({ default: true, description: 'Your living family stands in the world when you are not playing them: at the family home (or in your seat\u2019s town, if the line holds no house), about their day. Speak with one to play as them.' }),
     }),
   }),
 });

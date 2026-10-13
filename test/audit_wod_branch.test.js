@@ -313,7 +313,8 @@ test('AUDIT BRANCH (WoD) M2: a pack fetch is abandoned after a stall and tried t
 
 test('AUDIT BRANCH (WoD) M2: the build\'s pick can cost a pixel its site, never the pixel; with the mod off no frame walks the pixels for its lights', () => {
   const w = rd('src/scenes/world.js');
-  assert.match(w, /if \(wod && await wodOpened\) \{\n[^\n]*\n[^\n]*\n      try \{\n        const here = state\.current \?\? \{ x: px, y: py \};[\s\S]{0,900}\} catch \(e\) \{\n        console\.warn\(`\[wod\] pixel \$\{key\}: the loader failed here[^\n]*\n        wodPicks = null;\n      \}/);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA G8): the pick asked on the Bay alone - its sites are the Bay's
+  assert.match(w, /if \(wod && onTheBay\(px, py\) && await wodOpened\) \{[^\n]*\n[^\n]*\n[^\n]*\n      try \{\n        const here = state\.current \?\? \{ x: px, y: py \};[\s\S]{0,900}\} catch \(e\) \{\n        console\.warn\(`\[wod\] pixel \$\{key\}: the loader failed here[^\n]*\n        wodPicks = null;\n      \}/);
   assert.match(w, /const wodLit = wod \? _wodLitCount\(\) : 0;/);
   assert.match(rd('src/world/worldOfDaggerfall.js'), /if \(!b\) return;\n[^\n]*\n[^\n]*\n      await new Promise\(\(r\) => setTimeout\(r, 0\)\);[\s\S]{0,400}decodeRegionPack\(b\)/, 'one decode a task');
 });
@@ -378,7 +379,7 @@ function host({ online = null, removeSiteFoes = () => {} } = {}) {
     generateLootItems: () => [{ name: 'Gold' }], playerEntity: { level: 1, gender: 'male' }, addPileLootExtras: () => {}, rollLootRarity: () => {}, stampWonWeapons: () => 0,
     pileSource: () => 0, dungeonRarityTier: () => 0, liveStat: () => 50, getTexture, billboardSize: () => ({ w: 0.8, h: 0.6 }), droppedLoot,
     uploadRecord: () => {}, centredBase: (c) => c, renderer, flatBatchAabb: () => [0, 0, 0, 0, 0, 0], armFlatAnim: () => {}, uploadRecordFrame: () => {},
-    _seasonStraightening: false, _loading: false, _recalling: false, rollHoldFoes: () => [], online, wodSiteId, yieldsTo, performance: { now: () => 0 },
+    _seasonStraightening: false, _loading: false, _recalling: false, _partyArrivalPending: false, rollHoldFoes: () => [], online, wodSiteId, yieldsTo, performance: { now: () => 0 },
     buildingDoors: [], doorGeneration: 0, droppedTorches: { collectPixel: () => {} }, cityGuards: { collectPixel: () => {} },
     deepWaters: null,   // DW-B: destroyPixel hands a pixel's seafloor back to the Deep Waters host - none in this rig
     dwDecor: null,   // DW-E2: and its seafloor's decorations to theirs - none in this rig either
@@ -503,14 +504,14 @@ test('WOD6 (AUDIT BRANCH m3, as DFU orders it): an arrival\'s markers meet Start
   } finally { Math.random = orig; }
   // the latch is the arrival's own: up at the teleport's head, down in a `finally` once the destination has built,
   // with nothing awaited between that and the player standing
-  assert.match(WORLD, /const arriving = _seasonStraightening \|\| _loading \|\| _recalling;/, 'a load or a recall lands the player last');
+  assert.match(WORLD, /const arriving = _seasonStraightening \|\| _loading \|\| _recalling \|\| _partyArrivalPending;/, 'a load or a recall lands the player last');
   const tp = WORLD.slice(WORLD.indexOf('  async function _teleportToPixel('));
   const up = tp.indexOf('_seasonStraightening = true;');
   const sweep = tp.indexOf('wodCarry.clear();');
   const down = tp.indexOf('try { dest = await awaitedBuild(first.px, first.py); }\n    finally { _seasonStraightening = false; }');
   const stand = tp.indexOf('if (walkMode) { player.spawn(pos[0], pos[1], pos[2]); playerSpawned = true; }');
   assert.ok(up > 0 && up < sweep && sweep < down && down < stand, 'raised before the sweep, lowered after the build, before the stand');
-  assert.doesNotMatch(tp.slice(down + 20, stand), /\bawait\b/, 'no await between the build landing and the player standing');
+  assert.doesNotMatch(tp.slice(down + 20, stand).replace('resolveArrival ? await resolveArrival(pos) : null', 'null'), /\bawait\b/, 'no await between the build landing and the player standing');
   assert.match(WORLD, /queue\.push\(\.\.\.state\.init\(px, py\)\);\n[^\n]*\n    _wodArrival = wodArrivalOf\(queue\);/, 'every sweep\'s first grid is the arrival\'s');
   assert.match(WORLD, /const queue = state\.init\(startPixel\.x, startPixel\.y\);\n[^\n]*\n  _wodArrival = wodArrivalOf\(queue\);/, 'and the first world\'s');
   assert.match(WORLD, /state\.release\(u\.px, u\.py\);\n        _wodArrival\.keys\.delete\(`\$\{u\.px\},\$\{u\.py\}`\);/, 'a pixel that leaves range is promoted afresh when it returns');
@@ -591,7 +592,7 @@ test('WOD6 (dungeon loads): an arrival that lands INSIDE runs no marker - DFU\'s
   assert.match(WORLD, /_wodInside = !!extras\.interior;[^\n]*\n        await _teleportToPixel\(w\.pixel\.x, w\.pixel\.y/, 'a load inside a building');
   assert.match(WORLD, /_wodInside = true;[^\n]*\n          await _teleportToPixel\(pixel\.x, pixel\.y, null, \{ modEvent: 'load' \}\);/, 'a load inside a dungeon');
   assert.match(WORLD, /_wodInside = true;[^\n]*\n      await _teleportToPixel\(pos\.x, pos\.y\);/, 'the vampire\'s crypt');
-  assert.equal((WORLD.match(/_wodInside = false;/g) ?? []).length, 6, 'the declaration, the frame inside, and each of the four arrivals that lands outside after all');
+  assert.equal((WORLD.match(/_wodInside = false;/g) ?? []).length, 7, 'the declaration, frame, four existing arrivals and failed exact-player interior travel');
 });
 
 test('WOD7: a marker a peer sprang never springs here - its camp is theirs, and everyone\'s; one I spring is mine, online', () => {

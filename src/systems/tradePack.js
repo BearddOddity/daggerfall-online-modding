@@ -12,6 +12,8 @@
 //     Sigil Stone is never handed to another player - and a peer's lot carrying one is refused whole, below), and a
 //     Come Sail Away boat's deed or parts (AUDIT REALM2 T1: the realm's own law, net/realmTradeLaw.js BOAT_TEMPLATES);
 //   - weight is systems/inventory.js's own arithmetic against combat/formulas.js entityMaxEncumbrance.
+import { isBagItem } from '../net/bagLaw.js';   // BAG1
+import { activeWagonItem } from './wagonKinds.js';   // WAGONS2 (AUDIT)
 import { validLootList } from './loot.js';
 import { itemLongName } from './itemInfo.js';   // MARKET-ANY: a pack piece named as the pack names it
 import { goodRefusal, GOOD_REFUSAL_WORDS } from '../net/marketLaw.js';   // MARKET-ANY: what may list from the pack
@@ -22,6 +24,9 @@ import { entityMaxEncumbrance } from '../combat/formulas.js';
 import { isBound, BOUND_TRADE_TEXT } from './itemBound.js';   // SS1: a bound piece never leaves for another player
 import { BOAT_TEMPLATES } from '../net/realmTradeLaw.js';   // AUDIT REALM2 T1: nor a boat's deed or parts - what they stand for stays in the giver's save
 
+/** BAG1: the Materials Bag stays with its owner - a list of its own rides with it (systems/materialsBag.js), which no
+ *  trade moves; every General Store sells another. */
+export const BAG_TRADE_TEXT = 'Your Materials Bag stays with you. Every General Store sells one.';
 /** Why an item may not be put on the table, or null. Words a player can act on. */
 export function tradeRefusal(item) {
   if (!item) return 'That is not an item.';
@@ -31,8 +36,26 @@ export function tradeRefusal(item) {
   if (isGoldPieces(item)) return 'Offer gold with the gold box.';
   if (isBound(item)) return BOUND_TRADE_TEXT;   // SS1
   if (BOAT_TEMPLATES.includes(item.templateIndex)) return 'Boat deeds and boat parts cannot be traded.';   // AUDIT REALM2 T1
+  if (isBagItem(item)) return BAG_TRADE_TEXT;   // BAG1: the bag is its owner's
   return null;
 }
+/** WAGONS2 (AUDIT): what the shop's Sell says by dropping the click (systems/tradeModes.js - "Are we trying to sell the
+ *  non empty wagon?"), a trade, the market and the vault say in words. */
+export const WAGON_LOADED_TRADE_TEXT = 'Empty your wagon before it changes hands.';
+/** The market's List form's words for it (GOOD_REFUSAL_WORDS' way). */
+export const WAGON_LOADED_MARKET_WORDS = 'your wagon - empty it first';
+/** Why an item of `entity`'s pack may not leave it for another player, or null: tradeRefusal's, and the wagon the
+ *  player drives while it holds anything (WAGONS2 AUDIT: a loaded caravan traded away left its cargo on the cart the
+ *  pack drove next, 2000 kg in a 750 kg store, and the caravan's 2000 kg fresh for its new owner). */
+export function packTradeRefusal(item, entity) {
+  const refusal = tradeRefusal(item);
+  if (refusal) return refusal;
+  return wagonLoadedHeld(item, entity) ? WAGON_LOADED_TRADE_TEXT : null;
+}
+/** WAGONS2 (FINAL AUDIT): THE LOADED WAGON HELD - `item` the wagon `entity` drives (the best owned), with goods in its
+ *  store: the one law the pack's refusal above and the keyed shelf's (scenes/worldModes.js loadedWagonHeld) read - the
+ *  shelf restated it, pinned by its text alone. */
+export const wagonLoadedHeld = (item, entity) => !!item && item === activeWagonItem(entity?.items ?? []) && (entity?.wagonItems?.length ?? 0) > 0;
 
 /** The kilograms an offer takes out of the pack: each entry at the count offered, and the gold. */
 function offerWeight(entries, gold) {
@@ -44,14 +67,22 @@ function offerWeight(entries, gold) {
 /**
  * The adapter over one entity's pack. `entity` is the live player entity (`items`, `goldPieces`).
  * Returns the `pack` object net/tradeSession.js takes.
+ * OFFER-ID (FIELD BUGS 2026-10-11b): `stampIds` - the realm's id stamp (itemIds.js stampItemIds), handed in by the host
+ * that checkpoints the realm's save (world.js) rather than imported: itemIds.js reads the item law, and importing the law
+ * installs it into the wire's clamp (itemLaw.js setItemLaw) for every reader of this file.
+ * @param {any} entity @param {{ stampIds?: ((owner: { items: any[] }) => number) | null }} [o]
  */
-export function createTradePack(entity) {
+export function createTradePack(entity, { stampIds = null } = {}) {
   const list = () => (entity.items ??= []);
   return {
-    offerable: (item) => tradeRefusal(item),
+    offerable: (item) => packTradeRefusal(item, entity),   // WAGONS2 (AUDIT): the loaded wagon stays
 
     /** [{item,count}] -> the records that go on the wire, or null. A partial stack is the origin's record at the count. */
     wire(entries) {
+      // OFFER-ID (FIELD BUGS 2026-10-11b): each valuable piece offered is given its id NOW (INT4 itemIds.js
+      // stampItemIds), the one the trade's hold checkpoint would stamp after the offer was made - so the record the
+      // realm finds is the one offered, and a piece looted since the last checkpoint trades instead of being refused
+      stampIds?.({ items: entries.map((e) => e.item) });
       const recs = entries.map(({ item, count }) => {
         const copy = JSON.parse(JSON.stringify(item));   // a plain-data copy: nothing from the pack rides the frame by reference
         const have = Math.max(1, item.stackCount ?? 1);
@@ -76,7 +107,7 @@ export function createTradePack(entity) {
       const items = list();
       if (!(gold >= 0) || gold > goldPiecesOf(entity)) return null;
       for (const { item, count } of entries) {
-        if (!items.includes(item) || count < 1 || count > Math.max(1, item.stackCount ?? 1) || tradeRefusal(item)) return null;
+        if (!items.includes(item) || count < 1 || count > Math.max(1, item.stackCount ?? 1) || packTradeRefusal(item, entity)) return null;
       }
       const taken = [];
       for (const { item, count } of entries) {
@@ -151,7 +182,8 @@ export function createMarketGoods(entity, { kept = () => false, say = () => {} }
       return (entity.items ?? []).filter((it) => it && !(typeof it.provenance === 'string' && kept(it.provenance))).map((item) => {
         // a piece the trade's wire will not carry (a row this game does not know) is no piece the service could match
         const why = goodRefusal(item) ?? (pack.wire([{ item, count: Math.max(1, item.stackCount ?? 1) }])?.[0] ? null : 'shape');
-        return { item, name: itemLongName(item), why: why ? (GOOD_REFUSAL_WORDS[/** @type {keyof typeof GOOD_REFUSAL_WORDS} */ (why)] ?? why) : null };
+        const loaded = !why && packTradeRefusal(item, entity) === WAGON_LOADED_TRADE_TEXT;   // WAGONS2 (AUDIT): the loaded wagon, said
+        return { item, name: itemLongName(item), why: why ? (GOOD_REFUSAL_WORDS[/** @type {keyof typeof GOOD_REFUSAL_WORDS} */ (why)] ?? why) : loaded ? WAGON_LOADED_MARKET_WORDS : null };
       });
     },
     /** A piece of the pack as it lists: its record as the trade's wire projects it (what the service matches against

@@ -185,8 +185,8 @@ journey interrupts it on its own honest clock.
 
 ## The enhanced lane (Mac's addition, not the mod's)
 
-`src/ui/enhancedTravelControl.js` is the port's own: the same five
-controls in the enhanced skin's brass and bone, at the screen's own
+`src/ui/enhancedTravelControl.js` is the port's own: the same
+controls (RATE-LAW: the rate a readout, no stepper) in the enhanced skin's brass and bone, at the screen's own
 resolution, with what a 320-pixel strip had no room for - the hours and
 minutes still to run, how far the destination is, whether the journey
 is following a road, and the junction map as a real canvas rather than
@@ -366,6 +366,45 @@ must be assigned there, never re-declared. Mutants
    down. It is false over a walked one, so both skins now gate it off
    `walkedTrip` / `t.walked`; that branch already carries the mod's own
    `MsgPlayerControlled` and an hours:minutes estimate.
+
+   **TRAVEL-ONLINE** (2026-10-03, Mac: *"Remove instant travel
+   online"*). The fallback this item kept was still reachable from four
+   switches: the mod off (online it was the player's, MODS-ONLINE-2),
+   either of the two dials that send a Cautious or an Inns trip down the
+   journey (TO-LIVE put both on the tile) - each turned every such trip
+   back into the teleport - and the ports rule (AUDIT T1: off, nothing
+   knocks the ship toggle, on by default, off a trip from the wilderness
+   to an inland place, and a ship is never walked). All four are the
+   ROOM's now (`systems/onlineLane.js` `ONLINE_ROOM_MOD_KEYS`, at the
+   shipped defaults: `Enabled`, `CautiousTravel.PlayerControlledCautiousTravel`,
+   `StopAtInnsTravel.PlayerControlledInnsTravel`, `ShipTravel.OnlyFromPorts`),
+   so online `isPlayerControlledTravel` answers yes for every trip over
+   land whatever the player's store says, and the Mods pane locks the four
+   with their own reason ("every trip over land is travelled, and ships
+   sail only from ports"). Under the switches, a floor (AUDIT T7): online
+   the map's fork refuses a trip over land at fast travel's door
+   (`ONLINE_LAND_TRAVEL_REFUSAL`) - unreachable while the room holds them.
+   Offline every switch is the player's, as before. Not touched: a ship's
+   passage from a port (the mod has no voyage, and the islands are reached
+   no other way) and a party's journey to its leader - both DFU's fast
+   travel by design - nor the Mages Guild's teleport and Recall, which are
+   spells and services, not trips. Put to Mac rather than decided here: a
+   passage from one port to another over no water is still a ship, as
+   the mod's own `HasNoOceanTravel` lets it be; and Travel Options' paid
+   teleportation (any Mages Guild rank) stays the player's dial.
+   `test/travelonline.test.js` (3); `tools/mutants/travelonline.json`
+   (all dead).
+   **IT1** (2026-10-04, the owner: instant travel online "as an option but with
+   a cost", then Immersive Travel 1:1): a carriage driver's trip is DFU's fast
+   travel with the mod's fare paid, from the driver's own map, which never meets
+   this floor (AUDIT IT1 W3, `06-Systems/Immersive-Travel.md`). Immersive
+   Travel's Disable Normal Travel is the room's and OFF, so every trip over land
+   from the map is still walked.
+   **PORTAL1** (2026-10-04, the owner: "with the removal of fast travel, I want to implement a new item available at
+   all shops, this should cost weykar shards"): a Portal Stone, bought for five Welkynd Shards, opens the Mages Guild's
+   teleport map; the place picked is reached through a portal that stands 30 seconds for anyone who walks in - the
+   guild's arrival, free once the stone is spent, online as offline (`06-Systems/Portal-Stone.md`). It never meets
+   this floor: its map's `onTeleport` is its own, as the guild's is.
 10. **A message box over the journey PAUSES it rather than interrupting
     it** (AUDIT-TO1 H1). DFU's `DaggerfallUI.MessageBox` pushes a window,
     so the mod's own help (`:1005-1014`) trips the "any other window"
@@ -622,6 +661,11 @@ third was a thing the port never said out loud.
   The wait is the ride-out's own sentence, deliberately, so the two read
   alike.
 
+> **WILD-ROAD (FIELD BUGS 2026-10-04e)**: Encounters on the road (a World switch, on) passes a wanderer far beneath the
+> traveller by, and the rest sometimes come as a patrol. The road is a journey under way (the window up and its autopilot
+> steering) or the Overworld - never a rest. (Its HUNT-ROAD, a switch holding TO-FIELD3's hunt on the road, went with
+> HUNT-OUT's removal of the hunt, at the merge of main.) The record: `01-Overview/Field-Bugs-2026-10-04e.md`.
+
 > **TO-FIELD3 (Mac, 2026-09-18) REVERSED THE TWO GAMEPLAY CHANGES BELOW.**
 > "Remove the changes the past session did to the traveling system... the
 > two gameplay changes - journeys no longer sit as resting (needs charge
@@ -630,7 +674,9 @@ third was a thing the port never said out loud.
 >
 > Both are gone. `survivalEnv` feeds the journey the world it is actually
 > in (`world.js`, the same one sentence `exterior.js` reads), and the
-> hunting roll is the overworld host's mode and nothing else. The bullets
+> hunting roll was the overworld host's mode and nothing else - until
+> HUNT-OUT (2026-10-04) removed the text hunt whole, its roll with it
+> (`06-Systems/Climates-Calories.md`). The bullets
 > below are KEPT rather than struck, because their arithmetic is right
 > and whoever reads this next should know exactly what was traded away
 > and what it costs.
@@ -641,10 +687,10 @@ third was a thing the port never said out loud.
 > construction never stops to eat, drink or sleep. A RECKLESS journey has
 > no stop of its own and can collapse; a CAUTIOUS one is paused at the
 > fatigue floor by the mod's own watch. The bare-skin health ticks and
-> the byFire exposure damage run again. And the hunting roll fires once a
+> the byFire exposure damage run again. And the hunting roll fired once a
 > GAME minute at up to a hundred times real time, opening a box the mod
-> answers with `interruptTravel()` - so a long wilderness ride WILL be
-> interrupted, often.
+> answers with `interruptTravel()` - so a long wilderness ride was
+> interrupted, often, until HUNT-OUT took the roll out.
 >
 > That is the loop as Mac wants it played: camp out, stop at inns, or
 > travel cautiously. The survival mod's own switch turns all of it off
@@ -652,10 +698,11 @@ third was a thing the port never said out loud.
 >
 > **And one thing the change that set it never counted:** `resting` is
 > not a fatigue knob, it is the needs' one word for "sat still", and
-> FOUR laws read it - the two fatigue drains it was aimed at, the two
-> health arms F12 later disclosed, and SURV6's hunting roll, which
-> refuses outright on `resting` (`hunting.js:120`). One flag reached
-> three laws nobody had asked it to reach. That is the lesson worth
+> FOUR laws read it then - the two fatigue drains it was aimed at, the
+> two health arms F12 later disclosed, and SURV6's hunting roll, which
+> refused outright on `resting` (its `huntRoll`, DELETED with the hunt by
+> HUNT-OUT; the other three still read it). One flag reached three laws
+> nobody had asked it to reach. That is the lesson worth
 > keeping out of this whole exchange.
 
 - **Instant exhaustion - the port's own needs charged at the mod's
@@ -716,7 +763,8 @@ third was a thing the port never said out loud.
   whenever roads integration is on and a key is set: *"On the road,
   press K to follow it."*
 
-- **AUDIT-FIELD F10: and SURV6's hunting roll is held with them.** The
+- **AUDIT-FIELD F10: and SURV6's hunting roll is held with them.** (RETIRED with the hunt itself, HUNT-OUT
+  2026-10-04 - there is no roll left to hold.) The
   wilderness roll fires once a GAME minute, so an accelerated ride rolled
   it every few real seconds, and every event opens a Yes/No box through
   `townTalk.showOverlay` - which the mod reads as a foreign window on top
@@ -767,7 +815,7 @@ which `InitLocationRects` keeps refreshing the rects MID-journey
 (`:606-612`, `autopilot == null || destinationName != null`;
 `travelOptions.js:"function initLocationRects"`). A town's ring reaches into its neighbour
 pixels; the crossing fired `OnMapPixelChanged`, the host's
-`locationTileRect` answered null for the neighbour (world.js:"AUDIT-TO1 B1/B2:" -
+`locationTileRect` answered null for the neighbour (world.js:"if (!summary?.pixel)" -
 null both for a pixel not yet built and for one with no location),
 `SetLocationRects` nulled both rects (`:602-604`), and the walk's own
 `OnArrival` (`circumnavigateLocation`, `:753-797`) read
@@ -1364,12 +1412,88 @@ entity has - so every scaled fare haggled at Mercantile 0: on a trip of 300 in i
 x3, a traveller at Mercantile 90 was billed a novice's 1686 for a 1068 fare. It reads `skillValue(e,
 SKILLS.Mercantile)` now, the same read every counter makes, so a worn Enhances Skill haggles too. The split this page
 called faithful was; its haggle's Mercantile was not. Both maps and a party's fare bill through it (`travelFareDeps`),
-and the dials are the player's own online (`ONLINE_PLAYERS_OWN_MODS`), where MERC-CAP reads the skill no further than
+and the dials are the player's own online (all but the four TRAVEL-ONLINE gives the room), where MERC-CAP reads the skill no further than
 100. Offline, past 233 the mod's own call bills under nothing, as a room does - put to Mac with MERC-CAP.
+
+## TRAVEL-LAST-SPEED (2026-10-04) - the chosen rate outlives a path's half cap
+
+[SUPERSEDED the same day by RATE-LAW, below: there is no chosen rate to keep - the spinner, its limit and the half cap
+are gone, and a journey runs at its ground's rate. Kept as the record of the bug it fixed.]
+
+A departure from the mod, at the reporter's word (BUG-TRAVEL-LAST-SPEED-01, "Fast travel does not keep the last selected
+speed"; keep it active and remember it). The mod's `InitTravelUI` sets the clock from `TimeAcceleration` and only THEN
+pushes the panel, whose `OnPush` clamps `TimeAcceleration` into the limit in force and keeps the clamp. So a path
+(`HalfLimit`, 30 of a 60 limit) after a 60x trip showed 30 on the spinner while the clock ran 60, and the 60 was lost to
+every later trip. The port pushes the panel first (`travelOptions.js initTravelUI`), so spinner and clock agree, and the
+panel keeps the player's CHOSEN rate apart from the rate IN FORCE (`travelControlUI.js` `_preferredAcceleration` /
+`_timeAcceleration`): a cap lowers the one in force, and the next uncapped journey - or the Acceleration Limit dial
+opened in play (`setAccelerationLimit`) - brings it back. A journey already showing keeps its higher rate when a path
+replaces it, as the mod's does (no push, no clamp). `alwaysUseStartingAccel` still resets both. The session's alone:
+the mod saves no travel state (departure 8). Pins: `test/travel_speed_preference.test.js`, `tools/mutants/to1.json`.
+
+## RATE-LAW (2026-10-04) - the dials go, and a journey runs at its ground's rate
+
+Mac: *"Remove travel options dials"*, then *"Roads now travel at x100 and non roads at x60."*
+
+**What went.** Every control that set how fast a journey runs: the classic strip's spinner (DFU's `UpDownSpinner`
+over the strip's own recess after "TIME x:"), the enhanced panel's Time stepper and ENEMY-PACE's near-enemies stepper
+under it, the tile's Acceleration Limit dial, and the three keys of the mod's TimeAcceleration section that started
+and bounded the spinner (`DefaultStartingAcceleration`, `AlwaysUseStartingAcceleration`, `AccelerationLimit` - no
+longer declared; `test/to1_travelOptions.test.js` names them as the one section of the vendored `modsettings.json`
+the port leaves out). With them went the half limit while a path is followed (`:705`) and TRAVEL-LAST-SPEED's
+remembered rate.
+
+**The law** (`systems/timeScale.js` `TRAVEL_ROAD_RATE` 100, `TRAVEL_OPEN_RATE` 60, `travelRateOf`). A fast traveller
+on a road or a track runs at x100; anywhere else - the open ground, the walk back to a road after a stop, the sea -
+at x60. "A road" is a road or a track, as the Overworld's own trip line counts them (`travelRoute.js` `roadShare`,
+"by the road"); `systems/travelOptions.js` `ROAD_LEG_KINDS` says so. Where each journey reads its ground
+(`journeyOnRoad`):
+- a planned route (the Overworld's, TV2, and TO-ROADS' first-person one) by the LEG it walks - its kind from the
+  planner; a join (AUDIT OW3 J3) is the open ground's;
+- the follow key's legs: a road or a track by definition, so x100;
+- the ring walk round a town (`CircumnavigateLocation`): the paved ring, under the mod's own x15 ceiling
+  (`MAX_CIRCUMNAVIGATION_ACCEL`, `:34`) - a steering bound, not a dial, so it stays;
+- the mod's straight journeys (to a place, to bare coordinates): the host says what the traveller stands on
+  (`scenes/world.js` `travellerOnRoad` - inside a lane leaving the map pixel, `travelPaths.js` `playerOnPathAt`, on
+  whichever network painted the land), so a straight line that runs along a road runs at x100 while it does.
+The rate is asked of the clock when the journey starts and again only when its ground changes (`applyRate`); the
+panel says it (`TravelControlUI.setRate`: the number in the strip's recess, the enhanced panel's "×100" over "on the
+road" / "off the road"). The Overworld's movement keys (TV-WASD) travel at the same law, by the ground under the feet.
+
+**What still holds the clock under the rate** - none of them a dial: the land loading (TV2's governor), an enemy
+(OW6's cap, floored at x5 - ENEMY-PACE's stepper default, fixed now as `travelThreat.js` `JOURNEY_FOE_PACE` /
+`foePaced`), the view down (AUDIT OW4 J5's x1), and the ring walk's ceiling. The panel says which, as before.
+
+**Online** nothing new: the clock rules are TO-ONLINE's and WALK-CLOCK's, unchanged - x100 and x60 are rates the
+spinner could already reach (its limit went to 100).
+
+Pins: `test/travel_speed_preference.test.js` (the law through the real mod and panel, and the host's
+`travellerOnRoad` lifted and run), `test/tv_wasd.test.js`, `test/enemy_pace.test.js`, `test/to1_travelOptions.test.js`,
+`test/to_live.test.js`, `test/disc22e_travel_click.test.js`; `tools/mutants/ratelaw.json` (19, all dead); the retired
+spinner's and limit's records left their files (to1, fb1002c, tv_wasd) with the code they killed.
+
+### RATE-LAW-FIX (2026-10-05) - the deep audit's three
+
+The deep audit of the branch found three holes in the law; each is fixed and pinned (`test/ratelawfix.test.js`,
+`tools/mutants/ratelawfix.json`).
+- **A route's last stretch to a spot** ran at its pixel's step's rate - the last leg aims at the spot itself, which
+  can lie anywhere in its pixel: a road route to a camp half a pixel from the road ran there at x100 across the
+  field. That stretch asks the host's lanes (`travellerOnRoad`), as a straight walk does.
+- **A route of no legs** (straight across to a spot, TV2's `beginTravelToPoint`) read a leg that is not there and
+  always ran at x60, down a road too. It is a straight walk, and asks the host.
+- **A change of ground lifted the hold for a frame.** The mod asks the clock afresh at each change of ground, and the
+  host's ask set the clock outright - over the governor's hold (an enemy near, the land loading, the view down's
+  walking pace) until its next frame: a lurch at every road's edge. The ask is recorded and a held clock kept for the
+  governor to weigh; a lower ask (an interrupt's x1) is the clock's at once.
+
+Recorded, not changed: OW6's lead-in before an enemy's reach is THREAT_WARN_S of real time at the journey's rate, so
+at the law's x60 and x100 it starts 1.5 to 2.5 times as far out as at the old dial's x40 (a rider at x100 slows about
+960 m short of a band's sight, not 384) - a tuning for the owner to call.
 
 ## Pins
 
 `test/to1_travelOptions.test.js`. `tools/mutants/to1.json`.
+`test/travel_speed_preference.test.js`, `tools/mutants/ratelaw.json` (RATE-LAW, 19 dead).
 `test/roadcrash.test.js`, `tools/mutants/roadcrash.json` (ROAD-CRASH).
 `test/travelnav.test.js`, `tools/mutants/travelnav.json` (TRAVEL-NAV),
 `tools/mutants/travelnav2.json` (TRAVEL-NAV2), `tools/mutants/travelstrafe.json` (TRAVEL-STRAFE, 7 dead),

@@ -688,3 +688,178 @@ shore records a stream writes over grass (20-22, 49) are mostly-grass by
 texel count, so they passed `grassRecordsOf` and blades grew up out of
 the water. That one needed no new data: `world/waterCorners.js` already
 owns the question, and the placer asks it now.
+
+## LANDFORM2/3 - the roads and rivers cut into the land (2026-10-06)
+
+Mac: "allow roads to carve through terrian and caverns without breaking anything and rivers to actually have depth,
+not just lying flat on land." Behind the Features row `landforms` (`03-World/Landforms.md`), the terrain's kernel grades
+every road and track level across along the network's own centre lines - the ones this painter paints - cut into the
+hillside and built up over a hollow, and lays every painted river and stream in a channel under its banks. The painter
+and SmoothRoads are untouched and run after it. Online the rivers are cut too (Mac: "Yes rivers should be online"):
+the MODS-ONLINE reading - a river paints tiles and never moves a height - is still true of this smoother, but the
+landforms' cut moves it, so RiversAndStreams is the room's now, ON (`06-Systems/Online-Arc.md`, LANDFORM3).
+
+AUDIT LANDFORMS C3 (2026-10-07): online his network or none yet. The generated network above is the fallback a page
+stands on when his arrays do not load - and online that one failed fetch stood a client on other roads and no rivers
+than its room's. Online `loadModRoads`' failure is asked again (`retryModRoads`, WOD6's backoff: 5 s, doubling to a
+minute, twelve more tries); the pixels stand roadless meanwhile and the roads sweep rebuilds them when the arrays land
+(ROADS 25). The generated network stands in only once every try has failed; offline it stands in at once, as before.
+AUDIT LANDFORMS II G3: and a fetch is a failed ask after 30 s (`MOD_ROADS_FETCH_TIMEOUT_MS`) - each file's fetch and
+its body race it and are asked to stop. Nothing timed one out, so a fetch that never answered left a client roadless
+for the session and the retry never asked again. When the arrays land after a pixel's first build, what lies on its
+ground rides the rebuilt ground (G1/G2, `03-World/Landforms.md` THE SAVES).
+
+## CANAL-ARM - an arm a path carries is the path's (FIELD BUGS 2026-10-09b, a port departure)
+
+The Discord's "River/Stream Creation Turned Some Roads into Canals": "a lot of towns that usually have straight dirt
+roads to them now have canals". His arrays share a compass arm between a path and a river or a stream at 32 arms of 30
+pixels (a water and a path that both meet a pixel's centre - a town's - from one side). This painter paints the water
+before the track, his order, so the whole arm was water where the dirt track ran, and a river on a road's arm flanked
+the road with its banks; LANDFORM3 cuts the painted water into the land, and the room's rivers are on - a straight
+sunken channel up to the town. `roadsProducer.js` `waterOffPaths` gives each such arm to its path, once, as the arrays
+load: the painter, the channel's cut and the maps all read the arrays, so all three agree. A crossing shares no arm,
+and its ford or causeway stands as it did. Pinned by `test/fb1009b_canalarm.test.js`.
+
+## VERGE1 - clear roadsides: nothing of the wild stands over a road (2026-10-07, a port departure)
+
+Mac: *"Making sure objects, like trees, avoid pathways and roads. Currently
+they slightly overlap"*.
+
+Every placer of the wild's flats asked ONE TILE - the one the flat's root
+stands on - and never how wide the thing standing there was:
+
+- DFU's scatter (`world/terrainNature.js` `dfuScatter`, Real forests off,
+  and every desert) roots each flat on its tile's south-west CORNER, so on
+  a road's east and north sides the root is the road's edge and half the
+  picture hangs over it;
+- Real forests (FOREST1) roots each inside its own tile, 0.64-5.76 m from
+  a road tile beside it;
+- Low Poly Trees stands a crown about that root - the temperate woods'
+  Trees reach 5.5 to 11 m (504's nine Tree records, summer: 9.68, 7.24,
+  8.5, 8.96, 9.25, 10.88, 11.14, 5.8, 5.52 m), more at the tree's own
+  scale (0.6-1.4).
+
+**The law** (`world/roadVerge.js`): a wild flat stands only where the DISC
+of its reach touches no road or track.
+
+- The road is Basic Roads' band - two tiles, 6.4 m either side of the line
+  from the pixel's centre to the edge or corner its compass bit names
+  (`PATH_HALF_M`), the network ROADS-CLEAR reads, asked of the pixel and
+  of every pixel a band within reach of the point runs through
+  (`roadRoom`). Measured as a disc to a segment: ROADS-CLEAR's grown
+  square reaches a diagonal road 1.41 times as far as a straight one. A
+  diagonal's painted road is narrower than its band (its flanks are half
+  tiles, 4.5 m from the line), so a diagonal's verge is up to 1.9 m wider
+  than its art. The band carries the tracks laid over dirt, which the
+  painter writes nothing for.
+- The reach is the widest anything stands there on any client
+  (`natureReach`): the classic picture's half width (DFU's own record size,
+  `rmbFlats.js` `classicBillboardSize`, never a replacement's) or the crown
+  Low Poly Trees stands for the record - the summer tree's or the winter
+  one's, the wider, so a season moves no flat (`lptCrownOf`) - at the
+  tree's own scale (`lptVariety`, a function of where it stands). Where the
+  wild's flats stand is the room's ground online, and Low Poly Trees is the
+  player's own (it draws the trees, it never moves them), so the crowns
+  are read off the vendored files into `world/lptCrowns.js`
+  (`tools/bakeLptCrowns.mjs`, 253 prototypes: each mesh's farthest vertex
+  across the ground under the prefab's scale, rounded up to the
+  centimetre) and keep a flat off the road on a client that draws none.
+
+**Where it is asked** - `scenes/world.js`, the nature loop: after the
+Oblivion Gate's clearing and the rock pieces, of the network the kernel
+painted with (`withRoads` - none when it painted none; the roads sweep
+builds the pixel again when the network lands). DFU's scatter and the woods
+alike, and a climate border's flats (ECOTONE1, `07-Rendering/Rendering.md`)
+by their own climate's pictures. Then:
+
+- a World of Daggerfall flat that ROADS-CLEAR stood (its root 2 m off the
+  band) keeps its picture's half width, at its own scale, off it too;
+- the gathering nodes that stand where DFU's nature would
+  (`natureStandsAt`'s `clear`, the pixel's `entry.verge`): a herb patch by
+  its glow's half width (`PATCH_MARK`, 1.1 m), a vein on the stone by its
+  own (`MINE_MARKS.vein`, 0.8 m - the stone's search, `nearestStone`, goes
+  on to the nearest the road leaves it), a Motherlode by its heap's
+  (`MOTHERLODE_MARK`, 1.7 m - a pixel's heart is where its roads meet, and
+  its nearest stone was often on the verge). A node at a rock piece's foot
+  keeps the piece's own clearance.
+
+**AUDIT FOREST1 F8, which never held.** F8 kept the woods off a track laid
+over dirt by the painter's `paths` mask, and the mask never named one:
+`TRACK_TILES`' dirt column is NO_CHANGE, the one NO_CHANGE in any of the
+four tables, and `tile()` returned before it marked. A track over dirt is
+marked now and still not written - the tile stays the ground's, and the
+painter's answer (not painted) is the mod's. So the woods (`layoutForests`),
+the grass and the home yards (ROAD-LOT) keep off it too.
+
+**The switch.** The Features row `road-verges` ("Clear roadsides"), on by
+default on the enhanced skin and forced on online (`scenes/shared.js`
+`roadVergesOn`, read once as the world mounts); `?verges=off` the kill
+door, offline. The classic skin offline stands DFU's flats where DFU stands
+them.
+
+**The four hosts.** `scenes/world.js` - wired (above). `scenes/exterior.js`
+- stands one location's town flats and their low-poly trees, paints no
+roads and lays no wild nature: nothing to clear. `scenes/worldModes.js` and
+`scenes/dungeonContext.js` - no terrain nature.
+
+Pinned in `test/verge1.test.js` (the band's geometry, across pixels and at
+the map's edge, the reach and the crowns' bake byte for byte, F8 end to
+end, the herbs, the veins and the Motherlode, the switch and the host);
+mutants in `tools/mutants/verge1.json` (23, all dead). Not verified here:
+no ARENA2, so the real roads were not walked and the classic pictures' half
+widths (read at runtime from the TEXTURE files) were not measured.
+
+## LPT-FIT - the whole tree fits its room (2026-10-07, a port departure)
+
+Mac, after VERGE1 shipped: *"roads still show on roads and pathways. You're
+not taking the entire model into account"*, and of what: *"the low poly
+trees"*, *"everywhere"*.
+
+VERGE1 asked the WILD flats, and only them. A location's own trees - the
+nature flats of a town's, a farm's, a tavern's or a temple's RMB blocks,
+`scenes/world.js`'s location loop, and road pixels are full of locations -
+went to `addFlat` unasked, where DFU's block designer had set a two-metre
+picture beside a street. Low Poly Trees stands its whole 3D tree on every
+one of them, a crown of 5 to 15 m, over the location's streets and over the
+paved ring Basic Roads lays round it ("Paint roads around locations").
+Nothing asked the streets either: they are the location's own tiles, not the
+network's band.
+
+**The law** (`world/roadVerge.js`): every Low Poly tree is DRAWN no wider than
+the room its root has. A scale, never a move - the trunk, its collider and
+cover, Logging's tree and the room's ground stay where DFU stands the flat,
+and the mod draws the tree smaller, as it draws it at all, on the player's
+own client.
+
+- The room (`lptFitCap`) is the nearer of the pixel's path tiles and the
+  network's band (`roadRoom`, for a road crossing the pixel's edge). The
+  path tiles (`pathTileMask`) are the tiles the painter wrote or marked
+  (GRASS-PATH1's mask, a track over dirt among them) and the 56-tile set's
+  road records 46/47/55, turned or not - the painter's three, which a
+  location's streets wear too. The marching squares never write those three
+  (`terrainTiles.js`'s lookup), so on a finished tilemap they are a road or a
+  street. A root's distance is to each tile's square (`tileRoom`).
+- The crown is the drawn prototype's TURNED crown (`world/lptCrowns.js`,
+  each mesh's farthest vertex across the ground), never its box's half
+  width, which a turned tree outreaches by up to 1.41.
+- The tree is drawn at the lesser of its own variety (`lptVariety`: 0.6 to
+  1.4 in the wild, 1 in a location) and room over crown, never under
+  `LPT_FIT_FLOOR` (0.2): a tree whose root stands on a path is a sapling,
+  never nothing, because its collider stands there.
+- Both pictures take it: the far picture's per-flat scale and the near set
+  (`world/lowPolyTrees.js` `buildTreeSet`, the group's `fit`).
+
+**The switch** is VERGE1's, "Clear roadsides" (on by default on the
+enhanced skin, forced on online): off, every tree is drawn at its variety.
+
+**The four hosts.** `scenes/world.js` - wired. `scenes/exterior.js` (the
+fixed town bench) lays one location's ground in its own frame and paints no
+roads, so it fits no tree (not wired: its location tilemap is the bench's
+own, and its streets were never asked of a road). `scenes/worldModes.js` and
+`scenes/dungeonContext.js` stand no terrain trees.
+
+Pinned in `test/lptfit.test.js` (5: the mask off the painter's own pixel and
+the lookup, the room, the cap, the set, the host); `test/lpt1_lowpolytrees`'s
+host pin moved; mutants `tools/mutants/lptfit.json` (15, all dead) and
+`LPT1-flats-unscaled` re-aimed. Not verified here: no ARENA2, so no real
+town was walked.

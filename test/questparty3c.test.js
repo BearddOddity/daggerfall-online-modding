@@ -12,6 +12,8 @@ import { readFileSync } from 'node:fs';
 import * as acorn from 'acorn';
 import { validFoeRecord, FOE_HEALTH_MAX, FOE_LEVEL_MAX, CELL_FRAME_RECORDS_MAX, CELL_LOOSE_PUPPETS, FOES_FRAME_MAX } from '../src/net/wire.js';
 import { validQuestTags, questMarkerYields, QUEST_PUPPETS_MAX, validLooseSeqs, companionNames } from '../src/scenes/exteriorFoes.js';
+import { foeSeed, applyWireLook } from '../src/characters/foeBodies.js';   // AUDIT MW-NPC II K3: the dungeon context's look seed, in the mounted scope
+import { partyOnlyQuestShare } from '../src/scenes/questFoeHost.js';   // QUEST-OWNER: the dungeon's quest seam, narrowed to the party (ownShare)
 
 const D = readFileSync(new URL('../src/scenes/dungeonContext.js', import.meta.url), 'utf8');
 const WM = readFileSync(new URL('../src/scenes/worldModes.js', import.meta.url), 'utf8');
@@ -74,10 +76,11 @@ function side(self, { layout = [], own = [] } = {}) {
     adoptsOrphan: () => false,
   };
   const state = {
-    opts: { selfId: () => self, questShare: () => share },
+    foeSeed, applyWireLook,   // AUDIT MW-NPC II K3: the records' look seed (roomRecord, applyFoeRecord, the puppets' stands)
+    partyOnlyQuestShare, opts: { selfId: () => self, questShare: () => share },
     _layoutFoes: layout.length, foes, _authority: true, _encId: undefined, _ctxDead: false, _locationKey: 'dungeon:7',
     _ownSeq: 0, _ownFrameSeq: 0, _ownGen: 0, _ownPups: new Map(), _ownPending: new Map(), _ownOwners: new Map(), _ownPendLoose: new Set(), _ownAdopted: new Map(), _ownKept: new Map(),
-    FOE_HEALTH_MAX, FOE_LEVEL_MAX, CELL_FRAME_RECORDS_MAX, QUEST_PUPPETS_MAX, CELL_LOOSE_PUPPETS, HIT_DMG_MAX: 10000, FOES_FRAME_MAX,
+    FOE_HEALTH_MAX, FOE_LEVEL_MAX, CELL_FRAME_RECORDS_MAX, QUEST_PUPPETS_MAX, CELL_LOOSE_PUPPETS, LOOSE_PUPPETS_MAX: 24, HIT_DMG_MAX: 10000, FOES_FRAME_MAX,
     validFoeRecord, validQuestTags, validLooseSeqs, companionNames, questMarkerYields, GENDER_BIT: ['male', 'female'],   // PIN MOVED (AUDIT WK-U3, 2026-10-01): the own lane reads companions' names beside their places
     _sharedFoe: () => false, fightN: () => 1, canStandFoe: () => true,
     applyFoeRecord: (f, r) => { if (r.f) f.ai.feet = [...r.f]; if (Number.isFinite(r.h)) f.entity.health = r.h; if (r.d === 1) f.dead = true; f._pup = { feet: [...(r.f ?? f.ai.feet)], yaw: r.y ?? 0 }; },
@@ -311,7 +314,7 @@ test('QUEST-PARTY 3c by source: the blow on a party member\'s quest foe goes to 
   assert.match(WM, /applyOwnHit\(id, data\) \{ return mode === 'interior' && interiorFoes \? interiorFoes\.applyHit\(id, data\) : mode === 'dungeon' && dungeonCtx \? !!dungeonCtx\.applyOwnHit\?\.\(id, data\) : false; \},/);
   assert.match(WM, /clearOwnPuppets\(\) \{ interiorFoes\?\.clearPuppets\(\); dungeonCtx\?\.clearOwnPuppets\?\.\(\); \},/);
   assert.match(W, /const m = modes\?\.mode \?\? 'exterior';\n\s*if \(m !== 'interior' && m !== 'dungeon'\) return false;/, 'the own lane streams from a dungeon too');
-  assert.match(W, /onDungeonLeave: \(\) => \{ const n = handOverRoomFoes\(\);/, 'the dungeon\'s door hands my shared quest\'s foes to the party who stay');
+  assert.match(W, /onDungeonLeave: \(\) => \{ if \(_wdunInside\) wdunLeft\(false\); const n = handOverRoomFoes\(\);/, 'the dungeon\'s door hands my shared quest\'s foes to the party who stay');   // PVPDUNGEONS: a zone hall's leaving said first (wdunLeft - its lock and its word, nothing of the room's)
   assert.match(W, /const near = online\?\.room && isWorldRoom\(online\.room\) && online\.ownOk && \(m === 'interior' \|\| m === 'dungeon'\) \? \(peersNear\(\) \?\? \[\]\) : \[\];/);
   assert.match(W, /if \(ids\) modes\?\.pruneOwnOwners\?\.\(ids, now, FOES_STALE_MS\); \}/);
 });
@@ -443,13 +446,14 @@ test('AUDIT pre-merge D5 + Q3: a marker\'s foe taken keeps its flag in the heir\
   assert.deepEqual(h2.ownFrame(true).qf, [[t2._ownSeq, QUEST, '_vampire_', 2]], 'a touched one stays touched');
   assert.equal(fr.lf, undefined, 'never as a loose stand');
   assert.equal(heir.applyOwnHit('zzz-0009', { own: 1, i: took._ownSeq, dmg: 5 }), true, 'a party member\'s blow lands');
-  assert.equal(heir.applyOwnHit('bob-0005', { own: 1, i: took._ownSeq, dmg: 5 }), false, 'a stranger\'s does not');
+  assert.equal(heir.applyOwnHit('bob-0005', { own: 1, i: took._ownSeq, dmg: 5 }), true, 'DESYNC-ZERO: a stranger\'s lands too - the foe stands for the room, the credit stays the party\'s');
 });
 
 test('AUDIT pre-merge D1: the removal door (Dispel\'s, a quest\'s) refuses a puppet - a party member\'s own foe, a room foe while another holds the seat - and takes my own', () => {
   const removed = [];
   const layout = foe(), pup = foe({ _ownFrom: 'aaa-0001', _ownI: 3 }), mine = foe({ questBehaviour: { notifyDestroyed() { removed.push('quest'); } } });
   const state = {
+    foeSeed, applyWireLook,   // AUDIT MW-NPC II K3: the records' look seed (roomRecord, applyFoeRecord, the puppets' stands)
     foes: [layout, pup, mine], _layoutFoes: 1, _authority: false, _encId: undefined, _wallNow: () => 5,
     renderer: { destroyBillboardBatch: () => removed.push('batch') }, dropCandidate: () => {}, damageFoe: () => {},
   };
@@ -478,7 +482,7 @@ test('AUDIT pre-merge D8: what I take is bounded - a peer naming me heir on fres
     await tick();
   }
   const taken = me.foes.filter((x) => x._ownFrom == null && !x.dead).length;
-  assert.equal(taken, QUEST_PUPPETS_MAX + CELL_LOOSE_PUPPETS, `bounded at the owners' allowances (${taken} of 60 offered)`);
+  assert.equal(taken, QUEST_PUPPETS_MAX + 24, `bounded at the owners' allowances (${taken} of 60 offered) - DESYNC-ZERO: the room's loose allowance is LOOSE_PUPPETS_MAX (24)`);
 });
 
 test('AUDIT DISC28 QS-J: the orphan law\'s pick whose copy holds no such quest takes the orphan from the record it kept - it stands for the party; a kept record goes as a stood one goes, bounded as one is, and never stands, credits a kill, or outlives its owner\'s return', async () => {

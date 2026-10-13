@@ -2,11 +2,11 @@
 // Spymaster's greeting (MIT, Daggerfall Workshop). Two of the four
 // service destinations still unbuilt at G6, and the only two that
 // need no window of their own. All four have shipped since - the
-// third is ReceiveHouse, below (:105-151, H1) - and DR2 closed the
+// third is ReceiveHouse, below (knightlyGifts.js:"H1 - ReceiveHouse", H1) - and DR2 closed the
 // twentieth, so guildServiceFlow.js's SERVICE_DESTINATION now names a
 // window for every arm of DoGuildService's switch. This file's three
-// are routed at worldModes.js:"undiscoverBuilding: (k) => {".."}," (Spymaster), worldModes.js:"function drawBankModelPreview(modelIdNum, rect, yawDeg, camera) {".."  }" (ReceiveArmor)
-// and :2732 (ReceiveHouse).
+// are routed at worldModes.js:"if (destination === 'guildServiceSpymaster')" (Spymaster), worldModes.js:"if (destination === 'guildServiceReceiveArmor')" (ReceiveArmor)
+// and worldModes.js:"if (destination === 'guildServiceReceiveHouse')" (ReceiveHouse).
 //
 // THE ARMOUR IS ONCE PER RANK, and the bookkeeping is a BITFIELD on
 // the membership rather than a counter: `armorMask = ArmorFlagStart

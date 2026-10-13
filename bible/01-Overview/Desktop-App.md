@@ -160,7 +160,7 @@ Pinned in `test/rel4_release.test.js`; `tools/mutants/rel4.json`, 14,
 all dead.
 
 **REL5 (2026-09-29): THE DOWNLOADS HAVE NAMES THAT DO NOT MOVE.** The
-build number is out of every file name - `DaggerfallOnline-win-x64-setup.exe`,
+build number is out of every file name - `DFO-Online-win-x64-setup.exe` (BR5; `DaggerfallOnline-...` from REL5 to BR5),
 `-win-x64-portable.exe`, `-mac-arm64.dmg`, `-linux-x86_64.AppImage` - so
 `releases/latest/download/<name>` serves the newest copy for ever and the
 landing page (which runs no script, U60) links each platform's installer
@@ -214,6 +214,83 @@ file-diff reader (`addedNotes`; Audit-Install's L1-1, L3-3, R2-C1 and
 R2-C4 findings were about it), its fixtures and twenty-two mutant
 records; `tools/mutants/rel6.json`, 31, all dead.
 
+**REL7 (2026-10-03, Mac: "I need you to do this auto"): A PUBLISHED
+RELEASE'S NOTES, READ AGAIN - ON THEIR OWN.** The publish job reads the
+notes once, as it runs. app-v0.1.5767 (#547 and #548) went out as "Fixes
+and improvements.": #547's notes had been a PATCH-NOTES file REL6
+deleted, and reached its description a minute after the job had read it.
+A published release is never re-cut, but its TEXT can be written again:
+`.github/workflows/release-notes.yml` runs when a pull request MERGED into
+the default branch has its DESCRIPTION edited (pull_request_target,
+`edited`; a title is not notes, an open pull request is nothing) or by
+hand with a tag. It finds the first release whose tag contains the merge
+(a version sort - app-v0.1.9 before app-v0.1.10; none yet is nothing to
+do, as the publish job still to come reads the description as it is),
+reads the notes of the pull requests between the previous release and
+that tag again (`desktopRelease.mjs renotes`: main's script, the tag's
+history - the first cut checked the tag out, and app-v0.1.5767's own
+script had no `renotes`), and patches the release's body: the notes above
+GitHub's generated list, which stays; no file of the release is touched.
+pull_request_target's token writes, so nothing checks out or runs a pull
+request's code; a description is read through the API, and only one the
+repository's own people opened is printed. The launcher shows the new
+notes the next time it reads the releases. The dispatch from a Claude
+session is refused (403, no actions: write); an edit to the description
+is the door. `test/rel7_renotes.test.js` (3), `tools/mutants/rel7.json`
+(15, all dead).
+
+**REL8 (2026-10-09, Mac: "Let's officially start numbering updates
+beginning with 0.0.1"): EVERY MERGE TO MAIN IS A NUMBERED UPDATE.** The
+player's number is MAJOR.MINOR.PATCH, and it is not the installer's.
+MAJOR.MINOR is the line, `scripts/updateLine.mjs` (`0.0`), written by
+hand; PATCH is derived by `scripts/updateNumber.mjs`: the commit on main's
+first-parent history whose diff last changed the line (`git log -G`, a
+merge read against its first parent) is the line's update 1, and each
+first-parent commit after it the next. So the merge that brought the line
+is Update 0.0.1 whatever merged before it, each merge after is the next
+(one merge, one update, however many commits it carries; a commit pushed
+to main is one too, as it is a release, REL3), nothing is bumped by hand
+and no two branches conflict on it; a new line (`0.1`, `1.0`) is a change
+to that one declaration, and the merge carrying it is its `.1` - an edit
+to the file's comments moves nothing. It cannot be REL3's version: the
+updater compares installer versions and never takes a lower one
+(`allowDowngrade: false`), and every installed app is past 0.1.7000 - so
+the installers keep `app-v0.1.<count>` and the update rides beside it. A
+clone with no history cannot count it and says so (null - CI's depth-1
+checkout would count from its cut): the site's production checkout is
+full-depth (`deploy.yml`), and the release derives it once, in the
+`version` job, digits only, and TELLS every leg (`DFO_UPDATE`) and the
+publish job. Where it shows: `scripts/buildTag.mjs` stamps it beside the
+commit (`src/buildTag.js` UPDATE, committed null); the pause window's
+version line leads with it and keeps the commit for a report
+(`DFO Online 0.0.1 (<sha>)` since BR5, the commit alone where a build cannot
+know it - Port-Ledger A's version-line row); the About pane has its row;
+the release is named `Update 0.0.1` (its tag the installer's, which the
+updater compares); the launcher's news reads the name back
+(`launcherState.cjs` updateOfName - any other name is no update) and
+heads that release's notes with it. Not moved: the launcher's own update
+prompts ("Restart to Update (v0.1.7190)") and the site's new-build notice
+still name the installer's version and the commit. `test/rel8_updates.test.js`
+(7, over git histories the test makes - this checkout is shallow, as CI's
+are), `tools/mutants/rel8.json` (21: 19 dead, 2 equivalent as recorded).
+
+**REL9 (2026-10-12, Mac: "The install client isnt updating"): THE MAC
+LEG BUILDS WITH A 4GB HEAP.** Read off GitHub the day this was written:
+app-v0.1.8020 (2026-10-11 22:14) was the last release, and every
+release-desktop run after it failed on ONE leg - `build (macos-latest)`,
+`npm run build`, "JavaScript heap out of memory" at ~2GB (runs 493, 498
+and 499 read whole; every run between failed or was cancelled). V8 sizes its default heap
+off the machine: the ubuntu and windows runners have 16GB and built the
+same commit; the macos-latest runner has 7GB and stopped at ~2GB, which
+the site's build had outgrown. REL4 publishes only when the whole matrix
+passed, so no release was cut, and every installed copy - updater and
+notice alike - correctly found nothing newer than 0.1.8020. The build
+job's env now sets `NODE_OPTIONS: --max-old-space-size=4096` for every
+leg (what the 16GB legs already had; inside the Mac runner's 7GB), and
+the next merge cuts the release the stalled ones would have.
+`test/audit_install2.test.js` (E-54's test), `tools/mutants/rel9.json`
+(2).
+
 
 `.github/workflows/release-desktop.yml` cuts a release through any
 of three doors: pushing a tag shaped `app-v*`, a workflow_dispatch
@@ -254,12 +331,18 @@ updating the site's download - no site change needed per release.
 `workflow_dispatch` builds the same installers as run artifacts
 without cutting a release. Artifact names are
 ~~`DaggerfallJS-...`~~ ~~`DaggerfallEnhanced-...`~~ ~~`DaggerfallOnline-<version>-<os>-<arch>.<ext>`~~
-`DaggerfallOnline-<os>-<arch>.<ext>` and the two Windows names
-(BR1, 2026-09-13; BR4, 2026-09-27; REL5, 2026-09-29: no version in any);
+~~`DaggerfallOnline-<os>-<arch>.<ext>`~~ `DFO-Online-<os>-<arch>.<ext>` and the two Windows names
+(BR1, 2026-09-13; BR4, 2026-09-27; REL5, 2026-09-29: no version in any; BR5, 2026-10-11 - the release that
+first carries the new names publishes about half an hour after the site that links them). AUDIT BR5: every
+release also carries its four downloads under their `DaggerfallOnline-...` names (`scripts/desktopRelease.mjs
+alias`, before the set is checked), because a copy built before BR5 asks for its download by the name it was
+built with and can learn no other; and a copy from BR5 on reads its download off the release's own asset list
+(`releaseAssetUrl`: by its name, else by the platform part of it), so the next rename needs no alias;
 ~~bump `app/package.json`'s version with the tag~~ (REL3 derives it).
 ~~The update check reads the release TAG and its html_url, never an asset
 name~~ - the check reads the TAG; since REL5 the notice's Download is
-this copy's own asset by its name that never moves (`app/lib/downloads.cjs`)
+this copy's own asset by its name that never moves (`app/lib/downloads.cjs`; AUDIT BR5: as the release
+lists it first, and Reinstall follows the link the last check read)
 - and the appId is deliberately unchanged, or every installed copy would
 stop seeing updates. ~~The landing page's "On your desktop" section points
 at `releases/latest`~~ (REL5: each installer under
@@ -640,6 +723,74 @@ contents; the fix is measured on the Linux package.
 
 **Pinned** in `test/da11_install_whole.test.js` (2): the site in the
 archive and nowhere beside it, and the shell reading it there.
+
+## Past the front door, and a pad at it (DA12, 2026-10-08)
+
+Mac: *"is it possible to integrate the launcher inside the game? ...
+some game managers, like PlayNite, don't reconigze the launcher as a
+game and also I can't control the Launcher with a controller."*
+
+The launcher was never a second program (DA8: the shell's first window,
+one process, one exe). What a game manager trips on is that a game
+manager starts a game and watches its PROCESS: a launcher waiting for a
+press it cannot give, and an update installed before play - the app
+quits, the silent installer reopens it, a process the manager never
+started - read as the game having quit. An update cannot install INSIDE
+a running game: the installer replaces the files the game runs from, so
+the app must close for it either way. So:
+
+- **`--play`** (`app/lib/launcherState.cjs` directPlay, `app/main.cjs`
+  runDirect): a copy started with it goes straight into the game - the
+  argument a game manager's entry or a Steam shortcut adds. Updates are
+  the game's, as they always were after Play: the launch check and the
+  hourly re-check inside DA6's two gates, the HUD line, the install at
+  QUIT (`autoInstallOnAppQuit` - the process the manager watches simply
+  ends) or from File > Restart to Update. What the launcher must still
+  ASK is still asked: with no game files chosen (the first run) the
+  launcher opens as it would; a saved folder is judged first, in a
+  process of its own (R2-D1), and one that is not whole opens the
+  launcher, whose card names what is wrong. The game's own picker,
+  chosen once and kept (`arena2InGame`), goes straight in. The version
+  played is kept as Play keeps it, for the launcher's NEW marks.
+- **The launcher answers a controller** (`app/launcher/pad.js`): the
+  game's own front-door loop (`src/ui/menuPad.js`, PAD-DOOR) over the
+  page's own controls - the d-pad or left stick moves the focus, A or
+  Start presses it, B is Escape. ONE module: the shell serves it at
+  `dagger://launcher/menuPad.js` (`MENU_PAD`) - packed beside the page
+  (`app/package.json` build.files), the source tree's own unpacked. The
+  page's CSP refuses a style written by script, so `attachMenuPad`
+  takes `focusStyle: false` and the focus is the page's own
+  (`launcher.css` `.pad-focus`).
+
+Pinned in `test/da12_directplay.test.js`; `tools/mutants/da12.json`:
+14, all dead. Driven for real by `tools/appShellProbe.mjs` (DA12's four
+scenarios, a pad the page reads in place of a real one): the d-pad moves
+the launcher's focus and A presses Play, with no page error under its
+CSP; `--play` opens the game first with no launcher beside it, the
+saved folder judged and served; `--play` with nothing chosen, or a
+folder that is not whole, opens the launcher's card. Green on the dev
+shell and on the PACKAGED Linux build (`electron-builder --linux dir`,
+`DAGGER_SHELL_EXE`), whose app.asar carries `launcher/menuPad.js`.
+
+**AUDIT DA12 (2026-10-08, Mac: "Audit this").** One fix: `runDirect`
+awaited `createWindow()` - the page's whole load, and the reload a pick's
+clear asks for - before the update check, and a load that failed skipped
+the check and left an unhandled rejection. The window stands from
+createWindow's first line, so the check no longer waits on it (pinned,
+DA12-14). Read and left, said out loud:
+- A button HELD as the launcher opens counts as a press on its first
+  frame (menuPad's edges start released) - a couch launcher started with
+  A, update checks off (Play enabled and focused at once), goes straight
+  into the game. The same is true of the game's own front door; a
+  pressed Play is what that player asked for.
+- A second launch focuses the running copy and exits (DA3's single
+  instance) - a game manager that starts the game while it is already
+  open sees that second process end at once.
+- File > Restart to Update still closes the app and reopens it from the
+  installer, outside the game manager - the player's own choice, asked
+  first.
+- Not driven: a real controller, Playnite itself, and the Windows
+  portable exe's forwarding of `--play` to the app it unpacks.
 
 ## Finding the game files (DA9, 2026-09-29)
 

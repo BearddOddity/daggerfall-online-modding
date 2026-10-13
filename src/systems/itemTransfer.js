@@ -42,7 +42,7 @@ import {
   addItem, canHoldAmount, effectiveUnitWeightInKg, totalWeight, isSummoned,
   splitStack, GOLD_PIECE_WEIGHT_KG, goldPiecesOf, addGoldPieces, isGoldPieces, tellTaken,
 } from './inventory.js';
-import { isMap, isLightSource } from './useItem.js';   // AUDIT 26 F156/F157: the map interception + the lit-torch clear
+import { isMap, isLightSource, isSpellbook } from './useItem.js';   // AUDIT 26 F156/F157: the map interception + the lit-torch clear; KEEP-SPELLBOOK
 import { cannotRemoveItemText } from './createItem.js';
 // AUDIT 26: DaggerfallEntity.MaxEncumbrance, enchantment allowance and
 // all - :1417 reads playerEntity.MaxEncumbrance, not the bare formula.
@@ -51,9 +51,12 @@ import { makeItemPermanent } from './quest/item.js';   // TransferItem's MakePer
 import { getBool } from './settings.js';   // GUI/CanDropQuestItems
 import { setLightSource } from './lightSource.js';   // DISC7: the light in hand's one door
 import { localizedText, formatText } from './textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language
+import { REMAINS_LIST } from './legacy/heirloom.js';   // AUDIT LEGACY II H4: a remains' list, open
+import { BAG_WORDS, isBagItem, holdsOtherBag } from '../net/bagLaw.js';   // BAG1: a loaded Materials Bag never leaves the pack; ONE-BAG: one to a character
+import { SMALL_CART_KG } from './wagonKinds.js';   // WAGONS1: DFU's 750, one literal
 
 /** ItemHelper.WagonKgLimit (:56). */
-export const WAGON_KG_LIMIT = 750;
+export const WAGON_KG_LIMIT = SMALL_CART_KG;   // WAGONS1: the Small Cart's - each kind's own is systems/wagonKinds.js wagonKgLimitOf, handed in as `wagonKg`
 /** Internal_Strings.csv:828-829, verbatim - these ship in Unity-side
  *  localization rather than TEXT.RSC, and the rows are in the
  *  reference tree, the way the sibling row "cannotRemoveItem"
@@ -67,6 +70,14 @@ export const CANNOT_CARRY_TEXT = 'You cannot carry any more stuff.';
 /** L10N3d: ...in the player's language, read where the box shows them. */
 export const cannotHoldText = () => localizedText('cannotHoldAnymore', CANNOT_HOLD_TEXT);
 export const cannotCarryText = () => localizedText('cannotCarryAnymore', CANNOT_CARRY_TEXT);
+
+/** KEEP-SPELLBOOK (2026-10-08, the owner: "a player dropped his spellbook apparently"): the port's own - DFU lets the
+ *  spellbook go like any MiscItems piece. The character's spellbook (MiscItems 132, not a quest's) leaves the pack for
+ *  nowhere but the character's own wagon: never the ground, a pile, a body, a chest, a companion's pack, or a
+ *  counter's sale (ui/nativeTrade.js, ui/enhancedTrade.js). A death in the zone already keeps it
+ *  (systems/wildDeath.js wildCanLose). One reading, one sentence, for every door that asks. */
+export const isKeptSpellbook = (item) => isSpellbook(item) && item.group === 'MiscItems' && !item.questItem;
+export const SPELLBOOK_KEPT_TEXT = 'Your spellbook never leaves you.';
 
 /** Why a transfer did not happen, and whether the player is told.
  *  EVERY refusal is silent in the SOUND sense - DFU's guards all
@@ -83,15 +94,51 @@ export const REFUSAL = Object.freeze({
   /** AUDIT 26: the quest arm's refusal shares the summoned one's
    *  words, because DFU pops the same string for both. */
   questItem: { reason: 'questItem', get text() { return cannotRemoveItemText(); } },
+  remains: { reason: 'remains', text: 'These are the remains of your blood. Carry them home, or leave them where they lie.' },   // AUDIT LEGACY II H4
+  spellbook: { reason: 'spellbook', text: SPELLBOOK_KEPT_TEXT },   // KEEP-SPELLBOOK
   chooseOnePile: { reason: 'chooseOnePile', text: null },
   wagonFull: { reason: 'wagonFull', get text() { return cannotHoldText(); } },
   cannotCarry: { reason: 'cannotCarry', get text() { return cannotCarryText(); } },
+  /** BAG1: the Materials Bag leaves the pack only empty - the cart's own rule (tradeModes.js), said here because a bag
+   *  dropped, chested or carted with materials in it would strand them in a list nobody owns. */
+  bagLoaded: { reason: 'bagLoaded', text: BAG_WORDS.notEmpty },
+  /** ONE-BAG (2026-10-04, Mac: "you shouldnt be able to hold multiple gathering bags"): one Materials Bag to a character -
+   *  a second is never taken into the pack, bought into a basket or carried off a shelf. */
+  secondBag: { reason: 'secondBag', text: BAG_WORDS.second },
   /** The drop-gold field's own refusal, and it is SILENT because DFU's
    *  is: an amount below 1 or above the purse is REFUSED OUTRIGHT
    *  rather than clamped (:1272-1300), and the field simply does not
    *  take it. */
   badAmount: { reason: 'badAmount', text: null },
 });
+
+/**
+ * "Send click to quest system" (DaggerfallInventoryWindow.cs:2027-2037)
+ * - the FIRST act of RemoteItemListScroller_OnItemClick, ahead of the
+ * action-mode branch, so a quest item clicked on the REMOTE list (a
+ * pile, a body, a container) clicks its quest's Item whatever the mode,
+ * a look included. The ClickedItem trigger polls that click
+ * (`clicked item _x_` - O0A0AL00's note in the stolen robes, the
+ * letters a foe carries). The right click is the same member
+ * (RemoteItemListScroller_OnItemRightClick, :2070-2073).
+ *
+ * WHERE-ROBES (FIELD BUGS 2026-10-04c): ONE HOME, because the port has
+ * more doors onto a remote row than DFU's one list - each skin's row,
+ * the enhanced skin's menu and its pad's quick act, and quick loot,
+ * which takes a row with no window at all. Three of those took the
+ * item and never sent the click, and the trigger never fired.
+ *
+ * C# guards the quest and then NREs on a missing symbol (its second
+ * `if` re-tests the quest); the port answers nothing, as
+ * questTransferRefused below does. Answers whether an Item was clicked.
+ */
+export function sendQuestItemClick(item, getQuest = null) {
+  if (!item?.questItem) return false;
+  const questItem = getQuest?.(item.questUID)?.getItem?.(item.questSymbol) ?? null;
+  if (!questItem) return false;
+  questItem.setPlayerClicked();
+  return true;
+}
 
 /**
  * TransferItem's QUEST arm (DaggerfallInventoryWindow.cs:1480-1505) as
@@ -165,7 +212,7 @@ const packRefuses = (capacity, item, units, remote) => !!capacity.gone || canHol
  * @returns {{ok:true, amount:number, notice:string|null}
  *          |{ok:false, refusal:object, notice:string|null}}
  */
-export function planDropGold(text, { carried = 0, usingWagon = false, remote = [], groundRefusal = null, capacity = null } = {}) {
+export function planDropGold(text, { carried = 0, usingWagon = false, remote = [], groundRefusal = null, capacity = null, wagonKg = WAGON_KG_LIMIT } = {}) {
   if (groundRefusal && !usingWagon) return { ok: false, refusal: { reason: 'ground', text: groundRefusal }, notice: null };   // HOUSE-DROP: gold on a floor that refuses it
   // A numeric field of 8 opening on "0": anything that is not a run of
   // digits is not a number, and 0 fails the range below.
@@ -182,7 +229,7 @@ export function planDropGold(text, { carried = 0, usingWagon = false, remote = [
   }
   if (!usingWagon) return { ok: true, amount: asked, notice: null };
   // :1296-1303 - the 750kg headroom in COINS, and the box names it.
-  const canHold = canHoldAmount(carried, GOLD_PIECE_WEIGHT_KG, WAGON_KG_LIMIT, totalWeight(remote));
+  const canHold = canHoldAmount(carried, GOLD_PIECE_WEIGHT_KG, wagonKg, totalWeight(remote));   // WAGONS1: the driven wagon's own
   const notice = asked > canHold ? wagonFullGoldText(canHold) : null;
   const amount = Math.min(asked, canHold);
   // A FULL wagon still shows the box - it says "0 more gold", which is
@@ -208,14 +255,20 @@ export function planDropGold(text, { carried = 0, usingWagon = false, remote = [
  * @returns {{ok:false, refusal:object}|{ok:true, amount:number, sound:'click'}}
  */
 export function planStore(item, {
-  remote = [], usingWagon = false, chooseOne = null, getQuest = null, dryRun = false, groundRefusal = null, capacity = null,
+  remote = [], usingWagon = false, chooseOne = null, getQuest = null, dryRun = false, groundRefusal = null, capacity = null, bagLoaded = false, wagonKg = WAGON_KG_LIMIT,
 } = {}) {
   if (!item) return { ok: false, refusal: REFUSAL.missing };
+  if (bagLoaded && isBagItem(item)) return { ok: false, refusal: REFUSAL.bagLoaded };   // BAG1
   // HOUSE-DROP (2026-09-27): the ground itself refuses - the window hands the host's word (inventorySession
   // groundRefusalOf) only when the destination IS the ground, so a wagon, a chest and a trade are untouched
   if (groundRefusal) return { ok: false, refusal: { reason: 'ground', text: groundRefusal } };
   if (item.group === 'Transportation') return { ok: false, refusal: REFUSAL.transport };
+  if (isKeptSpellbook(item) && !usingWagon) return { ok: false, refusal: REFUSAL.spellbook };   // KEEP-SPELLBOOK: the own wagon takes it, nothing else
   if (isSummoned(item)) return { ok: false, refusal: REFUSAL.summoned };
+  // AUDIT LEGACY II H4: an ancestor's remains (Project Legacy) leave the character's keeping - the pack, the wagon -
+  // only back into the list they were taken from (it bears their mark while open, systems/legacy/heirloom.js
+  // REMAINS_LIST); a chest, a pile or the ground would hold a second set of bones the quest never reads
+  if (item.legacyRemains && !usingWagon && remote?.[REMAINS_LIST] !== item.legacyRemains.of) return { ok: false, refusal: REFUSAL.remains };
   // AUDIT 26 F156: THE MAP ARM (:1471-1478), between the summoned
   // guard and the quest arm. A MiscItems.Map in EITHER direction is
   // intercepted: RecordLocationFromMap runs, the item is removed, and
@@ -247,7 +300,7 @@ export function planStore(item, {
     // :1996-1999 -> WagonCanHoldAmount (:1425-1434). Zero fits refuses
     // with cannotHoldAnymore and NO click; a partial fit split-takes
     // exactly what fits.
-    const canHold = canHoldAmount(stack, effectiveUnitWeightInKg(item), WAGON_KG_LIMIT, totalWeight(remote));
+    const canHold = canHoldAmount(stack, effectiveUnitWeightInKg(item), wagonKg, totalWeight(remote));   // WAGONS1: the driven wagon's capacity
     if (canHold <= 0) return { ok: false, refusal: REFUSAL.wagonFull };
     return { ok: true, amount: Math.min(canHold, stack), sound: 'click' };
   }
@@ -281,6 +334,11 @@ export function planTake(item, {
   // future transfer path to rediscover.
   if (isSummoned(item)) return { ok: false, refusal: REFUSAL.summoned };
   if (isMap(item)) return { ok: true, map: true, amount: item.stackCount ?? 1 };   // F156: either direction
+  // ONE-BAG: a Materials Bag is never taken while another is held - in the pack, in a trade's basket (the trade windows'
+  // `bag` is both) or in the wagon; the bag being taken is not "another", wherever it sits. AUDIT ONE-BAG 1: nor is one out of
+  // the character's own wagon a bag taken - it is already theirs, and two held from before were locked in the wagon for good
+  const ownWagon = Array.isArray(entity?.wagonItems) && entity.wagonItems.includes(item);
+  if (isBagItem(item) && !ownWagon && holdsOtherBag([bag, entity?.wagonItems], item)) return { ok: false, refusal: REFUSAL.secondBag };
   // AUDIT 26: the quest arm, the OTHER caller. `from` is remoteItems
   // here, so the refusal cannot fire without CanDropQuestItems, and
   // picking the item back up CLEARS PlayerDropped (:1499-1500) - which

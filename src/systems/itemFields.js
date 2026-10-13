@@ -33,7 +33,7 @@
 // runs the mints and pins that no undeclared key appears.
 
 import { GROUP_TEMPLATE_INDICES } from './itemTemplatesData.js';
-import { validAffix, RARITY_ORDER } from './lootRarity.js';
+import { validAffix, RARITY_ORDER, SOCKET_VALUES } from './lootRarity.js';
 import { validSigil } from './sigil.js';   // SIGIL1
 
 /** The longest string a field carries; the wire's own bound (loot.js LOOT_STR_MAX reads it). */
@@ -54,7 +54,14 @@ export const validEnchantment = (e) => !!e && typeof e === 'object' && !Array.is
   && Number.isInteger(e.type) && Number.isInteger(e.param);
 /** A repair ticket (repairService.js): the shop's key and two minutes. */
 export const validRepairData = (r) => !!r && typeof r === 'object' && !Array.isArray(r)
-  && typeof r.buildingKey === 'string' && Number.isInteger(r.timeStarted) && Number.isInteger(r.repairTime);
+  && (typeof r.buildingKey === 'string' || Number.isInteger(r.buildingKey))   // INT1: the shop's key as makeBuildingKey mints it - a number
+  && Number.isInteger(r.timeStarted) && Number.isInteger(r.repairTime);
+
+/** CARDS8: a Card Binder's deck (systems/iliacItems.js) - a name and the catalog ids of its cards, a deck's worth. */
+export const BINDER_DECK_NAME_MAX = 40;
+export const validBinderDeck = (d) => !!d && typeof d === 'object' && !Array.isArray(d)
+  && typeof d.name === 'string' && d.name.length <= BINDER_DECK_NAME_MAX && Array.isArray(d.cards) && d.cards.length <= 40
+  && d.cards.every((c) => typeof c === 'string' && c.length > 0 && c.length <= 40);
 
 /** The declared fields, by name. Frozen: a new field is a new line here, not a reader's private knowledge. */
 export const ITEM_FIELDS = Object.freeze({
@@ -91,6 +98,7 @@ export const ITEM_FIELDS = Object.freeze({
   customEnchantments: list(validEnchantment),
   poisonType: int({ min: -1 }),
   trappedSoulType: int(),
+  soulBoundReleased: bool(),       // a Soulbound item's break release is spent; repair does not refill it
   timeForItemToDisappear: int({ min: 0 }),
   timeHealthLeechLastUsed: int({ min: 0 }),
   timeEffectsLastRerolled: int({ min: 0 }),
@@ -106,15 +114,22 @@ export const ITEM_FIELDS = Object.freeze({
   rarity: oneOf(RARITY_ORDER),
   legendary: str(),
   aetheric: str(),   // SET6: an Aetheric piece's record (systems/aetheric.js) - Ruhn's Regalia
+  gilded: str(),   // GILDED1: a Gilded piece's record (systems/gilded.js) - the Hourlock
   affixes: list(validAffix),
   exalted: bool(),   // LOOT2 (bible/06-Systems/Loot-Arc.md section 4): a Legendary minted Exalted - one line more, true or absent
   untaken: bool(),   // LOOT8 (bible/06-Systems/Loot-Arc.md section 10): a piece a source door rolled that no player has taken - true or absent; its first take clears it and counts for the drought
   reforged: int({ min: 0, max: 15 }),   // LOOT9 (bible/06-Systems/Loot-Arc.md section 11): the one line the Reforge has rolled again (its index) - only it may be again
   imprint: str(),   // LOOT10 (bible/06-Systems/Loot-Arc.md section 12): a Rare's imprinted power - a Legendary record's id of its own group (loot.js validLootItem: lootRarity.js validImprint)
+  honed: int({ min: 1, max: 63 }),   // LOOT17 (bible/06-Systems/Loot-II-Arc.md section 9): the hones a piece has taken - what the next costs (reforge.js honePrice), or absent
+  cursed: rec(validEnchantment),   // LOOT16 (bible/06-Systems/Loot-II-Arc.md section 8): a cursed find's drawback - the enchantment the temple lifts, or absent (loot.js validLootItem: lootRarity.js validCurse)
+  socket: oneOf(SOCKET_VALUES),   // LOOT20 (bible/06-Systems/Loot-II-Arc.md section 12): a piece's socket - 'empty' or the gem set in it, or absent (loot.js validLootItem: lootRarity.js validSocket)
+  sockets: list((v) => SOCKET_VALUES.includes(v)),   // GEM1 (bible/06-Systems/Gem-Sockets.md section 6): a piece's sockets in order, each 'empty' or the gem set in it, or absent - LOOT20's `socket` is still read (lootRarity.js socketsOf; validSocket: never both, never past its socketCap)
   // SIGIL1: an online win's sigil (systems/sigil.js) - its power, the fight that won it, what it has drunk
   sigil: rec(validSigil),
   // LOCK1: the player's lock (systems/itemLock.js) - true, or absent
   locked: bool(),
+  // LOOT18 (bible/06-Systems/Loot-II-Arc.md section 10): the player's junk mark (systems/itemJunk.js) - true, or absent
+  junk: bool(),
   // SS4: a piece bound to its owner by how it was won (systems/itemBound.js - the Sigil Broker's wares) - true, or absent
   bound: bool(),
   // SS5: the Sigil Stones the Broker took for a ware (systems/sigilBroker.js brokerStock) - its dismantle's measure
@@ -127,6 +142,9 @@ export const ITEM_FIELDS = Object.freeze({
   kitMetal: int({ min: 0, max: 9 }),
   // REPAIR-EASE: a Field Repair Kit (systems/smithItems.js) - found in loot, mends any metal; true, or absent
   fieldKit: bool(),
+  // CARDS8 (bible/11-Multiplayer/Tavern-Cards.md section 26): a card's catalog id (net/iliacCards.js); a Card Binder's decks
+  card: str(),
+  decks: list(validBinderDeck),
   // AUDIT 31 H3: the recipe a crafted piece was minted of (recipeLaw's id) - an Ebony and a Warforged piece share their
   // template and material, so a commission's picker reads this before any look-alike
   recipe: str(),
@@ -145,10 +163,39 @@ export const ITEM_FIELDS = Object.freeze({
   // PROF12: a Potent potion, brewed at an alchemy station (net/alchemyLaw.js) - its share of magnitude, 25 (a Master
   // Alchemist's 40), or absent
   potent: int({ min: 25, max: 40 }),
+  // AUDIT LW-II-2 S1: a piece an NPC counter sold online (systems/tradeModes.js markCounterBought) - true, or absent: no
+  // town's patron takes it (net/patronLaw.js patronTakes, PATRON_COUNTER_MARK). Never a receiver's mark: it rides the wire
+  // and the market's listing with the piece
+  counterBought: bool(),
   // SELL-AS-FOUND (AUDIT ECON O1): the condition the world handed a piece over at - Roleplay & Realism: Items' rolls on
   // a pile, a body and a shelf (systems/rriRealism.js) - which an online counter's sale reads at best (tradeModes.js
   // saleConditionPercentage); absent on a piece handed over whole
   foundCondition: int({ min: 0 }),
+  // INT4 (bible/06-Systems/Integrity-Arc.md): a valuable piece's id (systems/itemIds.js) - 16 hex, minted at a realm
+  // checkpoint and the piece's from then on: the wire carries it (never the receiver's, as `acquired` is), and the
+  // service's ledger reads it (server-account/src/verdict.js ledgerStep)
+  uid: str(),
+  // ACQUIRE1 (bible/10-UI/Loot-Banner.md): the piece has stood in the player's own keeping (systems/acquireWatch.js) - true,
+  // or absent. The RECEIVER's mark, as equipSlot and questItem are: loot.js validLootItem strips it off the wire
+  acquired: bool(),
+  // WAGONS1/WAGONS2 (bible/06-Systems/Wagons.md): which wagon a Small Cart item is (systems/wagonKinds.js - absent, the
+  // cart) and its paint (systems/wagonLooks.js: `{ o, w, f, c }`, each one of six - absent, as built)
+  wagonKind: oneOf(['cart', 'openWagon', 'caravan']),
+  wagonLook: rec((l) => Object.keys(l).every((k) => ['o', 'w', 'f', 'c'].includes(k) && Number.isInteger(l[k]) && l[k] >= 0 && l[k] < 6)),
+  // WAGONS2-VISIT: who may enter a caravan (systems/caravanVisit.js - an online home's entries, net/homeLaw.js
+  // HOME_ENTRIES; absent, its owner alone)
+  wagonEntry: oneOf(['private', 'party', 'public', 'guild']),
+  // COATS1: a horse's look (systems/horseCoats.js - each absent for its list's first): its coat (HORSE_COATS), its pattern
+  // (HORSE_PATTERNS), its legs (HORSE_LEGS) and its seed, the horse itself (1..HORSE_SEED_MAX; absent, not yet born)
+  horseCoat: int({ min: 1, max: 6 }),
+  horsePattern: int({ min: 1, max: 4 }),
+  horseLegs: int({ min: 1, max: 2 }),
+  horseSeed: int({ min: 1, max: 65535 }),
+  // STEED1 (bible/06-Systems/Horse-Care.md): a horse's bond with its owner, in tenths (systems/steedCare.js - absent,
+  // none) - the OWNER's mark, never carried to the next (net/realmTradeLaw.js RECEIVER_MARKS); and the minute of its
+  // owner's clock its food runs out (absent, never seen fed - it comes fed)
+  horseBond: int({ min: 1, max: 1000 }),
+  horseFed: int({ min: 1 }),
 });
 
 /** The declared names, and those of one kind. */

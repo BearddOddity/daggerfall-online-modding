@@ -5,21 +5,45 @@ this section owns renderer specifics.
 
 Current (`src/render/`) - one bullet per module, pinned against the real
 directory by `test/audit18_bible_docs.test.js`:
+- `horizonHaze.js` - FAR-SEA1 THE HORIZON'S HAZE (2026-10-10, Mac: "Anyway we can fix the draw distance for oceans without affecting performance?"): `HORIZON_HAZE_GLSL`, one law for every surface past the streamed grid's fog - the world fog's linear ramp CAPPED at the far ring's hold (min(ramp, hold); the ring had scaled it, hold * ramp) and closed over the ring's rim; the water takes its half that reaches the streamed sea, the world's own factor floored at 1 - hold (`uSeaHaze`, the sea's band only, on a frame the host draws the ring). AUDIT FAR-SEA1: `SEA_LOOK_GLSL`, the open sea's own light - Fresnel, reflected sky, the light into its body, the glints' lobes, `seaSky` - one text the water surface's fragment shader calls and the ring's sea calls with the water's body; `RING_SEA_GLSL` (`ringSea`), what both lanes' far-ring fragment shaders read for their sea; `SEA_HAZE_BAND`, the sea's band about its level. So the streamed sea and the ring's sea meet at one haze and one look. No GL, no imports. `07-Rendering/Water-Arc.md` FAR-SEA1 and AUDIT FAR-SEA1.
+- `realWindows.js` - RW1 REAL WINDOWS (2026-10-09, Mac: "The implementation of the real window overhaul, allowing players to see inside/outside of house windows"): from the street a fake room behind every house window (interior mapping in both mesh shaders, a room a building, lit at night), from inside the real street through the glass (the view out: the exterior host's street drawn into a target of its own, cropped to the glass's rectangle, painted behind the interior's glass); the Real windows row. `07-Rendering/Real-Windows.md`.
+- `heatHaze.js` - HAZE1 HEAT HAZE's RING (2026-10-08, Mac: "These should be on by default and integrate into our enhanced environments seamlessly"): the mod's cylinder (128 segments, its fade by height) drawn round the player's feet after the opaque world, the screen grabbed (`copyTexSubImage2D`, the mod's GrabPass) and bent by two scrolling reads of its 64 x 64 value noise - the compiled shader's own constants, translated from its DXBC; the noise's phase kept on the land across the floating origin. A foreign pass on both exterior hosts. `07-Rendering/Heat-Haze.md`
+- `windfallSway.js` - WINDFALL1 WINDFALL's VERTEX WIND (2026-10-08): the mod's billboard-batch law as BB_VS's chunk (`windfallLean` - the heading's 15% and 85% along the quad's right, the sway and the shiver by the profile, a 12 m cell's phase with a fifth of the flat's own, 0.8-1.2 of it a flat), the eight numbers a frame hands it (`windfallUniforms`), a batch's share under either law (`swayShare`), the shadow's bound (`windfallLeanMax`) and the anchor that carries the floating origin (`windfallAnchorAfterShift`, periodic hashes so a wrap moves no flat). `07-Rendering/Windfall.md`
+- `windfallParticles.js` - WINDFALL1 WINDFALL's PARTICLES: the gust's leaves, the ambient leaves and the winter boughs' snow - the mod's three Unity particle systems (box emitter, velocity over lifetime, noise, spin, an 8 x 8 sheet) run on the CPU and drawn as one instanced cutout each, point-filtered as the mod imports its pictures, lit as the flats round the player are. A foreign pass on both exterior hosts. `07-Rendering/Windfall.md`
+- `snowfallGlsl.js` - SNOWFALL1 SNOWFALL's SNOW (2026-10-08, Mac: "These should be on by default and integrate into our enhanced environments seamlessly"): the mod's DynamicSnow shader read back off its DXBC - its vertex law (`SNOW_VS`: the depth a context resolves to, the track mask's erosion, the static mask's lift and surface offset, the tier's edge, inner and outer fades, the middle ring's morph onto the blanket) and its fragment's snow (the coverage, a Basic Roads track tile's edge, the track's remaining snow and its compression darkening over the mod's albedo), spliced into the GROUND'S OWN fragment program in place of its tile decode (`snowTerrainFs` - classic TERRAIN_FS, the lane's EL_TERRAIN_FS, the classic-shadows lane's), so the snow takes every light the ground takes: the sun and its shadow map, the moon, the clouds' shadow, the lanterns, the fog. Its pictures on units 16-20 (`SNOW_UNITS`), above every unit a world program reserves. `03-World/Snowfall.md`.
+- `snowfallSurface.js` - SNOWFALL1 THE SNOW ON THE GPU: the runtime's tiers as meshes and masks (the local window's grid and its three masks, the middle ring's 257 x 257 grid with its history, static and context masks, the far track mask, one 65 x 65 mesh and static mask a blanket tile - shared uv and index), uploaded as the runtime changes them (a track's dirty rectangle, the ring's history at most every 0.1 s, a tile's overlay as it is built or let go) and drawn nearest first through the renderer's `drawSnow`. Its uploads run outdoors alone, before the host's world frame opens (beginFrame forgets every state shadow an upload could move); indoors they wait for the door. Owned by `scenes/snowfallHost.js`, disposed with it.
+- `ecotoneGlsl.js` - ECOTONE1 BLENDED CLIMATES: the ground's share of its neighbours, one GLSL chunk in both terrain programs (renderer.js TERRAIN_FS and the lane's EL_TERRAIN_FS, called right after the tile's own sample) - the twin of `world/ecotone.js` term for term (the hash, the world lattices, the constants), the neighbours' tile sets on units 3-5 (`ECO_UNITS`), each neighbour's slot (`uEcoSide`, `uEcoCorner`) and the pixel's first world tile (`uEcoOrigin`); a pixel with no border is one uniform test. The section ECOTONE1 below
 - `deepWatersRender.js` - DW-C: Iliac Puddle No More's own passes (jet082's shaders, term for term): the SEAFLOOR (opaque, unlit, both faces - the depth band's sand/mid/deep ramp, the climate's texture and palette, the night's ambient boost, the scene tint while the camera is over the sea, the world fog, and the column's share of the top's alpha carried onto it), the SURFACE's top and underside (the top gone while the fog's presentation is under, the underside only then), and the DISTANCE FOG's sky share - a far-plane triangle, multiply then add, over the pixels no program fogs (the fog itself is `fogGlsl.js`'s `dwWaterFog`, in every world program); `03-World/Deep-Waters.md`
 - `oceanHolesRender.js` - OH-C: There's a Hole in the Bottom of the Ocean's pit, drawn beside the sea's passes and on their frame and column uniforms: three discs of the one 48-segment mesh on Unity's Unlit/Color (the flat colour under the world's fog, then the column's share and the sea's distance fog) - the pit's black and the surface's underside with the opaque floors, the surface's core after the sea's top - and the MIASMA, Standard in Fade mode with emission (the puff's alpha, the tint lit as the billboards take the day's light, fogged, no depth write), camera-facing and no larger than maxParticleSize of the view; every vertex input bound by `layout(location)`; `03-World/Ocean-Holes.md`. OH-E's abyss presentation is no pass of its own: it rides the dungeon frame (`scenes/worldModes.js`, `host.abyssPresentation`) - the water fog's colour and ceiling through the context's UnderwaterFog, the Trilight or flat ambient from the darkened dungeon ambient x DungeonAmbientLightScale, the Light spell's candle at half its range and colour, the player's torch left out of the frame's lights
+- `glRelease.js` - GL-LEAK (FIELD BUGS 2026-10-03, `01-Overview/Field-Bugs-2026-10-03.md`): the page's GL contexts let go as it goes - `loseGlContext` (WEBGL_lose_context's one door) and the seat each context's owner fills (`onPageGone`: the renderer, the held map's ink, the gate's veil, the intro), run by main.js's pagehide (`releaseGlContexts`); a leaf, so the entry's reach is unchanged
 - `bannerPass.js` - GUILD1d: a guild's banners beside its hall's door (`11-Multiplayer/Seats-Arc.md` 3.4, 8) - the port's own cloth, 0.9 by 2.7 m, a strip of quads hung from its top edge that swings out along its face on the weather's wind, its picture the heraldry painted once on a canvas (ui/heraldryArt.js drawBanner), the swallowtail's cut discarded, lit by the frame's ambient and sun and fogged as the ground is; one foreign pass on the world host (scenes/hallBanners.js the anchors); SEAT1a: and a seat town's banners on the same pass - the kingdom's plain cloth at its palace door, its gates and over its rumour boards (scenes/seatBanners.js), the halls' and the seats' the nearest sixteen together
 - `duelWall.js` - DUEL1: the duel ring's holographic wall - a cylinder of light added onto the frame (see-through, no depth written, cut by the ground), a grid and rising bands on the cylinder's own coordinates, fogged as the ground is; drawn for the duellists and every onlooker (net/duelSession.js the ring)
 - `rainCurtains.js` - TV4: the weather's CURTAINS stood in the world for the travel view (`06-Systems/Travel-View.md` TV4) - VC7c's own veil (CURTAIN_SHARE of a falling cell's radius, CURTAIN_EXT a metre at a full fall, CURTAIN_STREAKS round its axis) as a cylinder from under the traveller's ground up into the cell's base, its optical depth the CHORD a line of sight takes through the solid cylinder (a back face's chord is none, so no winding is trusted under the mirrored lens), premultiplied over the frame with no depth written and the ground cutting its foot, fogged from the traveller (uFocus), thinning as the eye comes over it; the weather map's cells at the shared minute, never its own. One foreign pass on the world host, under the view alone.
 - `gatePass.js` - WB2: the Oblivion Gate's fire and beacon, one foreign pass on the world host. The MEMBRANE: a vortex of fire masked to the arch's own opening (`world/gateModel.js gateArchProfile`, measured off the built mesh), turned without an angle (no branch cut to seam it), premultiplied so it hides what stands behind it as much as it glows - an ember sealed, a blaze open. The BEACON: a column of red light added onto the frame from over the gate's crown, soft across its width, widening with its distance so it never thins to a hair, fogged but never out (`BEACON_FOG_FLOOR`). Both on the duel wall's law - fixed geometry, placement by uniforms, every rate whole cycles over `GATE_CLOCK_PERIOD`. `tools/gatePassProbe.mjs` compiles, links and draws it in a real WebGL2 context.
 - `gateTelegraph.js` - WB4a: the Burning Court boss's telegraph, one foreign pass on the world host drawn in the dungeon arm (after the court's billboards, before drawFoes' screen quads). One quad over the court's floor and the attack's shape as the fragment's question - a cone that always holds his body, a disc about him or under each target, the lane his charge runs, the nova's ring, the whole floor - dim at the word, filling toward its edge as the wind-up runs, bright at the landing. `telegraphField` is the shader's own reading in JS, held by the pins to `net/gateStrike.js inAttack` at every point of the floor. The duel wall's law: added onto the frame, no depth written, fogged, a polygon offset off the floor it lies on. `tools/gateTelegraphProbe.mjs` compiles, links and draws it over the court in a real WebGL2 context.
-- `foeTelegraph.js` - TACT4: a foe's telegraphed blow on the ground (`renderer.drawFoeTelegraphs`, a foreign pass beside the blood marks in every host). One flat quad at the foe's feet and the shape - the lunge's lane, the sweep's cone, the slam's disc ahead - as the fragment's question; `blowField` is the shader's reading in JS, held by the pins to `ai/foeBlows.js inBlow` point for point. A dim rim at once, filling outward through the wind-up, a flash at the landing; added onto the frame, depth-tested, no depth written, a polygon offset off the ground.
+- `foeTelegraph.js` - TACT4: a foe's telegraphed blow on the ground (`renderer.drawFoeTelegraphs`, a foreign pass beside the blood marks in every host). One flat quad at the foe's feet and the shape - the lunge's lane, the sweep's cone, the slam's disc ahead - as the fragment's question; `blowField` is the shader's reading in JS, held by the pins to `ai/foeBlows.js inBlow` point for point. A dim rim at once, filling outward through the wind-up, a flash at the landing; TELL2: drawn in `telegraphStyle.js`'s line (a 2-px line, a dark keyline, a glow past it, the fill deepening, a brighten through the last 0.2 s, a white-hot landing), premultiplied (ONE, ONE_MINUS_SRC_ALPHA) and floored at 60% through the fog within 6 m of the player; depth-tested, no depth written, a polygon offset off the ground.
+- `telegraphStyle.js` - TELL2 (`bible/12-Enhanced-AI/Feud-Arc.md` section 4.4): a telegraph's look, a LEAF of GLSL importing nothing - the world boss's readable line at a foe's scale, which `foeTelegraph.js` composes: a 2-px line (its width off the outline's own `fwidth`), a dark keyline outside it, a soft glow past that; the fill dim at once and deepening behind its front; a brighten toward white through the last stretch ("now"); a white-hot landing fading. Premultiplied out, fogged by the factor the pass hands it. TELL3: `telegraphIron` over it for an iron blow (`uIron`) - a second line 0.25 m inside the outline and a diagonal hatch across the fill, so iron is never told by colour alone. TELL5: a cut feint's mark (`uCut`) freezes and fades out dashed over 0.15 s. TELL6: the ring (an annulus about the feet), the charge (a 9 m lane, on the lunge's branch), the leap (a disc at its point, on the slam's) and the aimed shot (a thin line to its target, on the lane's) join the shapes; each blow draws its own quad (`quadHalf`, its reach and its glow's room). TELL9: `telegraphContrast` over all of it when the player's telegraph contrast is on (`uContrast`, read each draw - `foeTelegraph.js telegraphContrastOn`): the line twice as thick, a white keyline outside it, a poise mark's fill dotted every 0.3 m (iron keeps its hatch alone).
 - `riteSmoke.js` - WB12d: the faithful's rite's pillar of smoke, one foreign pass on the world host after the gate's fire (`11-Multiplayer/World-Bosses.md` 19 D). A column 340 m tall from the altar fire's width, swelling slowly and leaning the same way every day (no wind is read - AUDIT WB12d D16: this line said downwind). Its rows and its noise run on the billows' own height, so the billows grow as they climb, and the biggest bulge its outline as they rise; its edge thins where its own surface turns from the eye; each octave climbs whole columns over its clock, so neither the seam nor the wrap shows (the beacon's law). Lit as the frame is, the fire a glow in its first metres; premultiplied. Far off each octave settles to a thick mean (no shimmer), never thinner than a few pixels, and a clear day's distance fog leaves SMOKE_FOG_FLOOR (0.6) of it, a dark line on the horizon; weather's fog takes it whole. Seen in Chromium by `tools/riteProbe.mjs` (AUDIT WB12d).
+- `serpentRender.js` - SERPENT1: Sethrakul, the sea serpent (`11-Multiplayer/Sea-Serpent.md` 9), two foreign passes on the world host. THE BODY with the opaque world, before the sea's top: a tube swept along the relay's spine (25 points, four sub-rings a segment, Catmull-Rom with parallel-transport frames, a flattened twelve-sided section), the snout's cap, the dorsal sail, the horns, the eyes, the venom's glob in flight - the hide's bands, a darker skull and a pale belly, lit as the frame is and fogged by `FOG_GLSL` (the travel view's focus and the deep's fog with it); the sea's own surface over it hides what lies under. THE SEA'S MARKS after the sea, premultiplied, no depth written: each attack's shape on the water filling to its landing (the lash's sector, the ram's lane, the breach's disc, the roar's rings, the coil's ring), the maelstrom's spiral, the venom's pools. Each pass restores the world pass's baseline (CULL_FACE, BLEND, the depth mask) and marks its foreign pass. Its builders (`spineRings`, `bodyMesh`, `marksMesh`) are pure and pinned in Node (`test/serpent1_client.test.js`).
+- `sdOmenPass.js` - SD2c: a Super dungeon's omen (`11-Multiplayer/Super-Dungeons.md` section 4), one foreign pass on the world host after the rite's smoke: the gate's beacon column - `gatePass.js`'s exported shaders and column built again under its own program, so the gate's bytes stay as their pins hold them - in its own brass (`SD_OMEN_COLOR`), added, both faces, fogged with the gate's floor, its light the record's (`systems/sdOmen.js sdOmenLight`).
+- `sdSky.js` - SD5b: the Shattered Hour's sky (`11-Multiplayer/Super-Dungeons.md` section 7). SD-LOOK (`11-Multiplayer/Super-Dungeons-Look.md` section 5): a PAINTED sky in two stages - an octahedral 512 x 512 map (`SdSkyMap`, NEAREST, a texel about Daggerfall's own sky density) painted a quadrant a frame by `SD_SKY_PAINT_FS` under the pixel law (the void in eight dithered bands, single-texel stars with glints, banded aurorae with rays, the lowered clock-face of stars - its rim, sixty minutes, Roman numerals and the six Endings as constellations - and six of the Bay's cities hanging upside down with warm windows), and the fetch (`SD_SKY_FETCH_GLSL`, one far-plane triangle, each pixel one tap) with the live hands over it running backwards on the escapement and the fight's word on its face (`uClock`). The Rift's window reads the same fetch. Every rate whole cycles over `SD_SKY_PERIOD` on the realm's anchored clock. Drawn by the dungeon arm after the Hour's solid geometry, before its flats (PERF2's law). SD-LOOK S11: its furnace widened (`SD_FURNACE` - the nadir glow from 34 degrees down) so the Works under the course stand black against it.
+- `sdHalo.js` - SD-LOOK: the Hour's halos - up to 64 camera-facing additive quads in one dynamic buffer, their falloff posterized to four steps through the ordered dither, fogged; the classic set's bloom for a light's core (the Rift's heart, the Return's keystone), half gain on the lane.
+- `sdRiftPass.js` - SD-LOOK (`11-Multiplayer/Super-Dungeons-Look.md` sections 1-2): the Rift's window (a disc between the iris's leaves - they shut it by depth - looking down the eye's own ray, magnified about the ring's heart, into the Hour's painted sky through `SD_SKY_FETCH_GLSL`, gold filaments spiralling in to a white-gold lip, a refusal's ember, a step's ripple), its floor light (the hall's own edge, hour ticks, cracks, the gear's 36 teeth turning across it as spokes, pulsed on each toll), the way back's window (section 4: the Hollow's hall behind the ring, interior-mapped - coursed stone, a far doorway, lit from the front in gold, the Return's silver on its right wall; the code's own stone, never a live view) and the Return's window home (the Bay's sky at the world's hour, clouds, Masser and Secunda, the city on its sill) - one foreign pass after the flats.
+- `sdVeil.js` - SD-LOOK (`11-Multiplayer/Super-Dungeons-Look.md` section 3): the Shattered Hour's own veil, drawn by `ui/gateVeil.js` for its Hour themes beside the gate's fire (`veilAt` times it): twelve brass blades closing on the Rift's place on the screen into a dial - its Roman numerals the sky's own glyphs, its spade hand sweeping backwards (`sdVeilHand`, the shader's law pinned equal), past a turn the Dragon Break's ghost hands and its crack; in silver and cracked on the way back, mended on the way home, shattered into falling pieces when forced; a dither wipe under reduced motion. Posterized to six steps; its canvas a third of the device's pixels, drawn pixelated.
+- `sdArenaGlow.js` - SD-LOOK (section 9): the Last Moment's arena, read through its floor - one premultiplied disc over the bronze: eight fissures (a distance field baked once into a 256 R8 texture) that flood green from each Mantella Pulse's landing, twelve rim numerals that count the Reset's wind-up (soul-white, the last two ember), red when the Hour ends; `sdArenaGlowAt` and `sdHourClockOf` read the fight's state for it and for the sky's `uClock`.
+- `sdStompWall.js` - SD-LOOK (section 9): the Stomp's ring stood up as a low wall of brass light (0.6 m) at the very front the law strikes (`stompRingAt`), one additive cylinder strip per rolling Stomp (the Remnant's and each living Echo's), banded light rising to a bright lip, fading over the roll's last fifth; the floor's telegraph stays under it. The hold's curtain is the same wall in gold, 1.1 m, a hair outside the arena's rim, while a joined fighter stands held. The way home's beacon (`sdHomeBeacon`, SD-LOOK S6) is the same strip in silver, its light falling off up it: the wide column the Return assembles in, closing to a narrow column over the arch's top, 40 m, settling to 6 m.
+- `sdPillarPass.js` - SD-LOOK S7 (section 9): the arena's pillars' faces and lanterns in one pass - sixteen pixel-law dials (enamel, brass bezel, twelve ticks, a spade hand) lit by their lantern, not the scene, each hand watching the Remnant (scenes/sdArenaWatch.js), red at the End, dimmed with the Reset; the lanterns' flame and glow (SD_HALO_GAIN) and their light on the hood and cornice.
+- `sdStepsPass.js` - SD-LOOK S9 (section 7): the Unmoored Steps' ghosts - one additive draw of 2-px screen-space line quads (never GL_LINES) outlining where each Beat plate and Crumble pin will return, each with a hand running back to its return and brightening before it; uniform arrays written in place.
+- `sdBeam.js` - SD17: the Hour-Hand's beam in the air (`11-Multiplayer/Super-Dungeons.md` section 10 and its SD17 record) - a ribbon of the Remnant's gold light from its pointing hand to where the sweep's bearing meets the floor or a pillar's face (`scenes/sdRemnantRig.js` sdBeamDraws), turned about its own length to face the eye, added (ONE, ONE) after the realm's solid geometry with no depth written, fogged; a bright core and a soft glow, brightest at the hand, flaring where it strikes, light running out along it on the duel clock. At most three (the Remnant's and the Echoes' paired sweep).
+- `sdMotes.js` - SD14c: the Shattered Hour's motes (`11-Multiplayer/Super-Dungeons.md` section 7 and its SD14c record) - 1,220 points of four kinds (the hall's dust, the void's sparks, the Hour's motes round the arena, the shards' dust), each a pure function of its seeded draws and the sky's clock (`sdMoteAt`, the shader's law in JS), added after the realm's solid geometry in its fog; a mote under two pixels drawn two wide and faded. `tools/sdMotesProbe.mjs` compiles, links and draws it in Chromium.
 - `gateFx.js` - WB9e: the Burning Court boss's blows, seen LANDING - one foreign pass on the world host drawn in the dungeon arm after the telegraph. THE BURST: every landing throws sparks out of the stone where it lands (`fxBurstOf` - his weight's grit and embers for the slam, the Crushing Leap and the bound across the fire; his fire's flame for the hellfire and the Meteor; his aspect's colour for the Nova and Dagon's own), flying out and up, falling, cooling white-hot to their colour to nothing over `FX_BURST_MS`; `sparkAt` is the shader's own flight in JS. THE METEOR: through the last `METEOR_FALL_MS` of its wind-up a burning stone streaks down out of the Deadlands' sky onto its mark, its trail behind it (`meteorFall`). The duel wall's law: fixed geometry (a strip of seeds, one quad) placed by uniforms, added onto the frame, depth-tested and never written, fogged. `tools/gateCourtFxProbe.mjs` compiles, links and draws it over the court in a real WebGL2 context and reads the frame back.
 - `courtCrystals.js` - WB9c: the Crystals of Oblivion Dagon's Reckoning grows out of the last court's floor - two programs in one pass on the world host, drawn in the dungeon arm with the court. THE CLUSTER, opaque: one model made once (`crystalCluster` - a great six-sided prism and five lesser ones, each a piece that flies on its own), grown out of the stone as the Reckoning is called (`crystalGrowth`), cracking as it is broken down, flashing as it is struck, shattering outward when it breaks; depth-tested and written, lit by its own heart and the Deadlands' light, fogged. THE GLOW, added: a pool of its light on the floor under each, and from each one standing a ribbon of light into his chest while the Reckoning winds up - the duel wall's law. `tools/gateCourtFxProbe.mjs` compiles, links and draws it over the court in a real WebGL2 context and reads the frame back.
-- `auraRing.js` - WB9g: Dagon's Fire, the Sigil Broker's aura, burning about the feet of whoever wears it (the token's `au`, net/insignia.js) - one foreign pass on the world host, drawn after each mode's opaque world (the veiled bodies' hook: the street, the dungeon's lateWorldDraw, the building), never under the travel view. Two draws a wearer: THE GROUND, one quad under the feet answered per pixel from the polar distance and angle - a ring band broken by value-noise fire flowing round and out, bright crests chasing about it, ten embers circling in it at whole multiples of its turn, an ember-glow in the stone within; THE FLAMES, a low cylinder of tongues rising out of noise scrolled up and round, white-hot at the root to red and gone at the top. The noise is periodic (`vnoiseP`/`fbmP` - a lattice wrapping at whole periods, doubled per octave) so a flow scrolled by the clock meets itself at AURA_CLOCK_PERIOD's wrap and the angle's noise meets itself where the ring closes. The duel wall's law: fixed geometry placed by uniforms, added onto the frame, depth-tested and never written, the ground offset off the stone, fogged (the focus uploaded where the renderer sets one). `auraWearers` picks who is drawn - nearest first, AURA_DRAW_MAX, within AURA_RANGE_M. `tools/auraProbe.mjs` compiles, links and draws it in a real WebGL2 context and reads the frame back.
+- `auraRing.js` - WB9g: Dagon's Fire, the Sigil Broker's aura, burning about the feet of whoever wears it (the token's `au`, net/insignia.js) - one foreign pass on the world host, drawn after each mode's opaque world (the veiled bodies' hook: the street, the dungeon's lateWorldDraw, the building), never under the travel view. Two draws a wearer: THE GROUND, one quad under the feet answered per pixel from the polar distance and angle - a ring band broken by value-noise fire flowing round and out, bright crests chasing about it, ten embers circling in it at whole multiples of its turn, an ember-glow in the stone within; THE FLAMES, a low cylinder of tongues rising out of noise scrolled up and round, white-hot at the root to red and gone at the top. The noise is periodic (`vnoiseP`/`fbmP` - a lattice wrapping at whole periods, doubled per octave) so a flow scrolled by the clock meets itself at AURA_CLOCK_PERIOD's wrap and the angle's noise meets itself where the ring closes. The duel wall's law: fixed geometry placed by uniforms, added onto the frame, depth-tested and never written, the ground offset off the stone, fogged (the focus uploaded where the renderer sets one). `auraWearers` picks who is drawn - nearest first, AURA_DRAW_MAX, within AURA_RANGE_M. `tools/auraProbe.mjs` compiles, links and draws it in a real WebGL2 context and reads the frame back. AEGIS (2026-10-03): and THE OBLIVION WARD, the second aura, through the same program - the look picked per wearer (`uAura`, AURA_LOOK: its kind, its ring's radius, its wall's height), so both auras in one frame bind one program once. Script, not fire, in the Aegis of Oblivion's violets: the ring WHOLE with two scribes running round it, a bezel of ticks turning the other way, twelve runes (WARD_SCRIPT, no two alike) on a ring within turning against it and lit in turn as if written, four claws at the diagonals, the abyss's mist inside faded under the feet, a veil to the shins with rising motes, drawn round from behind the wearer as it kindles; every rate written as a division by its whole period. And a third draw, the ward's alone: nine floating symbols - runes of its script on cards turned round the vertical to the eye (a cylindrical billboard placed in the vertex half from `uCamPos`), each flight lifting off the ring to the chest, swaying, drifting out, blurring and breaking into dust as it fades, its lives (3, 4, 5 s) dividing the clock so the flights wrap whole. The probe draws both (22/22). PRIMARCH (2026-10-04, GA00250: "can the aura be a golden light around the character? like i've seen some rare mobs with it"): and THE GOLDEN RADIANCE, the third look (`uAura` 2) - light about the body, not a mark on the ground: its wall is a column the body's width (RADIANCE_R 0.6 m) standing past the crown (RADIANCE_H 2.2 m), lit as a glowing shell (faint where the eye looks across it, brightest at its two edges where the eye looks along it - the horizontal facing of the surface to `uCamPos`), shafts climbing it, whole to the chest and gone at its top, eighteen golden motes rising it (the elite foes' embers); not drawn from inside it (the fragment half reads `uAt`, the feet, beside the eye), so the wearer's own first person is never veiled in gold. Its ground: a pool brightest at the feet, a white-gold ring at the column's foot and twelve rays turning across the pool. It kindles up from the feet. The probe draws all three (33/33). SHADOW-CLOAK (2026-10-04, Mac, for SirMcMobdon: "A holo shadow cloak with red accents. Extremely detailed"; then "less digital, adjust hood since it's at a weird orientation, not as tall, more cape like, change the floating elements to be more emblem like", "For the emblems have it use that user's glyph", "when the user transforms into a werewolf have this rip apart with fragments floating around"): and THE HOLO SHADOW CLOAK, the fourth look (`uAura` 3) - a cape ON the body in the Shadow Fang's black and crimson, its hood up: its wall its own mesh (`mesh: 'cloak'`, 48 round by 48 up, `auraCloakGrid`) shaped in the vertex half (hung from the shoulders at 1.42 m, flaring to a 0.4 m hem that trails longest down the back, clasped at the throat, the hood round the head with its middle at the eye and its peak at 1.88 m, fourteen folds, a billow and a wave running down it), turned to its wearer's facing (`uYaw`; the wearers carry `yaw` - one's own `player.bodyYawFor`, a peer's `peerBodyYaw`) so it is open at the front, the mesh's seam hidden in the opening. The one look that SHADES: drawn premultiplied (`shade`, ONE / ONE_MINUS_SRC_ALPHA, the others' additive blend restored after it) so the cloth darkens what is behind it - and its mesh drawn TWICE, its lining (`uSide` 0, front faces culled) before its outside (back faces culled), since unsorted translucent rows otherwise lay far cloth over near: the bent mesh's own winding names each side, and the frame's front face is the game's (the mirrored projection, CW) - the probe draws both. The pass draws its wearers FARTHEST FIRST (a cloak's shadow lies over what is behind it), a cloak's emblems before its cloth for an eye in front of the wearer and its shreds after it, none of the cloak's cloth or cards with the ground's depth offset, no cloth with the eye inside the hood (CLOAK_INSIDE_M: within 0.3 m of the hood's middle, in three dimensions - AUDIT 2), and hands the frame's state back in a `finally`. The cloth: a dense stirring shadow with a crimson rim and fold sheen, a red lining, a mantle's stitched scalloped edge, wolf's-tooth embroidery down the opening and round the hood's face, a hem that frays into trailing smoke. THE WEARER'S GLYPH as its emblem - the badge's own SVG path (`ui/playerBadge.js GLYPH_PATH.shadowfang` and its eye) cut to straight edges at load (`glyphEdges`) into a const array the shader fills even-odd - on its back, as its clasp, and on five cards rising off its back (its third draw), their x the frame's own right (`world/mat4.js` HANDEDNESS) so the wolf faces the badge's way. Its ground: a pool of shadow with mist and a dull crimson under the hem. TORN when its wearer turns beast (`uTorn`, the seconds since the turn from `auraBeastStep`): seams split, pieces go, the cape bursts out over 1.2 s and then is not drawn; fourteen shreds fly off it and float round the beast (cards past the emblems, drawn only while torn). It kindles in from the hem; not drawn from inside it. IT MOVES WITH THE BODY (Mac: "Tie the cape to animations"): the pose off the body's own skeleton - `drawAuras`, after the bodies are posed and drawn, reads the posed bones of mine (`player/mwView.js mwViewBodyBones` -> `combat/fpArm.js thirdBones`, the pose it was DRAWN in, through `rigPointToBody`: drawThird's own frame) or a peer's (`net/peerBodies.js bonesOf`, at its feet and eased yaw), and `auraCapePose` hands the vertex half the shoulders' middle and breadth (`uCapeS`), the head's middle (`uCapeH`) and the knees (`uKneeL`/`uKneeR`): the cape hung from the shoulders where they stand (a crouch, a stride's bob, a race's height), the hood with the head, a knee pressing it out; and a SWING off how the wearer moves - `auraMotionStep`, a damped spring from the drawn feet and facing frame to frame (`uSwing`: trailing a run, swinging past on a stop, lagging a turn, lifting in a fall; a teleport or the floating origin read as no motion). On a Beholder sprite it hangs from the sprite's figure (SERAPH-WINGS' `auraSpriteBones` - by the pixel, facing as the sprite faces, folded when sunk to the neck: AUDIT 3); without bones (first person, no peer body) it hangs at rest, pressed down to my body's height (a crouch, a swim); a rider's cape is folded away. AUDIT (2026-10-04): no `pow` of a negative base in the cloak's shader (pinned over every call it takes - GLSL leaves it undefined). SERAPH-WINGS (2026-10-05, `06-Systems/Accounts-And-Cloud-Saves-Arc.md`): the fifth look, the developers' Seraph Wings - wings of flowing golden light on the body, their own mesh (`auraWingsGrid`: eight primaries and four coverts a side, each a slim strand with a glow's sheath and two fine ones, ribbons turned to the eye - WINGS-FIT; nine, six and four before), waves running out along them, the fan breathing and beating every eight seconds, gold white-hot at each heart and frayed at its edge and tip, a backlight of radiance with rays turning in it behind the upper back, sparks streaking out along the strands, a faint pool of gold beneath, and a gold carried light on the world (`auraWingLights`); laid along the torso's own axes (`uTorsoU`/`uTorsoF`, off the rig's spine) and hung from the body's shoulders - a Beholder sprite's read off the frame drawn (`auraSpriteBones` - AUDIT 3: by the pixel, not the frame's height, facing as the sprite faces, none in first person, closed when sunk) - and swung by its motion as the cape is (the draw poses every look with a mesh), added whole, without the ground's depth offset, nothing over an eye among them. The probe draws all five (62/62). AUDIT 3 (2026-10-05): at most AURA_DRAW_MAX 32 a frame (was 16); the radiance's inside fade judged in 3D (over or under the column is outside it); an aura worn reaches the room at once (`net/online.js` `rehello` - a hello again on a fresh token). WINGS-FIT (2026-10-05, Mac: "sit farther back on the eye of the beholder skin ... clips on certain rotational directions", "WAY too bright", "way to long, too large and overbearing"): a Beholder sprite is a flat card through its feet that writes depth, and the wings rooted a hand behind its axis were laid over the body from a side or a three-quarter - a sprite's root WING_SPRITE_BACK (0.25 m) further back (`auraSpriteBones` `wingBack`, carried on the pose, `uWingBack`), so no wing is nearer the eye than the card inside the body's outline from the front round to either side; a sprite facing nowhere yet faces the eye, as it shows it its front (`player/eotbBody.js` `figureYaw`); and slim, short and soft to the painting - three strands a plume a third as broad, about six tenths as long (primaries 0.6 - 1.3 m), each strand's light about half, the backlight 1.2 m and faint, the pool and the world's light dimmer. The probe draws all five (62/62). CRYSTAL-FIST: the sixth look, the Crystal Resonance (kind 5) - on the strip itself, a column on each of its AURA_STEPS faces at RESONANCE_R, each a stack of tiny squares (RESONANCE_SQUARE_M a side, RESONANCE_CELLS high at most) as many lit as its level now - `resonanceLevel`, in node alone: the draw counts every column once a frame (`resonanceLitInto`, on the wearer's own clock, `resonanceClock`) and hands the counts to the shader (`uResLit`), so every GPU lights node's squares (AUDIT: a fract(sin) hash in the shader lit other squares in float32 in nearly half the samples) - a wave round the ring, one against it, each column's bounce and a beat, no repeat inside the clock, so the columns go up and down out of the ground; on the ground each column's foot. Drawn PREMULTIPLIED (AURA_LOOK `shade`), so a square over its foot or over a bright ground stays the one purple, the Crystal Fist's; each square's edge a pixel wide off the scene's derivatives, a square under a couple of pixels faded to its cell's average cover (no moire far off). Every rate whole over the clock (`resonanceRatesWhole`). The probe draws all six (71/71). SPRITE-FACE: a wearer drawn as an Eye of the Beholder sprite is posed on the facing its PICTURE shows (`auraSpritePosed`'s face - eotbBillboard.js portrayedYaw: the eight-way view drawn, after the mod's delayed repaint), mine, a peer's and a rider's, and swung by the body's turning (`turnYaw`), so a picture changing is no turn.
 - `nodeGlow.js` - NODE-MARKS: a gathering node's glow (Professions-Arc 31) - every herb patch, vein, boulder, tree, school and skinnable body the gathering host marks near the player (scenes/gatherHost.js marks), lit in its profession's colour (ui/nodeMarks.js, the colour its compass mark wears) - one foreign pass on the world host, drawn after each mode's opaque world through the veiled bodies' hook (the street, the dungeon's lateWorldDraw), never under the travel view or in a building. One card a node, turned about the upright to face the eye and stood NODE_GLOW_PULL toward it over the node's own picture, answered per pixel in metres: THE HALO, soft across and narrowing as it climbs, rising out of nothing at the ground (so the ground's cut shows no edge), breathing; THE SHIMMER, a band climbing it; six MOTES rising out of it, each its own pace and place, born and gone dark. Slight by intent. The duel wall's law: fixed geometry placed by uniforms, added onto the frame, depth-tested and never written, fogged from the focus, every rate whole over NODE_GLOW_PERIOD. `nodeGlows` picks who is drawn and how bright - nearest first, NODE_GLOW_MAX, each kindled over NODE_GLOW_KINDLE_S as it first stands near and faded from NODE_GLOW_FADE_M to nothing at NODE_GLOW_M. AUDIT NODE-MARKS: its still form under reduced motion (`uStill`: the halo steady, no shimmer, the motes held), its program built at idle once a node is first marked (never on a frame), a typed camera (the renderer's own `_camPos`) taken as any three numbers. `tools/nodeGlowProbe.mjs` compiles, links and draws it in a real WebGL2 context over a stand-in node and wall, and through `createNodeGlowPass` with a typed camera, and reads the frame back.
 - `gateVeil.js` - WB6c: the step through an Oblivion gate - a vortex of fire over the whole screen, painted per pixel on one triangle on a canvas of its own (`ui/gateVeil.js` holds the canvas, its loop and its sounds): flame arms spiralling into a white-hot eye (log-polar value noise tiled round the circle, so no seam where the angle wraps), pouring inward and turning, embers streaking with them, soot between the arms and a dark throat round the eye. Its inner edge - the FRONT, ragged with tongues of flame - stands where `veilAt` says: closing, from past the corners to past the centre by all its raggedness; shut, the eye breathing; opening, from the centre past the corners. What the fire has not taken is tinted toward the Deadlands' red with the cover. Premultiplied; no pass of the renderer's is touched. `tools/gateVeilProbe.mjs` compiles, links and draws it in a real WebGL2 and steps the real layer through a real page.
 - `lightningBolts.js` - BOLT: a ground strike's channel drawn as ribbons of light, never thinner than a line far away, past the far plane along its own sight line (systems/lightning.js the strike)
+- `lowPolyTreesGlsl.js` - LPT1: the billboard program's fragment half of a low-poly tree, both lanes' (the tree's light and tint, its opaque cards, the screen-door handover with its far picture) - `07-Rendering/Low-Poly-Trees.md`
+- `lowPolyTreesRender.js` - LPT1: the low-poly trees' buffers - every mesh in one vertex and one index buffer, the frame's instances in a third - drawn by the billboard program's mesh mode
 - `renderer.js` - WebGL2, two programs: lit solid geometry (MVP, directional
   light 0.45 + 0.55*diffuse, alpha < 0.5 discard) and Y-locked billboards
   expanded in the vertex shader. EV5 added a SECOND directional term to
@@ -146,9 +170,42 @@ directory by `test/audit18_bible_docs.test.js`:
   See `07-Rendering/Enhanced-Lighting-Arc.md`.
   SC1 (2026-09-23): the static casters are drawn ONCE - every record classified
   static or dynamic as it is recorded, each caster slot's statics cached in a
-  second depth array and blitted under the movers, sticky slots by position,
-  `?shadowcache=off` the old path (`Enhanced-Lighting-Arc.md`, SC1).
+  second depth array and copied under the movers (CACHE-COPY, 2026-10-07: by a
+  draw - a depth blit out of an array's layer was the driver's read on Direct3D),
+  sticky slots by position, `?shadowcache=off` the old path
+  (`Enhanced-Lighting-Arc.md`, SC1, CACHE-COPY).
 - `skyRenderer.js` - painted skies (R4) + the night sky.
+- `skinPalette.js` - MWNPC1 THE GPU SKIN'S PALETTE SHAPE (2026-10-09,
+  `04-Characters/Morrowind-NPCs.md` section 6): `SKIN_PAL_ROW` (341 entries a
+  row, three RGBA32F texels an entry) and `SKIN_PALETTE_UNIT` (21) - the one
+  home renderer.js's CHAR_SKIN_VS and updateSkinPalette and
+  formats/mwGpuSkin.js's writeSkinPalette agree on. No GL, no imports.
+- `cardTableDraw.js` - CARDS3 THE CARDS' BODIES (2026-10-07,
+  `11-Multiplayer/Tavern-Cards.md` section 15): one atlas (52 faces, the back,
+  the stock, five chips) painted on a canvas and uploaded once under a string
+  key; 52 face plates, a back plate and five chip drums made at the first card,
+  each drawn with its own matrix in the interior's pass after the decor, all
+  freed with the table. The plates wound counter-clockwise about their normals
+  and the faces laid unmirrored for the mirrored world - both found by eye.
+- `cardFaces.js` - CARDS-BAY THE DECK OF THE ILIAC BAY (2026-10-08,
+  `11-Multiplayer/Tavern-Cards.md` section 21): the four crowns as the suits
+  (Orsinium's axe, Sentinel's sun, Wayrest's rose, Daggerfall's dagger, four
+  inks), their royals as the courts, their seals as the aces, the Bay's
+  medallion on the back - every face painted from canvas paths in code (no
+  ARENA2 pixel, no font glyph); one painter for the cloth's atlas and the
+  panel's little cards.
+- `iliacCardFaces.js` - CARDS8 THE COLLECTIBLE CARDS' FACES (2026-10-08,
+  `11-Multiplayer/Tavern-Cards.md` section 26; Mac: "Painted in code"): each
+  Iliac Hand card framed in its loot tier's colour (studs, a double rule, an
+  aetheric glow up the tiers), its kind by its window (a unit's square, a
+  spell's rounded, a prince's arch, a location's landscape), a magicka gem and
+  a power shield, one of 35 emblems drawn from paths, the name banner and the
+  rules box; the back a compass rose of the Bay - no ARENA2 pixel, no raster.
+- `iliacTableDraw.js` - CARDS10 ILIAC HAND ON THE CLOTH (2026-10-08,
+  `11-Multiplayer/Tavern-Cards.md` section 29): one atlas of every card's and
+  holding's painted face (`iliacCardFaces.js`), the back and the stock, and a
+  plate a card made the first time it is drawn (`cardTableDraw.js` plateModel's
+  shape); every plate and the atlas freed with the game.
 - `lightClusters.js` - LC1 CLUSTERED LIGHTS (2026-09-23): the frustum cut into
   16 x 9 x 24 cells once a frame on the CPU, each light written into the cells
   its view-space box touches, uploaded as two integer textures (the grid's
@@ -663,10 +720,11 @@ directory by `test/audit18_bible_docs.test.js`:
   out of EL_GLSL byte for byte) and each light's map where it has one
   (`shadowOfLight`, the flats' reader, at the sun's lift), in the
   provoking vertex alone, handed down `flat` as `vPoint`; the fragment
-  adds it beside R12 (the stage holds 212 uniform vectors at most,
-  counting every scalar whole and off the code, not its comments -
-  224 if a driver keeps the two const face tables as uniforms - of the
-  256 WebGL2 promises; pinned). A
+  adds it beside R12 (the stage holds 221 uniform vectors at most - 220
+  at GRASS-LIT2, MEADOW1's switch `uArt` the one since - counting every
+  scalar whole and off the code, not its comments; 233 if a driver keeps
+  the two const face tables as uniforms - of the 256 WebGL2 promises;
+  pinned). A
   lantern at night: the blade beside it drew
   0.21-0.52x the lit ground and draws 1.06-1.21x (`tools/
   grassLightProbe.mjs`; AUDIT GRASS-LIT2: the numbers first written
@@ -688,8 +746,9 @@ directory by `test/audit18_bible_docs.test.js`:
   the field is on). A 30-degree slope facing away from the 9:00 sun drew
   1.34-1.43x its ground and draws 1.04-1.18x, as level ground does.
   (3) THE COLOUR OFF THE TILE SET THAT IS DRAWN: the record means
-  (`groundMeanColour`) are taken off an attached texture mod's tile set
-  where one dresses the archive (GROUND1's `dfmodGroundLayers`, asked
+  (`groundMeanColour`) are taken off a texture mod's or loose pack's tile
+  set where one dresses the archive (GROUND1's `dfmodGroundLayers`, VE2's
+  TryImportTextureArray whole since `07-Rendering/Vanilla-Enhanced.md`, asked
   before the three per-archive maps are learned so they land in one
   step), the classic file's otherwise; which records are grass stays
   the classic file's question. A big tile's mean reads at most
@@ -752,9 +811,302 @@ directory by `test/audit18_bible_docs.test.js`:
   the numbers above are the probe's as it stands - the first written
   were an intermediate build's. The look probe hands a palette to the
   lane it boots.
+  **MEADOW1 (2026-10-06, Mac: "These are 4 textures I want to blend into
+  our grass system, all with varying sizes so its not monotonous
+  everywhere"; then a fifth, "specifically is a bush, so it should be of
+  different sizes. And instead of billboarding, these should have a sort
+  of low poly look to them, like the trees"): THE OWNER'S SPRITES ON
+  CROSSED CARDS.** A third grass style, `meadow`, and the row's default
+  (Settings, Grass, Style: Meadow, Pixel, Smooth - the pixel tufts and the
+  lab's blade a choice away; PREF1's shelf stores no default, so every
+  player who never chose moves with it). His five sprites - a tall green
+  tuft, the same tuft cut short, flowers, a dry tuft (32x32) and a bush
+  (64x64), his own pixel art with no ARENA2 pixel in it (his word, AUDIT
+  MEADOW1) - are committed as he supplied them under
+  `src/assets/grass/source/` (`test/doctrine.test.js` rows) and baked by
+  `tools/bakeMeadow.mjs` into `render/meadowArt.js`, each its palette and
+  its rows as letters, so the atlas is built at boot with nothing to fetch
+  and a diff shows the picture. The style keeps the whole of the field, as
+  the pixel style does - the placer, the packed lanes, the cells, the
+  host-paid fade, the wind, the ground's light - and is a pixel style
+  (`uPixel` 1: the hard alpha, the dithered fade, a share of each cell)
+  wearing his atlas on the sheet's unit; what is its own is a FIFTH list
+  of declared edits, `GRASSMEADOW_VS_EDITS` / `GRASSMEADOW_FS_EDITS`,
+  behind `uArt`, laid after GRASS-LIT's. (1) WHICH SPRITE, HOW BIG: the
+  width byte is a uniform random the sprite styles never draw a width
+  with (their quad is the sprite's), and the patch is the tint GRASS6
+  already bakes - so with no byte added to a blade, a bush, flowers or a
+  dry tuft is taken off the width byte by shares that move with the patch
+  (`MEADOW_SHARES`: flowers 1% of a poor patch to 14% of a lush one, dry
+  tufts 24% to 2%, a bush 0.8% to 2%; of the green rest the short tuft
+  62% to 30%), and the card's side is the lab's own height law (2.9 to 1
+  from the shortest blade to the tallest) times its sprite's scale (4/3 a
+  tuft, so the tall tuft stands the blade's height; 2.25 the bush, half a
+  metre to a metre and a half) times the patch's (0.8 poor to 1.25 lush) -
+  so no two neighbours stand alike and whole patches run taller.
+  `meadowPick` is the law in JS, and the pin runs the compiled vertex
+  stage through `test/glsl.mjs` at all 256 bytes over eight patches and
+  holds it to the twin. A sprite stands for `MEADOW_BLADES_PER_TUFT` (3)
+  of the lab's blades. (2) NOT A BILLBOARD: CARDS, AS LOW POLY TREES
+  STANDS ITS BUSHES. The mod's bushes stand on a star of vertical cards
+  through the centre, each the same side view (`504_27`: four at 45
+  degrees under a crown of two stacked pyramids, read off the vendored
+  mesh); a meadow tuft is three such cards at 60 degrees, square (the
+  texels are) and at a yaw of its own FIXED IN THE WORLD - off its place in
+  its cell since AUDIT MEADOW1 (below), the scene's root having re-rolled it
+  at every crossing - so walking round a tuft turns its edges to the eye,
+  which is the look. Past `MEADOW_NEAR_AT` of the range (75 m at 300,
+  where a tuft is under ten pixels) a tuft drops its third card (AUDIT
+  MEADOW1: tuft by tuft across a band, the far set the near set's first
+  two): each corner carries its card's turn as a share of a half-turn,
+  plus one on every other card, which is drawn mirrored, so one stage
+  serves both arrays without a count. A bush stands a third as crooked as
+  grass (`stiff`; AUDIT MEADOW1: and sways the trees' six tenths of the
+  wind). Each card is shaded by the trees' own face law (BB_VS, AUDIT LPT
+  A2: clamp(0.72 + 0.28 x its face against the light, 0.5, 1)) on the
+  sun's light and the moon's, the face the eye sees, over the blade's own
+  lambert about the ground, by the light's height (AUDIT MEADOW1: the law
+  alone took 0.28 off every upright card at noon) - so a meadow at noon is
+  lit as its ground is, and a low sun picks the facets out without a face
+  going under half (a first cut lit each card by its face's own lambert,
+  and at dusk the cards turned to the sun stood as bright slabs on a dark
+  ground).
+  (3) HIS COLOURS, ON THE GROUND'S. His green (75, 106, 69 across the
+  tall tuft) is lighter and bluer than every grass tile - the default
+  skin's temperate base is 49, 73, 39 (Vanilla Enhanced's 302_2, measured;
+  classic 52, 76, 42) - and drawn as painted it was a mint field on an
+  olive ground, GRASS-LIT's lesson again. So a texel is moved by the ratio
+  of the tile's mean to `meadowArtGround` - the ground that puts his green
+  at the lane's own middle tone (`GRASS_TONES[1]`, or the classic lane's)
+  - per channel and held to `MEADOW_SHIFT`, AS FAR AS IT IS GREEN (its
+  green over its larger other channel, x12): a leaf takes the tile's hue,
+  a petal or a dry stalk keeps his and takes only the ground's light. His
+  green lands where the pixel tuft's middle does - a shade over the tile,
+  whatever the tile (the law's, within `MEADOW_SHIFT`; pinned on Vanilla
+  Enhanced's temperate base and two other greens) - and the far field
+  still gives way to the tile's mean. No luminance ramp (AUDIT MEADOW1):
+  the art carries its own palette. THE ATLAS is eight 64-texel cells (512 x 64, a power of two
+  so every level halves; three cells air), each sprite's foot on row 0, a
+  32-pixel sprite at two texels a pixel - so its first level is his own
+  picture again - and THE CHAIN is the pixel sheet's coverage law taken
+  PER SPRITE: each keeps the share of its own cell it covered (a far
+  flower tuft as sparse as a near one, the bush as full), a kept block
+  takes its covered texels' MEAN, and every sprite keeps a texel while it
+  is one wide; ten levels to 1x1. The meadow's frustum test widens the
+  blades' own box by its cards' reach and top (AUDIT MEADOW1, below -
+  MEADOW1 had widened every style's), and the pack's decode frame is still
+  the blades' own bounds. The vertex stage holds 221 uniform vectors at
+  most (the GRASS-LIT2 count, plus `uArt`). THE HOSTS:
+  `scenes/world.js` draws it through the same `labGrass.draw` call (the
+  row's word read every frame - a uniform, no reload); `scenes/exterior.js`
+  (the fixed city), `scenes/worldModes.js` (interiors) and
+  `scenes/dungeonContext.js` hold no grass field, as before. COST, on the
+  probe's real GL (`tools/meadowProbe.mjs`, SwiftShader; the counts exact,
+  never the milliseconds) at the shipped 300 m from a walker's eye: the
+  meadow submitted 161,808 tufts, 2.14M vertices (16 near cells on three
+  cards, 98 on two), where the pixel style submitted 242,663 tufts and
+  1.46M - both on MEADOW1's widened box, which drew the pixel style 3.7 per
+  cent over its own; three cards everywhere were 2.91M, two everywhere
+  1.94M (AUDIT MEADOW1 has the numbers since, and the fill). The probe
+  photographs a walker's eye, close up, from above (the flower and dry
+  patches), at dusk (the facets), the horizon, and the default lane
+  beside the classic; the eye and the lane beside the pixel style.
+  `test/grassmeadow.test.js` (10; 15 since AUDIT MEADOW1);
+  `tools/mutants/meadow1.json` (30, 30 dead; 80 since, and 78 since GRASS-ON); five of
+  `grasspx.json`'s records re-aimed by content at the lines the meadow
+  shares (its unit, its counts, its divisor, the row's default, the stats
+  hook), and the lists aimed at the grass's files rerun: 492 dead, 0
+  survived (those lists not named here; AUDIT MEADOW1's rerun gives its
+  own).
+  **The lesson: the owner's art is the art, and the ground is still the
+  ground - his green takes the tile's, his petals stay his, and the cards
+  light by the trees' own law, because the meadow stands among them.**
+  **AUDIT MEADOW1 (2026-10-06, Mac: "These are my art. Please audit
+  everything and ensure performance is perfect"; then "Let's have our
+  grass tufts off by default also, and have the wind sway effect the new
+  foilage, like it does the trees"; three read-only lenses - the GPU, the
+  host, the pins and the docs - and every fix measured on the probe).**
+  HIS OWN ART: the five sprites are his pixel art, no ARENA2 pixel in them
+  (his word; `test/doctrine.test.js`'s rows say so). THE GRASS WENT OFF BY
+  DEFAULT (`grassDensity` 0: no renderer, no field, no atlas until a player
+  picks Full, Half or Quarter; the style a player gets is still the
+  meadow) - until GRASS-ON put the full field back the next day (below),
+  and the adoption this sentence goes on to tell went with the Off.
+  PREF1's shelf holds no default, so everyone on the old Full
+  moves with it, and a shelf from before PREF1 - whose `grassDensity: 1`
+  was the shelf's own writing - moves too (`systems/uiPrefs.js`); a Half,
+  a Quarter or an Off anywhere was chosen and stands. THE FIELD SWAYS WITH
+  THE TREES: the world host hands the trees' own switch (`floraSwayOn() &&
+  wd.on`, as `setFlatWind` takes it), and a field it holds still takes no
+  wind at all - `uWindV` 0 in every style, the standing lean kept - so the
+  Wind row's part is `Sway` now, the trees' and the grass's. A bush takes
+  the trees' share of the wind for a short flora record (`floraSwayOf`'s
+  six tenths, where MEADOW1 gave it a third), its standing lean still a
+  third (`stiff`; `sway` beside it), and a card is lit by the lean it
+  stands at. THE GUST WAVE STANDS STILL UNDER A CROSSING: the grass's gust
+  and the flats' are one wave, sin(clock x 1.7 - along x 0.35 + its phase),
+  `along` a root's SCENE position down the wind - so every map pixel crossed
+  moved every blade, tuft and tree to another place on it, and the field
+  snapped to a new pose in one frame (up to 0.46 of a card's side in a
+  clear day's wind; since PERF-EXT21 kept the field across a crossing). The
+  world host carries the shift's phase into the clock it hands both
+  (`systems/windDrive.js` `gustPhaseAfterShift`, `gustClock`), so the wave
+  stands still under a crossing and the grass and the trees ride it
+  together. A TUFT'S SEED IS ITS PLACE IN ITS CELL: its yaw and mirror were
+  `hash(root * 0.37)`, the scene's root, which the shift moves 819.2 m -
+  98.8% of tufts turned their cards and half flipped at every crossing.
+  They hash the packed position lane now (`hash(aPA.xy * 64)`, which no
+  shift touches; even over 200,000 positions, chi-squared 18 on 15), and
+  the pixel style's tuft choice, which re-rolled the same way (86.7% of
+  tufts, a GRASS-PX edit and not the lab's text), takes the same seed.
+  THE FILL: a card was 52 to 85 per cent air (the tall tuft drew 30% of its
+  square, the short 21%, the flowers 15%, the dry 22%, the bush 48%), and
+  the meadow rasterised 4.1 times the pixel style's fragments. Each card is
+  cut to its sprite's drawn box now (`MEADOW_BOXES`, 46 to 77 per cent of
+  the square): the uv stays the corner's own place on the card, so every
+  texel lands where it did, and a mirrored card is the card turned about
+  its root rather than its texture flipped, so a box off the centre holds
+  both ways. THE VERTICES: the cards are drawn INDEXED
+  (`meadowCardIndices`), each corner shaded once where six vertices a card
+  ran, and both of a card's triangles end on the corner they share - the
+  provoking vertex of both, and the one corner of the card the stage's
+  `gl_VertexID % 3 == 2` names (`MEADOW_CARD_SLOTS`: two slots a card no
+  index names keep the blades' residue), so the root's sun and lanterns
+  are read once a card, not twice; twelve vertices a near tuft where
+  eighteen ran, eight a far one where twelve. THE BOX: MEADOW1 had widened
+  EVERY style's box by the cards' reach, which drew the pixel and smooth
+  styles 3.7 and 4.7 per cent more vertices from a walker's eye (11 per
+  cent on grassFieldProbe's own frame) and moved their fade and their
+  level of detail; the box is the blades' own again for every use, and
+  the meadow widens it for the frustum alone - by its cards' standing
+  reach (`MEADOW_REACH`), by the frame's WIND (`MEADOW_WIND_REACH` a metre a
+  second at a full gust: MEADOW1's "hair for the wind's push" was 0.02 of a
+  height where a clear day's wind leans a card 0.34 to 0.8, so cells at the
+  screen's edges were culled with their cards in view), by the slope its
+  cards are sheared to, and up to its tallest card (`MEADOW_TOP`) off the
+  height the stage decodes. The pin runs the stage at the wind slider's
+  top over every sprite, card and corner, the steepest standing lean and a
+  slope: every corner stands inside, and the farthest reaches 0.93 to 0.96
+  of the bound. THE SPRITE STYLES DRAW UNBLENDED: their every kept
+  fragment's alpha is exactly 1, so blending was the same picture for a
+  read of the target a pixel. THE MEADOW HAS NO RAMP: its palette is his
+  shading, and 24 rungs folded his shades a rung apart into one (and cost
+  two pow a fragment). THE LOOKS: an upright card turned edge-on is
+  squeezed across, and the GPU's level by the squeezed axis filled it solid
+  - a needle a pixel wide and up to its whole square tall, some 1,200 a
+  frame of 8 px or more from a walker's eye - so a card samples at its
+  HEIGHT's level (`textureLod`, the cell's 64 texels times the uv's steeper
+  step up it a pixel). A card's foot is sheared to the ground's own plane
+  (the decoded normal; a level foot hung a bush's downhill end a quarter
+  metre off a 20-degree hillside). The trees' face law is taken by the
+  light's HEIGHT (`mix(1, face, |light.xz|)`): every card is upright, so
+  the law alone took 0.28 off the whole meadow at noon, where a tree's
+  up-turned faces take it whole; a light overhead lights the cards as their
+  ground, and the facets come as it sinks - the moon's by the moon. The
+  third card goes TUFT BY TUFT across `MEADOW_NEAR_BAND` (5% of the range
+  past `MEADOW_NEAR_AT`, each tuft at its own distance off its seed), and
+  the far set is the near set's first two: a whole cell had turned a card a
+  sixth of a turn and dropped another in one frame. MEASURED
+  (`tools/meadowProbe.mjs`, and its fill pass new: the shipped vertex
+  stage again through a counting fragment stage, additive into a float
+  target with no depth and no discard, so the sum is every fragment the
+  rasteriser hands the fragment stage before any early-Z; a walker's eye,
+  960x540, the shipped 300 m): the meadow was 161,808 tufts, 2.14M
+  vertices and 4.05M fragments, and is 160,176, 1.44M and 2.21M (a third
+  fewer vertices, 45% fewer fragments) - about the pixel style's own
+  vertices; the pixel style was 242,663 tufts and 1.46M and is 234,084 and
+  1.40M, main's own again, its 0.99M fragments unmoved; the smooth was
+  8.79M vertices and is 8.39M, its 0.38M fragments unmoved. THE PINS (the
+  third lens): two card-array mutants that scrambled every tuft had
+  survived (the corners read at the blades' stride, the turn never
+  enabled) - the arrays are read back now through the pointers they set
+  and held to `meadowCardCorners` and `meadowCardIndices`; the shares,
+  scales and colour numbers are held exactly, and the byte grid's counts
+  ([72, 118, 2, 61, 3] a poor patch, [147, 63, 35, 5, 6] a lush one -
+  tall, short, flowers, dry, bush); which blocks the chain keeps is held
+  to the law's order; the moon is shaded under its own direction and the
+  mirror read over 400 tufts. `test/grassmeadow.test.js` (15) and one in
+  `test/pref1_shelf.test.js`; `tools/mutants/meadow1.json` (80 - the 30 of
+  MEADOW1, re-aimed by content where their lines moved, and 50 of the
+  audit's - 80 dead); `blood1.json`'s one record and three of
+  `grasspx.json`'s re-aimed by content; and every other record aimed at a
+  file this touched or naming a test it moved, gathered from 47 lists into
+  one (`node tools/mutate.mjs --jobs 4` over 311 records): 310 dead, 0
+  survived, 1 equivalent as recorded.
+  **The lesson: a card is its picture's box, not its square; and whatever
+  rides the floating origin is measured in a frame the shift does not
+  move.**
+  **GRASS-ON (2026-10-07, Mac: "Can you please turn grass on by default",
+  then "People are also saying it really has bad performance").** THE
+  GRASS IS FULL BY DEFAULT AGAIN (`features.js` 'grass', `grassDensity` 1,
+  PERF1's own default; the meadow still the style a player gets). AUDIT
+  MEADOW1's adoption in `systems/uiPrefs.js` went with its Off, and nothing
+  stored moves back: the shelf writes no default, so a stored Off, Half or
+  Quarter was pressed while Full was the default and stands, and an
+  unstamped shelf's Full is the default again; an Off pressed - or
+  re-saved - in the day Off was the default was the default then, so the
+  shelf dropped it, and that player is on Full with everyone else. AND
+  CHEAPER TO DRAW, the picture unchanged. THE PROVOKING VERTEX: the field
+  hands `vVar`, `vSun` and `vPoint` down `flat`, read in each triangle's
+  provoking vertex alone (GRASS-LIT's law) - GL's LAST, WebGL's default.
+  Direct3D provokes from the FIRST, so ANGLE on Windows - every browser
+  there, and the desktop app's Electron - keeps GL's convention for a
+  program with a flat varying by drawing it through a geometry shader that
+  copies the last vertex's flats onto the other two: every triangle of
+  every grass draw - some 0.7 million a frame of the meadow at Full from
+  a walker's eye on all-grass ground, the heaviest geometry outdoors
+  (ANGLE's Metal backend emulates the convention too).
+  WEBGL_provoking_vertex is how a page takes the native convention: where
+  the browser offers it the field draws under the FIRST-vertex one and
+  puts GL's back after its draws. Each triangle is listed provoking corner
+  first (`provokeFirst`: (a, b, c) to (c, a, b), the same winding - the
+  cards' own indices turned, a blade's corners through a turned list of
+  them in order, drawn indexed), so the corner the stage reads
+  (`gl_VertexID % 3 == 2`) provokes under either convention and the
+  stage's text is unchanged. A browser without the extension draws as it
+  always did, and so does `?provoke=last` - the door to time the field
+  both ways on a machine's own GPU (`?perf=zones`, its `grass` span). NOT
+  TIMED HERE: SwiftShader offers no WEBGL_provoking_vertex and this session
+  had no Windows GPU, so the geometry shader's cost is ANGLE's documented
+  behaviour, not a measurement; the turned lists are held on the stage's
+  own text (test/glsl.mjs: the root's sun from the first corner of each
+  turned triangle and from the last of each as GL lists it). NEAREST
+  FIRST: the cells in view are found, then drawn - in a sprite style
+  nearest first (an insertion over a hundred or so cells: stable, nothing
+  allocated a frame). A sprite style is opaque (AUDIT MEADOW1: unblended,
+  every kept alpha 1), so its picture is the nearest fragment whatever the
+  order, and the depth test throws a hidden tuft away before it is shaded
+  only once what hides it is drawn; the smooth style blends, so its order
+  is its picture, and it keeps the slots'. A level of detail is a cell's
+  distance, so the near cards and the far are bound once a frame each.
+  MEASURED on SwiftShader (960x540, the shipped 300 m, the committed
+  renderer beside this one): the fragments each order WRITES, depth-tested
+  through the sprite's alpha - 17.8% fewer from a walker's eye in the
+  meadow (418,010 to 343,589), 18.2% at the horizon, 19.4% turned, 25.2%
+  grazing, 3.5% from above, and the pixel style alike (17.7, 17.6, 17.2,
+  23.0 and 3.6%); the frames pixel-identical in all three styles but four
+  pixels in two meadow frames, where two cards stood at one depth and the
+  order broke the tie. SwiftShader's own frame did not move (2.5 s, its
+  vertex stage on the CPU), which is why the fill is counted, not timed.
+  `test/grass_on.test.js` (6); the default's pins moved back in perf1,
+  ft7_quality, ft18_features and grassmeadow (PIN MOVED), and AUDIT
+  MEADOW1's shelf pin in `test/pref1_shelf.test.js` replaced, one for one;
+  `tools/mutants/grass_on.json` (16, 16 dead); meadow1.json's two default
+  records retired with the laws they held (78 now), and grass2.json's
+  centre-budget record and grasspx.json's lab-text record re-aimed by
+  content; every other record aimed at the three files this touched,
+  gathered into one (`node tools/mutate.mjs --jobs 4` over 275 records):
+  274 dead, 0 survived, 1 equivalent as recorded
+  (AUDIT-GRASSLIT2-C-lane-compare-flipped, the lane's 0-or-1 switch).
+  **The lesson: a convention a backend has to emulate is paid where the
+  geometry is heaviest - ask for the native one, and list the geometry so
+  either convention reads the same corner.**
 - `grassPixelArt.js` - GRASS-PX THE TUFT SHEET: eight 8x16 tufts (GRASS-PX4; 16x32 until 2026-09-22, and the laws are written as fractions of the tuft so the old size still builds through `buildTuftSheet({ w, h })`) built at boot from a seed (one-texel stalks bending as height squared, four tones with one highlight texel, alpha 0 or 255), their coverage mip chain (max alpha per block, never an average, down to 1x1), the pixel style's numbers (8 Hz sway, 24 lean steps, 3x tuft width, 8-step ramp, 4 tint bands) and `pixelGrass()`, the row's word; the shader edits themselves are `GRASSPX_VS_EDITS` / `GRASSPX_FS_EDITS` in labGrass.js.
+- `grassMeadow.js` - MEADOW1 THE MEADOW: the owner's five sprites as a grass style - `MEADOW_VARIANTS` (each sprite's card scale over the lab's blade, its standing lean's share `stiff` and, AUDIT MEADOW1, its wind's share `sway`, the trees' own), the patch's shares and size (`MEADOW_SHARES`, `MEADOW_LUSH`, `MEADOW_PATCH_SCALE`) and `meadowPick`, the law's JS twin; the atlas (`buildMeadowAtlas`, eight 64-texel cells, the foot on row 0) and its per-sprite coverage chain (`buildMeadowMips`); each sprite's drawn box (`meadowSpriteBox`, `MEADOW_BOXES` - a card is cut to it) and the tuft's seed off its cell's lane (`MEADOW_SEED`); the cards (`meadowCardCorners`: each corner's turn as a share of a half-turn, +1 when mirrored, `MEADOW_CARD_SLOTS` six a card, and `meadowCardIndices`, both triangles ending on the shared corner; `MEADOW_CARDS` 3 near, `MEADOW_CARDS_FAR` 2 - the near set's first two - handed over tuft by tuft across `MEADOW_NEAR_BAND` past `MEADOW_NEAR_AT`); the box a cell's cards need (`MEADOW_TOP`, `MEADOW_REACH`, `MEADOW_WIND_REACH` off the lab's own `LAB_LEAN_PER_PUSH` and `LAB_GUST_MAX`, `MEADOW_SLOPE_FLOOR`); the trees' face law (`MEADOW_FACE`); the colour's anchor (`MEADOW_GREEN`, `meadowArtGround`, `MEADOW_SHIFT`, `MEADOW_GREEN_EDGE`, `meadowTexel` the fragment's twin); and `meadowGrass()`, the row's word. The shader edits are `GRASSMEADOW_VS_EDITS` / `GRASSMEADOW_FS_EDITS` in labGrass.js.
+- `meadowArt.js` - MEADOW1: GENERATED by `tools/bakeMeadow.mjs` from the owner's PNGs under `src/assets/grass/source/` - each sprite's palette and its rows, one letter a texel; never edited by hand, held to the bake and the PNGs by `test/grassmeadow.test.js`.
 - `spoilsGlow.js` - WB5: a fallen boss's spoils at rest, each in a BEAM of its tier's colour rising from a HALO on the floor (Loot Rarity's own colours - the first place a rarity is drawn in the world), a Legendary's and an Artifact's taller and pulsing. One foreign pass drawn beside the Burning Court's telegraph (the same seam), on the duel wall's law: fixed geometry placed by uniforms, added onto the frame, no depth written, fogged.
 - `deadlands.js` - WB6a: the Deadlands round the Burning Court - THE SKY, painted per pixel on one triangle at the far plane (a churning overcast lit from below; Oblivion's VORTEX over the great tower, turning whole and pouring inward; the BEAM up into its eye; black Daedric TOWERS with horns and a crown; three rings of JAGGED RIDGES hazier the further, with falls of fire; seeded LIGHTNING in the deck), and THE SEA, a disc of moving fire (crust plates on molten channels, glowing cracks, a slow pulse) whose rim becomes exactly the sky's horizon, so no edge is ever seen. One foreign pass in the dungeon arm after the court's solid geometry and before its flats (PERF2's law: the sea depth-tested, the sky tested at the far plane and never written); and the court's own light (`courtLighting` - a trilight red above and fire-orange below, the vortex's key light from behind the boss). WB6b: THE AIR'S LIFE (`drawLife`, after the telegraph in the court's pass - one vertex a mote: embers off the sea from past the court's edge and off its braziers, turning with the drift of the air, and ash falling through it; depth-tested and never written, the ash laid over premultiplied and the embers added; the world image's own height sizes the motes, RETRO1's `worldViewportPx` as the bolts read it); a strike LIGHTS THE COURT (`courtLighting(flash)`: the trilight's sky flares and the key swings toward it); `flashOfSlot`, the one answer the sky's flash and the thunder (scenes/deadlandsAir.js) read, on slots whole over the period; and the hosts hand the relay's clock (world.js `deadlandsSeconds`), so it is one moment on every screen. The land and the floor's shards round the court are court draws, not this pass (world/deadlandsLand.js, stood by worldModes' `standDeadlands`).
+- `spellImpactFx.js` - IMPACTFX: every landing spell bursts in light over the classic record-1 impact flash, one look per element (fire, frost, shock, poison, magic) and a still green glow for a heal. CPU particles drawn in ONE instanced additive pass (fogged, depth-tested, never written), owned by the cast engine in `scenes/hostMagic.js` and drawn by all four hosts right after the spell billboards (`magic.drawFx?.()` in exterior.js, world.js, worldModes.js, dungeonContext.js). Each element is re-coloured from its own missile art (375-379, record 1) the first time it flies (`artLook`, sampled with thunderlockIds' `orbColourFrom`); heal keeps its own green. The burst lies in the plane of the surface the missile struck (hostMagic casts along the flight through the impact with `collider.surfaceHit`), the floor if within 1.7 m of it, else across the line of flight. An area spell's rim is `areaFootprint()` - the SAME capsule test as sweepFoes/sphereOverlapsCapsule for a person-sized body (EXPLOSION_RADIUS 4 m + BODY_CAPSULE_RADIUS 0.45 = 4.45 m level with the blast), so what the ring shows is what the blast caught. Impacts briefly light the room in the element's colour; a floating-origin recentre carries every live particle, and the host teardown clears them.
 - `systems/wind.js` - **WIND1 (2026-09-02) THE WIND IS ITS OWN THING.**
   Mac: "wind should be something different from the weather. Imagine a
   time-lapse, seeing a storm rolling in as the wind kicks up, and the
@@ -836,7 +1188,11 @@ directory by `test/audit18_bible_docs.test.js`:
   the climate's nature archive is tagged (`floraSwayOf`: a tree whole, a
   bush six tenths; people, lights, signs, foes and every indoor flat 0),
   which is the shader's off switch, so an interior or a dungeon that
-  never sets the wind draws as before. Three rows on the Features home
+  never sets the wind draws as before. (AUDIT MEADOW1, 2026-10-06: the
+  grass field's wind follows the same switch - a field the flats' switch
+  holds still takes none - and the world host hands the flats and the
+  grass one clock, the gust wave's phase carried across the floating
+  origin, `windDrive.js` `gustClock`.) Three rows on the Features home
   (`wind-wisps`, `wind-sound`, `flora-sway`; on by default, the player's
   own online), read every frame; `?wisps=off`, `?windaudio=off`,
   `?sway=off` the kill doors. ENHANCED ONLY: under the classic sky the
@@ -928,7 +1284,10 @@ directory by `test/audit18_bible_docs.test.js`:
   lanterns x48, exposure + extended Reinhard, fog in-scatter, sRGB encode - and
   the pure functions that ARE their terms; the switch (`enhancedLightingOn`),
   the host's one call (`syncLightingLane`), the flame colour. See
-  `07-Rendering/Enhanced-Lighting-Arc.md`.
+  `07-Rendering/Enhanced-Lighting-Arc.md`. INTERIOR-DIM (2026-10-11): a
+  building's own lamps on the lane (`interiorLightColor` - half the switch's
+  intensity, the white ones in the flame) and the room's grade
+  (`interiorGrade`, the eye at most 1.2x), both interior hosts' calls.
 - `enhancedSky.js` - ES1 the ENHANCED SKY: one fullscreen procedural
 - `dynamicSkiesRenderer.js` - DS1: Dynamic Skies' own skybox (BLBProceduralSkybox, translated line for line), the enhanced lane's sky while the vendored mod's switch is on; the same draw contract as `enhancedSky.js`.
 - `dynamicSkiesBridge.js` - DS2: the mod's state in the port's shapes - `dynamicMoonState` (the world's moonlight off the mod's orbits, DS1) and `cloudsStateUnderMod` (the volumetric clouds' six fields off the mod's sun, moons and horizon over the port's colours); one home the controller and the sky lab both import.
@@ -938,10 +1297,16 @@ directory by `test/audit18_bible_docs.test.js`:
   skin (`?sky=classic` opts back to the painted pass); the classic pass
   above is untouched. Its lab is `sky.html` + `src/tools/skyLab.js`,
   its eye `tools/enhancedSkyProbe.mjs`.
-- `waterSurface.js` - WATER1 THE WATER SURFACE: the enhanced pass over the
-  exterior water tiles - the terrain grid drawn again and lifted, the
-  water-corner table that inverts the marching squares, the swell, foam, Fresnel,
-  glint and rain shader (`drawWaterSurface` in renderer.js), drawn after
+- `waterBedGlsl.js` - WATER-NEXT 2 THE BED'S FACE: the text both terrain
+  programs take - under the enhanced water (`renderer.waterBed`) a water
+  texel of the ground is the climate's dirt darkened to silt, by the water's
+  own corner coverage, a puddle keeping its art (`07-Rendering/Water-Arc.md`
+  WATER-NEXT 2).
+- `waterSurface.js` - THE WATER SURFACE (WATER1, replaced by WATER-NEXT 2-4): the enhanced pass over the
+  exterior water tiles - a sheet of its own over a carved bed (WATER1 drew the terrain grid again, lifted), the
+  water-corner table that inverts the marching squares, a three-train swell, Beer-Lambert through the scene's copy,
+  Fresnel, the glints, the rain, the shore's foam and the ripple field (`drawWaterSurface` in renderer.js;
+  `07-Rendering/Water-Arc.md` WATER-NEXT, AUDIT WATER-NEXT) - drawn after
   every opaque pass of a pixel and before the first flat, in both exterior
   hosts. Switch `enhancedWater`, `?water=off`. `07-Rendering/Water-Arc.md`. And
   (FIELD BUGS 2026-09-29 (the sea) #4) THE SEA'S STACK IN WINDOW DEPTH,
@@ -949,6 +1314,7 @@ directory by `test/audit18_bible_docs.test.js`:
   centimetres apart are drawn at - the surface film (Iliac Puddle No More's
   top, WATER1) over the ground, Come Sail Away's breakers over the film.
 - `underwaterFog.js` - ROAD-B B3: UnderwaterFog.UpdateFog, the submerged fog/tint law shared by the dungeon and exterior hosts
+- `vfxGpu.js` - MW-SPELLFX1: a Morrowind effect's streams on the GPU - one particle effect per stream (formats/mwVfx.js packs a mesh's triangles and its sparks alike), its texture set by file each frame and owned here, released whole; the arm's VFX_Hands and the world's spell effects (scenes/mwMagicFx.js, drawn by `Renderer.drawWorldParticleEffects`) each drive one
 - `windowEmission.js` - R2 window emission.
 - `precipitation.js` - R13 rain/snow + storm lightning. TWO PROFILES,
   TWO PROGRAMS (AUDIT 58 f3/render): the classic pass is DFU's cap on
@@ -977,7 +1343,15 @@ directory by `test/audit18_bible_docs.test.js`:
   the world host's sky-to-markForeignPass span (depth untouched - the
   streamed grid repaints everything nearer; the hole in the index
   buffer covers the one case painter's order cannot). Enhanced only;
-  `?ring=off`. See `07-Rendering/Enhanced-Visuals-Arc.md`.
+  `?ring=off`. See `07-Rendering/Enhanced-Visuals-Arc.md`. FAR-SEA1
+  (2026-10-10): its haze is `horizonHaze.js`'s law, the streamed sea's
+  too; its sea vertices (a water pixel at the clamp) are the water's own
+  open sea (AUDIT FAR-SEA1: its body texel on unit 12, its light and
+  glints from `SEA_LOOK_GLSL`); and the all-sea cells inside the hole are
+  the index buffer's tail, farthest first, drawn only as far as they can
+  lie past the world's far plane from the eye, so the sea there is the
+  ring's. At the far plane by `depthRange(1, 1)`, not a written depth
+  (AUDIT FAR-SEA1 P1) (`07-Rendering/Water-Arc.md`).
 - `frustum.js` - EV3 FRUSTUM CULLING, the pure half: Gribb/Hartmann
   planes off the combined proj*view (the handedness mirror rides inside),
   the conservative p-vertex outside test with an offset form for the
@@ -986,6 +1360,7 @@ directory by `test/audit18_bible_docs.test.js`:
   world.js (pixel/model/batch grains) and exterior.js (per-drawList-row,
   per-batch); `?cull=off` is the escape hatch. Simulation never gates -
   see `07-Rendering/Enhanced-Visuals-Arc.md`.
+- `sunbabySkyRenderer.js` - SUNBABY1: the sun baby's sky, a live event's (`/event sunbaby`, `06-Systems/Online-Arc.md`): one fullscreen pass at the far plane over whichever sky the lane draws and over the volumetric clouds, blended by the event's weight - a nursery-blue dome of drifting flowers and a giggling baby-faced sun, all procedural, its shader generated from `world/sunbabySky.js`'s tables; nothing drawn at weight 0, built the first time the event shows. SUNBABY2: it wears the face the event's phase hands it (`uFace` - the wrath's weight, Todd's): the wrath burns the dome to blood and ember, chars the flowers and turns the sun red, horned and grinning on a furnace; Todd is a cartoon face with swept hair and a grin over a flower grid sixteen times finer - SUNBABY3: his photograph (`src/assets/sunbaby/todd.jpg`, `uToddPhoto`) once it has loaded, the cartoon until then.
 - `staticBatch.js` - PERF4 STATIC BATCHES PER PIXEL: a streamed pixel's static RMB
   models merged once at build time into one mesh grouped by resolved texture, one
   draw call per texture instead of one per sub-mesh per model; the gates and the
@@ -1085,6 +1460,139 @@ See `Dynamic-Skies.md` for DS1: BadLuckBurt and carademono's Dynamic Skies mod, 
 See `Seasons-Iliac-Bay.md` for SIB1: RosyTheRascal's Seasons of the Iliac Bay mod, ported 1:1 with permission - the woodland's autumn, spring and winter on the nature flats, its textures read from the player's own copy of the mod (2026-09-05).
 
 `EE9-Surface-Field-Design.md` is the surface field's design - snow that builds, deforms and melts, on the chunker's own grid - written before its code, per the arc's law.
+
+## ECOTONE1 - BLENDED CLIMATES: A BORDER, NOT A LINE (2026-10-07, a port departure)
+
+Mac: *"Making it where bione transitions are insta t and instead fade and
+transition naturally into each other"*.
+
+DFU decides a climate per map pixel (CLIMATE.PAK) and everything that
+follows from it is that pixel's to its edge: the ground's tile set (one
+`sampler2DArray` a terrain draw), the nature archive and how thick the
+trees stand, which tiles grow grass. So 819.2 m of temperate woods met
+desert, or a mountain's grey-green, along a ruler-straight line - and the
+woods' species changed along it too.
+
+**The law** (`world/ecotone.js`, the reason at its head). Every pixel edge
+has a SHARE: a point near it belongs partly to the pixel on either side,
+and the share is one function of where the point stands in the world, so
+the two pixels that draw the same point reckon it alike (four about a
+corner: each takes the product of its two shares).
+- The seam the shares cross at WANDERS: the edge moved by two octaves of
+  value noise, 48 m over 409.6 m bends and 16 m over a 51.2 m hem.
+- Across `ECOTONE.band` (96 m) either side of it the neighbour's chance
+  rises from none to whole, and a patch noise (51.2 m blots, 12.8 m ragged
+  rims) is held against the chance: the far climate comes in as islands
+  that grow and join toward the seam, each rim a few metres soft (`edge`
+  0.06). Two pictures faded into each other read as a smear; patches read
+  as ground, and from afar as a fade.
+- The patch noise is STRETCHED (x2 about a half) before it is held against
+  the chance. Two octaves sum to a hump - nine tenths of the land between
+  0.25 and 0.75 - so the first cut, unstretched over a 48 m band, showed
+  almost none of the neighbour until the seam itself: a ragged LINE, a few
+  metres wide (the probe's first shots). Stretched, the neighbour's share
+  of the land is about its chance across the whole band.
+- Past `ECOTONE_REACH` (160 m) of an edge a share is exactly whole, and a
+  seam with the same climate across it and one climate along the far row
+  is never asked (it moves no weight): only the seams that change
+  something cost anything.
+- The hash is integer on WORLD lattices whose cells divide a pixel's 128
+  tiles, so a pixel's origin is whole cells and the lattice index is exact
+  in GLSL's ints and in JS (`ecoOrigin`, rows counted from map row 512 so
+  every index is positive). Every integer of the chunk says `highp`
+  itself: a fragment stage's ints are mediump unless they say, a phone's
+  mediump int is sixteen bits, and the origin runs to 128,000.
+- On the boot path: TERRAIN_FS is built from the chunk as the renderer
+  loads, so the chunk and the law it reads its numbers from are two files
+  more in the entry's static reach (66). Both are leaves - the chunk imports
+  the law alone, the law nothing - so BOOT2's ceiling moves to 68
+  (`test/boot2.test.js`, which holds them leaves; `tools/mutants/boot2.json`
+  ECOTONE1's record, dead) and its hub law stands.
+
+**The ground** - `render/ecotoneGlsl.js` in both terrain programs: after
+the tile's own `textureGrad`, the same record of each neighbour's set (every
+ground archive is the same 56 records, R9), turned and filtered as the
+fragment's own, weighted by the shares; the lane decodes its neighbours as
+it decodes its own (linear light), the classic program blends its display
+values. A 3x3 of pixels holds at most four ground families in a season, so
+three more sets suffice: on units 3-5, free in every terrain program (0 the
+pixel's set, 2 its tilemap, 8-15 the lane's and the cloud's).
+`renderer.drawTerrain`'s `eco` binds them (shadowed across a frame's border
+pixels, forgotten with the other texture shadows) and sets the slots and
+the origin; every other draw sets the one switch off, once a frame. The
+clip variant (FAR-CLIP1) is still the plain program and one line.
+
+**The host** - `scenes/world.js`: the build reads its 3x3 of climates
+(`climates3x3`, a neighbour off the map the pixel's own), loads each
+neighbour's ground set through the one tile-set home (`loadGroundSet`,
+moved out of the build whole - its text the pins read - so the pixel's own
+set and its neighbours' are uploaded, mipped, given the sharpness tier and
+learned for the grass one way) and HOLDS them on the pixel's own place
+(PLACE-LRU), and keeps the slots on the entry (`eco`, `ecoGround`); the
+ground queue draws it (`ecoDraw`, null while a set is missing - the pixel
+then draws its own set alone, as before).
+
+**The wild's flats** - the kernel (`world/terrainNature.js` `withEcotone`)
+gives each tile within reach of a differing edge to the climate that owns
+its middle (`ecotoneOwner` - the shares summed by climate, the pixel's own
+on a tie). The pixel's own tiles keep its own layout untouched (DFU's
+sequential scatter still walks every tile, so every flat it stands is
+DFU's); a neighbour's tile is laid by that climate's rule - its woods
+(FOREST1's dice are the world tile's, so between two wooded climates only
+the species change, never where a flat stands) or, for a desert, DFU's
+scatter law on the tile's own dice (`dfuTiles`: tileDraw 4 and 5, its
+corner, the pixel's elevation scale, the desert's quarter). Those flats
+carry their climate's summer archive; the host stands them in its season's
+set (`getNatureArchive`), and each is that climate's in every way a flat
+is: its batch sways (`floraSwayOf` takes the pixel's set of nature
+archives), its trees are Logging's (and a felled one's stump is its own
+climate's, `scenes/treeHost.js`), its Trees are cover's trunks, Low Poly
+Trees and Seasons of the Iliac Bay stand it by its own (archive, record).
+The cover's tree test now names each archive's summer set - the season's
+own number named none in winter, so a winter wood's trees were cover as
+flats; mended with it.
+
+**The grass** - `keep` and `ground` ask the ground archive that owns the
+blade's root (`borderGround`): its grass records, its puddles, its colour,
+so the field thins out into sand as the ground does.
+
+**Measured** - `tools/ecotoneProbe.mjs`, three synthetic tile sets (green
+woods, sand, a grey-green upland) on a 3x3 drawn through the game's own
+terrain programs on SwiftShader, shots in `tools/shots/ecotone-*.png`:
+across the woods-desert seam the desert's share of the ground is 0 at 110 m
+inside the woods, 0.01 at 100 m, 0.26 at 50 m, 0.55 at the edge, 0.85 at
+40 m past it and whole at 110 m - without the blend a step at the edge. No
+GL error on either lane; all four terrain programs (both lanes, plain and
+clip) compile.
+
+**The switch.** The Features row `climate-blend` ("Blended climates"), on
+by default on the enhanced skin and forced on online (the border moves the
+room's flats - `scenes/shared.js` `climateBlendOn`, read once as the world
+mounts); `?ecotone=off` the kill door, offline. The classic skin keeps
+DFU's straight edge.
+
+**The four hosts.** `scenes/world.js` - wired (above).
+`scenes/exterior.js` - draws one location's own pixel and no neighbour:
+no border to blend (its draw hands no `eco`). `scenes/worldModes.js` and
+`scenes/dungeonContext.js` - no terrain.
+
+**Not covered.** The enhanced WATER surface still takes its body colour
+from its own pixel's set (record 0), so open water two pixels off a coast
+(where CLIMATE.PAK's coastal dilation ends) keeps a straight colour seam.
+The sky, the weather and the footsteps change with the player's pixel, as
+before (the enhanced sky reads no climate; the classic panorama does). The
+far province ring already interpolates its climate colours.
+
+Pinned in `test/ecotone1.test.js` (the law's continuity across edges and
+corners and its measured shape, the GLSL run through `test/glsl.mjs`
+against the JS under two neighbourhoods, the draw's binds on a recording GL,
+the kernel's border tiles, the switch and the host); mutants in
+`tools/mutants/ecotone1.json` (32: 31 dead, 1 recorded equivalent - an
+exact tie of two climates' shares, which smoothstepped noise never makes).
+Not verified here: no ARENA2, so the real world's borders were not walked;
+the ground cost on a real GPU (an extra fetch per neighbour set only inside
+the band) was not measured. A first rendered path: the owner's eyes before
+merge (Incident-2026-09-01).
 
 ## DUNGEON-SEAMS - THE HOLES IN DAGGERFALL'S OWN DUNGEON MODELS, CLOSED (2026-09-26)
 

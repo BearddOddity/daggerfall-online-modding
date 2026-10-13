@@ -58,6 +58,7 @@
 // build() and read the live options bag from a module variable, so a
 // frame still costs no listener work.
 import { injectEnhancedStyle, injectEnhancedFonts } from './enhancedStyle.js';
+import { retroScreenRect } from '../systems/retroMode.js';   // RETRO-UI: the pillarbox's rect, DFU's CustomScreenRect
 import { stepGhost, chunkFrame, GHOST_HOLD } from './barLoss.js';   // VB2 / FRAME1: a bar's loss (AUDIT NAV1: shared with the sea fight's card)
 import { mountHitNumbers, healNumberFor, showNumber } from './hitNumbers.js';   // HN1; PARTY-BUFFS: the heal a frame shows
 import { maxRoundsRemaining } from './hudActiveSpells.js';
@@ -70,9 +71,11 @@ import { hudRenown } from './hudRenown.js';   // RENOWN4: my own Renown, under t
 import { survivalHudChips } from '../systems/survival/status.js';   // SURV5: the needs (UI3: tiles in the status widget)
 import { statusTiles, afflictionRows, statusGlyphSrc, statRoom, statSide, statPlace, statOverflow, STAT_TILE, STAT_GAP, STAT_METRICS, STAT_SHORT_QUERY, STAT_MIDDLE_CLEAR } from './hudStatus.js';   // UI3: the status widget
 import { sigilRuneTileSrc } from './sigilRune.js';   // UI3: a set power's tile is its set's rune
+import { techniqueGlyphTileSrc } from './techniqueGlyph.js';   // TECH-CARD: a technique's tile is its own glyph, the card block's
 import { liveVampirism } from '../systems/racialLive.js';   // AUDIT SURV C: no hunger or sleep chip on a vampire
 import { survivalOn } from '../systems/survival/switch.js';
-import { ownMinutes } from '../systems/worldTick.js';   // LIVED1: the needs' strip reads the character's own clock
+import { ownMinutes, sharedClockOn } from '../systems/worldTick.js';   // LIVED1: the needs' strip reads the character's own clock   // REST1: and the Rested tile is online's
+import { nightRealMinutesLeft } from '../systems/restAct.js';   // REST1: the night interval's minutes left
 import { compassScroll, breathShortThreshold, compassMarkerLerp, DETECT_MARKER_RGB } from './hud.js';
 import { PARTY_GREEN_CSS } from '../net/social.js';   // COMPASS-PARTY: the party's one green
 import { maxBreath, maxFatigue, liveStat } from '../systems/statMods.js';   // PX30b/PX30d: DFU's own ceilings
@@ -91,6 +94,7 @@ import { inventoryItemImage } from '../systems/itemTemplates.js';
 import { quickslotTag, quickslotOffTag, quickslotSpellTag, tagKey, CELL_ACTIONS } from './quickslotTags.js';   // QS6: the caption's spell chip names its own action
 import { glyphSvg, padFamily } from './padGlyphs.js';
 import { hdGlyphSvg } from './padGlyphsHD.js';   // PADPLUS1: Plus draws the pad's buttons as vectors
+import { TECH_CHIP_COLOUR } from '../combat/techniqueRoster.js';   // TECH1: a technique's chip wears its marks' blue (the roster is a leaf)
 import { rarityAttr, RARITIES } from '../systems/lootRarity.js';   // RARITY-UI: a quickslot cell's frame wears its item's tier; LOOT5: a power chip the Legendary's colour
 import { validSigil } from '../systems/sigil.js';   // SIGIL-UI: and a sigil weapon's rune
 import { markSetFrame, setShades } from './setCard.js';   // SET5: a set piece's rune in its set's colour; a set power's chip in it
@@ -108,7 +112,11 @@ import { tickHudLayout } from './hudLayout.js';   // HUD-MOVE: the movable piece
 import { mountHotbarDock, drawEnhancedHotbar, detachHotbarDock, hotbarMode } from './enhancedHotbar.js';   // HB1: the hotbar, the diamond's alternative (one or the other)
 import { setEnhancedMidTextScale } from './enhancedHudText.js';   // AUDIT FONT F2: the mid-screen label is a layer beside this one, not inside it (the popup column it once scaled too is a toast in the notice stack since ENH-NOTICE3)
 import { QUEST_MARK_CSS } from './questMarks.js'; import { nodeMarkCss } from './nodeMarks.js';   // GUIDE5: the tracker's quest on the compass, in the marks' one gold; NODE-MARKS: a profession's nodes in its own colour
+import { WAY_MARK_CSS, WAY_BODY_CSS } from '../systems/wayOut.js';   // WAYOUT1: the way out's mark
 import { BOAT_GLYPH_URL } from './boatMarks.js';   // BOAT-MARK: my boats on the strip, a sail over a hull
+import { SERPENT_RING_MAP_CSS } from './serpentMapMark.js';   // SERPENT1: the sea serpent on the strip, in its ring's green
+import { SD_RING_MAP_CSS } from './sdMapMark.js';   // SD2c: the Super dungeon on the strip, in its ring's brass
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /**
  * PX30c (Mac: "is there anyway I can adjust the sizing?"): THE HUD'S
@@ -264,6 +272,45 @@ function drawGateMark(gate, playerXZ, heading01) {
   if (node.style.left !== l) node.style.left = l;
 }
 
+// SERPENT1: THE SEA SERPENT'S MARK - the gate's diamond in the sea's green (ui/serpentMapMark.js), where it hunts while
+// the player sails inside its ring (scenes/world.js serpentCompassMark); the gate's bearing law, hidden never removed.
+const serpentMarkCss = () => 'position:absolute;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;transform:rotate(45deg);'
+  + `background:${SERPENT_RING_MAP_CSS};box-shadow:0 0 6px 2px rgba(63,214,198,0.75);pointer-events:none`;
+function drawSerpentMark(sp, playerXZ, heading01) {
+  if (!parts.serpentMark) {
+    const node = el('i', 'hud-serpent');
+    node.style.cssText = serpentMarkCss();
+    parts.compass.append(node);
+    parts.serpentMark = node;
+  }
+  const node = parts.serpentMark;
+  if (!sp || !playerXZ) { if (node.style.display !== 'none') node.style.display = 'none'; return; }
+  if (node.style.display === 'none') node.style.display = '';
+  const at = Math.min(1, Math.max(0, compassMarkerLerp(sp, playerXZ, heading01)));
+  const l = `${(at * 100).toFixed(1)}%`;
+  if (node.style.left !== l) node.style.left = l;
+}
+
+// SD2c: THE SUPER DUNGEON'S MARK - a found Hollow's door, a round mark in its ring's brass (ui/sdMapMark.js) - a place, not
+// the gate's or the serpent's diamond - while the player stands within SD_COMPASS_M of it outside (scenes/world.js
+// sdCompassMark); the gate's bearing law, hidden never removed.
+const sdMarkCss = () => 'position:absolute;top:50%;width:9px;height:9px;margin:-5px 0 0 -5px;border-radius:50%;box-sizing:border-box;'
+  + `border:2px solid ${SD_RING_MAP_CSS};background:rgba(10,12,17,0.65);box-shadow:0 0 6px 2px rgba(232,178,74,0.7);pointer-events:none`;
+function drawSdMark(sd, playerXZ, heading01) {
+  if (!parts.sdMark) {
+    const node = el('i', 'hud-sd');
+    node.style.cssText = sdMarkCss();
+    parts.compass.append(node);
+    parts.sdMark = node;
+  }
+  const node = parts.sdMark;
+  if (!sd || !playerXZ) { if (node.style.display !== 'none') node.style.display = 'none'; return; }
+  if (node.style.display === 'none') node.style.display = '';
+  const at = Math.min(1, Math.max(0, compassMarkerLerp(sd, playerXZ, heading01)));
+  const l = `${(at * 100).toFixed(1)}%`;
+  if (node.style.left !== l) node.style.left = l;
+}
+
 // GUIDE5: THE QUEST'S MARK - the place the tracker's quest points, one diamond in the journal's gold (ui/questMarks.js
 // QUEST_MARK_CSS), HOLLOW and edged dark so it never reads as the gate's burning one, riding the same bearing law
 // (compassMarkerLerp, clamp and all): a place behind the player stands at the strip's end on the side to turn toward.
@@ -283,6 +330,31 @@ function drawQuestMark(quest, playerXZ, heading01) {
   if (!quest || !playerXZ) { if (node.style.display !== 'none') node.style.display = 'none'; return; }
   if (node.style.display === 'none') node.style.display = '';
   const at = Math.min(1, Math.max(0, compassMarkerLerp(quest, playerXZ, heading01)));
+  const l = `${(at * 100).toFixed(1)}%`;
+  if (node.style.left !== l) node.style.left = l;
+}
+
+// WAYOUT1 (the delve arc): THE WAY OUT - underground, an arrow pointing up and out in the parchment's light, where the
+// walked trail leads back to the way in (systems/wayOut.js: the farthest cell the eye can see along it), on the same
+// bearing law, clamp and all. The dungeon hands it (scenes/dungeonContext.js wayOutMark); hidden, never removed.
+// AUDIT DELVE D9: ITS OWN BAND, UNDER THE STRIP - pointing up into it - so it never covers the quest's diamond (the same
+// law, the same clamp: both behind the player stood at one end, the arrow on top) nor sits among the letters; and a dark
+// body rimmed in the parchment's light (WAY_BODY_CSS under WAY_MARK_CSS), which reads on the dark of a dungeon and on
+// the pale of the letters alike (the pale arrow alone was 1.26:1 against them).
+const wayOutMarkCss = () => 'position:absolute;top:100%;width:0;height:0;margin:3px 0 0 -6px;'
+  + `border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:11px solid ${WAY_BODY_CSS};`
+  + `filter:drop-shadow(0 0 0.8px ${WAY_MARK_CSS}) drop-shadow(0 0 0.8px ${WAY_MARK_CSS}) drop-shadow(0 0 1.5px rgba(0,0,0,0.9));pointer-events:none`;
+function drawWayOutMark(way, playerXZ, heading01) {
+  if (!parts.wayOutMark) {
+    const node = el('i', 'hud-wayout');
+    node.style.cssText = wayOutMarkCss();
+    parts.compass.append(node);
+    parts.wayOutMark = node;
+  }
+  const node = parts.wayOutMark;
+  if (!way || !playerXZ) { if (node.style.display !== 'none') node.style.display = 'none'; return; }
+  if (node.style.display === 'none') node.style.display = '';
+  const at = Math.min(1, Math.max(0, compassMarkerLerp(way, playerXZ, heading01)));
   const l = `${(at * 100).toFixed(1)}%`;
   if (node.style.left !== l) node.style.left = l;
 }
@@ -536,7 +608,13 @@ function build(doc) {
   foeBladeEmpty.style.backgroundImage = `url("${BLADE_EMPTY_URL}")`;
   foeBladeFull.style.backgroundImage = `url("${BLADE_FULL_URL}")`;
   foeBlade.append(foeBladeEmpty, foeBladeFull);
-  foe.append(foeName, foeTrack, foeBlade);
+  // TELL9 (bible/12-Enhanced-AI/Feud-Arc.md 11.1): THE POISE TRACK under the health - a foe's wind-up read: empty, amber
+  // and filling toward its poise, red and hatched "Iron", a white flash "Staggered", "Open"; none for a foe with no brain
+  const foePoise = el('div', 'hud-foepoise');
+  const foePoiseFill = el('i', 'hud-poisefill');
+  const foePoiseWord = el('span', 'hud-poiseword');
+  foePoise.append(foePoiseFill, foePoiseWord);
+  foe.append(foeName, foeTrack, foeBlade, foePoise);
   top.append(foe);
   root.append(top);
 
@@ -563,11 +641,13 @@ function build(doc) {
   // CLIMB2: THE GRIP, beside it and in its likeness - drawn while the hands
   // hold a wall and while the grip comes back after, short when it is failing
   // (the motor says which: player/motor.js gripShown).
+  // STEED1: the same bar is the ridden horse's breath while there is no grip (a rider holds no wall), its word the horse's.
   const grip = el('div', 'hud-breath hud-grip');
   const gripTrack = el('div', 'hud-track');
   const gripFill = el('i', 'hud-fill');
+  const gripLabel = el('span', 'hud-breathlabel', 'Grip');
   gripTrack.append(gripFill);
-  grip.append(el('span', 'hud-breathlabel', 'Grip'), gripTrack);
+  grip.append(gripLabel, gripTrack);
   bottom.append(grip);
   const bars = el('div', 'hud-bars');
   // PX30c (Mac: "for the status bars, can we use percentages and
@@ -800,10 +880,10 @@ function build(doc) {
   cells.main.cell.addEventListener('pointerdown', tap(() => { liveOpts.quickSwitchHand?.(); }));
 
   doc.body.append(root);
-  return { root, bottom, compass, marks, detectMarks: [], partyMarks: [], shipMarks: [], nodeMarks: [], boatMarks: [], gateMark: null, questMark: null, foe, foeName, foeFill, foeGhost, foeChunks, foeBladeFull, magicka, health, fatigue,
+  return { root, bottom, compass, marks, detectMarks: [], partyMarks: [], shipMarks: [], nodeMarks: [], boatMarks: [], gateMark: null, serpentMark: null, sdMark: null, questMark: null, wayOutMark: null, foe, foeName, foeFill, foeGhost, foeChunks, foeBladeFull, foePoise, foePoiseFill, foePoiseWord, magicka, health, fatigue,
     stat, quickCap: cap, quickDiamond: diamond, top,   // UI3: the status widget, the caption it stands on, the diamond it may stand beside and the top block over it (its band is measured from them)
     renown, renownBox, renownFill, renownGhost, renownNum,
-    breath, breathFill, grip, gripFill, readied, reticle, cross, centreWord, cornerWord,
+    breath, breathFill, grip, gripFill, gripLabel, readied, reticle, cross, centreWord, cornerWord,
     quick, quickCells: cells, quickTags: tags, hotDock,
     spellChip: { chip: spellChip, tag: spellTag, img: spellGlyph, text: spellText, name: spellName, icon: spellIcon } };
 }
@@ -867,11 +947,38 @@ const initialsOf = (name) => String(name ?? '').split(/\s+/).filter(Boolean)
  *   quickSwap()     - and on the off hand while it offers a swap
  *   quickOffHand()  - the off hand's own press in every other state (QS4)
  */
+/** RETRO-UI (FIELD BUGS 2026-10-03): DFU lays its HUD out in CustomScreenRect - under retro mode's pillarbox, the
+ *  picture's rect (ViewportChanger.cs :138-140) - and the enhanced HUD stood over the black bars. Its root is inset to
+ *  the pillars, as the held map's (DISC25-B), and the pieces fixed at the screen's edges apart from it (the notices,
+ *  the quest tracker, the status line, the revenant's cards) read the pillar off `--ui-pillar`. Written on a change. */
+let _pillar = null;
+/** AUDIT PRE-MERGE 1003b M2: the picture's width the quest card and the arena's versus bar both fit in (the bar's half and
+ *  the card's 268 from the edge - AUDIT PRE-MERGE 1003 U4's 1100, which read the WINDOW's width). */
+const ARENA_CARD_ROOM_PX = 1100;
+let _narrow = null;
+function wearUiPillar(doc, root) {
+  const ui = retroScreenRect(globalThis.innerWidth || 0, globalThis.innerHeight || 0);
+  // AUDIT PRE-MERGE 1003b M2: inside the pillarbox the card stands in the picture, so the room is the picture's - at
+  // 1366x768 in 4:3 the card overlapped the bar 36x54 px while the window's 1366 said there was room
+  const narrow = !!ui && ui.w <= ARENA_CARD_ROOM_PX;
+  if (narrow !== _narrow) {
+    _narrow = narrow;
+    if (narrow) doc.documentElement?.setAttribute?.('data-ui-narrow', ''); else doc.documentElement?.removeAttribute?.('data-ui-narrow');
+  }
+  const inset = ui ? `${ui.x}px` : '';
+  if (inset === _pillar) return;
+  _pillar = inset;
+  root.style.left = inset; root.style.right = inset;
+  if (inset) doc.documentElement?.style?.setProperty?.('--ui-pillar', inset);
+  else doc.documentElement?.style?.removeProperty?.('--ui-pillar');
+}
+
 export function drawEnhancedHud(vitals, heading01, dt = 0, opts = {}) {
   const { hidden = false } = opts;
   if (typeof document === 'undefined') return;
   if (!host) { parts = build(document); host = parts.root; mountHotbarDock(parts.hotDock); }
-  tickHudLayout(document);   // HUD-MOVE: starts once, then a throttled sweep - the player's layout and the lock
+  tickHudLayout(document);   // HUD-MOVE: starts once - the player's layout and the lock; its sweeps are its own interval's (PERF-HUD1)
+  wearUiPillar(document, host);   // RETRO-UI: inside retro mode's pillarbox, as the held map stands (DISC25-B)
   tickFoeTarget(dt);
   // HB1: the hotbar hears every frame, hidden or not - a hidden HUD is
   // exactly when it may still be up under the pack as a drop target.
@@ -904,6 +1011,10 @@ export function drawEnhancedHud(vitals, heading01, dt = 0, opts = {}) {
   // law, and one off the span is hidden rather than clamped to an edge
   // - a marker pinned to the rim says "north is exactly there", which
   // is a lie the classic compass takes care not to tell either.
+  // GRIM3: the heading said on the compass too, so a dress that draws the strip as one picture (DFO Grimoire's - the
+  // pack's own COMPASS strip in its COMPBOX dome) slides it by the same law
+  const hv = (((heading01 % 1) + 1) % 1).toFixed(4);
+  if (last.heading !== hv) { last.heading = hv; parts.compass.style.setProperty('--hud-heading', hv); }
   for (const m of parts.marks) {
     const at = compassPlace(Number(m.dataset.at), heading01);
     if (at === null) {
@@ -917,7 +1028,10 @@ export function drawEnhancedHud(vitals, heading01, dt = 0, opts = {}) {
   // ...and the Detect markers over the same strip.
   drawDetectMarkers(opts.detected ?? null, opts.playerXZ ?? null, heading01);
   drawGateMark(opts.gate ?? null, opts.playerXZ ?? null, heading01);   // WB1
+  drawSerpentMark(opts.serpent ?? null, opts.playerXZ ?? null, heading01);   // SERPENT1
+  drawSdMark(opts.sd ?? null, opts.playerXZ ?? null, heading01);   // SD2c
   drawQuestMark(opts.quest ?? null, opts.playerXZ ?? null, heading01);   // GUIDE5
+  drawWayOutMark(opts.wayOut ?? null, opts.playerXZ ?? null, heading01);   // WAYOUT1
   drawPartyMarks(opts.party ?? null, opts.playerXZ ?? null, heading01);   // COMPASS-PARTY
   drawShipMarks(opts.ships ?? null, opts.playerXZ ?? null, heading01);   // AUDIT NAV1: the sea's ships
   drawBoatMarks(opts.boats ?? null, opts.playerXZ ?? null, heading01);   // BOAT-MARK: my boats
@@ -928,6 +1042,7 @@ export function drawEnhancedHud(vitals, heading01, dt = 0, opts = {}) {
   if (!t) {
     if (last.foe !== null) { last.foe = null; parts.foe.classList.remove('on'); }
     last.foeRef = null;
+    if (last.foePoise !== null) { last.foePoise = null; last.foePoiseRef = null; parts.foe.classList.remove('poised'); parts.foePoise.className = 'hud-foepoise'; }
   } else {
     if (last.foe !== t.name) { last.foe = t.name; parts.foe.classList.add('on'); }
     // FRAME1b: the loss readout follows the FOE, not its name. Keyed on the
@@ -953,6 +1068,24 @@ export function drawEnhancedHud(vitals, heading01, dt = 0, opts = {}) {
     if (blade) clipInset(parts.foeBladeFull, 'foeBlade', bladeInset(foePct));
     const o = t.fade < 1 ? String(t.fade.toFixed(2)) : '';
     if (parts.foe.style.opacity !== o) parts.foe.style.opacity = o;
+    // TELL9 (11.1): the poise track - its state a class (the sheet's colour, the hatch, the flash), its fill, its word
+    // POISE-QUIET (2026-10-06, the player: "the block under the monsters hp must go"): an EMPTY track (no wind-up, no
+    // iron, no stagger, no opening) is not drawn - the bar stands alone until the foe's poise has something to say
+    const p = t.poise && t.poise.state && t.poise.state !== 'empty' ? t.poise : null;
+    const pk = p ? p.state : '';
+    if (last.foePoise !== pk || last.foePoiseRef !== ref) {
+      // AUDIT TELL U4: the flash is a break's - THIS foe going into its stagger, never the bar turned onto one already in it
+      const flash = pk === 'staggered' && last.foePoiseRef === ref && last.foePoise !== 'staggered';
+      last.foePoise = pk; last.foePoiseRef = ref;
+      parts.foe.classList.toggle('poised', !!p);
+      // POISE-BOX (field, 2026-10-05): the state classes are the track's own, `poise-` each - as bare words, 'empty'
+      // took the sheet's `.empty` component (a dashed box with 26px of padding) and the idle track stood 54px tall
+      parts.foePoise.className = `hud-foepoise${p ? ` poise-${p.state}` : ''}${flash ? ' poise-flash' : ''}`;
+    }
+    if (p) {
+      width(parts.foePoiseFill, 'foePoiseFill', p.fill * 100);
+      put(parts.foePoiseWord, 'foePoiseWord', p.word);
+    }
   }
 
   // THE VITALS. maxFatigue is the (Str+End)x64 ceiling the classic
@@ -1028,8 +1161,11 @@ export function drawEnhancedHud(vitals, heading01, dt = 0, opts = {}) {
     }
   }
 
-  // CLIMB2: THE GRIP - the host's `grip` ({ amount, low } or null).
-  const gr = opts.grip ?? null;
+  // CLIMB2: THE GRIP - the host's `grip` ({ amount, low } or null). STEED1: else the ridden horse's breath (`steed`, the
+  // same shape - systems/upkeepRuntime.js bar), in the grip's place and under the horse's word.
+  const gr = opts.grip ?? opts.steed ?? null;
+  const gripWord = opts.grip ? 'Grip' : 'Horse';
+  if (last.gripWord !== gripWord && parts.gripLabel) { last.gripWord = gripWord; parts.gripLabel.textContent = gripWord; }
   if (last.gripOn !== !!gr) {
     last.gripOn = !!gr;
     parts.grip.classList.toggle('on', !!gr);
@@ -1122,9 +1258,14 @@ function drawStatus(vitals, opts) {
   if (last.statEnding !== ending) { last.statEnding = ending; parts.stat.classList.toggle('ending', ending); }
   const spells = effectRows(vitals);
   const powers = setPowerChips(vitals);   // SET5: the set powers (the host's - setHudSetChips)
+  powers.push(...techniqueChips(vitals));   // TECH1: and the weapon's technique beside them (the host's - setHudTechniqueChips)
   // SURV5: the needs - one a felt need (survival/status.js), none while every need is met, and none with the switch off
   const needs = survivalOn() ? survivalHudChips(vitals, Math.floor(ownMinutes()), { vampire: !!liveVampirism(vitals), endurance: liveStat(vitals, 'endurance') }) : [];   // AUDIT SURV C: the vampire's strip, the page's drunk bands
-  const all = statusTiles({ spells, powers, afflictions: afflictionRows(vitals), needs });
+  if (needs.length) noteFirstUse('survival');   // TUT1: the first felt need
+  const rested = sharedClockOn() ? { minutes: nightRealMinutesLeft(vitals, ownMinutes()) } : null;   // REST1: the night interval, online
+  const all = statusTiles({ spells, powers, afflictions: afflictionRows(vitals), needs, rested });
+  const zone = zoneTile();
+  if (zone) all.unshift(...statusTiles({ zone }));   // WILD1: the open zone's tile, first
   // a new window size or HUD scale is a new band at once (AUDIT UI C: a rotation left the old band for half a second)
   const vp = `${globalThis.innerWidth}x${globalThis.innerHeight}x${last.scale ?? 1}`;
   if (last.statVp !== vp) { last.statVp = vp; last.statTick = -1; }
@@ -1136,9 +1277,9 @@ function drawStatus(vitals, opts) {
   const tiles = statOverflow(all, { rows, columns });   // past the screen's middle: the last few folded into "+N"
   const tmpl = `repeat(${Math.max(1, Math.min(tiles.length, rows))}, ${metrics.tile}px)`;
   if (last.statRows !== tmpl) { last.statRows = tmpl; parts.stat.style.gridTemplateRows = tmpl; }
-  if (last.statTight !== tight) { last.statTight = tight; parts.stat.classList.toggle('tight', tight); }
-  if (last.statSide !== side) { last.statSide = side; parts.stat.classList.toggle('side', side); }
-  if (last.statNone !== none) { last.statNone = none; parts.stat.classList.toggle('noroom', none); }   // no band anywhere: it steps aside
+  if (last.statTight !== tight) { last.statTight = tight; parts.stat.classList.toggle('stat-tight', tight); }
+  if (last.statSide !== side) { last.statSide = side; parts.stat.classList.toggle('stat-side', side); }   // HUD-CLASS (AUDIT 2026-10-05): the widget's states are its own words, stat-<state> - as the bare 'side' it took the sheet's .side column (its --ink ground), a dark box behind the tiles beside the diamond
+  if (last.statNone !== none) { last.statNone = none; parts.stat.classList.toggle('stat-noroom', none); }   // no band anywhere: it steps aside
   const top = side ? `${last.statSideOffset ?? 0}px` : '';   // beside the diamond: from under what stands above
   if (last.statTop !== top) { last.statTop = top; parts.stat.style.top = top; }
   const dpr = clampDpr(screenDpr() * (last.scale ?? 1));   // the block rides the HUD's scale: a spell's icon is fitted at it
@@ -1215,9 +1356,10 @@ function statTile(t, dpr, box) {
   } else if (t.set) {
     const set = setById(t.set);
     const colour = set?.colour ?? (t.set === 'legendary' ? RARITIES.legendary.colour : undefined);   // LOOT5: a Legendary power's chip wears the tier's own orange
+    const shade = t.set === 'technique' ? TECH_CHIP_COLOUR : colour;   // TECH1: a weapon's technique, its marks' own blue
     cell.dataset.set = t.set;
-    for (const [k, v] of Object.entries(setShades(colour))) cell.style.setProperty(k, v);
-    pic.src = sigilRuneTileSrc(colour);
+    for (const [k, v] of Object.entries(setShades(shade))) cell.style.setProperty(k, v);
+    pic.src = t.set === 'technique' ? techniqueGlyphTileSrc(shade) : sigilRuneTileSrc(shade);   // TECH-CARD: the technique's own glyph, as its block on the card wears it
   } else if (t.glyph) {
     cell.dataset.glyph = t.glyph;
     pic.src = statusGlyphSrc(t.glyph) ?? '';
@@ -1376,13 +1518,13 @@ const QUICK_NARROW = '(max-width: 860px)';
 function drawSpellChip(view, tag) {
   const sp = view.spell;
   const lamp = quickslotCycling() === 'spell';
-  const sig = sp ? `${sp.index}|${sp.name}|${sp.spell ? 1 : 0}|${sp.readied ? 1 : 0}|${lamp ? 1 : 0}|${tagKey(tag)}|${last.scale ?? 1}` : `-|${tagKey(tag)}`;
+  const sig = sp ? `${sp.index}|${sp.name}|${sp.spell?.noIcon ? 'n' : ''}${sp.spell?.icon ?? ''}|${sp.spell ? 1 : 0}|${sp.readied ? 1 : 0}|${lamp ? 1 : 0}|${tagKey(tag)}|${last.scale ?? 1}` : `-|${tagKey(tag)}`;
   if (last.qspell === sig) return;
   last.qspell = sig;
   const chip = parts.spellChip;
   // UI2: THE SPELL'S OWN ICON before its name, fitted at the HUD's scale (the chip rides its transform); nothing for an
   // empty slot or a spell the book no longer holds - the name says which it was
-  const pic = sp?.spell ? spellIconPicture(sp.spell.icon, { box: SPELL_CHIP_BOX, dpr: clampDpr(screenDpr() * (last.scale ?? 1)), onReady: () => { last.qspell = null; } }) : null;
+  const pic = sp?.spell && !sp.spell.noIcon ? spellIconPicture(sp.spell.icon, { box: SPELL_CHIP_BOX, dpr: clampDpr(screenDpr() * (last.scale ?? 1)), onReady: () => { last.qspell = null; } }) : null;
   if (pic) { showFitted(chip.icon, pic); chip.icon.style.display = ''; } else { chip.icon.removeAttribute('src'); chip.icon.style.display = 'none'; }
   chip.chip.classList.toggle('on', !!sp);
   // HOTSLOT (2026-09-22): an EMPTY slot is a socket, as the diamond's
@@ -1390,7 +1532,7 @@ function drawSpellChip(view, tag) {
   // seen and, on a phone, the first tap has a chip to land on (the
   // tap fills it from the book: spellQuickslotPress). Hidden, the slot
   // could never be filled without a keyboard.
-  chip.chip.classList.toggle('empty', !sp);
+  chip.chip.classList.toggle('qspell-empty', !sp);   // HUD-CLASS: its own word - the bare 'empty' took the sheet's .empty component, its 16px margin under the caption
   if (!sp) {
     chip.chip.classList.remove('readied', 'ghost', 'cycling');
     chip.name.textContent = 'No spell';
@@ -1412,7 +1554,16 @@ function drawSpellChip(view, tag) {
  *  surface importing them closed a cycle. `fn(entity) -> [{ key, set, name, text, state }]`. */
 let _setChips = null;
 export function setHudSetChips(fn) { _setChips = typeof fn === 'function' ? fn : null; }
+/** WILD1: the host's word on the open zone - `{ name }` while the player stands in it, else null (systems/wildZone.js). */
+let _zone = null;
+export function setHudZone(fn) { _zone = typeof fn === 'function' ? fn : null; }
+const zoneTile = () => { try { return _zone?.() ?? null; } catch { return null; } };
 const setPowerChips = (vitals) => { try { return _setChips?.(vitals) ?? []; } catch { return []; } };
+/** TECH1 (bible/05-Combat/Weapon-Techniques.md): the host's word on the weapon's technique - its chip, after the set powers'
+ *  (combat/techniques.js techniqueHudChips, read off the rig that owns the frame). */
+let _techChips = null;
+export function setHudTechniqueChips(fn) { _techChips = typeof fn === 'function' ? fn : null; }
+const techniqueChips = (vitals) => { try { return _techChips?.(vitals) ?? []; } catch { return []; } };
 
 function quickCell(part, slot, s) {
   const cls = part.cell.classList;

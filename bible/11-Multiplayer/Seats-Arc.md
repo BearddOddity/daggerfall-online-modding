@@ -53,7 +53,8 @@ so balance is an edit to one file, pinned by its own tests, never a hunt.
    keeping of the town - and everything a seat changes is layered over the game, never written into it.
 3. **A SEAT IS DECIDED WHERE NO CLIENT CAN LIE.** FACT: almost everything online trusts the client - gold and items
    live in the save, Renown XP is client-reported (bounded, never verified; `server-account/src/renownTracks.js`), a
-   duel is resolved by the defender's own machine (`src/net/duelSession.js`), and no pose is speed-checked
+   duel is resolved by the defender's own machine (`src/net/duelSession.js` - INT8, 2026-10-09: refereed by the relay
+   since, `06-Systems/Integrity-Arc.md` 5), and no pose is speed-checked
    (`validPose`, `src/net/wire.js`). A seat is a prize other guilds lose, so:
    - every influence source is **witnessed by a server** or **bounded** and worth less (4.2);
    - every siege is **refereed by the relay**, as the Oblivion Gate's boss is (`src/net/gateBrain.js`,
@@ -83,7 +84,7 @@ so balance is an edit to one file, pinned by its own tests, never a hunt.
 | Homes, decor, stations | `server-account/src/homes.js`, `decor.js`; `src/net/homeLaw.js`, `decorLaw.js` | One owner a building (map_id, building_key); `HOME_CAP` 3; entry private/party/public; stations for a licence |
 | Renown | `renown_tracks` (0009), `src/net/renown.js`, `renownTracker.js` | Online level to 50, signed into the token (`lv`); client-reported XP, 5,000 a report, 15,000 an hour an account (SILVER-WAYS: it said 20,000 - RENOWN-ACCOUNT's three quarters made it 15,000, `renown.js` RENOWN_XP_HOUR_MAX); no region recorded |
 | The Oblivion Gate | `gateLaw.js`, `gateBrain.js`, `gateReceipt.js`, relay `_gate*`, `0014_gate_kills.sql` | Relay-refereed HP, reach, rate and damage buckets; phases; `r1.` Ed25519 receipts; the day's region from a pure shuffle bag |
-| Duels | `duelSession.js`, `duelCombat.js`, `0008_duels.sql` | 1v1 on a ring 12 m in radius (`DUEL_RADIUS_M`), defender-resolved - so no duel can award anything the server keeps |
+| Duels | `duelSession.js`, `duelCombat.js`, `0008_duels.sql` | 1v1 on a ring 12 m in radius (`DUEL_RADIUS_M`), defender-resolved - so no duel can award anything the server keeps (INT8, 2026-10-09: relay-refereed since, `net/duelRef.js`, its result a signed `d1` receipt - still no prize beyond the K/D record) |
 | Parties | the hub (`chat:world` Durable Object) | `PARTY_MAX` 8 |
 | Rooms | `roomKeyFor` (`src/net/online.js`), `wire.js` | A town online is inside a 16x16-pixel cell room; `SOCKETS_MAX` 256; 32 nearest hear every pose; 8 full bodies drawn |
 | The shared clock | `sharedClassicMinutes` (`wire.js`) | A game day is 2 real hours; the relay imports the same function |
@@ -170,7 +171,9 @@ confirmation is on the audit list.
 BUILT (SEAT1a): the kind `seat` of the one witness table and law (`world_witness`, nodeLaw.js witnessedFact - as the
 professions' pixels, dungeons and hubs), keyed by the map id, its report the seat's canonical bytes
 (townSeatLaw.js seatReportText); the ignored accounts, the audit and the strike as written above
-(`server-account/src/townSeats.js`). As built: a witness's FIRST answer on a seat stands (the table's INSERT OR IGNORE,
+(`server-account/src/townSeats.js`). CHAP2a (Chapters-Arc 4): the kind `npchall`, a town's guild halls - the three, the age,
+the first answer and the hour; AUDIT CHAP2 E1 gave it this kind's ignored accounts, audit and strike too
+(`server-account/src/npcHalls.js`). As built: a witness's FIRST answer on a seat stands (the table's INSERT OR IGNORE,
 as every kind's); a struck key is never witnessed again (the strike's history row says so); "the audit" reads "a seat
 whose confirmation still rests on exactly three witnesses, whom nobody else has joined".
 
@@ -210,7 +213,8 @@ DECIDED (Mac, the Holdings plan: "the holder's banners and colours in the city")
   1. one beside each city gate model (the gate's two posts, the banner on the town side);
   2. two flanking the palace's door (the building record's position and facing);
   3. one pennant above each Notice Board - a town's rumour boards, every board BOUNTY1 did not take for its bounty
-     board (PROF0 10.1, `systems/bountyBoard.js` questBoardIndices; AUDIT 28: this said "each bulletin board");
+     board (PROF0 10.1, `systems/bountyBoard.js` questBoardIndices; AUDIT 28: this said "each bulletin board";
+     ONE-BOARD made it one a town, reverted - Professions-Arc 10.11);
   4. crown seats: two more at the castle's entrance in the city.
 - **The banner**: the port's own cloth quad, 1 wide by 3 tall (in DFU's scale, a man's height and a half), its
   field the holder's first colour, a border in the second, the device centred; it sways on the weather's wind
@@ -219,7 +223,7 @@ DECIDED (Mac, the Holdings plan: "the holder's banners and colours in the city")
 - **Nothing offline**: offline the town is DFU's, with no banner.
 
 BUILT (SEAT1a; scenes/seatBanners.js): anchors 1-3 as written - a banner at each city gate (on its town side, beside a
-post), the palace door's two (GUILD1d's measure of a building's first door record), a pennant over each rumour board -
+post), the palace door's two (GUILD1d's measure of a building's first door record), a pennant over the Notice Board -
 at most 8, measured where the pixel is built; the kingdom's plain banner (townSeatLaw.js seatPlainBanner; a March's its
 two claimants' metals, field and border), drawn by GUILD1d's cloth pass. BUILT since (CASTLE-GATE, 2026-10-02; Online-Arc CASTLE-GATE): anchor 4, the crown
 seats' two at the castle's entrance in the city - the lowest of the pixel's dungeon-entrance doors
@@ -616,7 +620,8 @@ accounts whose last play beat fell in the week) and Overreach, paid at the Turni
   where DFU stands it. The holder gains: the **Charter Room** - the palace's largest room, decorated by Officers
   with DECOR's catalogue (at most **100** pieces, DECOR's gold a placement); the guild's roster board; the guild
   Stores chest (PROF0 section 7). Crown: the castle is the hall (DECIDED (Mac)) - its throne room carries the
-  holder's banners, the roster board and the Stores chest, and **no decor**: FACT, the decorator stands only in a
+  holder's banners, the roster board and the Stores chest (GUILD3a: the chest opens the guild's vault since GUILD2b, the
+  Stores a page beside it), and **no decor**: FACT, the decorator stands only in a
   building interior the host names (`src/ui/decorPanel.js`: "their online home, or their own house or ship"), and a
   castle is an RDB dungeon room that DFU's main quest itself walks through, so nothing placed may stand in it.
 - **The Charter Room's rule**: the decor tool refuses a piece within **2 m** of any NPC or quest marker the palace's
@@ -630,7 +635,7 @@ hall's rule are the holder's hall's (GUILD1d's halls; the palace interior as the
 Throne).
 
 BUILT (SEAT-HALL, 2026-10-02; Online-Arc SEAT-HALL): the palace interior as the holder's guild hall - its cupboards the
-guild Stores chest and its beds the members', the hall's board where a keeper stands it, the court as DFU stands it; the
+guild Stores chest (GUILD3a: the guild's vault since GUILD2b, the Stores a page beside it) and its beds the members', the hall's board where a keeper stands it, the court as DFU stands it; the
 Charter Room in the palace's largest room, furnished by the holder's Officers from DECOR's catalogue off their own
 records, at most 100 pieces over the seat, the 2 m rule in the decorator's bar, its pieces cleared whenever the seat
 changes hands or lapses. The crown's throne room is CROWN-HALL's, below.
@@ -638,7 +643,8 @@ changes hands or lapses. The crown's throne room is CROWN-HALL's, below.
 BUILT (CROWN-HALL, 2026-10-02; Online-Arc CROWN-HALL): the crown's castle as its holder's hall - the throne room found by
 its ruler (the region's Province faction's first child, an Individual, standing among the castle's people), the
 holder's two banners on the wall behind the throne, Daggerfall's board and chest a few paces into the room, one each
-side of the aisle: the board the guild's notes and the chest its Stores, to the holder's members; no decor. DECIDED:
+side of the aisle: the board the guild's notes and the chest its Stores, to the holder's members (GUILD3a: since GUILD2b
+the chest opens the guild's vault, the Stores a page beside it - `worldModes.js` `openCrownPiece`); no decor. DECIDED:
 placed by the dungeon's own collider about the ruler, so no castle's layout is written down; a castle where the ruler
 stands nowhere, or no floor is found under them, stands none of it.
 
@@ -878,7 +884,8 @@ Standing for this holder (a Charter it claimed, a seat taken since).
   guild may use it only as its second colour.
 - **A device**, one of 24 of the port's own drawn charges (SVG silhouettes committed as the port's own art): wolf,
   bear, boar, stag, lion, eagle, raven, dragon, serpent, fish, tower, gate, crown, sword, axe, hammer, bow, shield,
-  sun, moon, star, eye, rose, tree.
+  sun, moon, star, eye, rose, tree. (GUILD2c, 2026-10-03: forty now - sixteen more, a divided field and a device's own
+  colour; `11-Multiplayer/Guild-Overhaul.md`.)
 - Chosen by the Guildmaster on the Guild tab; changing either costs **500 Marks** and is refused in a siege week.
 - It is drawn on banners (3.4), the map ring, the frame of the guild tag, the siege HUD, the board and the Chronicle.
 
@@ -905,6 +912,11 @@ as it was that day (a row keeps the name and tag alone) - and only where the gui
 too (a reused tag shows no new arms on an old guild's lines). DECIDED: the book reader draws text alone, so the Hall of
 Records names the arms in words - each guild a line names, in the line's order. A Moderators' void is about the holder
 it restored, else none. The Overworld's name face frames the tag with the shield too, drawn on its canvas.
+GUILD2c (2026-10-03, `Guild-Overhaul.md`; Mac: "a proper choosable insignia that also plays with guild banners"): forty
+devices (sixteen more - the guilds' own trades and creeds), a field divided seven ways (or plain) with a second
+colour, and the device in a colour of its own; arms that carry neither are GUILD1d's three keys exactly, and every face
+above that draws the device draws the rest (the map's ring and a Season's ribbon carry the colours alone). Chosen on
+the Guild tab's Arms page from pictures, not lists.
 
 ### 8.2 The guild hall (GUILD1d)
 
@@ -913,7 +925,8 @@ FACT: planned as "a guild-owned home" and not built; `HOME_ENTRIES` has no `guil
 - a guild may own **one** home as its hall, bought from the gold treasury at the home's price **x 1.5**, owned by the
   guild (not a character): the homes table gains a guild owner column;
 - the `guild` entry joins private/party/public for every home, the hall's default;
-- the hall carries the guild Stores chest and a private guild board (the board's Guilds tab, members only);
+- the hall carries the guild Stores chest (GUILD3a: the guild's vault since GUILD2b, the Stores a page beside it) and a
+  private guild board (the board's Guilds tab, members only);
 - decor in the hall by Officers; `DECOR_CAP` as any home;
 - a guild holding a seat keeps its own hall and gains the palace (or castle) as well.
 
@@ -924,7 +937,8 @@ the part of the treasury realm records paid in (`realm_gold`), and the sale pays
 pieces' cost back there; a hall's entries are `guild` (the default) and `public` (a party is not a guild's), and
 `guild` joined private/party/public for every home; decor by Officers - off their own records, a piece's half back to
 the treasury, the catalogue's pieces alone; the guild Stores chest is every cupboard of the hall (the Guild tab's guild
-Stores to a member). NOT YET: a hall's outside and yard (HOME-LOOK and HOME-YARD name a character) - BUILT by
+Stores to a member) - GUILD3a (`Guilds-Made-Plain.md`): since GUILD2b every chest of a hall opens the guild's VAULT, the
+Stores a page beside it (`scenes/world.js` `openStores`); this sentence said the Stores until then. NOT YET: a hall's outside and yard (HOME-LOOK and HOME-YARD name a character) - BUILT by
 GUILD-YARD (2026-10-02, below); a seat's palace as a second hall (7.2) - BUILT by SEAT-HALL (2026-10-02, 7.2's BUILT),
 its own table and not a home's row.
 
@@ -1160,7 +1174,7 @@ bible updated in the same change, mutants recorded.
 | **SEASON1** | Seasons, the Chronicle, the Hall of Records, Tides - **PART ONE SHIPPED** 2026-10-01 (`06-Systems/Online-Arc.md` SEASON1: the calendar from `SEASON_ZERO_WEEK`, the names, a Season's end - its titles, the soft reset, the Chronicle's line - Season 0's wipe, the Season on the rules and the titles; `acct54`); **PART TWO SHIPPED** - the roll and the seat's own effects, on the Seat tab (`acct55`); the economy's Tides (`acct56`); the Orc Raids and the stormy sea (`acct57`); the banner ribbon (`acct58`, `world149`); **PART THREE SHIPPED** - the Hall of Records (`acct59`); the castles' copies and the board's book with AUDIT-SEATS | A Season's end set against a twin counting none; Season 0's wipe |
 | **AUDIT-SEATS** | The arc audited whole, GUILD1d to SEASON1, its open items finished - **BUILT** 2026-10-01 (`06-Systems/Online-Arc.md` AUDIT-SEATS; `acct60` with PROF11 and SEAT2b part one, `world149` re-recorded) | Every finding verified, fixed, pinned and mutated |
 | **SEAT-HALL** | The palace as the holder's guild hall: the Charter Room (7.2) - **BUILT** 2026-10-02 (`06-Systems/Online-Arc.md` SEAT-HALL; migration `0065_seat_hall.sql`, `acct61` with SEAT2b part two) | A holder's Officer places a piece in the Charter Room; the seat changing hands clears it |
-| **CROWN-HALL** | The crown's castle as its holder's hall: the throne room (7.2) - **BUILT** 2026-10-02 (`06-Systems/Online-Arc.md` CROWN-HALL; client alone) | The holder's banners, roster board and Stores chest in the throne room, no decor |
+| **CROWN-HALL** | The crown's castle as its holder's hall: the throne room (7.2) - **BUILT** 2026-10-02 (`06-Systems/Online-Arc.md` CROWN-HALL; client alone) | The holder's banners, roster board and Stores chest in the throne room (the vault's since GUILD2b - GUILD3a), no decor |
 
 BUILT since (CASTLE-GATE, 2026-10-02): a crown's field at its castle's entrance (6.2) - its Throne, Gatehouse, camp,
 Palace square and the Royal Tourney's ring stand before the castle's door.
@@ -1185,7 +1199,7 @@ its record - each either wired or FLAGGED by name." Every SEAT slice's record ca
 |---|---|
 | `scenes/world.js` - the streaming world | The seats' derivation (the boot pass beside `pickRegionHubs`); the map rings; the arrival lines; the banners at their anchors; the Notice Boards; the Watch's poses; the siege and the Royal Tourney - fought in the town as the streaming world draws it, in their own `siege:` rooms |
 | `scenes/exterior.js` - the fixed city (`?exterior`) | The banners of the one city it loads, if that city is a seat - and DFU's own board, never the Notice Board or a bounty board (PROF0 10.7, Bounty-Boards 8: the fixed city keeps DFU's board; AUDIT 28 corrected "the board"). **FLAGGED by name**: no siege, no Watch, no Turning notice - the fixed city is a development host that mints its own `town:` room and runs no streamer, the way it already says so about travel (Home.md's open flags, `exterior.js` TP2) |
-| `scenes/worldModes.js` - building interiors | The palace hall: the Charter Room's decor (the building host's own decor pool, `scenes/decorRoom.js`), the roster board, the guild Stores chest, the Hall of Records book; guild halls (GUILD1d); the members' discount and Market Day at the seat town's shops (the `calculateCost` call sites, 7.2) |
+| `scenes/worldModes.js` - building interiors | The palace hall: the Charter Room's decor (the building host's own decor pool, `scenes/decorRoom.js`), the roster board, the guild Stores chest (the vault's since GUILD2b - GUILD3a), the Hall of Records book; guild halls (GUILD1d); the members' discount and Market Day at the seat town's shops (the `calculateCost` call sites, 7.2) |
 | `scenes/dungeonContext.js` - dungeons | The three castles (crown halls): the holder's banners in the throne room, the chest, the roster board and the Hall of Records book; **no decor, no siege, no revolt, no Tourney** inside - a castle is DFU's quest ground, and every seat act happens in its city |
 
 ### 15.2 The process laws, applied
@@ -1277,6 +1291,14 @@ Every law in Home.md's Process section, and what it demands of this arc:
   Turning the carried Right is the challenger's one Right of Siege (5.2 step 4 grants it no other), and the seat is
   granted no other challenge.
 - **The Turning's settle fails.** It is one D1 transaction: it rolls back whole, and the next read settles it again.
+  A read before the batch that throws is not caught, so it fails every seat route until it stops throwing - SEAT-CAP
+  (`01-Overview/Field-Bugs-2026-10-11h.md`, from play: "Time to take a castle and nothing happens") found one: every
+  guild pledged anywhere bound in one statement, past D1's 100 parameters. Every guild list the seats bind is read
+  IN_CHUNK (90) at a time (`seatInfluence.js` allIn), and the tests' fake refuses a statement D1 would. And a week due is
+  settled by ONE caller at a time (SEAT-LEASE, the same page): every request had run the whole settle at once, each
+  cancelled with its client before it committed under the load it made; now one takes a 60-second lease
+  (`seatTurning.js` settleDueOnce), every other seat read answers the state as it stands and every other act is told
+  `seats-settling`.
 - **Clocks.** Every time is the relay's clock; clients read it through their offset (FACT, `online.js`
   `clockOffsetMs`). Daylight saving never touches UTC.
 
@@ -1293,7 +1315,9 @@ Every law in Home.md's Process section, and what it demands of this arc:
   still owed out of (a battle's contracts, an Edict's escrow, a Royal Tourney's prize), the titles and Honours earned,
   and the red lines stay; the beta crowns no one.
 - **Patch notes** for every slice, in the house style (the pull request's `## Patch notes`, Discord-sized, player-facing).
-- **Moderation.** Guild names and tags pass the name filter they already pass; heraldry is a fixed palette and fixed
+- **Moderation.** Guild names and tags pass the name filter. This was written as already true, and it never was - only
+  the chat called the filter - until GUILD2a (2026-10-03, `Guild-Overhaul.md`): a founding and a rename pass it now, the
+  name word by word, each word read as written, the refusal naming the word. Heraldry is a fixed palette and fixed
   devices, so nothing offensive can be drawn on a banner. Moderators (MOD1) may **void a siege** (`/siege void`) - a
   history row, the holder keeping the seat - when a fight was won by an exploit found after it. BUILT (VOID,
   2026-10-02; Online-Arc SIEGE-VOID): `/siege void <seat key>` (`net/townSeatBook.js` parseSiegeCommand, never guarded on
@@ -1379,7 +1403,7 @@ note:
 +--------------------------------------------------------------+
 |   THE SILVER HAND HOLDS THE THRONE OF ANTICLERE              |
 |   27 minutes 14 seconds.  Gate ^  Market ^  Temple o          |
-|   Your Honour: 50 Marks, 2,000 Renown, one Spoils of War roll |
+|   Your Honour: 50 silver, 2,000 Renown, one Spoils of War roll|
 |                                              [ Claim ]        |
 +--------------------------------------------------------------+
 ```

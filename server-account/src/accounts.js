@@ -36,12 +36,16 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import { guestName, isHandleShaped, isGuestShaped } from './guestName.js';
+import { handleLooksLikeEmail } from '../../src/net/handleShape.js';   // HANDLE-EMAIL: a username is never an address
+import { NAME_MAX } from '../../src/net/wire.js';   // NAME-AS: the wire's bound on a name, a worn character's among them
+import { checkName } from '../../src/net/nameFilter.js';   // NAME-AS: which word a character's name was refused for (NAME-F: a refusal names it)
 import { wardrobeOf, equipRefusal, canModerate, auraRefusal, glyphRefusal, glyphsHidden } from './titles.js';   // ACC3: what a player holds, wears and is true of - all four derived; WB9g: and the aura worn
 import { insigniaById, insigniaHeld } from '../../src/net/insignia.js';   // WB9g: the Broker's insignia - one law both ends
 import { ID_RE, nameIsIssuable } from '../../src/net/identityToken.js';
 import { PLAY_GRACE_S } from '../../src/net/playClock.js';   // ACC4: the widest gap one beat may credit - one home both ends
 import { MUTE_MAX_MIN } from '../../src/net/moderation.js';   // MOD1: the longest mute - the command and the service agree in one place
 import { verifyReceipt } from '../../src/net/gateReceipt.js';   // WB5b: the relay's kill receipt, verified with its public half
+import { verifyDuelReceipt } from '../../src/net/duelReceipt.js';   // INT8: a duel's result, the relay's
 import { TERMS_VERSION, PRIVACY_VERSION, LEGAL_VERSION_RE } from '../../src/net/legalLaw.js';   // TERMS1: the documents a new account agrees to - one home both ends
 import {
   hashPassword, verifyPassword, needsRehash, passwordRefusal,
@@ -59,8 +63,9 @@ export const SESSION_IDLE_S = 365 * 24 * 60 * 60;
 /** SCALE1 (2026-09-30, the scaling audit - Mac: "set the stage for a larger player base"): HOW STALE `last_seen` MAY
  *  GROW before a request writes it again. Every authenticated call wrote both rows, two of its three D1 writes, and
  *  D1 has one writer for the whole service. Nothing reads the column finer than this: the idle bound is a year, and
- *  the device list orders by it. */
-export const SESSION_TOUCH_S = 10 * 60;
+ *  the device list orders by it. SCALE4h (2026-10-11, "10k writes"): an hour, not ten minutes - still nothing reads it
+ *  finer, and a session's touch is one hot row the plan named (bible/11-Multiplayer/Scale-Arc.md SCALE4h). */
+export const SESSION_TOUCH_S = 60 * 60;
 
 const b64url = (bytes) => {
   let bin = '';
@@ -106,7 +111,7 @@ export async function hashSecret(secret, { subtle }) {
  */
 export function displayName(row) {
   const handle = row?.handle;
-  if (typeof handle === 'string' && handle.length > 0) return handle;
+  if (typeof handle === 'string' && handle.length > 0 && !handleLooksLikeEmail(handle)) return handle;   // HANDLE-EMAIL: an address is never read out
   return String(row?.guest_name ?? '');
 }
 
@@ -115,6 +120,82 @@ export function displayName(row) {
  *  first day rather than a second one bolted on beside it. */
 export function accountKind(row) {
   return row?.handle ? 'linked' : 'guest';
+}
+
+/**
+ * NAME-AS (2026-10-12, Mac: "I want to add an option to the profile menu where players can toggle to use their account
+ * name or character name for ingame use"): WHICH NAME THE ROOM READS - the account's (displayName, above) or the realm
+ * character's the token is minted for (wornNameOf, below). The row stores the second alone (`name_as` 'character',
+ * migration 0111), so a row that never chose reads as the account, as every player read before.
+ */
+export const NAME_AS = Object.freeze(['account', 'character']);
+/** NAME-AS: the choice this row holds - 'character', or the account's for anything else (null, a word no build wrote). */
+export const nameAsOf = (/** @type {any} */ row) => (row?.name_as === 'character' ? 'character' : 'account');
+
+/**
+ * NAME-AS: WHY A CHARACTER'S NAME CANNOT BE WORN AS IT STANDS - null where it can. The token's own law asked as a
+ * question (identityToken.js nameIsIssuable: the wire carries the name unchanged - claimsValid refuses a token whose `n`
+ * it would not, so a name signed past it is a player who cannot connect), its refusals told apart so the player can be
+ * told which: 'email' (HANDLE-EMAIL's law, worn as it is chosen - an address is never read out, and a character's name is
+ * read out to everyone), 'long' (past NAME_MAX), 'refused' (the name filter's, with the word it caught - NAME-F: a
+ * refusal names it), 'letters' (characters the wire does not carry - an accent, a symbol past plain text - or no letters
+ * at all). A realm name is trimmed and printable already (realm.js realmNameOf); this is the wire's narrower law.
+ * @param {unknown} name
+ * @returns {{ why: 'email'|'long'|'refused'|'letters', word?: string } | null}
+ */
+export function wornNameRefusal(name) {
+  const s = typeof name === 'string' ? name : '';
+  if (handleLooksLikeEmail(s)) return { why: 'email' };
+  if (nameIsIssuable(s)) return null;
+  if (s.length > NAME_MAX) return { why: 'long' };
+  const verdict = checkName(s);
+  if (!verdict.ok && verdict.kind !== 'empty') return { why: 'refused', word: verdict.word };
+  return { why: 'letters' };
+}
+
+/**
+ * NAME-AS: THE NAME THE MINT SIGNS (the token's `n`) - `{ name }`, and `why` (with `word`, for the filter's) where the row
+ * chose its character's and that name cannot be worn, so the account's stands in its place and the mint's answer says
+ * why (`nameWhy` - the player is told once, scenes/world.js adoptIssued).
+ *
+ * THE CHARACTER'S NAME IS THE SERVICE'S, NEVER THE CLIENT'S: `character` is the realm character's own name, off the row
+ * the token is minted for (realm.js realmMintFacts - a realm character of this account, standing and in play), never a
+ * word of the request (test/accountworker.test.js: a name in the body never reaches the token). None - no character
+ * named, an offline one, another account's, a tombstone - is the account's, and silently: there is nothing to wear.
+ *
+ * AND NEVER ANOTHER ACCOUNT'S USERNAME. A handle is unique (0001's handle_lc index) and is how an account is found - a
+ * letter, an invitation, a commission are each addressed by username - and handleShape.js keeps the guests' generated
+ * names out of that space by their shape alone. A character's name is chosen at chargen, so its shape promises nothing:
+ * one that is another account's username would walk every room wearing that account's name. So it is asked here, ONE
+ * read of the unique index, and only of a name that could be a handle at all (one word, HANDLE_RE - a name with a space
+ * in it never can). The player's own handle is theirs to wear as their character's name.
+ * @param {{db: any}} ctx @param {any} player the session's row @param {unknown} character
+ * @returns {Promise<{ name: string, why?: string, word?: string }>}
+ */
+export async function wornNameOf({ db }, player, character) {
+  const account = displayName(player);
+  if (nameAsOf(player) !== 'character' || typeof character !== 'string' || !character) return { name: account };
+  const refused = wornNameRefusal(character);
+  if (refused) return { name: account, ...refused };
+  if (isHandleShaped(character)) {
+    const other = await db.prepare('SELECT 1 AS taken FROM players WHERE handle_lc = ? AND id != ?').bind(character.toLowerCase(), player.id).first();
+    if (other) return { name: account, why: 'taken' };
+  }
+  return { name: character };
+}
+
+/**
+ * NAME-AS: CHOOSE WHICH NAME THE ROOM READS - 'account' or 'character' (NAME_AS); any other word is refused
+ * `no-name-as`. Either is always allowed: a player may always wear their account's name, and a character's is vetted
+ * where it is worn (wornNameOf, at every mint) rather than here - the character it names is whichever the next mint is
+ * for. The row keeps the second alone ('character'; the account's is null, as every row that never chose). Answers the
+ * choice as the row now holds it, so the caller never re-reads to know what it did.
+ * @param {{db: any, nowS: number}} ctx @param {any} player @param {unknown} as
+ */
+export async function chooseNameAs({ db, nowS }, player, as) {
+  if (!NAME_AS.includes(/** @type {any} */ (as))) return { error: 'no-name-as' };
+  await db.prepare('UPDATE players SET name_as = ?, last_seen = ? WHERE id = ?').bind(as === 'character' ? 'character' : null, nowS, player.id).run();
+  return { ok: true, nameAs: as };
 }
 
 /**
@@ -168,6 +249,18 @@ export async function openSession({ db, subtle, rand, nowS }, playerId, deviceLa
   return { sessionId, secret };
 }
 
+/** SCALE4a (2026-10-08, Mac: "Do 1 2 and 3" - the session and its player were two reads in a row, 4.86 and 4.73 million
+ *  of the database's 17.4 million the day before YARD-SHED): THE SESSION'S COLUMNS, named, each read under a `s.` prefix
+ *  no column of `players` can carry, so one row holds both without a name in common (`id`, `created_at`, `last_seen`).
+ *  The table's own six (0001_accounts.sql; no migration has altered it) - test/scale4a.test.js holds this list to the
+ *  migrations' table, so a column added there is a pin that fails until it is named here. */
+export const SESSION_COLUMNS = Object.freeze(['id', 'player_id', 'secret_hash', 'device_label', 'created_at', 'last_seen']);
+/** SCALE4a: the session by its hash and its player beside it, in ONE statement. LEFT, so a session whose player is gone
+ *  still comes back (its player's columns NULL) and meets the same exits it met as two reads: the idle one is deleted
+ *  first, the orphan refused. */
+const WHO_SQL = `SELECT ${SESSION_COLUMNS.map((c) => `s.${c} AS "s.${c}"`).join(', ')}, p.*
+  FROM sessions s LEFT JOIN players p ON p.id = s.player_id WHERE s.secret_hash = ?`;
+
 /**
  * WHO IS THIS? Resolved by the secret alone, in ONE indexed lookup -
  * the caller has not proved a player id yet, so it cannot be part of
@@ -176,13 +269,23 @@ export async function openSession({ db, subtle, rand, nowS }, playerId, deviceLa
  * Answers the player row plus the session, or null. Never throws on a
  * bad secret, because a bad secret is the ordinary case.
  *
+ * SCALE4a: the lookup is one STATEMENT now, the player read with it
+ * (WHO_SQL) - the same two rows `SELECT * FROM sessions` and `SELECT *
+ * FROM players` answered, from one consistent read.
+ *
  * @returns {Promise<{player: any, session: any}|null>}
  */
 export async function resolveSession({ db, subtle, nowS }, secret) {
   if (typeof secret !== 'string' || secret.length < 16 || secret.length > 128) return null;
   const hash = await hashSecret(secret, { subtle });
-  const session = await db.prepare('SELECT * FROM sessions WHERE secret_hash = ?').bind(hash).first();
-  if (!session) return null;
+  const row = await db.prepare(WHO_SQL).bind(hash).first();
+  if (!row) return null;
+  /** @type {any} */ const session = {};
+  /** @type {any} */ const found = {};
+  for (const [k, v] of Object.entries(row)) {
+    if (k.startsWith('s.')) session[k.slice(2)] = v;
+    else found[k] = v;
+  }
 
   // ═══ AUDIT-ACC F9: AN IDLE SESSION IS DEAD, AND IT IS DELETED ════
   //
@@ -206,7 +309,9 @@ export async function resolveSession({ db, subtle, nowS }, secret) {
     return null;
   }
 
-  const player = await db.prepare('SELECT * FROM players WHERE id = ?').bind(session.player_id).first();
+  // SCALE4a: the player came with the session (WHO_SQL's LEFT JOIN) -
+  // its `id` NULL when no row of `players` stood behind it.
+  const player = found.id == null ? null : found;
   // A session whose player is gone is not a session. It cannot happen
   // through the cascade, and it is checked because "cannot happen" is
   // how a null reaches a caller that reads `.handle` off it.
@@ -323,6 +428,8 @@ export function accountView(player, nowS) {
     registeredAt: Number.isSafeInteger(player.registered_at) ? player.registered_at : null,
     playedS: Number.isSafeInteger(player.played_s) ? player.played_s : 0,
     muted: isMuted(player, nowS),
+    // NAME-AS: which name the room reads - the profile card's choice, as the row holds it
+    nameAs: nameAsOf(player),
   };
 }
 
@@ -386,11 +493,12 @@ export async function equipTitle({ db, nowS }, player, env, title) {
 
 /**
  * WB9g - WEAR ONE AURA, OR NONE. equipTitle's law at the feet: refused against what the player HOLDS, derived now (a
- * bought aura is held because the row records the sale); `null` takes it off and is always allowed. Answers the
+ * bought aura is held because the row records the sale; AEGIS: a listed title's, because the config lists the handle);
+ * `null` takes it off and is always allowed. Answers the
  * wardrobe after the write.
  */
 export async function equipAura({ db, nowS }, player, env, aura) {
-  const why = auraRefusal(aura, player);
+  const why = auraRefusal(aura, player, env);   // AEGIS: a list's aura is held off the config
   if (why) return { error: why };
   await db.prepare('UPDATE players SET aura = ?, last_seen = ? WHERE id = ?').bind(aura, nowS, player.id).run();
   return { ok: true, ...wardrobeOf({ ...player, aura }, env, nowS) };
@@ -412,11 +520,14 @@ export async function equipGlyph({ db, nowS }, player, env, glyph, on) {
   return { ok: true, ...wardrobeOf({ ...player, glyphs_off }, env, nowS) };
 }
 
+/** SERPENT-SET: every ember account ?1's kills paid, in SQL - its gates' rows' `stones` and (migration 0083) its serpents'
+ *  (SERPENT_EMBERS a receipt): the gate's currency is a serpent's hoard's too, and the purse below counts both. */
+const EMBERS_EARNED_SQL = '((SELECT COALESCE(SUM(stones), 0) FROM gate_kills WHERE account = ?1) + (SELECT COALESCE(SUM(stones), 0) FROM serpent_kills WHERE account = ?1))';
 /** WB9g: what the account's own closed gates could still pay for - one Sigil Stone a gate closed (gate_kills, WB5b),
  *  less what its insignia already cost (`insignia_spent`). Never below 0. WB12d: a row's own `stones` - two with the
- *  faithful's rite broken, one for the rite alone (migration 0066). */
+ *  faithful's rite broken, one for the rite alone (migration 0066). SERPENT-SET: and a serpent's (EMBERS_EARNED_SQL). */
 export async function insigniaPurse({ db }, player) {
-  const r = await db.prepare('SELECT COALESCE(SUM(stones), 0) AS n FROM gate_kills WHERE account = ?1').bind(player.id).first();
+  const r = await db.prepare(`SELECT ${EMBERS_EARNED_SQL} AS n`).bind(player.id).first();
   const spent = Number.isSafeInteger(player?.insignia_spent) ? player.insignia_spent : 0;
   return Math.max(0, Number(r?.n ?? 0) - spent);
 }
@@ -444,7 +555,7 @@ export async function buyInsignia({ db, nowS }, player, env, id) {
        insignia_spent = insignia_spent + ?3, last_seen = ?4
      WHERE id = ?1
        AND (' ' || COALESCE(insignia, '') || ' ') NOT LIKE ('% ' || ?2 || ' %')
-       AND (SELECT COALESCE(SUM(stones), 0) FROM gate_kills WHERE account = ?1) - insignia_spent >= ?3
+       AND ${EMBERS_EARNED_SQL} - insignia_spent >= ?3
      RETURNING insignia, insignia_spent`,
   ).bind(player.id, offer.id, offer.price, nowS).first();
   if (!row) {
@@ -466,6 +577,7 @@ export function handleRefusal(handle) {
   if (h !== handle) return 'shape';
   if (!isHandleShaped(h)) return 'shape';
   if (isGuestShaped(h)) return 'shape';         // belt and braces: the two spaces cannot overlap
+  if (handleLooksLikeEmail(h)) return 'email';  // HANDLE-EMAIL: a username is never an email address
   if (!nameIsIssuable(h)) return 'refused';     // NAME-F1/F2, at entry
   return null;
 }
@@ -566,6 +678,46 @@ export async function overRate({ db, nowS }, key, max = LOGIN_MAX, windowS = LOG
     RETURNING count`).bind(key, start).first();
   return (row?.count ?? 0) > max;
 }
+
+/**
+ * ACCT-RATE-MEM (2026-10-04, the login outage - Mac: "You log in and it sends you straight to title screen", "We have
+ * 300 people trying to log in at once"): AUDIT-ACC F12's bound, IN THE ISOLATE'S MEMORY AND NOT IN D1.
+ *
+ * F12 asked `overRate` with an `acct:` key on EVERY authenticated request - an upsert, so every read the game makes
+ * (a town's yards each minute, a home, a token) was also a WRITE to the one database. D1's own query insights on
+ * the day: 4,783,193 runs of that upsert, the most time of any statement, beside the session and player reads every
+ * request already makes. After two relay deploys put every player back through the door at once D1 answered
+ * "overloaded. Requests queued for too long", the session read under it failed, the service said 500, and the
+ * client went back to the title - and its retries were more of the same load.
+ *
+ * The bound is what F12 says it is - ACCOUNT_MAX a window per ACCOUNT, 429 'rate' - counted where it costs nothing.
+ * PER ISOLATE: a caller spread over several isolates meets the ceiling in each, so the cap is looser than a shared
+ * row's by that factor; it is a ceiling on abuse, generous on purpose (above), and a write on every read is the
+ * outage it was meant to prevent. The open doors' `login:` and `ip:` keys stay in D1: they are few, and must hold
+ * across isolates.
+ *
+ * THE WINDOW ONLY MOVES FORWARD (AUDIT RENOWN1, as `overRate`): a request stamped with a window already past is
+ * counted in the one open. BOUNDED: past ACCOUNT_RATE_KEYS accounts, the closed windows go; if every one is open,
+ * all of them - forgetting a count frees a caller early, never refuses one.
+ */
+export const ACCOUNT_RATE_KEYS = 50_000;
+const accountWindows = new Map();
+export function overAccountRate(id, nowS, max = ACCOUNT_MAX, windowS = ACCOUNT_WINDOW_S) {
+  const start = Math.floor(nowS / windowS) * windowS;
+  let w = accountWindows.get(id);
+  if (!w || w.start < start) {
+    if (!w && accountWindows.size >= ACCOUNT_RATE_KEYS) {
+      for (const [k, v] of accountWindows) if (v.start < start) accountWindows.delete(k);
+      if (accountWindows.size >= ACCOUNT_RATE_KEYS) accountWindows.clear();
+    }
+    w = { start, count: 0 };
+    accountWindows.set(id, w);
+  }
+  w.count++;
+  return w.count > max;
+}
+/** The accounts counted in this isolate (the pins' window). */
+export const accountRateKeys = () => accountWindows.size;
 
 /** A successful login forgives the key, so a player who mistyped twice
  *  and then got it right is not still on a countdown. */
@@ -720,43 +872,22 @@ export async function setEmail({ db }, playerId, email) {
 // ═══ DUEL1 (2026-09-24) - THE DUELLING RECORD ════════════════════════
 //
 // Mac: "Add a dueling K/D to the profile menu and player inspect
-// profile", per account. A duel is fought between two clients over the
-// relay (src/net/duelSession.js); THE LOSER'S OWN CLIENT reports it,
-// naming the winner by the account the relay verified off the winner's
-// token and stamped on the winner's frames. So this service is told a
-// loss by the account that took it - never a win by the account that
-// claims it - and the one thing a lying client can do to the record is
-// hand somebody else wins at the cost of its own losses. The bounds
-// keep even that honest: a loser reports at most once a
-// DUEL_REPORT_GAP_S (a duel has a count and a fight in it before it
-// can end), one pair's results are capped at DUEL_PAIR_DAY_MAX a day,
-// so two friends cannot mint a hundred wins an evening, and one
-// winner's at DUEL_WINNER_DAY_MAX a day, from anyone.
+// profile", per account. A player's wins are the rows of duel_results
+// naming them the winner, and their losses the rows naming them the
+// loser. DUEL1 wrote a row on the LOSER's own report, naming the winner
+// by the account the relay stamped on the winner's frames; INT8 (below)
+// writes it on the relay's signed receipt instead, and the report
+// retired with the defender-resolved blow (the route answers `retired`).
 //
-// AUDIT DUEL1 A1: AND A RECORD IS BETWEEN TWO REGISTERED ACCOUNTS. A
-// guest costs nothing to make (a POST, sixty an address a quarter of an
-// hour), so with guests counted, five of them posting a loss each every
-// sixteen seconds gave any account they named fifty wins in a quarter
-// of an hour - no duel, no relay. A registered account is a handle and
-// a password; a guest's duel is fought, and simply not counted.
-//
-// ONE STATEMENT IS THE WRITE, AND THE BOUNDS ARE IN IT. The INSERT
-// lands only when the winner exists, the gap has passed and the pair is
-// under its bound - measured inside the same statement, so two tabs
-// reporting at once cannot both slip under a bound that a read-then-
-// write would have checked twice against the same state.
-export const DUEL_REPORT_GAP_S = 15;
+// AUDIT DUEL1 A1: A RECORD IS BETWEEN TWO REGISTERED ACCOUNTS. A guest
+// costs nothing to make, so a guest's duel is fought, and simply not
+// counted. One pair's results are capped at DUEL_PAIR_DAY_MAX a day, so
+// two friends cannot mint a hundred wins an evening, and one winner's at
+// DUEL_WINNER_DAY_MAX a day, from anyone - measured inside the one
+// INSERT that is the write, so two claims at once cannot both slip under
+// a bound a read-then-write would have checked twice.
 export const DUEL_PAIR_DAY_MAX = 10;
 export const DUEL_WINNER_DAY_MAX = 20;
-/** AUDIT DUEL1 B5: a DOUBLE KNOCKOUT is a draw. Each side's own fall ends
- *  its own duel as lost, so both losers report, and each report names
- *  the other. Two reports in opposite directions this close together are
- *  one exchange: the second finds the first and takes it away, and
- *  neither counts. Closer than any second duel between the two could
- *  follow (the heal's hold, an ask, an answer and the 3 s count). The
- *  one row a report can remove names ITS OWN SENDER the winner, so all
- *  a lying client can take away is a win of its own. */
-export const DUEL_MUTUAL_S = 4;
 const DAY_S = 24 * 3600;
 
 /** An account's record: `{ wins, losses }`, counted off the results. */
@@ -767,45 +898,56 @@ export async function duelRecordOf({ db }, playerId) {
   return { wins: n(w), losses: n(l) };
 }
 
+// ═══ INT8 (2026-10-09) - A DUEL'S RESULT, THE RELAY'S ═════════════════
+//
+// The INTEGRITY arc's lane 2 (bible/06-Systems/Integrity-Arc.md; Mac: "I
+// want to do everything and do it properly"). DUEL1's record was the
+// LOSER's own report - a client that never said it lost never did, and
+// a double knockout was two reports racing. Now the relay that refereed
+// the bout (src/net/duelRef.js) hands BOTH fighters a receipt naming the
+// winner (src/net/duelReceipt.js `d1`), signed with the key the gates'
+// receipts are; either fighter carries it here, and it is counted ONCE -
+// its bout's id is the row's (`rk`, unique). A draw mints nothing.
+//
+// DUEL1's bounds stand, inside the one INSERT: two registered accounts
+// (AUDIT DUEL1 A1), the same winner over the same loser at most
+// DUEL_PAIR_DAY_MAX a day, one winner's at most DUEL_WINNER_DAY_MAX a
+// day. The report's gap and the mutual draw retire with the report: the
+// relay paces the bouts and says a draw itself.
 /**
- * The loser's report: `winner` the account the relay stamped on the
- * winner's frames. `{ recorded, wins, losses }` - the loser's own record
- * after it - or `{ error }` for a winner that is no account's shape or
- * is the loser themselves. A report a bound refuses is `recorded: false`
- * with `why` - 'guest' (either side has no handle), 'draw' (the winner's
- * own loss to this loser came in DUEL_MUTUAL_S ago: a double knockout,
- * and that row is gone too), 'gap', 'pair' or 'winner' - not an error:
- * the duel was fought, it simply does not count.
+ * A duel's receipt carried by one of its two fighters (the session's
+ * account must be one of `f`). `{ recorded, wins, losses }` - the
+ * caller's own record after it; `recorded` true where the bout is
+ * counted, by this claim or by its other fighter's - or `{ recorded:
+ * false, why }` ('guest', 'pair', 'winner'): the duel was fought, and
+ * simply does not count. `{ error }`: 'no-gate-key', 'receipt' (with
+ * its `why`), 'not-yours'.
  */
-export async function reportDuelLoss({ db, nowS }, loser, winner) {
-  if (typeof winner !== 'string' || !ID_RE.test(winner)) return { error: 'no-player' };
-  if (winner === loser.id) return { error: 'self' };
-  if (!loser.handle) {
-    const w = await db.prepare('SELECT 1 AS x FROM players WHERE id = ?1').bind(winner).first();
-    if (!w) return { error: 'no-player' };
-    return { recorded: false, why: 'guest', ...(await duelRecordOf({ db }, loser.id)) };
-  }
-  const mutual = await db.prepare('DELETE FROM duel_results WHERE loser = ?1 AND winner = ?2 AND at >= ?3 - ?4')
-    .bind(winner, loser.id, nowS, DUEL_MUTUAL_S).run();
-  if (Number(mutual?.meta?.changes ?? 0) > 0) return { recorded: false, why: 'draw', ...(await duelRecordOf({ db }, loser.id)) };
+export async function claimDuel({ db, nowS, subtle }, player, receipt, publicKey) {
+  if (!publicKey) return { error: 'no-gate-key' };
+  const v = await verifyDuelReceipt(receipt, publicKey, { subtle, nowS });
+  if (!v.ok) return { error: 'receipt', why: v.why };
+  const c = v.claims;
+  if (!c.f.includes(player.id)) return { error: 'not-yours' };
+  const winner = c.f[c.w], loser = c.f[1 - c.w];
   const r = await db.prepare(
-    `INSERT INTO duel_results (loser, winner, at)
-     SELECT ?1, ?2, ?3
-     WHERE EXISTS (SELECT 1 FROM players WHERE id = ?2 AND handle IS NOT NULL)
-       AND NOT EXISTS (SELECT 1 FROM duel_results WHERE loser = ?1 AND at > ?3 - ?4)
+    `INSERT INTO duel_results (loser, winner, at, rk)
+     SELECT ?1, ?2, ?3, ?4
+     WHERE EXISTS (SELECT 1 FROM players WHERE id = ?1 AND handle IS NOT NULL)
+       AND EXISTS (SELECT 1 FROM players WHERE id = ?2 AND handle IS NOT NULL)
+       AND NOT EXISTS (SELECT 1 FROM duel_results WHERE rk = ?4)
        AND (SELECT COUNT(*) FROM duel_results WHERE loser = ?1 AND winner = ?2 AND at > ?3 - ?5) < ?6
        AND (SELECT COUNT(*) FROM duel_results WHERE winner = ?2 AND at > ?3 - ?5) < ?7`,
-  ).bind(loser.id, winner, nowS, DUEL_REPORT_GAP_S, DAY_S, DUEL_PAIR_DAY_MAX, DUEL_WINNER_DAY_MAX).run();
-  const recorded = Number(r?.meta?.changes ?? 0) > 0;
-  if (recorded) return { recorded, ...(await duelRecordOf({ db }, loser.id)) };
-  // Refused: which bound, read after the fact - the INSERT above is still the only write, so this can only name one
-  const w = await db.prepare('SELECT handle FROM players WHERE id = ?1').bind(winner).first();
-  if (!w) return { error: 'no-player' };
+  ).bind(loser, winner, c.i, c.n, DAY_S, DUEL_PAIR_DAY_MAX, DUEL_WINNER_DAY_MAX).run();
+  const mine = () => duelRecordOf({ db }, player.id);
+  if (Number(r?.meta?.changes ?? 0) > 0) return { recorded: true, ...(await mine()) };
+  // Refused or already counted: which, read after the fact - the INSERT above is still the only write
+  if (await db.prepare('SELECT 1 AS x FROM duel_results WHERE rk = ?1').bind(c.n).first()) return { recorded: true, ...(await mine()) };
+  const handles = await db.prepare('SELECT COUNT(*) AS n FROM players WHERE id IN (?1, ?2) AND handle IS NOT NULL').bind(loser, winner).first();
   const n = (row) => Number(row?.n ?? 0);
-  const gap = n(await db.prepare('SELECT COUNT(*) AS n FROM duel_results WHERE loser = ?1 AND at > ?2 - ?3').bind(loser.id, nowS, DUEL_REPORT_GAP_S).first());
-  const pair = n(await db.prepare('SELECT COUNT(*) AS n FROM duel_results WHERE loser = ?1 AND winner = ?2 AND at > ?3 - ?4').bind(loser.id, winner, nowS, DAY_S).first());
-  const why = !w.handle ? 'guest' : gap > 0 ? 'gap' : pair >= DUEL_PAIR_DAY_MAX ? 'pair' : 'winner';
-  return { recorded, why, ...(await duelRecordOf({ db }, loser.id)) };
+  const pair = n(await db.prepare('SELECT COUNT(*) AS n FROM duel_results WHERE loser = ?1 AND winner = ?2 AND at > ?3 - ?4').bind(loser, winner, c.i, DAY_S).first());
+  const why = n(handles) < 2 ? 'guest' : pair >= DUEL_PAIR_DAY_MAX ? 'pair' : 'winner';
+  return { recorded: false, why, ...(await mine()) };
 }
 
 // ═══ WB5b (2026-09-25) - THE GATES CLOSED ════════════════════════════
@@ -860,8 +1002,8 @@ export async function claimGate({ db, nowS, subtle }, player, receipt, publicKey
   // at least three of its claims agree on (seatInfluence.js), null where the claim named none, and on the rite's own
   // row, which is no kill
   const embers = c.r === 1 ? 2 : 1;
-  const kill = db.prepare('INSERT OR IGNORE INTO gate_kills (day, account, boss, earned, at, region, stones) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)')
-    .bind(c.d, player.id, c.b, c.x, nowS, c.x !== 'rite' && seatRegionOk(region) ? region : null, embers);
+  const kill = db.prepare('INSERT OR IGNORE INTO gate_kills (day, account, boss, earned, at, region, stones, body) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)')
+    .bind(c.d, player.id, c.b, c.x, nowS, c.x !== 'rite' && seatRegionOk(region) ? region : null, embers, c.m ? JSON.stringify(c.m) : null);   // INT14: the relay's count, kept
   // MARKS1 / AUDIT 28 M4: the gate's Marks (marks.js gateStrikeStatement) IN THE SAME BATCH as the row - one transaction,
   // so a strike that fails takes the row with it and the retry claims afresh; `strike` null where Marks are not this
   // account's, and the row is written alone. WB12d: the rite alone is no breach closed - no strike

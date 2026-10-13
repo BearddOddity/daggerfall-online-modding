@@ -12,13 +12,15 @@ import { walkModeOn, bindWalkMode } from '../player/walkMode.js';   // PADWALK: 
 import { noteLocalPlayer, tacticsNow, tickTactics } from '../ai/tactics.js';   // TACT2/TACT4; AUDIT TACT: the clock's tick
 import { foeFrameDt } from '../characters/enemyMotor.js';   // AUDIT TACT: the foes' own step, for the brain's clock
 import { drawableBlows } from '../ai/foeBlows.js';   // TACT4
+import { techniqueMarksNow } from '../combat/techniques.js';   // TECH1: the player's own marks on the ground, after the foes'
 import { iilActive, iilDungeonLights, iilTorch, iilSyncLane } from '../systems/improvedInteriorLighting.js';   // IIL1
 import { Arch3dFile } from '../formats/arch3dFile.js';
 import { WORLD_FRAME } from '../render/renderer.js';   // AUDIT-EL F5
 import { frameBegin, frameEnd, frameAbort } from '../systems/frameClock.js';   // PERF1: the frame's script time; AUDIT-WH2 L1-F4: and the door an early return takes
 import { frameCapSkip } from '../systems/frameCap.js';   // FPS-CAP1: DFU's TargetFrameRate - a held frame re-arms before the clock and the input frame
 import { INTERIOR_CLEAR } from '../render/renderer.js';
-import { getInteractionMode, setInteractionMode, MODE_ACTIONS, interactionModeText } from '../player/interactionMode.js';   // R1: the global PlayerActivate mode; AUDIT 58: its four ACTIONS
+import { getInteractionMode, setInteractionMode, MODE_ACTIONS, interactionModeText, askInteractionMode } from '../player/interactionMode.js';   // R1: the global PlayerActivate mode; AUDIT 58: its four ACTIONS
+import { modeWheel, MODE_WHEEL_ACTION } from '../ui/modeWheel.js';   // MODE-WHEEL: the held key's wheel
 import { setMidScreenText } from '../ui/midScreenText.js';   // AUDIT 64 F34: DaggerfallHUD's centred label
 import { FootstepMachine, pickFootstepSet } from '../systems/footsteps.js';   // FS-slice
 import { immersiveFootsteps } from '../systems/immersiveFootsteps.js';
@@ -26,7 +28,8 @@ import { betterAmbience, classicFootstepAllowed } from '../systems/betterAmbienc
 import { applyFog, DUNGEON_FOG } from '../render/underwaterFog.js';   // ROAD-B (b3): UnderwaterFog + WeatherManager.DungeonFogSettings
 import { audio } from '../systems/audio.js';   // FS-slice: the stride plays flat 2D, as PlayerFootsteps' customAudioSource does
 import { requestLook, makeLookGate, bindCursorToggle } from '../player/pointerLock.js';   // U45: PlayerMouseLook.cursorActive
-import { playerEntity } from '../characters/playerEntity.js';   // shot-mode __hp probe
+import { playerEntity, surfacePlayer, hurtPlayer } from '../characters/playerEntity.js';   // shot-mode __hp probe; TELL6e: a bleed's tick
+import { flashPlayerDamage } from '../ui/damageFlash.js';   // TELL6e: a bleed's tick flashes as a blow does
 import { attachTouch } from '../ui/touch.js';
 import { attachGamepad } from '../ui/gamepadInput.js';   // GP1: the pad speaks the same hooks
 import { isEnhanced } from '../systems/uiSkin.js';   // AUDIT 62 F10: the dial button's own skin gate
@@ -65,6 +68,7 @@ import { isTextEntryTarget, keyEdges, noteKeyDown, noteKeyUp, beginInputFrame, p
 import { armUnloadGuard } from '../systems/unloadGuard.js';   // MAC-L3: one door in front of every way out of a running game   // AUDIT 39r: the mouse half of the held set
 import { createActivateGate, activateFrame, setClickDelay } from '../systems/activateGate.js';   // A8: PlayerActivate's ActivateCenterObject frame
 import { capturePendingScreenshot } from '../systems/saveSlots.js';   // SS1: the context arms the shot, THIS loop delivers it
+import { deliverOwedShots } from '../ui/screenshot.js';   // SHOT1: and the PrintScreen key's, the same way
 import { routeLargeHudClick, activeMouseOverLargeHUD, trackLargeHudPointer } from '../ui/hudLarge.js';   // U45: the bar's eleven panels; ROAD-Ar: and the guard that stops them being world clicks too
 import { worldViewportRect, largeHudWorldAspect } from '../ui/hudLarge.js';   // ROAD-E E5: ViewportChanger - the docked bar shrinks the world pass (RETRO1: and retro mode's aspect correction pillarboxes it)
 import { createLockOn, LOCK_PICK_DISTANCE } from '../player/lockOn.js';   // TI1: touch lock-on
@@ -80,7 +84,7 @@ import { getInt } from '../systems/settings.js';   // MAC-O4: Controls/WeaponSwi
 import { MoveAxes } from '../player/moveAxes.js';   // AUDIT 28 W8: MovementAcceleration
 import { CameraRecoiler } from '../player/cameraRecoiler.js';   // AUDIT 28 W9: CameraRecoilStrength
 import { HeadBobber } from '../player/headBobber.js';   // AUDIT 28 W10: HeadBobbing
-import { createClimbFeelHost } from '../player/climbFeel.js'; import { playerClimbStrain } from './hostCombat.js';   // CLIMB4: the climb's camera, and its effort's voice
+import { createClimbFeelHost } from '../player/climbFeel.js'; import { playerClimbStrain, playerBlowFrame } from './hostCombat.js';   // CLIMB4: the climb's camera, and its effort's voice
 import { lastHealthLost, lastHealthLostPercent } from '../ui/hudVitals.js';   // AUDIT 28 W9: the detector's loss
 import { fieldOfView } from '../ui/viewSettings.js';   // MENU: Video/FieldOfView, one home for five hosts
 import { carriedWeight } from '../systems/inventory.js';   // F027 / E4: PlayerEntity.CarriedWeight, the gold counter's term and all
@@ -139,6 +143,7 @@ export async function bootDungeon(canvas, renderer, params, status) {
   const ctx = await buildDungeonContext(
     { ...pipeline, renderer, arch, palette }, dfLocation, blocks, dfLocation.climate.climateType, { activateHeld: () => held(keys, 'ActivateCenterObject') || _tapArmed > 0, actionDown: (action) => held(keys, action),   // KB1: registry actions
       // HT1: the torch keys /* AUDIT 62 F8: the finger's press too - it was 'Mouse0' in the held set until the tap stopped speaking a literal code */ foes: !params.has('nofoes'), playerClass: params.has('class') ? Number(params.get('class')) : undefined, playerSpell: params.has('spell') ? Number(params.get('spell')) : undefined, playerWeapon: params.get('weapon') ?? undefined,
+      shakeCamera: (k) => betterAmbience.weaponKick(k),   // AUDIT TELL H6: the stagger's kick of my own blow (and an execution's), as the world host gives its dungeons
       // AUDIT 26 F222/F223: the dev scene's half of the pose. The cam
       // is created AFTER the context (from startSpawn), so the seam
       // closes over the slot lazily.
@@ -149,12 +154,15 @@ export async function bootDungeon(canvas, renderer, params, status) {
       // DC1: the death sequence starts from the LIVE eye and capsule
       // (a crouched death). Late-bound like pose - the motor is built
       // below, after this context; null falls to standing defaults.
-      motorState: () => (_motorRef ? { eyeLevel: _motorRef.eye[1] - _motorRef.pos[1], capsule: _motorRef.height } : null),
+      motorState: () => (_motorRef ? { eyeLevel: _motorRef.eye[1] - _motorRef.pos[1], capsule: _motorRef.height, fallFrom: _motorRef.falling ? _motorRef.fallStart : null } : null),   // AUDIT SD III (D1): the fall under way, for the walked trail
+      // TECH1 (bible/05-Combat/Weapon-Techniques.md): the weapon technique's door - this host's motor (late-bound, as the pose
+      // is) and its view turned on a foe; the context lands its own shafts and drains its own fatigue
+      technique: { motor: () => _motorRef, face: (p, from) => { if (!_poseCam || !_motorRef || !Array.isArray(p)) return; const o = Array.isArray(from) ? from : _motorRef.pos; _poseCam.yaw = Math.atan2(p[0] - o[0], p[2] - o[2]); } },   // AUDIT TECH1: from where the body lands
       placePlayer: placeLoadedPlayer,   // DIAL-LOAD: the host's load law, for every load the context runs - not routeKey's alone
       // MAC1 J: this host's canvas, for the pause door's relock. The
-      // context owns none of its own (dungeonContext.js:8002), so each
+      // context owns none of its own (dungeonContext.js:"(dungeon.js's tail)"), so each
       // dungeon host hands its own in and the resume gesture carries
-      // the pointer back with it (ui/pauseDoor.js:"export function pauseMenuAct").
+      // the pointer back with it (ui/pauseDoor.js:"return (action) =>").
       relock: () => requestLook(canvas) });
 
   // U21: the menu's LOAD GAME. The context is built, so restore into
@@ -281,6 +289,7 @@ export async function bootDungeon(canvas, renderer, params, status) {
       reach, getInteractionMode(), playerEntity, {
         nearerThan,
         doorBehind: doorDistanceOf(eye, dir, targets, ctx.collider),   // AUDIT TACT C7: a peaceful guard is no door
+        behind: _pick,   // FB1012d ALLY-YIELDS: the ladder's winner - this host stands no companion, and asks as the others do
         hud: (t) => ctx.hudSay?.(t),
         modal: (t) => ctx.hudBox?.(String(t).split('\n')),
         makeEnemiesHostile: () => ctx.makeAreaHostile?.(),
@@ -311,7 +320,7 @@ export async function bootDungeon(canvas, renderer, params, status) {
     // read their name on the plaque and ate the press in silence. The
     // modal dungeon arm answers them; two hosts over one context must
     // not disagree about one key.
-    if (key !== null && (key.startsWith('loot:') || key.startsWith('corpse:') || key.startsWith('droppedLoot:') || key.startsWith('droppedTorch:') || key.startsWith('camp:') || key.startsWith('hearth:'))) {
+    if (key !== null && (key.startsWith('loot:') || key.startsWith('corpse:') || key.startsWith('droppedLoot:') || key.startsWith('droppedTorch:') || key.startsWith('camp:') || key.startsWith('hearth:') || key.startsWith('search:'))) {   // SEARCH1: the modal host's arm, in step
       ctx.takeLoot(key, getInteractionMode());   // HT1: a dropped torch takes the mode (Grab/Steal picks it up, Info/Talk names it)
       return key;
     }
@@ -319,8 +328,17 @@ export async function bootDungeon(canvas, renderer, params, status) {
     return key;
   };
   const keys = new Set();
+  // MODE-WHEEL: ChangeInteractionMode, for the wheel's release and the pad's NextMode (its mode actions unbound) -
+  // the F1-F4 arm's own three lines below, under this host's overlay gate
+  const pickMode = (m) => {
+    if (ctx.uiOverlayActive) return false;
+    askInteractionMode(m);
+    if (m !== getInteractionMode()) { setInteractionMode(m); setMidScreenText(interactionModeText(m)); }
+    return true;
+  };
   // P15: AltLeft is Sneak (DFU default) - preventDefault on BOTH edges
   // or the browser menu steals focus (Firefox activates it on keyUP).
+  // (MODE-WHEEL: it is the wheel's key now, and the same reason holds.)
   addEventListener('keydown', (e) => {
     // ROAD-G G3: this host already filled the ring first, which is
     // InputManager.PollInput's own order (:1795-1809) and now load-
@@ -361,13 +379,22 @@ export async function bootDungeon(canvas, renderer, params, status) {
     // through. It arms a mode and fires the one-frame activate
     // (`_tapArmed`) the touch tap already uses, because the key is
     // known here and only the FRAME has the ray and the pools.
-    if (!ctx.uiOverlayActive && actionsOf(e, keys).some(quickLootArm)) { _tapArmed = 2; e.preventDefault(); return; }   // UXB1-S: every action a shared key carries
-    const im = actionsOf(e, keys).map((a) => MODE_ACTIONS[a]).find(Boolean);
+    const acts = actionsOf(e, keys);   // MODE-WHEEL (AUDIT): read once - the three rungs below all ask it
+    if (!ctx.uiOverlayActive && acts.some(quickLootArm)) { _tapArmed = 2; e.preventDefault(); return; }   // UXB1-S: every action a shared key carries
+    // MODE-WHEEL: the held key opens the wheel, under this host's overlay gate; its release picks through the same
+    // ChangeInteractionMode as the four keys below, which asks the gate again at the release (ui/modeWheel.js)
+    if (!ctx.uiOverlayActive && acts.includes(MODE_WHEEL_ACTION)) {
+      e.preventDefault();
+      modeWheel.press(e, pickMode);
+    }
+    const im = acts.map((a) => MODE_ACTIONS[a]).find(Boolean);
     if (im) {
       e.preventDefault();   // ALWAYS consumed - a repeat press must not reach the browser (F1 = help)
       // AUDIT 64 F34: PlayerActivate.cs:1424 - the mode line is
-      // SetMidScreenText's, in EVERY host (one C# call site).
-      if (!ctx.uiOverlayActive && im !== getInteractionMode()) { setInteractionMode(im); setMidScreenText(interactionModeText(im)); }
+      // SetMidScreenText's, in EVERY host (one C# call site) - pickMode, the one copy here (MODE-WHEEL AUDIT).
+      // SENSE1: asked, changed or not; AUDIT DELVE B6: the press, not the key's repeat - and the same mode again is
+      // ChangeInteractionMode's no-op, so a repeat has nothing else to do
+      if (!e.repeat) pickMode(im);
     }
     // DFU parity: mouselook is the resting state - any gameplay
     // keypress re-engages a dropped lock (no click-to-look mode).
@@ -490,6 +517,9 @@ export async function bootDungeon(canvas, renderer, params, status) {
   // (Mouse2, the wheel) and the drawn bow's ActivateCenterObject
   // un-draw (Mouse0) could never read true. mouseCode owns the
   // Unity/DOM middle-button crossover; the RELEASE is unconditional.
+  // TECH1: the mouse's side buttons are the game's (Mouse3 the weapon's technique, Mouse4 the view) - never the browser's Back
+  // or Forward, which would leave the page (world.js has stopped them since VIEW-TOGGLE)
+  for (const kind of ['mousedown', 'mouseup']) addEventListener(kind, (e) => { if (e.button === 3 || e.button === 4) e.preventDefault(); });
   addEventListener('mousedown', (e) => { if (isSwingButton(e.button)) rightHeld = true; const mc = mouseCode(e.button); if (mc) { keys.add(mc); noteKeyDown(keyEdge, mc); } if (isSwingButton(e.button) && !ctx.uiOverlayActive) ctx.playerAttackInput(0, 0, true); });   // FIX-F: the swing's button is the registry's   // I4: a right-click on a window is the window's (the remove gesture), never a swing
 
   addEventListener('keydown', (e) => {
@@ -512,6 +542,7 @@ export async function bootDungeon(canvas, renderer, params, status) {
   });
   addEventListener('mouseup', (e) => { if (isSwingButton(e.button)) rightHeld = false; const mc = mouseCode(e.button); if (mc) { keys.delete(mc); noteKeyUp(keyEdge, mc); } if (isSwingButton(e.button)) ctx.playerAttackInput(0, 0, false); });
   const inputHooks = {   // GP1: one hooks object for the finger AND the pad   // mobile: stick synthesizes WASD; the right half is classified (TI1)
+    padAction: (act) => (MODE_ACTIONS[act] ? pickMode(MODE_ACTIONS[act]) : false),   // MODE-WHEEL: PAD-BINDS' door for an action on no key - the four mode actions ship unbound, so the pad's NextMode lands here
     look: (dx, dy) => {
       lookFilter.add(dx * lookScale(), -dy * lookScale() * lookInvert());   // AUDIT 28 W7: through the look filter (HANDEDNESS, mat4's law)
     },
@@ -568,6 +599,7 @@ export async function bootDungeon(canvas, renderer, params, status) {
     // nothing. Same law as routeMouseDrag (scenes/shared.js, MAC-O4).
     if (document.pointerLockElement === canvas && swingHeld(e.buttons, keys) && getInt('Controls', 'WeaponSwingMode', 0, 2) === 0) { ctx.playerAttackInput(e.movementX, e.movementY, true); return; }   // FIX-F: the registry's button
     if (document.pointerLockElement !== canvas) return;
+    if (modeWheel.isOpen()) return;   // MODE-WHEEL: while it is open the mouse steers it (its own listener), not the view
     // AUDIT 28 W7: the delta goes to the look filter's target, not the
     // camera - PlayerMouseLook.ApplyLook (:126); the frame pays it out
     // at MouseLookSmoothingFactor. HANDEDNESS (mat4's law): mouse-right
@@ -915,6 +947,7 @@ export async function bootDungeon(canvas, renderer, params, status) {
       // and nothing else. Dropping run/sneak/autoRun/back from this bag read
       // as a RELEASE to the motor's press-edge latches, so a key held
       // through the paralysis fired a synthetic press on the frame it lifted.
+      playerBlowFrame({ motor: player, entity: playerEntity, shake: (k) => betterAmbience.weaponKick(k), hurt: (n) => { hurtPlayer(playerEntity, n); flashPlayerDamage(n); surfacePlayer(); } });   // TELL6e: a landing's push, rattle, knockdown and bleed
       player.update(dt, paralyzed ? { forward: 0, strafe: 0, run: held(keys, 'Run'), autoRun: held(keys, 'AutoRun'), back: mv.backwards, sneak: held(keys, 'Sneak') || walkModeOn(), jump: false, up: false, down: false, crouch: crouchPress } : {
         forward: axes.forward,   // AUDIT 28 W8: InputManager's axes - accelerated under MovementAcceleration, the held difference without
         strafe: axes.strafe,
@@ -1106,16 +1139,18 @@ export async function bootDungeon(canvas, renderer, params, status) {
     renderer.beginFrame(proj, view, INTERIOR_LIGHT_DIR, WORLD_FRAME);   // AUDIT-EL F5: a WORLD frame - the lane replays its records for this one
     if (walkMode) mwViewDrawBody(canvas, { proj, view, eye: mwv.eye, feet: player.bodyFeetAt(), yaw: player.bodyYawFor(cam.yaw), viewYaw: cam.yaw });   // MW-D24; DISC18: the body at the capsule's own feet, not the camera's smoothed ones
     if (ctx.staticBatch) renderer.drawMesh(ctx.staticBatch, BATCH_IDENTITY, null);   // PERF5: the level's static models, one call per texture (keys resolved in the merge)
-    for (const d of ctx.drawList) if (!d._batched) renderer.drawMesh(d.mesh, d.matrix, ctx.texRemap);
+    for (const d of ctx.drawList) if (!d._batched) renderer.drawMesh(d.mesh, d.matrix, d.texRemap ?? ctx.texRemap);   // AUDIT PRE-MERGE 1003 W4: a climate-free model's own table
     for (const d of ctx.dynamicDraws) renderer.drawMesh(d.gpu, d.object.matrix, ctx.texRemap);
     const camRight = new Float32Array([Math.cos(cam.yaw), 0, -Math.sin(cam.yaw)]);
     ctx.flatAnims.tick(dt);   // FA1: whoever draws the flats runs their clock
     // (the blood pool's clock runs inside ctx.drawFoes now - both dungeon
     // hosts call it, so neither can forget it; 2026-08-27)
     noteLocalPlayer(player.pos, [Math.sin(cam.yaw), 0, Math.cos(cam.yaw)]);   // TACT2: where I stand and face
-    tickTactics(foeFrameDt(dt));   // AUDIT TACT D10/A3: the brain's clock is the foes' own step
+    tickTactics(foeFrameDt(ctx.uiOverlayActive ? 0 : dt));   // AUDIT TACT D10/A3: the brain's clock is the foes' own step; AUDIT TELL H1: held under the window that holds them (the return below, above drawFoes)
     renderer.drawFoeTelegraphs?.(drawableBlows(tacticsNow(), player.pos));   // TACT4: a foe's wind-up on the ground
+    renderer.drawFoeTelegraphs?.(techniqueMarksNow());   // TECH1: and the player's own marks, after the foes' (bible/05-Combat/Weapon-Techniques.md)
     ctx.bloodMarks?.draw?.(camRight, UP_Y);   // BLOOD1 AUDIT 3: the context's ring, drawn by THIS host beside the level's flats and under them - it used to ride drawFoes' gate, so a cleared level drew no blood at all
+    if (ctx.uiOverlayActive) ctx.showBodyFlats?.();   // AUDIT MW-NPC C6: no body is drawn under a window - its corpse flat is
     renderer.drawBillboards([...ctx.billboardBatches, ...ctx.campBatches(), ...ctx.torchBatches()], camRight, UP_Y);   // HT1: the dropped torches on the same pass
     // AUDIT 23 (hosts-9 = audio-3) - SongManager.cs:193: Update() runs
     // every frame, windows open or not - THE MUSIC CONTEXT IS FED
@@ -1147,6 +1182,7 @@ export async function bootDungeon(canvas, renderer, params, status) {
       if (shotMode) window.__frame = frames;
       renderer.resolveFrame();   // AUDIT RETRO1 E5/C8: a frame that drew no screen quad (the enhanced skin, a sheathed weapon) is shown NOW, not at the next beginFrame
       capturePendingScreenshot(canvas);   // SS1: a save armed under an overlay still lands its shot
+      deliverOwedShots();   // SHOT1: the PrintScreen shots owed to a drawn frame, read from this one (ui/screenshot.js)
       frameAbort();   // AUDIT-WH2 L1-F4: the frame never reached frameEnd - close the token, take no sample
       requestAnimationFrame(frame);
       return;   // U2b/U3: hold gameplay, keep the loop (AUDIT 18 F5: the overlay's own clock still runs - DFU's RestWindow.Update ticks on realtime under timeScale 0)
@@ -1172,6 +1208,7 @@ export async function bootDungeon(canvas, renderer, params, status) {
     // draw (preserveDrawingBuffer false - the buffer is only this
     // task's to read).
     capturePendingScreenshot(canvas);
+    deliverOwedShots();   // SHOT1: the PrintScreen shots owed to a drawn frame, read from this one (ui/screenshot.js)
     frameEnd();   // PERF1
     requestAnimationFrame(frame);
   }

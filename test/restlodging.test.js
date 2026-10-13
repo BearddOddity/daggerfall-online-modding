@@ -466,7 +466,7 @@ test('S40 restVitals: one home for the rested hour, and the dungeon host uses it
   // that hardcoded the flags inside restVitals, or dropped them from
   // createRestDeps' tickVitals, passed. RapidHealing InLight is the
   // ONE place they differ: +100 instead of +60, and only by daylight
-  // OUTDOORS. (rest.js:46-58.)
+  // OUTDOORS. (systems/rest.js:"export function healthRecoveryRate".)
   const lit = (over) => ({
     isPlayer: true, level: 5, health: 0, maxHealth: 50, magicka: 40, maxMagicka: 40,
     fatigue: 0, stats: { strength: 50, endurance: 50, willpower: 50 }, skills: 30,
@@ -566,7 +566,8 @@ test('S40 hosts: all four can now rest, and each supplies its own place', () => 
   assert.match(wm, /return interiorRestPlace\(\{/);
   assert.match(wm, /room: findRentedRoom\(playerEntity\.rentedRooms/);
   // H1's ledger, which both rest lanes had to leave as a constant.
-  assert.match(wm, /houseOwned: !interiorHome && isHouseOwned\(playerEntity\.houses/);   // HOME1 re-aim: my online home's bed is mine too; HOME-RENT re-aim: and my rented room's
+  // PIN MOVED (AUDIT CAPTAIN'S SEA P9): the deed read where the building stands - never an isle town's (houseOwnedAt)
+  assert.match(wm, /houseOwned: !interiorHome && houseOwnedAt\(b, /);   // HOME1 re-aim: my online home's bed is mine too; HOME-RENT re-aim: and my rented room's
   assert.match(wm, /homeBed: homeBedIsMine\(interiorHome, /);   // PIN MOVED (FIELD BUGS 2026-10-01 RENT-REST): an online home's bed - the owner's or the tenant's - is the bag's `homeBed`
   assert.match(wm, /guildCanRest\(guild, membershipOf/);
   assert.match(wm, /m\.type === INTERIOR_MARKER\.REST/);
@@ -993,9 +994,10 @@ test('S40: the OnEncounter abort reaches the rest window in EVERY slot', () => {
   assert.match(arm, /dungeonCtx\?\.abortRestForEnemySpawn\?\.\(\)/);
   assert.match(arm, /interiorOverlay\?\.isRestWindow/);
   assert.match(arm, /host\.abortRestForEnemySpawn\?\.\(\)/, 'and the OUTER host slot');
-  for (const f of ['src/scenes/world.js', 'src/scenes/exterior.js']) {
-    assert.match(src(f), /abortRestForEnemySpawn: \(\) => \{\n\s+if \(townTalk\.overlay\?\.isRestWindow\)/, f);
-  }
+  // AUDIT REST II (PIN MOVED): world.js's route tells the act's night first (restAct.js ambushNight - a carried night has
+  // no window, a quest box over the window holds the slot), then the window as before; test/auditrest2_party.test.js P3
+  assert.match(src('src/scenes/world.js'), /abortRestForEnemySpawn: \(\) => \{\n\s+ambushNight\(\);[^\n]*\n\s+if \(townTalk\.overlay\?\.isRestWindow\)/, 'src/scenes/world.js');
+  assert.match(src('src/scenes/exterior.js'), /abortRestForEnemySpawn: \(\) => \{\n\s+if \(townTalk\.overlay\?\.isRestWindow\)/, 'src/scenes/exterior.js');
   // The latch itself: it is a LATCH, answered on the next tick.
   const s2 = new RestSession('timed', 5, {
     advanceMinutes() {}, tickVitals: () => false, fullyHealed: () => false,

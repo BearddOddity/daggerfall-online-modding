@@ -61,7 +61,13 @@ test('AUDIT WORLD A: the relay - a large frame is the host\'s memory or nothing,
   await r.raw(b, WORLD_PREFIX + 'x'.repeat(MAX_FRAME_BYTES));
   assert.equal(b.closed, null, 'a non-host\'s large frame: ignored'); assert.equal(ofType(b, 'error').length, 0, 'and never parsed - the junk after the prefix never errs');
   assert.ok(b.meters.bucket, 'but metered: the pose bucket was spent on it');
-  let n = 0; while (!b.closed && n++ < 400) await r.raw(b, WORLD_PREFIX + 'x'.repeat(100));
+  // This is a burst, not 400 requests spread over a loaded runner's wall time.
+  // Freeze only the burst so scheduling delays cannot refill the rate bucket.
+  const realNow = Date.now, burstAt = Date.now();
+  try {
+    Date.now = () => burstAt;
+    let n = 0; while (!b.closed && n++ < 400) await r.raw(b, WORLD_PREFIX + 'x'.repeat(100));
+  } finally { Date.now = realNow; }
   assert.deepEqual(b.sent.at(-1), { t: 'error', m: 'too many poses' }, 'A1: a stream of them strikes the socket out like a pose flood');
   await r.raw(a, WORLD_PREFIX + 'x'.repeat(100));
   assert.deepEqual(a.sent.at(-1), { t: 'error', m: 'not JSON' }, 'the host\'s own is parsed - and its junk is terminal');
@@ -224,20 +230,26 @@ test('AUDIT WORLD: the hosts by source - the dungeon host stamps its memory and 
   assert.match(m, /liveArm\(\) \{\s*const rig = mode === 'interior' \? interiorWeapon : mode === 'dungeon' \? \(dungeonCtx\?\.weaponRig\?\.\(\) \?\? null\) : null;\s*if \(!rig\) return null;\s*return \{ rig, armed: !!\(mode === 'dungeon' \? dungeonCtx\?\.spellArmed\?\.\(\) : magic\?\.spellArmed\(\)\) \};\s*\},/, 'C1: the mode names the live rig and the stance');
   assert.match(m, /deathUp\(\) \{ return mode === 'dungeon' \? !!dungeonCtx\?\.deathUp\?\.\(\) : interiorOverlay instanceof DeathScreen; \},/, 'B6: the mode names the death screen');
   const w = rd('src/scenes/world.js');
-  assert.match(w, /instanceof DeathScreen \|\| modes\?\.deathUp\?\.\(\)\) \{\s*\n\s*if \(_deathWasOnline == null\) _deathWasOnline = _onlineWorldSession\(\);[^\n]*\n(?:(?![^\n]*online\.leave\(\))[^\n]*\n)*?\s*if \(online\.room\) \{ worldPublish\(now, true\); online\.leave\(\); exteriorFoes\.clearPuppets\(\); modes\?\.clearOwnPuppets\?\.\(\); _foesRoom = null; \}/, 'B6: the dungeon\'s death farewell (AUDIT WORLD6b C8: and the cell\'s puppets go with the room - QUEST-PARTY phase 3b: and a building\'s; D-ONLINE1: the online snapshot is taken BEFORE the leave clears the room)');
+  assert.match(w, /instanceof DeathScreen \|\| modes\?\.deathUp\?\.\(\)\) \{\s*\n\s*if \(_deathWasOnline == null\) _deathWasOnline = _onlineWorldSession\(\);[^\n]*\n(?:(?![^\n]*online\.leave\(\))[^\n]*\n)*?\s*if \(online\.room(?: && !_wildGhost)?\) \{ worldPublish\(now, true\); online\.leave\(\); exteriorFoes\.clearPuppets\(\); modes\?\.clearOwnPuppets\?\.\(\); _foesRoom = null; \}/, 'B6: the dungeon\'s death farewell (AUDIT WORLD6b C8: and the cell\'s puppets go with the room - QUEST-PARTY phase 3b: and a building\'s; D-ONLINE1: the online snapshot is taken BEFORE the leave clears the room) - WILD1: never the open zone\'s ghost, whose cell is kept while its body lies');
   assert.match(w, /online\.status !== 'open' \|\| !isWorldRoom\(online\.room\)\) return false;/, 'B8: a world room alone');
-  assert.match(w, /if \(!shared\) return false;\s*_worldPublishedAt = now;\s*const ok = online\.sendWorld\(shared, \{ final: force \}\);\s*if \(!ok\) console\.warn\(/, 'B5/B9: forced is the farewell; the clock stamped before the send');
+  assert.match(w, /if \(!shared\) return false;\s*_worldPublishedAt = now;\s*const said = JSON\.stringify\(shared\)[^\n]*\n\s*if \(!force && said === _worldSaid[^\n]*\n\s*const ok = online\.sendWorld\(shared, \{ final: force \}\);\s*if \(!ok\) console\.warn\(/, 'B5/B9: forced is the farewell; the clock stamped before the send (SCALE2b: and an unchanged memory, the farewell excepted, not sent again)');
   const o = rd('src/net/online.js');
   assert.match(o, /reconnects: 0, chats: 0, worlds: 0, foes: 0, hits: 0, acts: 0, threw: 0, chatsDropped: 0 \};/, 'D12 (WORLD3: and the acts; ONCRASH1: and the frames a handler threw on; CHAT-G: and the chat lines a relay sent faster than an honest one could)'); assert.doesNotMatch(o, /nothing is shared but presence/, 'D2: the module\'s head');
   const fp = rd('src/combat/fpArm.js');
   assert.match(fp, /if \(upper !== UPPER_BODY\.WeaponEquipped && upper !== UPPER_BODY\.Casting && !\(upper === UPPER_BODY\.None && sheathed\)\) return false;/, 'C2: the sheathed arm casts');
   assert.match(fp, /case UPPER_BODY\.Casting:[\s\S]*?upper = sheathed \? UPPER_BODY\.None : UPPER_BODY\.WeaponEquipped;/, 'C2: and comes back to None');
   assert.match(fp, /const from = upper;[^\n]*\n\s*upper = UPPER_BODY\.Casting;[\s\S]*?upper = from;/, 'C2: a range the group cannot answer stands where it came from');
-  assert.match(fp, /if \(!want && upper === UPPER_BODY\.Casting\) \{ actionState = null; actionSource = null; upper = sheathed \? UPPER_BODY\.None : UPPER_BODY\.WeaponEquipped; \}/, 'C2: an un-ready mid-cast too');
+  // PIN MOVED (MW-CAST1): an un-ready mid-cast is the spell GOING (Daggerfall clears the ready at its release), so the
+  // cast now finishes and the stance drops at its end - back to None for a sheathed caster by the Casting case above
+  assert.match(fp, /if \(!want && upper === UPPER_BODY\.Casting\) \{ unreadyAfterCast = true; return false; \}/, 'C2 / MW-CAST1: an un-ready mid-cast waits for the cast to end');
+  assert.match(fp, /if \(unreadyAfterCast\) \{ unreadyAfterCast = false; spellReady = false; refreshWeaponGroup\(\); resetIdle\(\); resetMovement\(\); \}/, 'and the stance drops there');
   const pb = rd('src/net/peerBodies.js');
   assert.doesNotMatch(pb, /a peer's drawn bow shows no arrow/, 'D7: the build doc');
-  assert.match(pb, /if \(b\.goneAt == null\) \{ b\.goneAt = now; b\.swing = null; b\.pending = null; b\.posed = false; \}/, 'C7: the linger re-latches (AUDIT PEER-CADENCE F2: and forgets its skin)');
-  assert.match(pb, /\} else \{\s*b\.posed = false;[^\n]*\n\s*if \(b\.swing != null\) \{ b\.swing = peer\.shown\.an \| 0; b\.cast = peer\.shown\.cn \| 0; b\.pending = null; \}/, 'C7: out of range the counts follow (AUDIT PEER-CADENCE F2: and the skin is forgotten)');
+  // PIN MOVED (MWNPC4): the reactions (the hit count, the death) re-latch with the swing
+  assert.match(pb, /if \(b\.goneAt == null\) \{ b\.goneAt = now; b\.hit = null; b\.dead = null; b\.swing = null; b\.pending = null; b\.posed = false; \}/, 'C7: the linger re-latches (AUDIT PEER-CADENCE F2: and forgets its skin)');
+  // PIN MOVED (AUDIT MW-NPC II L2): the skin is forgotten far, and on a PEER's frozen frame - an NPC lane's frozen frame
+  // (a talk window holding the street) keeps it (mwnpc_audit2.test.js L2)
+  assert.match(pb, /\} else \{[\s\S]{0,800}?if \(b\.far \|\| dt > 0 \|\| !this\._buildInRange\) \{ b\.posed = false; b\.stale = false; b\.owed = false; \}[^\n]*\n\s*if \(b\.swing != null\) \{ b\.swing = peer\.shown\.an \| 0; b\.cast = peer\.shown\.cn \| 0; b\.pending = null; \}/, 'C7: out of range the counts follow (AUDIT PEER-CADENCE F2: and the skin is forgotten)');
   const wire = rd('src/net/wire.js');
   assert.match(wire, /A pose is \{x, y, z, yaw, pitch, mv, wd, an, as, am, sr, cn, cr, ce, ar\}/, 'D11 (SPELLFX1: plus ce and ar)');
   // the record

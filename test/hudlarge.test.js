@@ -19,6 +19,7 @@ import { setValue, resetToDefaults } from '../src/systems/settings.js';
 import { ridingRect } from '../src/systems/riding.js';
 import { MODES, nextInteractionMode } from '../src/player/interactionMode.js';
 import { routeAction } from '../src/ui/input.js';
+import { resolveAnchor, maskAnchors } from '../tools/citeAnchor.mjs';   // CITE-ANCHOR: a cite names its line by a quote
 import { drawHud } from '../src/ui/hud.js';                  // AUDIT 65 UI-4: largeHudBar() is the LAST DRAWN bar
 import { audio } from '../src/systems/audio.js';             // AUDIT 65 UI-4
 import { SOUND } from '../src/systems/soundClips.js';        // AUDIT 65 UI-4
@@ -472,8 +473,8 @@ test('D10: the offset really moves the horse rect and the viewmodel quad', () =>
   // MAC-K3: the horse arm is `player/mountRig.js`'s now, and it is the
   // ONE caller for every outdoor host - this used to read world.js,
   // which is the host that HAD a mount rather than the rule.
-  assert.ok(src('player/mountRig.js').includes('ridingRect(canvasOf(), art, horseOffsetHeight())'),
-    'the mount rig feeds the horse arm');
+  assert.ok(src('player/mountRig.js').includes('const ui = canvasOf();\n        const rect = ridingRect(ui, art, horseOffsetHeight());'),
+    'the mount rig feeds the horse arm (RETRO-UI: on the UI canvas, DFU\'s CustomScreenRect)');
   const callers = ['exterior', 'world', 'worldModes', 'dungeonContext']
     .filter((h) => src(`scenes/${h}.js`).includes('ridingRect('));
   assert.deepEqual(callers, [], 'and no host calls it directly any more');
@@ -493,8 +494,8 @@ test('D10: the narrowed flag\'s citation resolves to the activation ray it rests
   // paragraph; the withdrawal above it stands unchanged, so the split
   // moves to the block that now follows it.
   const header = src('ui/hudLarge.js').split('WHAT E5 DID NOT TAKE')[0];
-  const cites = [...header.matchAll(/scenes\/([A-Za-z0-9_]+)\.js:(\d+)/g)]
-    .map((m) => [`scenes/${m[1]}.js`, Number(m[2])]);
+  const cites = [...header.matchAll(/scenes\/([A-Za-z0-9_]+)\.js:"([^"]+)"(?:\.\."([^"]+)")?/g)]
+    .map((m) => [`scenes/${m[1]}.js`, resolveAnchor(maskAnchors(src(`scenes/${m[1]}.js`)), src(`scenes/${m[1]}.js`).split('\n'), m[2], m[3] ?? null).line ?? 0]);
   assert.ok(cites.length >= 2, 'the withdrawal cites the hosts it rests on');
   for (const [rel, n] of cites) {
     const line = src(rel).split('\n')[n - 1];
@@ -773,7 +774,9 @@ test('E5: every host that draws the bar shrinks its world pass AND its lens', ()
   for (const host of ['scenes/world.js', 'scenes/exterior.js']) {
     assert.match(src(host), /sky\.draw\([^;]*worldAspect[,)]/s, `${host}'s sky shares the lens`);
   }
-  assert.match(src('scenes/world.js'), /fovY: fieldOfView\(\) \+ climbFeel\.fovRad\(\), aspect: worldAspect,/,
+  // PIN MOVED (SPYGLASS): the captain's glass narrows the lens the world takes, the kick inside it (world.js glassFov) -
+  // the far ring takes the same narrowed lens
+  assert.match(src('scenes/world.js'), /fovY: glassFov\(fieldOfView\(\) \+ climbFeel\.fovRad\(\), spyglass\.lens\), aspect: worldAspect,/,
     'the far ring shares it too - and the climb\'s kick (CLIMB4) - or the horizon steps against the terrain');
   // no plain-ratio lens survives anywhere in the world host
   const w = src('scenes/world.js');

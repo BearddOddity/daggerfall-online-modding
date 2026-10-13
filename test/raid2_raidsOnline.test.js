@@ -27,7 +27,7 @@ import { renownFoeStruck, _resetRenownKillsForTests } from '../src/net/renownTra
 import { _resetModSettings } from '../src/systems/modSettings.js';
 import { ONLINE_ROOM_MOD_KEYS, ONLINE_PLAYERS_OWN_MODS } from '../src/systems/onlineLane.js';
 import { CELL_PUPPETS_MAX, CELL_WATCH_PUPPETS_MAX, CELL_LOOSE_PUPPETS, CELL_FRAME_RECORDS_MAX } from '../src/net/wire.js';
-import { createExteriorFoes } from '../src/scenes/exteriorFoes.js';
+import { createExteriorFoes, ENCOUNTER_PUPPETS_MAX } from '../src/scenes/exteriorFoes.js';
 
 const rd = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const tick = () => new Promise((r) => setImmediate(r));
@@ -268,7 +268,7 @@ test('RAID2 executed over two pools: a runner\'s twenty raiders ride named with 
   assert.equal(pf.rz, undefined, 'a foe of no raid is not named');
   reader3.applyFoes('ccc-0003', pf);
   for (let i = 0; i < 5; i++) await settle();
-  assert.equal(reader3.foes.filter((f) => f.puppet === 'ccc-0003' && !f.dead).length, CELL_PUPPETS_MAX, 'held to the owner\'s old allowance');
+  assert.equal(reader3.foes.filter((f) => f.puppet === 'ccc-0003' && !f.dead).length, Math.min(20, ENCOUNTER_PUPPETS_MAX), 'held to the owner\'s encounter allowance (DESYNC-ZERO: ENCOUNTER_PUPPETS_MAX)');
 });
 
 test('RAID2 the defenders\' side: a watchman who is the owner\'s ally rides named (`al`) and stands as the reader\'s ally; a later frame that no longer names him stands him as the watch again (mutants: al unwritten; the build\'s side ignored; the flip back ignored)', async () => {
@@ -316,7 +316,7 @@ test('RAID2 the lane and the lock: the raids\' switch is the room\'s online, for
 
 test('RAID2 the world host by source: my word rides my cell frame, a peer\'s reaches the raids through the pool\'s room test, and the seams answer who I am, who stands in the town (the watch\'s own rect), the raid\'s puppets and my taken raiders on the net\'s clock', () => {
   const w = rd('src/scenes/world.js');
-  assert.match(w, /if \(cell\) duelRingWord\(frame, full\); if \(cell\) csaWord\(frame, full\);( if \(cell\) csaAboardWord\(frame, full\);)?(?: if \(cell\) bandWord\(frame, full\);)?( if \(cell\) navalWord\(frame, full\);)?(?: if \(cell\) seaRaidWord\(frame, full\);)? if \(cell\) \{ const rk = raidWireWord\(\); if \(rk\) frame\.rk = rk; \}[^\n]*\n\s+if \(!online\.sendFoes\(frame\)\)/, 'on the riders\' own line, beside the camps, the horse, the ring and (THE MERGE) the boats - and (THE MERGE with NAV-G) the sea\'s word before it, and (OW6) the raiders\' after it');
+  assert.match(w, /if \(cell\) duelRingWord\(frame, full\); if \(cell\) csaWord\(frame, full\);( if \(cell\) csaAboardWord\(frame, full\);)?(?: if \(cell\) bandWord\(frame, full\);)?( if \(cell\) navalWord\(frame, full\);)?(?: if \(cell\) seaRaidWord\(frame, full\);)? if \(cell\) \{ const rk = raidWireWord\(\); if \(rk\) frame\.rk = rk; \}[^\n]*\n\s+(?:\/\/[^\n]*\n\s*)*const said = [^\n]*\n\s*if \(_foesQuiet\.skip\(frame, said\)\)[^\n]*\n\s*if \(!online\.sendFoes\(frame\)\)/, 'on the riders\' own line (PIN MOVED, SCALE2c: the quiet frame\'s gate asked between it and the send), beside the camps, the horse, the ring and (THE MERGE) the boats - and (THE MERGE with NAV-G) the sea\'s word before it, and (OW6) the raiders\' after it');
   assert.match(w, /exteriorFoes\.setOnRaids\(\(from, rk, at\) => raidPeerWord\(from, rk, at\)\);/);
   const at = w.indexOf('  setRaidingPartiesHost({');
   const body = w.slice(at, w.indexOf('\n  });', at));

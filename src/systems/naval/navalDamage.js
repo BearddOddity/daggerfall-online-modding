@@ -43,7 +43,7 @@
 //
 // BRACING halves the hull and sail damage a ship takes while the brace is held (the gunnery's own brace).
 
-import { BARREL } from './navalShips.js';
+import { BARREL, SHIP_TOUGHNESS, PLAYER_CREW_TOUGHNESS } from './navalShips.js';
 
 export const SHIP_STATES = Object.freeze({ afloat: 'afloat', struck: 'struck', sinking: 'sinking', sunk: 'sunk', prize: 'prize', wrecked: 'wrecked' });
 /** An AI ship strikes its colours at this share of its hull. */
@@ -58,13 +58,14 @@ export const SINK_CLEAR = 2;
 export const WATERLINE_BAND = 1.1;
 export const HOLED_BONUS = 0.4;
 /** Fire: the chance a hull hit above the waterline sets one, a gun's fire's bite a second and its length, the most
- *  that burn at once, and what each eats besides her timbers - canvas a second, a man every FIRE_CREW_S. */
+ *  that burn at once, and what each eats besides her timbers - canvas a second, a man's worth every FIRE_CREW_S (TOUGHER-SHIPS:
+ *  a toughened crew loses 1/SHIP_TOUGHNESS of a man for it - CREW-HOLD: a player's 1/PLAYER_CREW_TOUGHNESS). */
 export const FIRE_CHANCE = 0.06;
 export const FIRE_HP = 1.4;
 export const FIRE_SECONDS = 15;
 export const FIRE_STACK = 3;
 export const FIRE_SAIL = 0.5;
-export const FIRE_CREW_S = 10;
+export const FIRE_CREW_S = 10;   // TOUGHER-SHIPS: a man's worth of harm - she loses 1/SHIP_TOUGHNESS of a man for it (`wound`)
 /** What bracing leaves of a hit. */
 export const BRACE_TAKEN = 0.5;
 /** A wrecked boat's oars: this share of their way. */
@@ -105,26 +106,40 @@ export function fireOf(kind) {
 /**
  * The damage one ball does: `{ hull, sail, crew }` for its gun (navalShips.js GUNS) and the zone it struck. A rigging
  * hit cuts canvas (and takes a man) and holes nothing; a hull hit holes, and below the waterline holes more.
- * Chain shot's own numbers already favour the sails.
+ * Chain shot's own numbers already favour the sails. TOUGHER-SHIPS: the men a ball takes are `ballMen`'s - its gun's
+ * (`shotMen`) over her crew's toughness (`tough`: SHIP_TOUGHNESS, a player's ship's PLAYER_CREW_TOUGHNESS - CREW-HOLD),
+ * whole men on the ball's own roll. GALLEON-WEIGHT: `weight` the weight of metal its battery throws (navalShips.js
+ * batteryOf) - her hull and canvas harm, never her men.
  */
-export function shotDamage(gun, zone, { braced = false, roll = 0.5 } = {}) {
-  const k = braced ? BRACE_TAKEN : 1;
-  const spread = 0.85 + 0.3 * clamp(roll, 0, 1);   // each ball its own, 85-115%
-  if (zone === 'rig') return { hull: 0, sail: Math.round(Math.max(gun.sail * 2, gun.hull * 0.5) * k * spread), crew: gun.crew > 0 ? 1 : 0 };
+export function shotDamage(gun, zone, { braced = false, roll = 0.5, tough = SHIP_TOUGHNESS, weight = 1 } = {}) {
+  const k = (braced ? BRACE_TAKEN : 1) * (Number.isFinite(weight) && weight > 0 ? weight : 1);
+  const r = clamp(roll, 0, 1);
+  const spread = 0.85 + 0.3 * r;   // each ball its own, 85-115%
+  if (zone === 'rig') return { hull: 0, sail: Math.round(Math.max(gun.sail * 2, gun.hull * 0.5) * k * spread), crew: ballMen(shotMen(gun, zone), r, tough) };
   const holed = zone === 'holed' ? 1 + HOLED_BONUS : 1;
-  return { hull: Math.round(gun.hull * holed * k * spread), sail: Math.round(gun.sail * 0.25 * k * spread), crew: gun.crew };
+  return { hull: Math.round(gun.hull * holed * k * spread), sail: Math.round(gun.sail * 0.25 * k * spread), crew: ballMen(shotMen(gun, zone), r, tough) };
 }
+/** TOUGHER-SHIPS: the men a ball of `gun` takes in `zone` BEFORE her toughness - a rigging hit's one man aloft, else the
+ *  gun's own. What a blow says on the wire: whoever stands the ship she strikes reckons the toughness (`ballMen`), so a
+ *  peer's ball is the same blow on every build. */
+export const shotMen = (gun, zone) => (zone === 'rig' ? (gun.crew > 0 ? 1 : 0) : gun.crew);
+/** TOUGHER-SHIPS: the whole men a blow of `men` (a ball's `shotMen`, a ram's men) takes - `men` over her crew's
+ *  toughness `tough` on the average, the `roll` (0..1) deciding the odd man (a hardier crew, the same weight of metal).
+ *  CREW-HOLD: SHIP_TOUGHNESS a captain's crew, PLAYER_CREW_TOUGHNESS a player's (`playerMen`). */
+export const ballMen = (men, roll, tough = SHIP_TOUGHNESS) => (men > 0 ? Math.floor(men / tough + clamp(roll, 0, 0.999999)) : 0);
+/** CREW-HOLD: the whole men a blow of `men` takes from a player's ship - a ball's, a ram's, the serpent's. */
+export const playerMen = (men, roll) => ballMen(men, roll, PLAYER_CREW_TOUGHNESS);
 
 /**
  * A ship's hurts: its three numbers, its fire, its state. `player` - a player's boat wrecks where an AI ship sinks.
  * @param {{ hullHp: number, sailHp: number, crew: number, player?: boolean }} spec
  */
 export function createShipDamage({ hullHp, sailHp, crew, player = false }) {
-  /** @type {{ maxHull: number, maxSail: number, maxCrew: number, hull: number, sail: number, crew: number, fires: { hp: number, t: number }[], crewBurn: number, state: string, sinkT: number, lastHitAt: number }} */
+  /** @type {{ maxHull: number, maxSail: number, maxCrew: number, hull: number, sail: number, crew: number, fires: { hp: number, t: number }[], crewBurn: number, wound: number, state: string, sinkT: number, lastHitAt: number }} */
   const s = {
     maxHull: Math.max(1, hullHp), maxSail: Math.max(0, sailHp), maxCrew: Math.max(0, crew),
     hull: Math.max(1, hullHp), sail: Math.max(0, sailHp), crew: Math.max(0, crew),
-    fires: [], crewBurn: 0, state: SHIP_STATES.afloat, sinkT: 0, lastHitAt: -Infinity,
+    fires: [], crewBurn: 0, wound: 0, state: SHIP_STATES.afloat, sinkT: 0, lastHitAt: -Infinity,
   };
   /** A fire set: its own clock, up to FIRE_STACK - past that it takes the place of the one with the least harm left
    *  (bite times seconds), if it carries more. */
@@ -199,7 +214,11 @@ export function createShipDamage({ hullHp, sailHp, crew, player = false }) {
           s.crewBurn += burn;
         }
         s.fires = s.fires.filter((f) => f.t > 1e-9);
-        while (s.crewBurn >= FIRE_CREW_S) { s.crewBurn -= FIRE_CREW_S; s.crew = Math.max(0, s.crew - 1); }
+        // TOUGHER-SHIPS: each FIRE_CREW_S of burning is a man's worth of harm, and a toughened crew loses 1/SHIP_TOUGHNESS
+        // of a man to it - carried in `wound` from fire to fire, never let go when one burns out (FIRE_CREW_S stretched
+        // past a fire's life had one fire take nobody at all)
+        while (s.crewBurn >= FIRE_CREW_S) { s.crewBurn -= FIRE_CREW_S; s.wound += 1 / (player ? PLAYER_CREW_TOUGHNESS : SHIP_TOUGHNESS); }   // CREW-HOLD: a player's crew its own
+        while (s.wound >= 1 - 1e-9) { s.wound = Math.max(0, s.wound - 1); s.crew = Math.max(0, s.crew - 1); }
         if (!s.fires.length) s.crewBurn = 0;
         const change = d.settle();
         if (change) return change;
@@ -223,27 +242,47 @@ export function createShipDamage({ hullHp, sailHp, crew, player = false }) {
     takePrize() { if (s.state !== SHIP_STATES.sunk && s.state !== SHIP_STATES.sinking) s.state = SHIP_STATES.prize; },
     /** Scuttled: straight to sinking (whatever burns aboard burns on - the host puts the torch to her). */
     scuttle() { if (s.state !== SHIP_STATES.sunk && s.state !== SHIP_STATES.sinking) { s.state = SHIP_STATES.sinking; s.sinkT = 0; } },
-    /** Repairs: hull, sails and crew each up to their best (or by an amount). A wrecked boat back over nought floats. */
-    repair({ hull = Infinity, sail = Infinity, crew = Infinity } = {}, { refloat = 0 } = {}) {
+    /** Repairs: hull, sails and crew each up to their best (or by an amount). A wrecked boat back over nought floats.
+     *  QUICK-REPAIRS: `douse` false - her carpenters at the work under fire (navalYard.js SEA_REPAIR_UNDER_FIRE) leave
+     *  her fires burning (a patch is no bucket chain). */
+    repair({ hull = Infinity, sail = Infinity, crew = Infinity } = {}, { refloat = 0, douse: putOut = true } = {}) {
       s.hull = Math.min(s.maxHull, s.hull + Math.max(0, hull));
       s.sail = Math.min(s.maxSail, s.sail + Math.max(0, sail));
       s.crew = Math.min(s.maxCrew, s.crew + Math.max(0, crew));
-      if (s.hull > 0) douse();
+      if (s.hull > 0 && putOut) douse();
       // AUDIT NAV1 (the helm): a wreck floats again once her hull passes `refloat` of its whole (the crew's mending at
       // sea, navalYard.js FIELD_REFLOAT); a yard's timber or a prize's, at once
       if (s.state === SHIP_STATES.wrecked && s.hull > s.maxHull * refloat && s.hull > 0) s.state = SHIP_STATES.afloat;
       if (s.state === SHIP_STATES.struck && s.hull > s.maxHull * STRUCK_AT && !unmanned()) s.state = SHIP_STATES.afloat;
     },
+    /** SHIPYARDS (systems/crewHall.js releasePlan): a hand paid off - her crew down to `crew` (never up, never under
+     *  none), and nothing else: no blow, so no fire, no mending's quiet broken, no state. */
+    discharge(crew) { if (Number.isFinite(crew)) s.crew = Math.max(0, Math.min(s.crew, crew)); },
+    /** SHIPYARDS (AUDIT SHIPYARDS L2-5): her crew RAISED to `crew` (never past her whole) - men signed on at a crew hall,
+     *  discharge's twin: her state as it stands (a wreck stays a wreck - only the hull's mending floats her), no fire put
+     *  out. */
+    muster(crew) { if (Number.isFinite(crew)) s.crew = Math.min(s.maxCrew, Math.max(s.crew, crew)); },
     /** What the save or the wire keeps. */
     snapshot: () => ({ hull: Math.round(s.hull), sail: Math.round(s.sail), crew: s.crew, fire: +d.fire.toFixed(1), state: s.state }),
+
+    // Persistence retains fractional damage and each fire; the compact wire snapshot stays unchanged.
+    saveData: () => Object.assign(d.snapshot(), { hull: s.hull, sail: s.sail, fires: s.fires.map((f) => ({ ...f })), crewBurn: s.crewBurn }),
     /** Back from a snapshot - numbers bounded to the ship's own, a state it can be in. */
     restore(r) {
       if (!r || typeof r !== 'object') return;
       const num = (v, max) => (Number.isFinite(v) ? clamp(v, 0, max) : max);
       s.hull = num(r.hull, s.maxHull); s.sail = num(r.sail, s.maxSail); s.crew = Math.round(num(r.crew, s.maxCrew));
       douse();
-      const fire = Number.isFinite(r.fire) ? clamp(r.fire, 0, FIRE_SECONDS) : 0;
-      if (fire > 0) s.fires.push({ hp: FIRE_HP, t: fire });
+      if (Array.isArray(r.fires)) {
+        for (const f of r.fires.slice(0, FIRE_STACK)) {
+          if (!f || !Number.isFinite(f.t) || !(f.t > 0) || (f.hp !== FIRE_HP && f.hp !== BARREL.burnPerSecond)) continue;
+          s.fires.push({ hp: f.hp, t: Math.min(f.t, f.hp === FIRE_HP ? FIRE_SECONDS : BARREL.burn) });
+        }
+        if (s.fires.length && Number.isFinite(r.crewBurn)) s.crewBurn = clamp(r.crewBurn, 0, FIRE_CREW_S);
+      } else {
+        const fire = Number.isFinite(r.fire) ? clamp(r.fire, 0, FIRE_SECONDS) : 0;
+        if (fire > 0) s.fires.push({ hp: FIRE_HP, t: fire });   // older saves carried one ordinary fire
+      }
       const st = Object.values(SHIP_STATES).includes(r.state) ? r.state : SHIP_STATES.afloat;
       const was = s.state;
       s.state = player ? (st === SHIP_STATES.wrecked || s.hull <= 0 ? SHIP_STATES.wrecked : SHIP_STATES.afloat) : st;
@@ -253,8 +292,10 @@ export function createShipDamage({ hullHp, sailHp, crew, player = false }) {
   return d;
 }
 
-/** The repair a shipwright asks, in gold: by what is missing of each - a hull point the dearest. */
-export const REPAIR_PRICE = Object.freeze({ hull: 12, sail: 6, crew: 30 });
+/** The repair a shipwright asks, in gold: by what is missing of each - a hull point the dearest. TOUGHER-SHIPS: a hull
+ *  point and a yard of canvas went down as the hulls stood more of them (12 and 6 before; navalShips.js SHIP_TOUGHNESS),
+ *  so a wreck made whole costs what it did. */
+export const REPAIR_PRICE = Object.freeze({ hull: 7, sail: 4, crew: 30 });
 export function repairCost(damage) {
   if (!damage) return 0;
   return Math.round((damage.maxHull - damage.hull) * REPAIR_PRICE.hull + (damage.maxSail - damage.sail) * REPAIR_PRICE.sail + (damage.maxCrew - damage.crew) * REPAIR_PRICE.crew);

@@ -15,6 +15,12 @@ the enhanced tab."
 2. **Off by default, in the Enhanced tab.** `uiPrefs.enhancedAI`, a row
    beside Enhanced environments. DFU's own EnhancedCombatAI is the
    precedent: the port's departure from 1:1 is opt-in.
+   **SUPERSEDED BY BAL4 (2026-10-10, `05-Combat/Balance-Arc.md` section 6;
+   Mac: "Do everything", of "smarter AI and elites offline")**: ON by
+   default offline, as it was always forced on online. The port's game is
+   the one it plays; the classic motor is one press away and All off's.
+   An unstamped shelf's materialised Off adopts it once (`uiPrefs.js`
+   PREF1_ADOPT_NEW_DEFAULT).
 3. **The navmesh is project-final's, ported whole.** `src/ai/navmesh.js`
    is Mac's file from `// Agent params` to the end; the header differs
    only by the four-line `surfaceY` inlined verbatim from project-final's
@@ -143,7 +149,7 @@ whenever there is no bake, no route, or the classic detour is running.
 
 The follow laws are project-final's at 8ba9100 - enemyShared.js
 `repathToward` and `stuckWatch` re-homed on `this`, enemyMelee.js
-htClose's `WP_REACH` advance, main.js:340 `navWalkable`, enemy.js:402
+htClose's `WP_REACH` advance, main.js:236 `navWalkable`, enemy.js:402
 `PATH_BUDGET_PER_FRAME` - constants and comments verbatim, pinned.
 The host chooses the motor by the pref at both construction sites,
 hands it the bake as a THUNK (a foe built before the bake lands is

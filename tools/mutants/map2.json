@@ -2,7 +2,7 @@
   {
     "name": "ports-ignored-by-marks",
     "file": "src/ui/heldMap.js",
-    "old": "        isDiscovered: (s) => this._discovered(s),   // MAP2: the ports arm before DFU's own test\n",
+    "old": "        isDiscovered: (s) => (s?.wildHall ? true : this._discovered(s)),   // MAP2: the ports arm before DFU's own test\n",
     "new": "",
     "tests": [
       "test/heldmap.test.js"
@@ -38,20 +38,22 @@
   {
     "name": "harbour-at-far",
     "file": "src/ui/inkMap.js",
-    "old": "    if (opts.ports && m.port && band !== 'far') paintHarbour(ctx, x, y);",
-    "new": "    if (opts.ports && m.port) paintHarbour(ctx, x, y);",
+    "old": "    if (opts.ports && m.port) harbours.push([ink, ...toPaper(view, m.x, m.y)]);",
+    "new": "    if (opts.ports && m.port && band !== 'far') harbours.push([ink, ...toPaper(view, m.x, m.y)]);",
     "tests": [
       "test/heldmap.test.js"
-    ]
+    ],
+    "note": "PORT-MAP (PIN MOVED, 2026-10-04): the law reversed - a port's anchor at EVERY band now; re-aimed by content to MAP2's far gate coming back, which the moved pin (at far too) kills."
   },
   {
     "name": "harbour-always",
     "file": "src/ui/inkMap.js",
-    "old": "    if (opts.ports && m.port && band !== 'far') paintHarbour(ctx, x, y);",
-    "new": "    if (m.port && band !== 'far') paintHarbour(ctx, x, y);",
+    "old": "    if (opts.ports && m.port) harbours.push([ink, ...toPaper(view, m.x, m.y)]);",
+    "new": "    if (m.port) harbours.push([ink, ...toPaper(view, m.x, m.y)]);",
     "tests": [
       "test/heldmap.test.js"
-    ]
+    ],
+    "note": "PORT-MAP (PIN MOVED, 2026-10-04): re-aimed by content - the anchors gathered by the paint's own `ports`."
   },
   {
     "name": "mark-per-window",
@@ -137,29 +139,32 @@
   {
     "name": "coords-without-setting",
     "file": "src/ui/heldMap.js",
-    "old": "    return !!this._to?.settings?.targetCoordsAllowed && (this.deps.coordsAllowed?.() ?? true) && !this.teleportationTravel;",
-    "new": "    return !!this._to && (this.deps.coordsAllowed?.() ?? true) && !this.teleportationTravel;",
+    "old": "    return !this._it && !!this._to?.settings?.targetCoordsAllowed && (this.deps.coordsAllowed?.() ?? true) && !this.teleportationTravel;",
+    "new": "    return !this._it && !!this._to && (this.deps.coordsAllowed?.() ?? true) && !this.teleportationTravel;",
     "tests": [
       "test/heldmap.test.js"
-    ]
+    ],
+    "note": "IT1 (PIN MOVED): re-aimed by content - Immersive Travel’s arm sits beside the line this record mutates."
   },
   {
     "name": "coords-online",
     "file": "src/ui/heldMap.js",
-    "old": "    return !!this._to?.settings?.targetCoordsAllowed && (this.deps.coordsAllowed?.() ?? true) && !this.teleportationTravel;",
-    "new": "    return !!this._to?.settings?.targetCoordsAllowed && !this.teleportationTravel;",
+    "old": "    return !this._it && !!this._to?.settings?.targetCoordsAllowed && (this.deps.coordsAllowed?.() ?? true) && !this.teleportationTravel;",
+    "new": "    return !this._it && !!this._to?.settings?.targetCoordsAllowed && !this.teleportationTravel;",
     "tests": [
       "test/heldmap.test.js"
-    ]
+    ],
+    "note": "IT1 (PIN MOVED): re-aimed by content - Immersive Travel’s arm sits beside the line this record mutates."
   },
   {
     "name": "coords-on-teleport",
     "file": "src/ui/heldMap.js",
-    "old": "    return !!this._to?.settings?.targetCoordsAllowed && (this.deps.coordsAllowed?.() ?? true) && !this.teleportationTravel;",
-    "new": "    return !!this._to?.settings?.targetCoordsAllowed && (this.deps.coordsAllowed?.() ?? true);",
+    "old": "    return !this._it && !!this._to?.settings?.targetCoordsAllowed && (this.deps.coordsAllowed?.() ?? true) && !this.teleportationTravel;",
+    "new": "    return !this._it && !!this._to?.settings?.targetCoordsAllowed && (this.deps.coordsAllowed?.() ?? true);",
     "tests": [
       "test/heldmap.test.js"
-    ]
+    ],
+    "note": "IT1 (PIN MOVED): re-aimed by content - Immersive Travel’s arm sits beside the line this record mutates."
   },
   {
     "name": "coords-pays-fare",

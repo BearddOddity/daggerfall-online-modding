@@ -102,8 +102,9 @@ export function pathCorners(mask, x, y, w = 1000) {
  * excluding them by number would strip the grass from every dirt edge
  * in the world to clear one path. Only the painter knows, and it knows
  * it exactly - so it says so, one byte a tile, at the moment it writes.
- * `opts.paths` is that Uint8Array (128x128, 1 = painted); absent, the
- * painter is byte-for-byte what it was.
+ * `opts.paths` is that Uint8Array (128x128, 1 = painted - VERGE1: or a
+ * track laid over dirt, which the mod writes nothing for, tile()); absent,
+ * the painter is byte-for-byte what it was.
  *
  * @param {object} masks - { road, track, river, stream } bytes for this pixel
  * @param {object} corners - { road, track, river, stream } corner bytes
@@ -116,8 +117,21 @@ export function paintRoads(tileData, tilemap, roadMask, trackMask, locationRect 
   const anyCorner = corners.road || corners.track || (water && (corners.river || corners.stream));
   if (!masks.road && !masks.track && !(water && (masks.river || masks.stream)) && !anyCorner) return 0;
   let painted = 0;
+  // FAST-SUITE: ONE context for the pixel's 16,384 tiles, its place moved tile to tile - the painters only read it, and
+  // none keeps it past its call - where a fresh object a tile made the garbage a terrain build swept
+  const ctx = { tilemap, i: 0, x: 0, y: 0, ground: 0, rect: locationRect, paths };
   for (let y = 0; y < DIM; y++) {
     for (let x = 0; x < DIM; x++) {
+      // FAST-SUITE: A TILE NO PAINTER CAN REACH is passed by. Every arm, cap, ring, gap, elbow and river join below
+      // lies on the pixel's centre cross (x or y within MID_LO-1..MID_HI+1 - a river join two out, at MID_LO-2 or
+      // MID_HI+2, has its other coordinate on the cross), on its two diagonals (x-y, or the mirror's, within 2 - the
+      // pixel corners among them), or inside the location rect (the road's paving); a tile off all of them fails every
+      // condition, so skipping it changes no byte - and spares some 14,000 of the 16,384 the ladder ran (2,224 stay, and a
+      // location's rect). Proven against the ladder alone over every road, track, river and stream pixel of the shipped
+      // map, water on and off: `node tools/roadGuardProof.mjs` (103,487 real-map cases, none differing).
+      if (!(x >= MID_LO - 1 && x <= MID_HI + 1) && !(y >= MID_LO - 1 && y <= MID_HI + 1)
+        && Math.abs(x - y) > 2 && Math.abs(DIM - 1 - x - y) > 2
+        && !(locationRect && x > locationRect.xMin && x < locationRect.xMax && y > locationRect.yMin && y < locationRect.yMax)) continue;
       const i = y * DIM + x;
       if (tilemap[i] !== 0) continue;   // a location's own tile, or already painted
       // AUDIT 51: NO RECT SKIP. The mod does not skip the location rect;
@@ -126,7 +140,7 @@ export function paintRoads(tileData, tilemap, roadMask, trackMask, locationRect 
       // cross it, and a road then fills what is left of it (below).
       let ground = tileData[y * tdDim + x];
       if (ground > TILE.stone) ground = TILE.grass;
-      const ctx = { tilemap, i, x, y, ground, rect: locationRect, paths };
+      ctx.i = i; ctx.x = x; ctx.y = y; ctx.ground = ground;
       if (paintPath(ctx, ROAD_TILES, masks.road, corners.road)) { painted++; continue; }
       if (water && paintPathWithSubPathJoins(ctx, RIVER_TILES, masks.river, corners.river, masks.stream)) { painted++; continue; }
       if (water && paintPath(ctx, STREAM_TILES, masks.stream, corners.stream)) { painted++; continue; }
@@ -145,7 +159,11 @@ function tile(ctx, slot, rotate, flip, overwrite = true) {
   if (!slot) return false;
   if (!overwrite && ctx.tilemap[ctx.i] !== 0) return false;
   const t = slot[ctx.ground];
-  if (t === NC) return false;
+  // VERGE1 (AUDIT FOREST1 F8, which never held): a TRACK OVER DIRT is a path the mod writes nothing for - its table's
+  // dirt column is NO_CHANGE, the one NO_CHANGE in any of the four tables - so the mask said nothing there, and the
+  // woods (layoutForests), the grass and the home yards that keep off a path stood on it. It is marked and not
+  // written: the tile stays the ground's, the painter's answer (false, not painted) is the mod's.
+  if (t === NC) { if (ctx.paths) ctx.paths[ctx.i] = 1; return false; }
   // RotateFlipTile adds the bits BEFORE the zero check, so a rotated
   // water tile is 64/128/192 and only bare water becomes water_temp.
   let v = t;
@@ -429,8 +447,8 @@ export function classify(x, y, mask) {
  *  with JobHelpers.cs:19-22 Idx(r, c, dim) = r + c*dim) and the
  *  HEIGHTMAP is JobA.Idx(y, x, hDim) = y + x*hDim (TerrainSampler
  *  .cs:123) - which is what terrainSampler.js:"data[x * hDim + y]" writes and what every
- *  consumer in this tree reads (terrainTiles.js:"x & y swapped in".."//" and :317,
- *  terrainSurface.js:"@param {(x: number, z: number) => number}", terrainNature.js:"const at = (x, y) => heightmapData[x * hDim + y] * worldHeight" and :136). The mod
+ *  consumer in this tree reads (terrainTiles.js:"sampleHeight(heightmapData[hy + hx * hDim])" and :344,
+ *  terrainSurface.js:"const at = (x, z) => heightmapData", terrainSurface.js:"const at = (x, z) => unityHeightmapStep" and :329, terrainNature.js:"const at = (a, b)", terrainNature.js:"const h = (a, b)", terrainNature.js:"const at = (x, y) => heightmapData[x * hDim + y] * worldHeight" and :446). The mod
  *  reads its tile at Idx(x, y, tDim) and its corner base at
  *  Idx(y, x, hDim) - BOTH in the layout that owns them - and so does
  *  this: the tile at y*tDim + x, the base at x*hDim + y. Byte for byte
@@ -450,7 +468,7 @@ export function classify(x, y, mask) {
  *   layout, sample(x, y) = samples[x * hDim + y] (terrainSampler.js:"data[x * hDim + y]");
  *   mutated in place.
  * @param {Uint8Array} tilemap - 128x128 after the painter, tile(x, y) =
- *   tilemap[y * tDim + x] (terrainTiles.js:"if (tile.textureRecord < 56) {".."}"). The two differ.
+ *   tilemap[y * tDim + x] (terrainTiles.js:"tilemapData[xpos + ypos * WORLD_MAP_TILE_DIM]"). The two differ.
  * @returns {number} corner samples smoothed (with repeats, as his counts).
  */
 export const SMOOTHED_TILES = Object.freeze(new Set([46, 0xff]));

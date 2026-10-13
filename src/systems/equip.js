@@ -21,6 +21,7 @@
 // load arm.
 
 import { mintCondition, templateByIndex } from './itemTemplates.js';   // AUDIT 23
+import { repoolWeapon } from './conditionRepair.js';   // AUDIT WEAPON-POOL P2: a weapon on its row's pool moves before it wears
 import { EQUIP_SLOTS } from '../characters/paperdoll.js';
 import { ITEM_GROUPS, SLOT_RULES } from '../characters/equipRules.js';
 import { customItemClass, rriNativeMaterialValue, rriEquipSound } from './rriItems.js';
@@ -282,6 +283,39 @@ export function equipItem(entity, item) {
 
 export const isEquipped = (item) => item.equipSlot != null;
 
+/** SWAP-HANDS (2026-10-08, the owner: "the game should also let you swap out left and right hand in the inventory (right
+ *  now you have to put both in the inventory again and requip it)"): the pieces in the two hands change hands - each by
+ *  the hand law the equip table itself keeps (characters/equipTable.js getItemHands): a piece held in EITHER hand may go
+ *  to the other, a shield (LeftOnly) never leaves the left, a right-only or two-handed weapon never the right. One held
+ *  piece that may change hands crosses to the empty one. Answers `{ ok: true }` or `{ ok: false, why }` - words for the
+ *  pack. One equip act (oneEquipAct), so every listener hears the table once, settled. */
+export function canSwapHands(entity) {
+  const slots = equipTableOf(entity);
+  const R = slots[EQUIP_SLOTS.RightHand], L = slots[EQUIP_SLOTS.LeftHand];
+  if (!R && !L) return { ok: false, why: 'Your hands are empty.' };
+  const may = (item, to) => {
+    const h = getItemHands(numeric(item));
+    return h === ITEM_HANDS.Either || (to === EQUIP_SLOTS.LeftHand ? h === ITEM_HANDS.LeftOnly : h === ITEM_HANDS.RightOnly || h === ITEM_HANDS.Both);
+  };
+  if (R && !may(R, EQUIP_SLOTS.LeftHand)) return { ok: false, why: `${R.name ?? 'That'} can only be held in the right hand.` };
+  if (L && !may(L, EQUIP_SLOTS.RightHand)) return { ok: false, why: `${L.name ?? 'That'} can only be held in the left hand.` };
+  return { ok: true };
+}
+export function swapHands(entity) {
+  const can = canSwapHands(entity);
+  if (!can.ok) return can;
+  const slots = equipTableOf(entity);
+  const R = slots[EQUIP_SLOTS.RightHand], L = slots[EQUIP_SLOTS.LeftHand];
+  oneEquipAct(() => {
+    slots[EQUIP_SLOTS.RightHand] = L ?? null;
+    slots[EQUIP_SLOTS.LeftHand] = R ?? null;
+    if (L) L.equipSlot = EQUIP_SLOTS.RightHand;
+    if (R) R.equipSlot = EQUIP_SLOTS.LeftHand;
+    equipChanged(entity);
+  });
+  return { ok: true };
+}
+
 /** AUDIT 17e C1 - SerializablePlayer.RestoreItems verbatim
  *  (SerializablePlayer.cs:301, :355-368): after items are restored,
  *  the equip TABLE is rebuilt by re-linking each worn item into its
@@ -331,7 +365,7 @@ export function fillEquipTable(slots, items) {
  *  SUPERSEDED, not pending. S3d shipped the real roll -
  *  systems/startingGear.js:"export function assignStartingGear" assignStartingGear (ItemHelper's
  *  AssignStartingGear), run on both creation paths at
- *  chargenSession.js:"assignStartingEquipment(playerEntity, { classIndex })" (?class= headless) and :235 (the wizard) -
+ *  chargenSession.js:"assignStartingEquipment(playerEntity, { classIndex })" (?class= headless) and chargenSession.js:"classIndex: result.careerIndex" (the wizard) -
  *  and the guard below (`entity.equip || items.length`) makes this a
  *  no-op for any character that went through either. What is left is
  *  residue at the two host calls (world.js:"if (playerEntity.chargenDone)", exterior.js:"if (playerEntity.chargenDone)"):
@@ -526,6 +560,9 @@ export function blowWear(amount, rolls = Math.random) {
 
 export function lowerCondition(item, amount, owner = null, say = null, removeFrom = null, nameOf = null) {
   mintCondition(item);
+  // AUDIT WEAPON-POOL P2: a weapon still on its row's pool - back from a store the load does not walk (hung in a room, a
+  // revenant's take, a quest's prize, an heir's bequest, a market or vault record) - moves to the one pool before it wears
+  repoolWeapon(item);
   if ((item.maxCondition ?? 0) <= 0) return false;   // no condition to lower: the frozen stand-ins and 0-hitPoint templates cannot break
   item.currentCondition -= amount;
   if (item.currentCondition > 0) return false;

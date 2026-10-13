@@ -33,8 +33,9 @@ import { CLOTHING_DYES } from '../characters/dyes.js';
 import { legacyEnchantmentValue } from './enchantments.js';   // G4: ItemBuilder's closing value sum
 import { validItemField, validItemFields, itemFieldsOfKind, ITEM_STR_MAX } from './itemFields.js';   // RF5: the one declaration of every item field's kind (LR4's affix check rides it)
 import { validSetMarks } from './aetheric.js';   // AUDIT SET D6: the wire's cross-checks of a sigil and an Aetheric piece
-import { validImprint } from './lootRarity.js';   // LOOT10: and of a Rare's imprint
-import { createRandomBook, BOOK_TEMPLATE } from './books.js';   // IM1: CreateRandomBook whole (A2: + its book-file price)
+import { validGildedMarks } from './gilded.js';   // GILDED1: and a Gilded piece's - its record's exactly
+import { validImprint, validCurse, validSocket } from './lootRarity.js';   // LOOT10: and of a Rare's imprint; LOOT16: and of a curse; LOOT20: and of a socket
+import { createRandomBook, BOOK_TEMPLATE, bookValue } from './books.js';   // IM1: CreateRandomBook whole (A2: + its book-file price); AUDIT LW-II-2 S9: the wire's floor of a book
 import { potionRecipeByKey, POTION_DEFAULT_TEXTURE_RECORD } from './potions.js';   // F103: PotionRecipeKey's price side effect; AUDIT 63 F20: and its texture-record half
 import { RANDOM_TREASURE_ARCHIVE, RANDOM_TREASURE_ICONS, DROP_ICON_ARCHIVES, DROP_ICON_IDXS } from './lootDataTables.js';   // G5: DaggerfallLootDataTables.cs, its own file again
 import { themedIngredientPool } from './lootThemes.js';   // MOD: a monster's CreatureIngredients roll draws from ITS OWN curated subset, not the full mismatched pool
@@ -42,6 +43,7 @@ import { getLocalizedSpellName } from './textManager.js';   // L10N3e: a stock s
 import { isOnlinePage } from './onlineLane.js';   // REALM P0.4: online, a pile's gold is not the level's
 import { rriLootMatrix, rriEnemyLootTableKey, conditionBasedPricesOn, randomConditionLootItems } from './rriRealism.js';   // RRI2: LootRealismTables over DefaultLootTables, MobLootKeys over the basics' key, the condition roll on tabled loot
 import { RRI_VENDOR } from './rriItems.js';   // FORAGE3: the pile event's first subscriber, named by its mod
+import { RECEIVER_MARKS, VALUE_IS_IDENTITY_TEMPLATES, BOAT_TEMPLATES } from '../net/realmTradeLaw.js';   // MARK-WIRE: the receiver's marks, one list with the realm's trade law; HACKED-GOLD: the records whose `value` is no price
 
 // LootChanceMatrix rows, verbatim (22 keys, '-' included).
 export const LOOT_MATRICES = Object.freeze({
@@ -590,8 +592,46 @@ function clampLootValue(v, depth) {
  *  below covers every declared field's kind, not the arrays alone. */
 export const LOOT_ARRAY_FIELDS = Object.freeze(itemFieldsOfKind('array'));
 
-/** One item record off the wire, clamped to a copy - or null when it is not one this port could have minted. */
+/** INT1 (the INTEGRITY arc - bible/06-Systems/Integrity-Arc.md): THE ITEM LAW, registered by its home
+ *  (systems/itemLaw.js setItemLaw at its import) - the findings on a record, empty for one an honest client could have
+ *  minted. A registration, not an import: the law reads the loot graph whole (the records, the spoils, the Broker), and
+ *  this module sits under it. Until a host imports the law, the wire checks the shapes alone, as it always did. */
+let _itemLaw = null;
+/** HACKED-GOLD: and the law's CEILING on an honest price (itemLaw.js worthCeiling), registered beside it - the wire's
+ *  price has a floor (AUDIT WORLD6a B1, below) and, with the law, a ceiling. */
+let _priceCeiling = null;
+export function setItemLaw(fn, ceiling = null) { _itemLaw = typeof fn === 'function' ? fn : null; _priceCeiling = typeof ceiling === 'function' ? ceiling : null; }
+
+/** One item record off the wire, clamped to a copy - or null when it is not one this port could have minted: its shape
+ *  (wireLootItem) and the item law. */
 export function validLootItem(v) {
+  const out = wireLootItem(v);
+  return out && !lawRefuses(out) ? lawPriced(out) : null;
+}
+/** INT1: the item law's word on a clamped record - its fields agree with each other as a producer mints them (a tier's
+ *  lines its tier's, a record's its record's, a sigil its band's, the maker's rows within the item's power). The
+ *  receiver's own marks were stripped, never judged. */
+const lawRefuses = (/** @type {any} */ it) => !!_itemLaw && _itemLaw(it, { receiver: true }).length > 0;
+/** HACKED-GOLD: THE PRICE IS NOT THE WIRE'S, ABOVE EITHER. AUDIT WORLD6a B1 floored a peer's price at what the port
+ *  mints the piece at and left the top open ("an honest value above it ... stands") - and every counter pays a piece by
+ *  that price (tradeModes.js counterValueOf; shopStock.js calculateTradePrice, a sixth of it online at 50 Mercantile and
+ *  Personality, half offline), so a modified client's dagger priced at nine million sold for 1,471,656 in an honest
+ *  player's hands. The top is the law's own ceiling on an honest price (itemLaw.js
+ *  worthCeiling, the wealth measure's - its base four times over, its lines', a tier's, a margin): of the 46,919 pieces
+ *  every honest producer mints (test/honestItems.mjs) none passes it but Come Sail Away's deeds, whose worth is their
+ *  hull's. A record whose `value` is no price - a letter of credit (its value IS it) and a boat's parts or deed
+ *  (net/realmTradeLaw.js) - is left as it came: a letter never rides a peer's word at all (systems/peerWord.js), and a
+ *  boat's records never leave their holder in a trade. Never under the floor the projection set. */
+const lawPriced = (/** @type {any} */ it) => {
+  if (_priceCeiling && !VALUE_IS_IDENTITY_TEMPLATES.includes(it.templateIndex) && !BOAT_TEMPLATES.includes(it.templateIndex)) {
+    it.value = Math.min(it.value, Math.max(_priceCeiling(it), wireFloorOf(it)));
+  }
+  return it;
+};
+
+/** One item record off the wire, clamped to a copy - or null when its SHAPE is not one this port could have minted (a
+ *  template it has not, a field not its kind, a mark that disagrees with its item). The law is validLootItem's. */
+function wireLootItem(v) {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
   if (v.templateIndex == null || validItemField('templateIndex', v.templateIndex) === undefined) return null;
   if (!templateByIndex(v.templateIndex)) return null;   // AUDIT WORLD6a B1: an item the port has no template for is not an item
@@ -604,19 +644,24 @@ export function validLootItem(v) {
   // answers a missing value with the template's own).
   if (!validItemFields(out)) return null;
   if (!validSetMarks(out)) return null;   // AUDIT SET D6: and the marks agree with the item - a set's sigil, a blow, the Aetheric
+  if (!validGildedMarks(out)) return null;   // GILDED1: a Gilded piece as its record mints it - a static roll, one number off is a forgery
   if (!validImprint(out)) return null;   // LOOT10: an imprint only as the Reforge makes one
+  if (!validCurse(out)) return null;   // LOOT16: a curse only as a door's pass makes one
+  if (!validSocket(out)) return null;   // LOOT20: a socket only as the pass and the Reforge make one
   // AUDIT WORLD6a B1: THE PRICE IS NOT THE WIRE'S. A shelf's list lands on every client (WORLD6a) and calculateCost
   // reads `value`, so a peer minted a Daedric dai-katana at `value: 0` onto a shop's shelf and every player in the
   // Bay could buy it for 2 gold, and the room remembered it for thirty days. The value is floored at what the port
   // itself would mint for the template and material (itemBaseValue - ItemBuilder's own arithmetic); an honest value
-  // above it (an enchantment's worth, a book's price) stands. A forged item still lands, at its true price: that is
+  // above it (an enchantment's worth) stands. A forged item still lands, at its true price: that is
   // a peer selling a conjured thing, which the WORLD4 law already accepts for a chest, and is recorded.
-  out.value = Math.max(Number.isFinite(out.value) ? out.value : 0, itemBaseValue(out));
+  out.value = Math.max(Number.isFinite(out.value) ? out.value : 0, wireFloorOf(out));
   // AUDIT WORLD6b-iii(c) B2/C1: a stack is a whole number in [1, LOOT_STACK_MAX] or absent - not an item otherwise
   if (out.stackCount !== undefined && (!Number.isInteger(out.stackCount) || out.stackCount < 1 || out.stackCount > LOOT_STACK_MAX)) return null;
   // AUDIT WORLD6b-iii(c) A6/B4: the marks that mean "worn by me" and "bound to my quest" are the RECEIVER's, never a
   // container's word - a wire-borne equipSlot re-linked into the pack's slots on the next load and pushed my own out
-  delete out.equipSlot; delete out.questItem;
+  // ACQUIRE1: and "it is mine already" (systems/acquireWatch.js) - a piece another player hands over is new to its taker
+  // MARK-WIRE: the one list the realm's trade law reads too (net/realmTradeLaw.js RECEIVER_MARKS)
+  for (const k of RECEIVER_MARKS) delete out[k];
   return out;
 }
 
@@ -626,12 +671,19 @@ export const LOOT_NEWER_TEXT = 'Something in here is from a newer version of the
 /** AUDIT ONLINE2 F4: a body's pile a peer granted that this build cannot read - handed back to its owner. */
 export const LOOT_NEWER_TAKE_TEXT = 'Something on this body is from a newer version of the game. Reload to take it.';
 
-/** A container's whole list off the wire - every item clamped, or null when the list is not one. An EMPTY list is
+/** A container's whole list off the wire - every item clamped, or null when the list is not one (a record of no shape
+ *  this build reads - a newer game's piece). A piece the item law refuses is left out, the rest kept. An EMPTY list is
  *  the commonest word a room says about a container ("it is emptied"), so it is valid and is not null. */
 export function validLootList(v) {
   if (!Array.isArray(v) || v.length > LOOT_LIST_MAX) return null;
   const out = [];
-  for (const e of v) { const it = validLootItem(e); if (!it) return null; out.push(it); }
+  for (const e of v) {
+    const it = wireLootItem(e);
+    if (!it) return null;
+    // INT1 (AUDIT INT): a piece the item law refuses is no item - IT goes, never the list: a forged piece in a chest, a
+    // body or a shelf cost every honest piece beside it ("from a newer version of the game", which no reload mends)
+    if (!lawRefuses(it)) out.push(lawPriced(it));   // HACKED-GOLD: at no price past the law's ceiling
+  }
   return out;
 }
 
@@ -699,6 +751,17 @@ export const POTION_TEMPLATE_INDEX = GROUP_TEMPLATE_INDICES.UselessItems1[1];
  *  A key no recipe answers leaves the template value standing, as the
  *  setter's own null guard does. */
 const potionValue = (recipeKey, item) => potionRecipeByKey(recipeKey)?.price ?? itemBaseValue(item);
+/** AUDIT LW-II-2 S9: THE WIRE'S FLOOR IS WHAT THE PORT MINTS THE PIECE AT - a book at its file's price (books.js
+ *  `bookValue`, CreateBook's; the template's basePrice only where no price is registered), a potion recipe at the
+ *  potion it teaches (CreateRandomRecipe's, `potionValue`), every other piece at itemBaseValue. Floored at the
+ *  template's, a book minted at its file's 300-800 crossed the wire at 2500 (a recipe at its sheet's): bought at a
+ *  counter, set down in a room's shared container and taken up again, it sold back for more than it cost - and a
+ *  patron (LW15) judged it by the same price. @param {any} item */
+const wireFloorOf = (item) => {
+  if (item.group === 'Books' && item.templateIndex === BOOK_TEMPLATE) return bookValue(item.message);
+  if (item.group === 'MiscItems' && item.templateIndex === POTION_RECIPE_TEMPLATE_INDEX && item.potionRecipeKey != null) return potionValue(item.potionRecipeKey, item);
+  return itemBaseValue(item);
+};
 
 /** ItemBuilder.CreatePotion (:752-755) - a bottle carrying a key.
  *

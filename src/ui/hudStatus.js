@@ -25,7 +25,8 @@
 //     survivalHudChips): the port's own pixel glyph for what the
 //     classic art has no icon for - hunger, thirst, sleep, wet, hot,
 //     cold, stiff, drunk - framed amber while it is felt and red while
-//     it costs (the chips' own two levels: RED MEANS IT COSTS);
+//     it costs (the chips' own two levels: RED MEANS IT COSTS), how bad
+//     at its foot ("2/3", NEED-TIER);
 //   - a POISON and a DISEASE, shown at last - on the Status box's own
 //     law (systems/healthStatus.js): a poison once it has left its
 //     waiting, a disease once its incubation is over and by the name
@@ -82,6 +83,13 @@ export const STAT_NAME_GAP = 8;
  * from shapes and outlined by a machine, then looked at (tools/uiStatusProbe.mjs draws them all).
  */
 export const STATUS_GLYPHS = Object.freeze({
+  // REST1: a campfire - the flame over its crossed logs - while the night interval runs (Rested)
+  rested: Object.freeze({ pal: { f: '#ffb02a', y: '#fff0a0', w: '#9a6a3a', d: '#5a3a1e' }, rows: [
+    '................', '......kkkk......', '......kffk......', '.....kkffkk.....',
+    '.....kffffk.....', '....kkfyyfkk....', '....kfyyyyfk....', '...kkfyyyyfkk...',
+    '...kfffyyfffk...', '..kkkffffffkkk..', '.kkwwkkkkkkwwkk.', 'kkwwwddkkddwwwkk',
+    'kwwkkwwddwwkkwwk', 'kkkkkkkwwkkkkkkk', '......kkkk......', '................',
+  ] }),
   // a drumstick: the meat up and right, the bone down and left
   hunger: Object.freeze({ pal: { a: '#c8763a', b: '#e8a060', c: '#8a4a22', w: '#efe6cf' }, rows: [
     '................', '......kkkkkkk...', '.....kkbbbaakk..', '....kkbbbaaaakk.',
@@ -145,12 +153,26 @@ export const STATUS_GLYPHS = Object.freeze({
     '.kkaaaaaaaaaakk.', '..kaaaakkaaack..', '..kkaaaaaaackk..', '...kkaaaaackk...',
     '....kakaakck....', '....kaaaccck....', '....kkkkkkkk....', '................',
   ] }),
+  // TELL9 (bible/12-Enhanced-AI/Feud-Arc.md 8.2, 11): two drops of blood - a sweep's BLEED, its own icon on both skins
+  bleed: Object.freeze({ pal: { a: '#c8202a', b: '#ff7a6a', c: '#7a0e14' }, rows: [
+    '....kkkk........', '....kaak........', '...kkaakk.......', '...kaaaak.......',
+    '..kkbaaakk......', '..kbaaaaak......', '.kkbaaaaakk.....', '.kbaaaaaaak.....',
+    '.kbaaaaaaak.kkk.', '.kbaaaaaackkkakk', '.kaaaaaaackkaaak', '.kkaaaaacckkaaak',
+    '..kkaaacckkkbaak', '...kkkkkkk.kacck', '...........kkkkk', '................',
+  ] }),
   // a spore
   disease: Object.freeze({ pal: { a: '#c8d24a', b: '#eef59a', c: '#6e7a18' }, rows: [
     '....kkkkkkkk....', '...kkaakkaakk...', '...kaaakkaaak...', '.kkkkaakkaakkkk.',
     'kkakkkabbakkkakk', 'kaaakbbbbaakaaak', 'kaaaabbbaaaaaaak', 'kkkkbbbcaaaakkkk',
     'kkkkbbaaacaakkkk', 'kaaaaaacaaaaaaak', 'kaaakaaaaaakaaak', 'kkakkkaaaakkkakk',
     '.kkkkaakkaakkkk.', '...kaaakkaaak...', '...kkaakkaakk...', '....kkkkkkkk....',
+  ] }),
+  // WILD1 (systems/wildZone.js): two blades crossed over the zone's blood - the open zone, on both skins
+  wild: Object.freeze({ pal: { a: '#cfd4dc', b: '#ffffff', g: '#c08a3e', c: '#a8241a' }, rows: [
+    'kkk..........kkk', 'kbkk........kkbk', 'kabkk......kkbak', 'kkabkk....kkbakk',
+    '.kkabkk..kkbakk.', '..kkabkkkkbakk..', '...kkabkkbakk...', '....kkabbakk....',
+    '....kkabbakk....', '...kkabkkbakk...', '.kkkabkkkkbakkk.', '.kgggkk..kkgggk.',
+    '.kkckk....kkckk.', '.kcck......kcck.', '.kkkk......kkkk.', '................',
   ] }),
 });
 /** The kit's outline black (ui/enhancedFrame.js FRAME_TONES.outline). */
@@ -172,6 +194,24 @@ export function statusGlyphSvg(name) {
   });
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">${body}</svg>`;
 }
+/** TELL9: a glyph as Color32 pixels on its 16px grid (`{ width, height, colors }`, RGBA, '.' clear) - the classic row's
+ *  texture (ui/hudActiveSpells.js), or null for a name there is none of. */
+export function statusGlyphColor32(name) {
+  const g = Object.hasOwn(STATUS_GLYPHS, name) ? STATUS_GLYPHS[name] : null;
+  if (!g) return null;
+  const colors = new Uint32Array(16 * 16);
+  const u8 = new Uint8Array(colors.buffer);
+  g.rows.forEach((row, y) => {
+    for (let x = 0; x < 16; x++) {
+      const ch = row[x];
+      if (!ch || ch === '.') continue;
+      const hex = ch === 'k' ? OUTLINE : g.pal[ch];
+      const n = parseInt(hex.slice(1), 16), o = (y * 16 + x) * 4;
+      u8[o] = n >> 16; u8[o + 1] = (n >> 8) & 255; u8[o + 2] = n & 255; u8[o + 3] = 255;
+    }
+  });
+  return { width: 16, height: 16, colors };
+}
 const _srcs = new Map();
 /** A glyph as a picture's source (an `<img>`'s src), made once a name. */
 export function statusGlyphSrc(name) {
@@ -186,9 +226,9 @@ export function statusGlyphSrc(name) {
  * The poisons and diseases the widget shows - the Status box's law (systems/healthStatus.js healthStatusRows): ONE
  * tile for being poisoned, once any poison has left its waiting (the game names none: "You have been poisoned."); a
  * tile a disease whose incubation is over, by its name; nothing for an entry that has ended, one still waiting or
- * incubating, or an infection (no disease row: `disease` null).
+ * incubating, or an infection (no disease row: `disease` null). TELL9: and a blow's bleed, its ticks left at its foot.
  * @param {any} entity
- * @returns {{ key: string, name: string, glyph: string }[]}
+ * @returns {{ key: string, name: string, glyph: string, foot?: string, blink?: boolean }[]}
  */
 export function afflictionRows(entity) {
   const out = [];
@@ -201,6 +241,10 @@ export function afflictionRows(entity) {
     }
   }
   if (poisoned) out.unshift({ key: 'poison', name: 'Poisoned', glyph: 'poison' });
+  // TELL9 (bible/12-Enhanced-AI/Feud-Arc.md 8.2): a sweep's BLEED (systems/blowEffects.js) - its ticks left at its foot,
+  // the last blinking, as a spell's rounds
+  const bleed = entity?.bleed;
+  if (bleed && bleed.left > 0) out.push({ key: 'bleed', name: 'Bleeding', glyph: 'bleed', foot: String(bleed.left), blink: bleed.left < 2 });
   return out;
 }
 
@@ -223,15 +267,18 @@ export function needGlyph(chip) {
 /**
  * The widget's tiles, in the order the foot row read them: the spells (mine, then others'), the set powers, the
  * poisons and diseases, the needs.
- * @param {{ spells?: any[], powers?: any[], afflictions?: any[], needs?: any[] }} lists - `spells` ui/enhancedHud.js
+ * @param {{ spells?: any[], powers?: any[], afflictions?: any[], needs?: any[], rested?: { minutes: number }|null, zone?: { name: string, foot?: string|null }|null }} lists - `spells` ui/enhancedHud.js
  *   effectRows, `powers` the host's set chips (systems/sigilSetPowers.js setHudChips), `afflictions` afflictionRows,
- *   `needs` survivalHudChips
+ *   `needs` survivalHudChips, `rested` REST1's night interval (its real minutes left), `zone` WILD1's open zone (its
+ *   tile first)
  * @returns {StatusTile[]}
  */
-export function statusTiles({ spells = [], powers = [], afflictions = [], needs = [] } = {}) {
+export function statusTiles({ spells = [], powers = [], afflictions = [], needs = [], rested = null, zone = null } = {}) {
   /** @type {StatusTile[]} */
   const out = [];
   const tile = (t) => out.push({ foot: null, blink: false, item: false, recovering: false, spell: null, glyph: null, set: null, bundle: null, endable: false, ...t });
+  // WILD1: the open zone first - where the player stands is the first thing a glance should say there
+  if (zone) tile({ key: 'wild', kind: 'danger', name: String(zone.name ?? ''), glyph: 'wild', foot: zone.foot ?? null });
   spells.forEach((e, i) => tile({
     // AUDIT UI C3: a party mate's gift is a BUFF - ALLY-CAST lets a mate lay only what helps (systems/allyCast.js)
     key: `spell${i}`, kind: e.self || e.ally ? 'buff' : 'debuff', name: String(e.name ?? ''),
@@ -243,8 +290,12 @@ export function statusTiles({ spells = [], powers = [], afflictions = [], needs 
     bundle: e.bundleId ?? null, endable: !!e.endable && e.bundleId != null,   // BUFF-END: a right-click ends it (ui/enhancedHud.js)
   }));
   for (const c of powers) tile({ key: `set:${c.key}`, kind: 'set', name: String(c.name ?? ''), foot: c.text ? String(c.text) : null, recovering: c.state === 'recovering', set: c.set ?? null });
-  for (const a of afflictions) tile({ key: a.key, kind: 'debuff', name: a.name, glyph: a.glyph });
-  for (const c of needs) tile({ key: `need:${c.key}`, kind: c.level === 'danger' ? 'danger' : 'warn', name: String(c.text ?? ''), glyph: needGlyph(c) });
+  for (const a of afflictions) tile({ key: a.key, kind: 'debuff', name: a.name, glyph: a.glyph, foot: a.foot ?? null, blink: !!a.blink });   // TELL9: a bleed's ticks
+  // NEED-TIER: and how bad, at its foot ("2/3" - Hungry of Peckish, Hungry, Starving), as a spell's rounds are: the glyph
+  // is one picture for every stage and the name goes where there is no room, so the foot is what says it there
+  for (const c of needs) tile({ key: `need:${c.key}`, kind: c.level === 'danger' ? 'danger' : 'warn', name: String(c.text ?? ''), glyph: needGlyph(c), foot: c.tier ? `${c.tier}/${c.of}` : null });
+  // REST1: Rested - the night interval's real minutes left at its foot (systems/restAct.js nightRealMinutesLeft), a buff
+  if (rested?.minutes > 0) tile({ key: 'rested', kind: 'buff', name: 'Rested', foot: `${rested.minutes}m`, glyph: 'rested' });
   return out;
 }
 

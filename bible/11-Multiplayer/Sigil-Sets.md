@@ -70,7 +70,12 @@ greaves, the boots, the shield and the weapon.
   the line: `faint + (ascendant - faint) x stage / 4`, rounded as the number reads (whole points, whole per cents,
   whole seconds). So a set is felt from its first stage and is twice to three times that at its last.
 - **Asleep.** Offline, online before the page knows its Renown, and while the wearer is in a duel, every set sleeps:
-  no tier is awake, no number moves, no piece drinks. The card still shows what the set would do.
+  no tier is awake, no number moves, no piece drinks. The card still shows what the set would do. AUDIT 625 P2: a bout
+  between players on an arena's relay sand is a duel too - the opponent stands as a Daedra Lord's stand-in for the
+  formulas, no player, so the gates that refuse a blow at a player never saw one, and every set, the loot's powers and
+  the weapon's sigil woke in the ring. The duel's word is ONE now, kept by SIGIL1's door (`systems/sigil.js`
+  setSigilDueling; `systems/sigilSets.js` setSetsDueling and setsDueling its names here), raised by `scenes/world.js
+  duelFrame` for a duel and for a live bout between players (`arenaPvpLive`), and the weapon's own blow reads it.
 
 ## 3. The four sets of the world (SET3)
 
@@ -81,7 +86,7 @@ Each is a build, and each answers to a Prince. Every one can land on any won pie
 | pieces | ability | Faint -> Ascendant |
 |---|---|---|
 | 2 | **Orc-Hide** - armour on every body part, and Endurance | +2 -> +5 armour a part; +2 -> +6 END |
-| 4 | **Spite of the Spurned** - a foe whose blow lands on you (a weapon's, a claw's, an arrow's) takes a share of it back | 10% -> 30% |
+| 4 | **Spite of the Spurned** - a foe whose blow lands on you (a weapon's, a claw's, an arrow's) takes a share of it back - it wounds, never kills (BAL5) | 10% -> 30% |
 | 6 | **Unbroken** - damage that would kill you leaves you at 1 health instead, and for a while all damage you take is halved; then it must recover | 4 -> 8 s halved; recovers 300 -> 150 s |
 
 ### Dagon's Brand - the one who does not stop (melee)
@@ -209,6 +214,61 @@ three raid sets' too: "Cheat death, then half damage 4s", "Kill marks next foe: 
 dashed tag - with the sentence under the pointer; the sigil in two rows. The Info box says it all: the Prince and the
 role, every sentence above, the sigil's notes. `01-Overview/Field-Bugs-2026-09-28c.md`.
 
+## 6c. The sea serpent's own set (SERPENT-SET, 2026-10-05)
+
+Mac: *"The serpent boss needs to use the currency from oblivion gate and have its own equipment rewards"*. One more
+Aetheric set, **Sethrakul's Coilscale** - the Old Coil, shed and worn - and its patron no Daedra: Satakal, the
+World-Skin the Redguards say sheds the world as a snake sheds its skin (`Sea-Serpent.md`). Nine fixed records of
+Ebony, the deep's own black - the seven body pieces, a kite shield and a ONE-HANDED Katana, so all nine are worn at
+once - each with three affixes at the Legendary band's MIDDLE (armour 16, an attribute 13, a resistance 43, a skill 25,
+weight 43, damage 30) and the Fang's blow the band's middle too (10): a world boss at sea, over a town's thanks (the
+floor) and under the gate's Warden (the top). One resistance of an element at most, and never frost - the 2-piece tier
+carries it - so no two pieces stack an element toward the saving throw's immunity (AUDIT FINAL's lesson on the
+Regalia). Nothing drops it but the serpent: a ship that DEALT Sethrakul its share finds a piece in its hoard a quarter
+of the time (the raids' own share), rolled after everything the hoard rolled before (`systems/serpentSpoils.js`,
+`systems/aetheric.js` `SERPENT_SET_PIECES`, `rollSerpentSetPiece`); a ship that stood, never. No world drop, shelf or
+Broker rolls one - a boss's own set earned where it is fought, as the raids' are.
+
+Sethrakul's Crest, the Coilscale Right and Left Pauldrons, The Old Coil's Hide, Constrictor's Grip, Undertow Greaves,
+Tide-Walker Boots, The Maelstrom's Eye (Kite Shield), Sethrakul's Fang (Katana).
+
+| pieces | ability | Faint -> Ascendant |
+|---|---|---|
+| 2 | **Sea-Scale** - frost resistance, Endurance | +10 -> +30; +2 -> +6 |
+| 4 | **Constrict** - each weapon blow of yours that LANDS on a foe tightens ITS coil: weapon damage to that foe a stack, up to five, held 6 s after the last blow on it; every foe holds its own coil (AUDIT 625 P3, Mac: "A coil per foe" - one coil had moved to whichever foe was struck last, so a sweep that met two never built it), a bow's blow counts, a coiled foe's death ends its own | +3% -> +8% a stack |
+| 6 | **Shed Skin** - a foe's blow that takes you under 35% of your health (from at or over it, still standing) sheds your skin: that share of your health returns at once; then it must recover. A killing blow, a fall or a spell sheds nothing - nor a killing blow a death save turned aside (AUDIT 625 P1: Unbroken, Divine Grace) | 10% -> 30%; recovers 240 -> 120 s |
+
+Shed Skin heals through the one heal a power gives (`systems/playerHeal.js` - LOOT4's leech and its heals moved there
+from `systems/lootPowers.js`, which reads the blow's law out of `systems/sigilSetPowers.js` and so may not be imported
+by it). The HUD's chip shows Shed Skin's recovery; its sound is a large splash, the old skin into the sea. The hoard
+pays the gate's currency too - a Deadlands Ember, every hoard (section 7's Broker and the insignia take it as a
+breach's; `Sea-Serpent.md` section 8).
+
+## 6d. The Brass Remnant's own set (SD9d, 2026-10-07)
+
+`Super-Dungeons.md` section 11: one more Aetheric set, **The Brass of Numidium** - what the Warp kept of the Walking
+Brass - and its patron no Daedra: Kagrenac, the Tonal Architect who built it. Nine fixed records of Dwarven make, the
+Dwemer's brass - the seven body pieces, a round shield and a ONE-HANDED Longsword, so all nine are worn at once (the
+design had named a longsword, a war axe and a staff: three weapons for the one place a set counts) - every affix at the
+Legendary band's TOP (armour 20, an attribute 15, a resistance 50, a skill 30, weight 50, damage 40) and the
+Hour-Hand's blow the sigil's greatest (12): the hardest fight in the game pays what the gate's Warden does, the
+Regalia's measure. One resistance of an element at most, and never magic or shock - the 2-piece tier carries them.
+Nothing drops it but the Brass Remnant: its spoils carry a piece a third of the time, rolled after everything they
+rolled before (`systems/aetheric.js` `NUMIDIUM_SET_PIECES`, `NUMIDIUM_SET_CHANCE`, `rollNumidiumPiece`; the spoils are
+SD9e's). No world drop, shelf or Broker rolls one.
+
+The Brass Visage, the Right and Left Pauldrons of the Walking Brass, The Heartcage, The Tonal Architect's Hands,
+Greaves of the Unmade Stride, Boots of the Unmoored Step, The Gear-Face (Round Shield), The Hour-Hand (Longsword).
+
+| pieces | ability | Faint -> Ascendant |
+|---|---|---|
+| 2 | **Dwemer Brass** - magic and shock resistance | +4 -> +10 each |
+| 4 | **Gearward** - the next foe's blow that lands on you is lighter, in whole points; then the gear winds again (its recovery, the card's tag). A fall, a poison's round or a spell is never lightened and never unwinds it, nor is a blow too small to lighten by a whole point; the Brass Remnant's own blows and its Echoes' are a foe's for it, never the Hour's magic (section 8) | 15% -> 30%; recovers 18 -> 12 s |
+| 6 | **The Hour Turns** - a blow that would kill you does not: you are left at 1 and that share of your health returns at once; then it must recover. A death save, as Unbroken is - a fall's death is turned back too - and never worn with the Bulwark (six and six is past nine places) | 15% -> 25%; recovers 90 -> 60 s |
+
+The Hour Turns heals through the one heal a power gives (`systems/playerHeal.js`). The HUD's chip shows its recovery.
+Their sounds are the Orrery hall's (`scenes/sdHall.js`): Gearward the hall's gear, The Hour Turns its low bell.
+
 ## 7. The Sigil Broker - Sigil Stones buy the day's stock (SET7)
 
 A Daedra trader (the game has no Dremora sprite; a Daedra Seducer stands in) is held at each breach's faithful's
@@ -261,6 +321,13 @@ gold - a stone's only worth is at its own vendor.
   him, and his fall is no kill of the Rampage's or Eventide's. The court is the gate's own fight. AUDIT SETS L4: and so
   Riposte and Blood for Blood never arm off his strikes, No Escape and Iron Hide never trigger on his fall, and Run Them
   Down never reads him under half (his stand-in holds a billion); a blow his ward turns aside spends no power.
+- The Brass Remnant is out of every reach power's reach as the Warden is (its strikes land through the court's door,
+  no struck tail) - but one power answers it (AUDIT SD): its own set's Gearward, which would otherwise never meet the
+  fight that drops it. A body's own blow - the Stomp, the Hand, the Volley, the Remnant's or an Echo's; never the Hour's
+  unresisted magic over the whole floor (the Pulse, the Reset, the End), never the burning brass - is marked as a world
+  boss's as it lands (`scenes/sdRemnantBlows.js` `bodysBlow` -> `setBossStruck`), taken by the damage door as it
+  opens, and read by Gearward alone: Spite, the Wrath, Riposte, Blood for Blood and Shed Skin hear no foe in it, and the
+  loot's blow listeners none. The Warden's court marks nothing (its bytes are the gate's).
 - AUDIT SETS M2: a client older than RAID4b cannot read a raid set's sigil. A room's container word it cannot read is
   now marked unreadable and never landed, claimed, closed over or opened - from this build on; a tab still running a
   build before it refuses the list and claims the container with its own roll, as it did. The relay's deploy drops
@@ -276,6 +343,8 @@ gold - a stone's only worth is at its own vendor.
   the next breach.
 - The raiding parties' sets (6b) come from a town defended online, at a relay that keeps raids (RAID3), and from
   nothing else: offline, a town's cleanse pays RAID1's reputation alone.
+- The Brass of Numidium (6d) comes from the Brass Remnant's spoils and nothing else: a Super Dungeon's last fight,
+  online, at a relay that keeps the Hollows (`Super-Dungeons.md` section 11).
 - A Sigil Stone is bound (SS1, SS3, SS4), and so is every piece the Broker sells (SS4): it is never traded, dropped,
   put in a container or sold - a container is the room's once it is opened online, a body is granted to whoever loots
   it, and a shop's shelf is the room's too - and a list a peer hands over lands without one. It goes into the player's
@@ -341,7 +410,8 @@ Every seam the powers read, each a no-op until registered:
   two gates (a Destruction effect, room in the magicka).
 - **The door** (`systems/playerDoor.js`): the running host's magic engine publishes its live foes (the town's
   defenders passed by), my feet, a hurt as mine through the foe's own sinks, and a spell on me - every frame it runs.
-- **The duel's word**: `scenes/world.js duelFrame` tells `setSetsDueling`.
+- **The duel's word**: `scenes/world.js duelFrame` tells `setSetsDueling` (AUDIT 625 P2: kept by `systems/sigil.js`
+  setSigilDueling, and raised for an arena's bout between players too).
 
 Pinned: `test/set2_seams.test.js` (8); `tools/mutants/set2.json` (20, all dead).
 
@@ -364,7 +434,8 @@ my Renown known, no duel)? For anyone else - a peer's entity here, a foe - and w
   the whole blow, whole and at least 1, through the door as my hurt - a melee blow only, never a bow's or the
   Thunderlock's. A swing that strikes two foes cleaves from each.
 - **Spite of the Spurned**: at the attack formula's struck tail (a weapon's, a claw's, an archer's arrow), the foe that
-  struck takes its share back through the door.
+  struck takes its share back through the door - never its last point (BAL5, `05-Combat/Balance-Arc.md` section 11:
+  `playerDoor.js` paidBack; the kill is the player's to take, so no foe is won by standing still in front of it).
 - **Unbroken**: a death save on the damage door - left at 1, said and sounded, all damage halved for its seconds
   (the halving is a damage modifier, before the shield); then it recovers. Never a SetHealth(0) door, never a duel.
 - **Wrath of the Warden**: a hurt listener - a blow that takes me from at or above 30% to under it (a death that
@@ -558,7 +629,8 @@ is fixed below or stated in section 8.
   what is no set piece answers no set; an unidentified set piece's tooltip still says its sigil and its set.
 - **C - drops, economy, wire, saves, tooltips.** The drink reads the weapon in the MODE's hand (indoors and
   underground the street rig is never readied), and the hour's Renown cap is the shared clock's hour, as the
-  service's. An enchanted Aetheric piece breaks and stays under PCAAO, as a Legendary does. A Test Room character
+  service's. An enchanted Aetheric piece breaks and stays under PCAAO, as a Legendary does. (Since AETHERIC-MAKER, FIELD BUGS 2026-10-03b, the item maker refuses an Aetheric piece - out of its list, and its
+  decision answers `refused` - as salvage and the Reforge do; a piece enchanted before keeps its rows.) A Test Room character
   plays offline (section 8). The wire's item law cross-checks the marks: a set's sigil only on a piece a set counts,
   a blow only on a weapon, the Regalia's set only on an Aetheric piece and an Aetheric piece only as its record mints
   it, the sigil projected to its own keys (`aetheric.js validSetMarks`). The price in gold is section 7's. Two lore
@@ -842,3 +914,50 @@ mutants all dead; the stream's law in `test/restsync.test.js` and `test/questpar
   oath-helm could carry top-of-band affixes. Its affixes are now the record's kinds in its order, none past the
   record's value (the Regalia's bounded by the band alone - its fire stood at the band's top until 322370d2, and a
   piece minted then is no forgery), and a weapon's blow the record's.
+
+### SERPENT-SET - the sea serpent's own set, and the gate's currency at sea (2026-10-05)
+
+Section 6c, whole; the hoard's half is `Sea-Serpent.md` section 8. The law (`systems/sigilSets.js` `coilscale`,
+Aetheric and naming no raiding party; `COIL_STACKS`, `COIL_SECONDS`, `SHED_BELOW`; `systems/sigil.js` names it after the
+raids' three), its three powers through SET2's seams (`systems/sigilSetPowers.js` - the fold for Sea-Scale; the strike
+listener tightening Constrict's coil, a bow's blow too, and the blow reading its stacks at the coiled foe alone (AUDIT
+625 P3: every foe its own coil - `coilStacksAt`); the kill ending a coiled foe's coil; the hurt listener for Shed Skin,
+beside the Wrath and never on a killing blow (AUDIT 625 P1: nor a saved one - the damage door's `saved`); the
+round's "ready again"; Shed Skin's chip), the nine records (`systems/aetheric.js` `SERPENT_SET_PIECES`,
+`SERPENT_SET_POWER`, `SERPENT_SET_CHANCE`, `rollSerpentSetPiece`; `AETHERIC_RECORDS` the Regalia, the raids' and then
+these, so the Test Room's ladder and the Codex take them with no word of their own), and the one heal a power gives
+moved below both power files (`systems/playerHeal.js`). The wire's check is the raid sets' (AUDIT SETS L6): a Coilscale
+piece's affixes its record's kinds in its order, none past its record's value. An older build cannot read the new set's
+sigil, and AUDIT SETS M2 already marks such a container unreadable rather than wiping it.
+
+THE FOUR HOSTS. The powers ride SET2's seams, which every host's combat already calls; the one host-side wiring is
+`scenes/world.js`'s - Shed Skin's splash in the sets' one voice (`setSetPowersVoice`, registered there for every mode
+of the streaming page: `scenes/worldModes.js`'s interiors and `scenes/dungeonContext.js`'s dungeons sound through it),
+and the serpent's hoard, its crash door and its claim's silver (the sea is the streaming world's alone).
+`scenes/exterior.js`, the offline town page, has no sea and registers no sets' voice - the sets are online gear.
+
+Pinned: `test/serpentset.test.js` (the law, the records, the drop, the hoard, the powers, the heal, the host) and
+`test/serpentset_service.test.js` (the embers on the row, the insignia's purse, the serpent's silver);
+`tools/mutants/serpentset.json` (48, all dead). The older pins it moved: SET1's and RAID4b's set lists, SET3's states and
+voice, SERPENT1's hoard list; their records re-aimed by content (SET1's order, SET3's bow and its two Wrath records -
+Shed Skin carries the same crossing and guard - LOOT4's three heal records, now `systems/playerHeal.js`'s).
+
+### SD9d - the Brass Remnant's own set (2026-10-07)
+
+Section 6d, whole but for the roll that pays it (the Brass Remnant's spoils, SD9e); the record is
+`Super-Dungeons.md`'s SD9d. The law (`systems/sigilSets.js` `numidium`, Aetheric and naming no raiding party;
+`systems/sigil.js` names it after the serpent's), its three powers through SET2's seams (`systems/sigilSetPowers.js` -
+the fold for Dwemer Brass; the damage modifier for Gearward, a foe's blow alone; a death save for The Hour Turns, tried
+when no Bulwark answers, and the hurt listener's heal as the door says it saved; the round's "ready again"; its chip;
+the states), the nine records (`systems/aetheric.js` `NUMIDIUM_SET_PIECES`, `NUMIDIUM_SET_CHANCE`, `rollNumidiumPiece`;
+`AETHERIC_RECORDS` ends with them) and the voice (`scenes/world.js`: the Orrery hall's gear and its low bell). The
+wire's check is the raid sets' (AUDIT SETS L6). Pinned: `test/sd9d_numidium.test.js`; `tools/mutants/sd9d.json` (44,
+all dead).
+
+### AUDIT SD - Gearward and the world boss (2026-10-07)
+
+`Super-Dungeons.md`'s SD10b (C7, C8). The Remnant's blows came through the court's door with no foe's mark, so Gearward
+never answered the fight its set drops in; now a body's own blow (never the Hour's magic) is marked as a world boss's
+(`setBossStruck`, taken as the door opens, a blow's window old at most) and Gearward alone reads it (section 8). And a
+blow too small to lighten by a whole point no longer spends the winding. Pinned: `test/sd10b_audit.test.js`; `tools/mutants/sd10b.json` (its C7 and
+C8 records, all dead); `tools/mutants/sd9d.json`'s Gearward records re-aimed by content.

@@ -215,7 +215,7 @@ test('F218: applyWorld destroys the live foes past the snapshot (SerializableSta
   // retried, falsifying the law mobileEnemyActivate.js:"The flag is per-foe" states in
   // its own header. A PRE-PASS over the whole live pool, because the
   // per-record loop only ever visits the indices the record carries.
-  assert.match(XF, /spawnFoe\(sf\.mobileType, \[lx, sf\.y \+ yOffset, lz\]/, 'the exterior pool RE-MINTS on restore, so its latch dies with the pool');
+  assert.match(XF, /spawnFoe\(sf\.mobileType, feet,/, 'the exterior pool RE-MINTS on restore, so its latch dies with the pool');   // PIN MOVED (SEALED-SAVE, FIELD BUGS 2026-10-05c): its feet the saved ones, or the moved marker's
   // Mounted, not matched: the statements below are the ones in src/.
   const run = (foes, w) => {
     const scope = new Proxy({ foes, w }, {
@@ -272,7 +272,7 @@ test('F036: the world host runs those rolls in the catch-up loop and calls Spawn
   // (in town the watch about every hundred real seconds for a bad name, no guard anywhere near), and a guard who SEES a
   // known criminal stops them (scenes/standingHost.js, test/rep1_watchstop.test.js). The loop rolls nothing for a name;
   // the roll's own law above is DFU's record (encounters.js keeps it, with no production caller).
-  const i = WORLD.indexOf('function runEncounterTick');
+  const i = WORLD.search(/^[ \t]*function runEncounterTick\(/m);   // CITE-ANCHOR: the declaration, not a comment's anchor that quotes it
   const fn = WORLD.slice(i, WORLD.indexOf('\n  }\n', i));
   assert.ok(i > 0, 'the port of PlayerEntity.Update:486-511 was found');
   assert.ok(!fn.includes('passiveGuardSpawns('), 'the loop rolls no levy');
@@ -534,7 +534,12 @@ test('F212: the world host collects both pools with the pixel, which is also wha
   // a second on), one statement above the needles.
   // PIN MOVED (AUDIT OW5 J2), 5600 -> 6600: a jump stops a route's walk first thing, with its note
   // PIN MOVED (AUDIT CLIMB-ARC F6), 6600 -> 6800: the climb's feel resets beside the recoiler, one statement above
-  const core = WORLD.slice(t, t + 6800);
+  // PIN MOVED (RVN10), 6800 -> 7000: a jump out of a fight routs me before the sweep, one statement above
+  // PIN MOVED (AUDIT LW-II-2 H9), 7000 -> 7300: the stood hideout let go beside the camps, with its note, above the needles
+  // PIN MOVED (HELM-JUMP, FIELD BUGS 2026-10-11), 7300 -> 7800: a jump lets go of Come Sail Away's helm first, with its note
+  // PIN MOVED (AUDIT CAPTAIN'S SEA G2/P7, at the merge of main), 7800 -> 8100: a pixel this game does not stream is landed
+  // where the world stands (`_streamedLanding`) beside the resets, with its note - three lines above the needles
+  const core = WORLD.slice(t, t + 8100);
   assert.ok(core.includes('destroyPixel(bx, by);'),
     'so a fast travel or a teleport takes every corpse with it');
   assert.ok(core.includes('exteriorFoes.clearLive();') && core.includes('cityGuards.clearLive();'),

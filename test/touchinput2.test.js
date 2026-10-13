@@ -275,7 +275,8 @@ test('TI2 pins: the layer\'s chrome - safe-area edges, the inline name field, no
   assert.match(s, /if \(dot\.style\.display !== 'block'\) buzz\(20\);/, 'the lock landing is felt, once');
   assert.match(s, /hooks\.look\?\.\(ev\.dx \* TOUCH_LOOK_GAIN \* lookNorm\(\), ev\.dy \* TOUCH_LOOK_GAIN \* lookNorm\(\)\)/, 'the drag is normalised');
   assert.match(s, /gyroLookDelta\(e\.rotationRate, globalThis\.screen\?\.orientation\?\.type \?\? 'landscape-primary', dt, lookScale\(\), getPref\('touchGyroSensitivity'\)\)/, 'the gyro divides the host\'s lookScale out');
-  assert.match(s, /if \(!\(dt > 0\) \|\| dt > GYRO_MAX_DT \|\| hooks\.paused\?\.\(\)\) return;/, 'a motion sample under a window is dropped, like a drag (AUDIT 62 F7)');
+  // PIN MOVED (CARDS-TOUCH, Tavern-Cards section 31): and at a card table's seat, the seated head turned by nothing
+  assert.match(s, /if \(!\(dt > 0\) \|\| dt > GYRO_MAX_DT \|\| hooks\.paused\?\.\(\) \|\| hooks\.cardTable\?\.\(\)\) return;/, 'a motion sample under a window is dropped, like a drag (AUDIT 62 F7)');
   assert.match(s, /axes: \(\) => \(stickId !== null && getPref\('touchAnalogStick'\) \? \{ x: stickX, y: stickY \} : null\)/, 'the handle publishes the throw under the pref');
 });
 
@@ -304,7 +305,8 @@ test('TI2 pins: the prefs shelf carries the touch knobs with their shipped answe
   assert.match(menu, /import \{ isTouchDevice \} from '\.\/touch\.js';/);
   // SO1: the touch knobs are rows under CONTROLS (beside the mouse and
   // the pad), and the whole set is gated on the device the same way.
-  assert.match(menu, /function portRowsControls\(\) \{\s*\n\s*const out = \[\];\s*\n\s*if \(!isTouchDevice\(\)\) return out;/, 'the rows are gated');
+  // PAD-CURSOR: the controller's cursor-assist row stands ahead of the gate - a controller's, on every device
+  assert.match(menu, /function portRowsControls\(\) \{\s*\n\s*const out = \[\];\s*\n(?:\s*\/\/[^\n]*\n)?\s*out\.push\(prefRow\('padCursorAssist'[^;]*;\s*\n\s*if \(!isTouchDevice\(\)\) return out;/, 'the touch rows are gated');
   for (const key of ['touchLookSensitivity', 'touchAnalogStick', 'touchStickAnchor', 'touchGyroLook', 'touchGyroSensitivity', 'touchHaptics', 'touchFullscreen']) {
     assert.ok(menu.includes(`'${key}'`), `${key} has a control`);
   }

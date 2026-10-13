@@ -61,7 +61,7 @@ async function rig({ specs = {}, taken = [], knife = true, body = null, extra = 
   const entry = { px: 400, py: 150, samples, tilemap: new Uint8Array(128 * 128).fill(2), locationRect: null, batches: [], rocks };
   const door = {
     account: () => 'acct-1',
-    state: async () => ({ ok: true, data: { day: DAY, character: 'c1', tracks: [{ profession: 'mining', xp: 0, rank: 0, specs: { 50: specs[50] ?? null, 100: null } }], today: {}, taken, stores: [], caps: { harvests: 60, stores: 5000 } } }),
+    state: async () => ({ ok: true, data: { day: DAY, character: 'c1', tracks: [{ profession: 'mining', xp: 0, rank: 0, specs: { 50: specs[50] ?? null, 100: null } }], today: {}, taken, stores: [], caps: { stores: 5000 } } }),
     pixels: async (c, px) => ({ ok: true, data: { pixels: px.map(([x, y]) => ({ x, y, state: 'none' })), dungeons: [] } }),
     harvest: async () => ({ ok: false, error: 'offline' }),
   };
@@ -432,7 +432,7 @@ test('NODE-MARKS nodeGlows: those within NODE_GLOW_M of the eye, each kindling f
 /** The glow's light at a point on its card - the shader's own main(), run. */
 const glowAt = (vM, { t = 7.25, seed = 0.31, alpha = 1, color = [1, 1, 1], w = 2, h = 1.5, world = [0, 0, 0], fog = null, still = 0 } = {}) => {
   const f = glslFunctions(NODE_GLOW_FS, {
-    vM, vWorld: world, uSize: [w, h], uColor: color, uAlpha: alpha, uSeed: seed, uTime: t, uStill: still,
+    vM, vWorld: world, uSize: [w, h], uColor: color, uAlpha: alpha, uSeed: seed, uTime: t, uStill: still, uForm: [1, 1, 1],   // AUDIT DELVE D6: a node's form, whole
     uFogMode: fog ? 2 : 0, uFogDensity: fog?.density ?? 0, uFogRange: [0, 1], uCamPos: [0, 0, 0], uFocus: [0, 0, 0, 0],
   });
   f.main();
@@ -615,6 +615,6 @@ test('NODE-MARKS the hosts by source: the street\'s compass and the dungeon\'s t
   assert.match(w, /partyNear: \(\) => partyOnMaps\(\), professionMarks: \(feet\) => professionMarks\(feet\),/);
   assert.match(w, /^import \{ mineKind \} from '\.\/mineHost\.js'; import \{ nodeCompassPoints \} from '\.\.\/ui\/nodeMarks\.js'; import \{ createNodeGlowPass \} from '\.\.\/render\/nodeGlow\.js';/m);
   assert.match(src('src/scenes/worldModes.js'), /party: \(\) => host\.partyNear\?\.\(\) \?\? \[\], nodeMarks: \(feet\) => host\.professionMarks\?\.\(feet\) \?\? null,/);
-  assert.match(src('src/scenes/dungeonContext.js'), /party: partyCompassPoints\(\{ bodies: opts\.party \?\? null \}\), nodes: playerFeet \? \(opts\.nodeMarks\?\.\(playerFeet\) \?\? null\) : null,/);
+  assert.match(src('src/scenes/dungeonContext.js'), /party: partyCompassPoints\(\{ bodies: opts\.party \?\? null \}\), nodes: playerFeet \? withFireMarks\(opts\.nodeMarks\?\.\(playerFeet\) \?\? null, dungeonFires, playerFeet\) : null,/, 'REST3: the dungeon\'s campfires ride the same field');
   assert.match(src('src/ui/hud.js'), /nodes: nodes \?\? null,/, 'handed to the enhanced skin');
 });

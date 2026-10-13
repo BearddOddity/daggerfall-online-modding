@@ -12,25 +12,28 @@ import { brandMark } from '../src/ui/brandMark.js';
 const read = (p) => readFileSync(new URL('../' + p, import.meta.url));
 
 test('INTRO2: supplied logo and Mac\u2019s remastered recording are byte-exact; timing cannot drift behind a replacement track', () => {
-  // BR4 (2026-09-27): the logo is Mac's Daggerfall Online cut, his PNG as he
-  // supplied it (real alpha; INTRO2's JPEG had a black backing to screen away).
-  assert.equal(createHash('sha256').update(read('src/assets/branding/daggerfall-online.png')).digest('hex'), 'f9f632c7986cd8c2316358324d1b20ab0b86f4cf3a5c41a6d68904b014d6db84');
+  // BR4 (2026-09-27) shipped Mac's earlier cut as he supplied it
+  // (real alpha; INTRO2's JPEG had a black backing to screen away). BR5
+  // (2026-10-11): his DFO Online logo, its 800 x 600 file cut to the 526 x 322
+  // its paint covers - every pixel inside his, unchanged, and none outside
+  // with any alpha.
+  assert.equal(createHash('sha256').update(read('src/assets/branding/dfo-online.png')).digest('hex'), 'd27cf6f8fa6b6147be5fb36bdb2ebbe9deb22823d456826394f7fa9aa9dbba25');
   const track = read('src/assets/intro/theme.mp3');
-  assert.equal(createHash('sha256').update(track).digest('hex'), '5aab723345ea13b785877bee82c240effad48b840307f8714a68592f1b161b7b');
+  assert.equal(createHash('sha256').update(track).digest('hex'), 'c8eb0eccf3265244c0f4424d26efee835d40cccf4e11a66744ec4b284d8392e3');
 
   // BR1 forbids the old name on any shipped surface, and the supplied master
   // carried it in its ID3 title. ONLY that title was rewritten: the tag is
   // reassembled frame for frame and the MPEG payload behind it is Mac's file
   // bit for bit, which is what this second hash exists to prove. A re-encode
   // or a trim would move it, and the cue above is measured off this recording.
-  // BR4 retitled it the same way, and this hash did not move.
+  // BR4 retitled it the same way, and BR5 again, and this hash did not move.
   const tag = 10 + ((track[6] & 0x7f) << 21 | (track[7] & 0x7f) << 14 | (track[8] & 0x7f) << 7 | (track[9] & 0x7f));
   assert.equal(createHash('sha256').update(track.subarray(tag)).digest('hex'), '3a1bc066e12951a6450b04649a2ffaa0b614c0848b520d033c2448b155bf56d7');
   const header = track.subarray(0, tag).toString('latin1');
-  assert.ok(header.includes('Daggerfall Online Main Theme'), 'the track titles itself by the product\u2019s name');
+  assert.ok(header.includes('DFO Online Main Theme'), 'the track titles itself by the product\u2019s name');
   // Spelled in parts, so this assertion is not itself a surface BR1 or BR4 must sweep.
-  const gone = ['Daggerfall', 'JS', 'JavaScript', 'Enhanced'];
-  for (const name of [`${gone[0]} ${gone[1]}`, `${gone[0]}${gone[1]}`, `${gone[0]} ${gone[2]}`, `${gone[0]} ${gone[3]}`]) {
+  const gone = ['Daggerfall', 'JS', 'JavaScript', 'Enhanced', 'Online'];
+  for (const name of [`${gone[0]} ${gone[1]}`, `${gone[0]}${gone[1]}`, `${gone[0]} ${gone[2]}`, `${gone[0]} ${gone[3]}`, `${gone[0]} ${gone[4]}`, gone[0]]) {
     assert.ok(!header.includes(name), `the old name survives in the ID3 tag: ${name}`);
   }
 });
@@ -200,10 +203,11 @@ test('INTRO2: disposing during fetch prevents late audio and releases the loadin
 
 test('INTRO2: the shared logo has accessible text and its exact natural aspect ratio', () => {
   const logo = brandMark({ createElement: (tag) => ({ tag }) });
-  assert.equal(logo.tag, 'img'); assert.equal(logo.alt, 'The Elder Scrolls II: Daggerfall Online');
+  assert.equal(logo.tag, 'img'); assert.equal(logo.alt, 'DFO Online');   // BR5: the product's name alone - the mark names no other game
   // BR4: the element's size is the FILE's, read from its own IHDR - a new
-  // logo dropped in without its dimensions reddens here, not in a layout.
-  const png = read('src/assets/branding/daggerfall-online.png');
+  // logo dropped in without its dimensions reddens here, not in a layout
+  // (BR5's did: 2112 x 850 to 526 x 322).
+  const png = read('src/assets/branding/dfo-online.png');
   assert.equal(png.toString('latin1', 12, 16), 'IHDR');
   assert.deepEqual([logo.width, logo.height], [png.readUInt32BE(16), png.readUInt32BE(20)]);
   assert.equal(logo.draggable, false);

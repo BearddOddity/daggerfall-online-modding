@@ -84,7 +84,7 @@
   {
     "name": "SURV2-a-vendor-archive-is-gated-like-a-pick",
     "file": "src/systems/textureReplacement.js",
-    "old": "  const v = _vendor.get(key);\n  if (v) return !v.gate || v.gate() === true;   // DW3: a gated entry answers only while its switch is on\n  if (!textureReplacementEnabled()) return false;\n  return _index.has(key) || _bundle.has(key);   // DFMOD1: an attached bundle's texture answers too",
+    "old": "  const v = vendorOf(key);\n  if (v) return !v.gate || v.gate() === true;   // DW3: a gated entry answers only while its switch is on\n  if (!textureReplacementEnabled()) return false;\n  return _index.has(key) || _bundle.has(key);   // DFMOD1: an attached bundle's texture answers too",
     "new": "  if (!textureReplacementEnabled()) return false;\n  return _index.has(key) || _bundle.has(key) || _vendor.has(key);",
     "tests": [
       "test/surv2_items.test.js"
@@ -93,8 +93,8 @@
   {
     "name": "SURV2-a-user-pick-drops-the-ports-own-pixels",
     "file": "src/systems/textureReplacement.js",
-    "old": "  for (const k of _decoded.keys()) if (!_vendor.has(k) && !_bundle.has(k)) _decoded.delete(k);   // a new pick must not inherit the old one's pixels; the port's own stay (DFMOD1: and an attached bundle's)",
-    "new": "  _decoded.clear();",
+    "old": "  if (had) tierChanged();",
+    "new": "  for (const k of [..._decoded.keys()]) dropDecoded(k); if (had) tierChanged();",
     "tests": [
       "test/surv2_items.test.js"
     ]
@@ -102,7 +102,7 @@
   {
     "name": "SURV2-the-ladder-reaches-the-book-arm-for-our-items",
     "file": "src/systems/useItem.js",
-    "old": "  if (isSurvivalItem(item)) out = useSurvivalItem(item, collection, { entity, now: nowMinute, rolls, currentDay: Math.trunc(nowMinute / 1440), inflict: inflictDisease, rules: survivalRules() ?? SURVIVAL_RULES.casual });",
+    "old": "  if (isSurvivalItem(item)) out = useSurvivalItem(item, collection, { entity, now: nowMinute, rolls, currentDay: Math.trunc(nowMinute / 1440), inflict: inflictDisease, rules: survivalRules() ?? SURVIVAL_RULES.casual, offMeal: survivalRules() == null });",
     "new": "  if (false) out = null;",
     "tests": [
       "test/surv2_items.test.js"

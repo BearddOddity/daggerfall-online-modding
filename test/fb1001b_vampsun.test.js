@@ -109,7 +109,12 @@ function tavern() {
     door: { blockIndex: door.blockIndex, recordIndex: door.recordIndex, doorIndex: door.doorIndex, buildingKey: 7 },
     building: { buildingKey: 7, buildingType: BUILDING_TYPES.Tavern, regionIndex: 0, quality: 10, factionId: 0, nameSeed: 1 },
   };
-  return { entry, saved };
+  // FIELD BUGS 2026-10-04d VOID-ENTRY: its one model is its floor - the law lands a player only where a floor stands, and
+  // refuses a room with none (this record's model was not in the stub's ARCH3D: a room of nothing)
+  const floor = { modelIdNum: 42, positions: new Float32Array([-5, 0, -5, 5, 0, -5, 5, 0, 5, -5, 0, 5]), indices: new Uint32Array([0, 1, 2, 0, 2, 3]), subMeshes: [], doors: [] };
+  const cpuModels = new Map();
+  const pipeline = { getGpuMesh: async (id) => (id === 42 ? (cpuModels.set(42, floor), { id }) : null), cpuModels, getTexture: async () => null, uploadRecord: () => {}, uploadRecordFrame: () => {}, arch: null, palette: null, getMachineryParts: () => {} };
+  return { entry, saved, pipeline };
 }
 
 // ── dungeonContext's own statements, mounted ─────────────────────────────────────────────────────────────────────
@@ -164,8 +169,8 @@ test('FB1001b: a BUILDING - the mode machine world.js\'s street and exterior.js 
   const prev = setPassiveSpecialsHost(null);
   try {
     const v = await vampire();
-    const { entry, saved } = tavern();
-    const modes = await buildModes({ doorTargets: () => [entry] });
+    const { entry, saved, pipeline } = tavern();
+    const modes = await buildModes({ doorTargets: () => [entry], pipeline });
     assert.equal(modes.mode, 'exterior');
     assert.deepEqual(liveMinute(v, at(12)), seven(-VAMPIRE_STAT_MOD), 'the street at noon (the mode machine\'s own answer)');
     assert.equal(await quietly(() => modes.restoreInterior(saved, [0, 0, 0])), true, 'the tavern stands and the player is in it');
@@ -205,9 +210,9 @@ test('FB1001b: a DUNGEON - dungeonContext\'s own registration (a town\'s crypt o
 
 test('FB1001b: ONE sun - the curse\'s -20 asks passiveSpecials.js playerInSunlight (PlayerEnterExit.IsPlayerInSunlight\'s one port) and keeps no hour of its own; THE FOUR HOSTS answer it', () => {
   const src = read('src/systems/vampirism.js');
-  assert.match(src, /^import \{ playerInSunlight \} from '\.\/passiveSpecials\.js';/m, 'the seam\'s reader, imported');
+  assert.match(src, /^import \{ playerInSunlight, careerSunAverse \} from '\.\/passiveSpecials\.js';/m, 'the seam\'s reader, imported');   // PIN MOVED (HOOD-CAREER): beside the career's hooded rung
   const law = src.slice(src.indexOf('export const vampireStatMod'), src.indexOf('\n', src.indexOf('export const vampireStatMod')));
-  assert.equal(law, 'export const vampireStatMod = (clockMinutes) => (playerInSunlight(clockMinutes) ? -VAMPIRE_STAT_MOD : VAMPIRE_STAT_MOD);',
+  assert.equal(law, 'export const vampireStatMod = (clockMinutes, sunAverse = true) => (playerInSunlight(clockMinutes) ? (sunAverse ? -VAMPIRE_STAT_MOD : 0) : VAMPIRE_STAT_MOD);   // HOOD-SUN: a raised hood (racialSunAverse false) keeps the sun off; BAL6: and gives no bonus in it',   // PIN MOVED (HOOD-SUN): the hood's arm; PIN MOVED (BAL6, bible/05-Combat/Balance-Arc.md section 12): the hood in the sun is 0
     'the day\'s -20 is the sun\'s, the +20 DFU\'s everywhere else - never the hour alone');
   // world.js's street and exterior.js are served by the mode machine each builds; it and the dungeon context register
   for (const host of ['src/scenes/world.js', 'src/scenes/exterior.js']) assert.match(read(host), /createWorldModes\(\{/, `${host} builds the mode machine`);

@@ -54,7 +54,8 @@ test('wave D: the player-arrow law has FOUR CALLERS and one body', () => {
   assert.equal(/calculateAttackDamage/.test(arm), false, 'and its damage door with it');
   // the four options the shared law cannot work without
   assert.match(arm, /playerEntity, playerWeapon, playerFeet,/);
-  assert.match(arm, /dealDamage: \(t, d\) => damageFoe\(t, d, lastPlayerFeet, m\.dir, \{ kind: 'arrow' \}\),/,
+  // PIN MOVED (AUDIT FEUD 2: the shaft carries its bow - a metal weakness rides to the host)
+  assert.match(arm, /dealDamage: \(t, d\) => damageFoe\(t, d, lastPlayerFeet, m\.dir, \{ kind: 'arrow', weapon: m\.weapon \?\? null \}\),/,
     'the pool\'s own damage door, carrying the knockback origin and the flight direction');
 });
 
@@ -152,7 +153,9 @@ test('wave D: the dungeon host mints a move-flag flat its OWN batch and keeps it
   // which is the whole of why this stayed INTERIM.
   assert.match(DC, /\} else if \(MOVE_ACTION_FLAGS\.has\(action\.actionFlag\)\) \{\n\s*const o = actions\.addMoveFlat\(ns, position, action, \[x, y, z\], aabb\);/,
     'the registration forks to the mover before the relay arm');
-  assert.match(DC, /if \(!\(f\.action && MOVE_ACTION_FLAGS\.has\(f\.action\.actionFlag\)\)\) \{\n\s*if \(!flatGroups\.has\(key\)\)/,
+  // PIN MOVED (MWNPC8b, bible/04-Characters/Morrowind-NPCs.md section 13b): a person leaves the group too (a batch of
+  // their own), so the group's line sits in the guard's else arm, a few lines down - still only under the guard
+  assert.match(DC, /if \(!\(f\.action && MOVE_ACTION_FLAGS\.has\(f\.action\.actionFlag\)\)\) \{\n(?:[^\n]*\n){0,6}?\s*else \{ if \(!flatGroups\.has\(key\)\)/,
     'and the flat leaves the shared group');
   assert.match(DC, /moveFlatBatches\.set\(o\.key, batch\)/, 'each gets a single-flat batch');
   assert.match(DC, /actions\.onFlatMoved = \(o\) => \{/, 'and rides the batch origin uniform, as the missiles do');

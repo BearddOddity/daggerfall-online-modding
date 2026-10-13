@@ -22,7 +22,7 @@ import { SocialState } from '../src/net/social.js';
 import { REFUSALS } from '../src/net/accountClient.js';
 
 const src = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
-const HALL = { mapId: 7, buildingKey: 300, region: 17, price: 20_000 };
+const HALL = { mapId: 7, buildingKey: 300, region: 17, price: 20_000, layout: null };   // AUDIT PRE-MERGE 1003 WD1: a hall says its town's layout (none: an old build's, 426)
 const piece = (over = {}) => ({ id: 'bench1', model: 41000, flat: null, pos: [2, 0, 2], rot: [0, 0, 0], scale: 1, light: null, storage: false, paid: 120, ...over });
 const WOLF = { field: 'azure', border: 'gold', device: 'wolf' };
 
@@ -234,8 +234,11 @@ test('AUDIT GUILD1d S8 + R5: the restore reads a hall as its guild\'s, never a h
   await svc.call('/v1/marks/guild/deposit', { character: gm.character, marks: 800, rid: 'deposit-01' }, gm.secret);
   await svc.call('/v1/guilds/heraldry', { character: gm.character, heraldry: { ...WOLF, device: 'bear' }, rid: 'herald-01' }, gm.secret);
   assert.deepEqual((await view()).marksLedger.map((l) => l.kind), ['heraldry', 'deposit']);
-  assert.equal(GUILD_MARKS_LEDGER_WORDS.heraldry, 'changed the heraldry for');
-  assert.match(src('src/ui/socialPanel.js'), /GUILD_MARKS_LEDGER_WORDS\[l\.kind\] \?\? GUILD_MARKS_LEDGER_WORDS\.deposit/);
+  assert.equal(GUILD_MARKS_LEDGER_WORDS.heraldry, 'changed the guild\'s arms for');   // PIN MOVED: AUDIT GUILD3 W6 - the page is "Arms"
+  // PIN MOVED: GUILD3b (bible/11-Multiplayer/Guilds-Made-Plain.md) - an older service's line (no `raw`) by its kind, as before;
+  // a line with its own kind and way by those (guildSilverLineText)
+  assert.match(src('src/ui/socialPanel.js'), /GUILD_MARKS_LEDGER_WORDS\[l\?\.kind\] \?\? GUILD_MARKS_LEDGER_WORDS\.deposit/);
+  assert.match(src('src/ui/socialPanel.js'), /for \(const l of v\.marksLedger \?\? \[\]\) out\.push\(personRow\(\{ name: guildSilverLineText\(l\) \}\)\);/);
 });
 
 test('AUDIT GUILD1d A1-A9: members rest (the online bed its own permanence), use the forge, workbench and loom, see their chest and cast in their hall; a visitor\'s drop and spell in a hall\'s own words; the plaque-less offer carries the hall; one buy out a house; the doors read again when the guild is known; the decorator neither pays a hall\'s half to the purse nor says it does (mutants: each by source; the offer\'s label; the bump)', () => {
@@ -252,7 +255,7 @@ test('AUDIT GUILD1d A1-A9: members rest (the online bed its own permanence), use
   assert.match(wm, /const visitorMagicRefusal = \(\) => \(visitorDropRefusal\(\) && !hallMemberHere\(\) \? \(interiorHome\?\.hall \? HALL_VISITOR_MAGIC_TEXT : HOME_VISITOR_MAGIC_TEXT\) : null\);/, 'A7 the spell');
   assert.ok(HALL_DROP_TEXT && HALL_VISITOR_MAGIC_TEXT);
   assert.match(wm, /\.\.\.\(homeHallBuyRow\(price, hallGuild\(\)\) \? \[\{ code: 'KeyG', label: hallOfferLabel\(price, hallGuild\(\)\), action: \(\) => \{ buyHallAt\(bd, price\); \} \}\] : \[\]\),/, 'A3');
-  assert.equal(hallOfferLabel(20_000, { name: 'The Hand' }), 'G - buy it for The Hand: 30000 gold from the treasury');
+  assert.equal(hallOfferLabel(20_000, { name: 'The Hand' }), 'G - buy it for The Hand: 30,000 gold from the treasury');   // HOME-PRICE: the thousands
   assert.match(wm, /if \(_hallBuying\.has\(id\)\) return;\n\s*_hallBuying\.add\(id\);/, 'A8');
   assert.match(wm, /\.finally\(\(\) => \{ _hallBuying\.delete\(id\); \}\);/);
   const w = src('src/scenes/world.js');
@@ -350,30 +353,35 @@ function rig(first) {
     heraldry: async (...a) => { calls.push(a); return { ok: false, error: 'offline' }; },
   };
   const book = new GuildBook({ door, character: () => 'rabc', wallet: () => ({ gold: () => 0, pay() {}, credit() {} }) });
-  const panel = createSocialPanel({ social: new SocialState({ acct: 'a' }), guild: book, doc: fakeDocument(), win: { addEventListener() {}, removeEventListener() {} }, overlay: () => false, touch: false });
-  return { panel, book, calls, set: (g) => { guild = g; } };
+  const doc = fakeDocument();
+  const panel = createSocialPanel({ social: new SocialState({ acct: 'a' }), guild: book, doc, win: { addEventListener() {}, removeEventListener() {} }, overlay: () => false, touch: false });
+  return { panel, book, calls, doc, set: (g) => { guild = g; } };
 }
 
-test('AUDIT GUILD1d R10-R14: a heraldry draft is one guild\'s; a select changes the picture and the button in place, never the select; with Drakes shut the reason says so; the sale says the service\'s own sum; an older answer never clears a newer choice\'s id (mutants: the draft\'s key; the repaint on change; the Drakes reason; the sale\'s words; the rid compared)', async () => {
+test('AUDIT GUILD1d R10-R14: a heraldry draft is one guild\'s; a pick changes the picture and the button in place, never the page (GUILD2c: a swatch, a select before it); with Drakes shut the reason says so; the sale says the service\'s own sum; an older answer never clears a newer choice\'s id (mutants: the draft\'s key; the repaint on change; the Drakes reason; the sale\'s words; the rid compared)', async () => {
+  // GUILD2c (PIN MOVED): the arms are their own page, and the choices swatches and tiles, not selects. A pick draws the
+  // arms' box again in place - the page around it (its strip, its header) never repainted - and the keyboard's focus
+  // lands on the picked swatch's new self, so a player walking the swatches with Tab and Enter keeps their place.
   const r = rig(guildView({ marks: 900 }));
-  r.panel.openGuild(); await settle(); await settle(); r.panel.render();
-  const field = () => find(r.panel.root, 'dfsocial-field').find((f) => f.attrs['aria-label'] === 'The field');
-  const sel = field();
-  sel.value = 'crimson'; sel.fire('change');
-  assert.equal(field(), sel, 'R11: the same select - nothing repainted under the keyboard');
-  const img = find(r.panel.root, 'dfsocial-banner')[0].children[0];
+  r.panel.openGuild('arms'); await settle(); await settle(); r.panel.render();
+  const swatch = (label) => find(r.panel.root, 'dfsocial-swatch').find((f) => f.attrs['aria-label'] === label);
+  const strip = find(r.panel.root, 'dfsocial-subtabs')[0];
+  swatch('Field colour: Crimson').fire('click');
+  assert.equal(find(r.panel.root, 'dfsocial-subtabs')[0], strip, 'R11: the page is not repainted - the arms\' box alone');
+  assert.equal(r.doc.activeElement, swatch('Field colour: Crimson'), 'R11: the focus on the pick');
+  assert.equal(swatch('Field colour: Crimson').attrs['aria-pressed'], 'true');
+  const img = find(r.panel.root, 'dfsocial-armspics')[0].children[0];
   assert.ok(img.src.includes(encodeURIComponent('#b3262e')), 'the picture is the draft');
   assert.equal(button(r.panel.root, 'Change it').disabled, false, 'a change the treasury can pay');
   // another guild's tab: the draft starts again from what stands there
   r.set(guildView({ id: 'g9999999999', name: 'The Other', heraldry: { field: 'vert', border: 'argent', device: 'tree' }, marks: 900 }));
   await r.book.refresh(); r.panel.render(); await settle(); r.panel.render();
-  assert.ok(find(r.panel.root, 'dfsocial-banner')[0].children[0].src.includes(encodeURIComponent('#2f8f4e')), 'R10: the other guild\'s own banner');
+  assert.ok(find(r.panel.root, 'dfsocial-armspics')[0].children[0].src.includes(encodeURIComponent('#2f8f4e')), 'R10: the other guild\'s own banner');
   assert.equal(button(r.panel.root, 'Change it').disabled, true, 'R10: its own heraldry, nothing to change');
   // Drakes shut: the service's own word
   const shut = rig(guildView({ heraldry: WOLF }));
-  shut.panel.openGuild(); await settle(); await settle(); shut.panel.render();
-  const f2 = find(shut.panel.root, 'dfsocial-field').find((f) => f.attrs['aria-label'] === 'The device');
-  f2.value = 'bear'; f2.fire('change');
+  shut.panel.openGuild('arms'); await settle(); await settle(); shut.panel.render();
+  find(shut.panel.root, 'dfsocial-tile').find((f) => f.attrs['aria-label'] === 'Device: Bear').fire('click');
   assert.equal(button(shut.panel.root, 'Change it').attrs.title, REFUSALS['marks-closed'], 'R12');
   assert.equal(guildHallSoldText({ data: { back: 25_620 } }), 'The hall is sold. 25,620 gold went back into the treasury.', 'R13');
   assert.match(src('src/ui/socialPanel.js'), /run: \(\) => guildDo\(g\.sellHall\(\), guildHallSoldText\) \}\)/);

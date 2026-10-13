@@ -43,7 +43,7 @@ const behaviourOf = (m, foe) => mintQuestFoeWave(m, foe, 1)[0].behaviour;
 
 test('CURSE-SYNC: the curse\'s ghost and wraith, minted and bound by the real producer, are a world quest\'s foes; a quest of the player\'s own stays private, and a foe of no quest is neither', () => {
   assert.deepEqual(WORLD_QUESTS, ['S0000977'], 'the Curse of Daggerfall, and nothing else');
-  assert.match(rd('vendor/dfu-quests/Quests/_TUTOR__.txt'), /start quest 977 977/, 'the tutorial starts it for every character');
+  assert.match(rd('vendor/dfu-quests/Quests/_TUTOR__.txt'), /start quest 977 977/, 'the tutorial started it for every character - and since TUT1 the game start does, in its place (questBridge.js GAME_START_QUESTS)');
   assert.equal(isMainQuestName('S0000977'), true, 'a main quest - the share gates refuse it, so it never rides as a party\'s');
   const { m, ghost, wraith, rats } = quests();
   assert.equal(ghost.foeType, 18, 'Foe _F.00_ is Ghost');
@@ -270,7 +270,7 @@ test('CURSE-SYNC executed: a player who leaves or falls hands the curse\'s foe t
   const sent = [];
   const cell = new Function('modes', 'online', 'isCellRoom', 'peersNear', 'social', 'exteriorFoes', 'isPrivateQuestFoe', `return () => ${body('const handOverFoes = () =>')};`)(
     { mode: 'exterior' }, { room: 'world:3,12', sendFoes: (f) => { sent.push(f); return true; } }, () => true, () => near, social,
-    { handOverFrame: (heirOf) => ({ f: [heirOf(g), heirOf(own)] }), dropOwnLive: () => 2 }, isPrivateQuestFoe);
+    { handOver: (heirOf, send) => send({ f: [heirOf(g), heirOf(own)] }) ? 2 : 0 }, isPrivateQuestFoe);
   assert.equal(cell(), 2);
   assert.deepEqual(sent.at(-1).f, ['bob-0002', 'amy-0003'], 'the cell\'s: the ghost to the nearest player, the private quest\'s foe to the party');
   const room = new Function('modes', 'online', 'isWorldRoom', 'peersNear', 'social', 'isPrivateQuestFoe', `return () => ${body('const handOverRoomFoes = () =>')};`)(

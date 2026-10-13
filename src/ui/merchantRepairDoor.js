@@ -5,6 +5,7 @@ import { isEnhanced } from '../systems/uiSkin.js';
 import { mountEnhancedChunk } from './enhancedChunk.js';
 import { registerOverlay } from './enhancedOverlays.js';
 import { MerchantRepairWindow, preloadMerchantRepairArt, merchantRepairArtLoaded } from './merchantRepairWindow.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export { preloadMerchantRepairArt };
 
@@ -13,6 +14,7 @@ export function merchantRepairDoorReady() {
 }
 
 export function createMerchantRepairWindow(hooks = {}) {
+  noteFirstUse('shops');   // TUT1: the smith's counter is a shop
   if (isEnhanced() && typeof document !== 'undefined') return enhancedMerchantRepairOverlay(hooks);
   return new MerchantRepairWindow(hooks);
 }
@@ -59,6 +61,7 @@ function enhancedMerchantRepairOverlay(hooks) {
           { label: 'Repair item', onClick: () => { close(); hooks.onRepair?.(); } },
           { label: 'Talk', onClick: () => { close(); hooks.onTalk?.(); } },
           { label: 'Sell', onClick: () => { close(); hooks.onSell?.(); } },
+          ...(hooks.portal ? [{ label: hooks.portal.label, onClick: () => { close(); hooks.portal.onBuy?.(); } }] : []),   // PORTAL1: the Portal Stone, for shards
           { label: 'Exit', onClick: close },
         ],
         onExit: close,

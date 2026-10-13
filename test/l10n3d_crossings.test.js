@@ -101,8 +101,11 @@ test('L10N3d crossings, by source: the hosts say each crossing line through its 
   for (const h of ['world', 'exterior', 'dungeonContext']) assert.match(hosts[h], /out\.kind === 'drown'/, `${h}: the drowning swimmer`);
   assert.match(hosts.worldModes, /out\.inWater \? \[exhaustedInWaterText\(\)\] :/, 'worldModes: the exhausted swimmer');
   assert.match(hosts.worldModes, /townTalk\?\.say\?\.\(lockedExteriorDoorText\(\)\);/, 'the locked door');
-  assert.match(hosts.world, /sayWithNightfall\(sunlightTravelText\(\)\);/, 'the travel map door (LIVED1: and the world\'s nightfall after it)');
-  assert.match(hosts.world, /&& isDayFromMinutes\(nowMin\)\) return withNightfall\(sunlightTravelText\(\)\);/, 'the party\'s refusal');
+  // HOOD-CAREER (main, 2026-10): the door and the party's refusal say the rung's own box - careerFastTravelBlock's or
+  // racialFastTravelBlock's text - and both rungs read the routed line (vampirism.js), never the bare constant
+  assert.match(hosts.world, /if \(cfb\) \{ sayWithNightfall\(cfb\.text\);/, 'the travel map door (LIVED1: and the world\'s nightfall after it)');
+  assert.match(hosts.world, /return sun \? withNightfall\(sun\) : null;/, 'the party\'s refusal');
+  assert.equal((rd('systems/vampirism.js').match(/\{ text: sunlightTravelText\(\),/g) ?? []).length, 2, 'both rungs, the routed box');
   for (const h of ['world', 'exterior']) assert.match(hosts[h], /tooFarText: tooFarAwayText,/, `${h}: the horse cart's refusal`);
   assert.match(hosts.dungeon, /\{ setMidScreenText\(tooFarAwayText\(\)\); return true; \}/, 'the dungeon\'s own reach');
   for (const [p, n] of [['systems/diseases.js', 1], ['systems/poisons.js', 1]]) {

@@ -37,7 +37,7 @@ test('ELITE-SPELLS: an elite caster\'s DamageHealth lands at its damageScale, in
   assert.ok(plain > 0);
   assert.equal(hit({ entity: { level: 5, damageScale: 2 } }), plain * 2, 'an elite Fireball hurts twice as much');
   const src = rd('src/systems/effects.js');
-  assert.match(src, /const n = casterDamageScaled\(effectMagnitude\(a\.effect, a\.casterLevel, a\.saveScaled \?\? true, a\.element, a\.flag, target, rolls\), a\.caster, target\);/, 'and its damage over time');
+  assert.match(src, /const n = casterDamageScaled\(effectMagnitude\(a\.effect, a\.casterLevel, a\.saveScaled \?\? true, a\.element, a\.flag, target, rolls, a\.caster\), a\.caster, target\);/, 'and its damage over time');   // PIN MOVED (BAL9): the round's magnitude takes its caster, for a damage spell's pierce
 });
 
 test('ELITE-LEDGE: an elite copy stands on the marker\'s own floor - off a walkway it turns to the next bearing, and with none it stands on the marker', () => {
@@ -63,7 +63,9 @@ test('CAMP-CULL and CAMP-CAP: a camp member outlives the 100-150 m band it stand
   assert.ok(ENCOUNTER_CULL_DISTANCE < MAX_CAMP_SPAWN_DISTANCE, 'the finding: the encounter cull alone took most of the band');
   const foes = rd('src/scenes/exteriorFoes.js');
   assert.match(foes, /const _cullAt = f\.campId != null \? CAMP_CULL_DISTANCE : ENCOUNTER_CULL_DISTANCE;\n\s*if \(!f\.placed && !f\.managed && _playerDist > _cullAt && /);   // DW-E4: a spawner-managed foe is exempt too
-  assert.match(foes, /const encounterRoom = \(\) => MAX_ACTIVE_ENCOUNTER_FOES - activeCount\(\) - spawning\.filter\(\(s\) => s\.capped\)\.length;\n\n\s*return \{ foes, spawnFoe, damageFoe, encounterRoom,/);
+  // PVPDUNGEONS: the room is the pool's cap - MAX_ACTIVE_ENCOUNTER_FOES, four times it (WILD_PACK_MULT) in the open zone
+  assert.match(foes, /export const encounterCap = \(\) => \(wildHere\(\) \? MAX_ACTIVE_ENCOUNTER_FOES \* WILD_PACK_MULT : MAX_ACTIVE_ENCOUNTER_FOES\);/);
+  assert.match(foes, /const encounterRoom = \(\) => encounterCap\(\) - activeCount\(\) - spawning\.filter\(\(s\) => s\.capped\)\.length;\n\n\s*return \{ foes, spawnFoe, damageFoe, encounterRoom,/);
   assert.match(rd('src/scenes/world.js'), /let room = exteriorFoes\.encounterRoom\?\.\(\) \?\? Infinity;\n\s*for \(const h of chunkCampHits\) \{\n(?:\s*\/\/[^\n]*\n)*\s*const size = campMembers\(h\.mobileTypes\)\.length;\n\s*if \(size > room\) continue;\n\s*room -= size;\n\s*_standCampEncounter\(h, player\.feetAt\(\)\);/, 'the room is asked for the group as it will stand - grown by the party (PSCALE1)');
 });
 
@@ -73,7 +75,11 @@ test('F1 F3 F4: the loss nodes in the HUD tracks and the system dress on the Sta
   assert.match(hud, /const ghost = el\('i', 'hud-ghost'\);/);
   assert.match(hud, /track\.append\(ghost, \.\.\.chunks\); armChunks\(chunks\);/);
   assert.match(hud, /foeTrack\.append\(foeGhost, \.\.\.foeChunks\); armChunks\(foeChunks\);/);
-  assert.match(rd('src/ui/enhancedMenu.js'), /const detail = el\('div', 'px-qdetail px-sys'\);/);
+  // PIN MOVED (HOLDINGS): the Holdings page wears the same dress - the pin reads the STATS page's own detail, by its F3 mark
+  // (a match anywhere in the menu was satisfied by the Holdings page's and let the Stats page's go undressed)
+  assert.match(rd('src/ui/enhancedMenu.js'), /const detail = el\('div', 'px-qdetail px-sys'\);   \/\/ DROPS-AUDIT F3/);
+  const stats = rd('src/ui/enhancedMenu.js').slice(rd('src/ui/enhancedMenu.js').indexOf('function pauseStats(body)'));
+  assert.match(stats.slice(0, stats.indexOf('\n}\n')), /const detail = el\('div', 'px-qdetail px-sys'\);/, 'inside pauseStats');
   assert.match(ENHANCED_CSS, /color: var\(--dim\); background: transparent; border: 1px solid var\(--iron\);\n\}\n\.hmpick\.on \{ color: var\(--brass\); border-color: var\(--brass\); background: #12161b; \}/);
   assert.match(ENHANCED_CSS, /\.trade-shell \.packcol \{ padding: 0 2px 18px; overflow-y: auto; min-height: 0; \}/);
   assert.doesNotMatch(ENHANCED_CSS, /\.trade-shell \.remotehead \{/);

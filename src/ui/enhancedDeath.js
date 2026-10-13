@@ -33,6 +33,7 @@ import { PIXEL_STACK } from './pixelifyFive.js';
 import { isOnlinePage } from '../systems/onlineLane.js';
 import { deathPenaltyLine } from '../systems/deathPenalty.js';   // DEATH-PENALTY: the line about the loss
 import { armDrawWatchdog, disarmDraw } from './drawWatchdog.js';
+import { wildDeathLines } from '../systems/wildZone.js';   // WILD1: a death in the open zone says what it cost
 import { t } from '../systems/textManager.js';   // L10N4: the death screen's words in the player's language
 
 export const ENHANCED_DEATH_ID = 'enhanced-death';
@@ -52,10 +53,11 @@ const el = (tag, cls, text) => {
 /** What the keys do, from the screen's own hint - a host with no
  *  quickload passes 'ENTER end' and gets no F11 plate (FIX-E's law: a
  *  hint that is a lie is worse than none). Online, Enter and F11 both
- *  RESPAWN (world.js D-ONLINE1), so one plate says so. */
-export function deathKeys(hint, online) {
+ *  RESPAWN (world.js D-ONLINE1), so one plate says so. BAL4: offline, a
+ *  death Project Legacy will raise rises on Enter - F11 still loads. */
+export function deathKeys(hint, online, rises = false) {
   if (online) return [{ key: 'Enter', word: t('death.key.rise', 'Rise now'), confirm: true }];
-  const keys = [{ key: 'Enter', word: t('death.key.end', 'End the journey'), confirm: true }];
+  const keys = [{ key: 'Enter', word: rises ? t('death.key.riseLegacy', 'Rise') : t('death.key.end', 'End the journey'), confirm: true }];
   if (/F11/i.test(String(hint ?? ''))) keys.push({ key: 'F11', word: t('death.key.load', 'Load last save') });
   return keys;
 }
@@ -75,13 +77,13 @@ function build(screen) {
   rule.append(el('i'), el('span', 'dth-gem'), el('i'));
   // DEATH-PENALTY (Mac: "remove the tale line and use the same fonts for the gold loss message in online
   // mode"): a death that costs gold says so IN the line's place, in the line's own italic serif, rather than
-  // under it in a second face. A death that costs nothing (offline, or a purse under four coins) keeps its words.
+  // under it in a second face. A death that costs nothing (no respawn - BAL4: an offline Legacy rise pays - or a purse under ten coins) keeps its words.
   const lossLine = screen.goldLoss > 0 ? (screen.goldLossLine || deathPenaltyLine(screen.goldLoss)) : '';
-  const line = el('p', `dth-line${lossLine ? ' dth-lossline' : ''}`, lossLine || (online
+  const line = el('p', `dth-line${lossLine ? ' dth-lossline' : ''}`, lossLine || (online || screen.rises
     ? t('death.lineOnline', 'Your body falls. The Bay is not done with you yet.')
     : t('death.line', 'Your tale in the Iliac Bay ends here.')));
   const keys = el('div', 'dth-keys');
-  for (const k of deathKeys(screen.hint, online)) {
+  for (const k of deathKeys(screen.hint, online, !!screen.rises)) {
     const b = el(k.confirm ? 'button' : 'span', 'dth-key');
     b.append(el('span', 'dth-cap', k.key), el('span', 'dth-word', k.word));
     // A phone has no Enter: the plate is the key, through the screen's
@@ -93,7 +95,12 @@ function build(screen) {
   // the screen waits for the player.
   const count = el('p', 'dth-count');
   count.style.display = online ? '' : 'none';
+  // WILD1: a death in the open zone - its own block under the line (the killer's claim, what was left behind, the
+  // wait), filled by the draw (the world host says so the frame after the screen goes up)
+  const wild = el('div', 'dth-wild');
+  wild.hidden = true;
   band.append(title, rule, line, count, keys);
+  line.after(wild);   // hidden everywhere but the zone - the loss still has no second line of its own
   root.append(band);
   document.body.append(root);
   return root;
@@ -109,8 +116,19 @@ export function drawEnhancedDeath(screen, fade = 0) {
   const left = screen.respawnIn;
   if (left != null) {
     const c = node.querySelector('.dth-count');
-    const text = t('death.risingInCount', 'Rising in {n}', { n: left });
+    const text = left >= 60 ? t('death.risingInClock', 'Rising in {m}:{s}', { m: Math.floor(left / 60), s: String(left % 60).padStart(2, '0') }) : t('death.risingInCount', 'Rising in {n}', { n: left });   // WILD1: two minutes read as a clock
     if (c && c.textContent !== text) c.textContent = text;
+  }
+  // WILD1: the zone's block and its key - the lines once they are known, and no "Rise now" while the zone holds
+  const lines = wildDeathLines(screen.wild ?? null);
+  const w = node.querySelector('.dth-wild');
+  const key = lines.join('|');
+  if (w && w.dataset.key !== key) {
+    w.dataset.key = key;
+    w.replaceChildren(...lines.map((l, i) => el('p', i === 0 && screen.wild?.killer ? 'dth-wild-line dth-wild-claim' : 'dth-wild-line', l)));
+    w.hidden = !lines.length;
+    const keys = node.querySelector('.dth-keys');
+    if (keys) keys.hidden = lines.length > 0;
   }
   disarmDraw(watch);
   watch = armDrawWatchdog(STALE_MS, removeEnhancedDeath);
@@ -198,7 +216,18 @@ button.dth-key:focus-visible { outline: 1px solid rgba(142,27,20,0.8); outline-o
   font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
 @keyframes dth-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
+/* WILD1: a death in the open zone - a framed block of the band's own brass and blood, the killer's claim in the red */
+.dth-wild { display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: min(720px, 92vw);
+  padding: 10px 18px; border-top: 1px solid rgba(142,27,20,0.45); border-bottom: 1px solid rgba(142,27,20,0.45);
+  background: linear-gradient(90deg, transparent, rgba(40,6,4,0.55) 20%, rgba(40,6,4,0.55) 80%, transparent);
+  animation: dth-in 800ms ease-out 1400ms both; }
+.dth-wild[hidden] { display: none; }
+.dth-wild-line { margin: 0; font-family: ${PIXEL_STACK}; -webkit-font-smoothing: none; font-size: clamp(13px, 1.6vw, 16px);
+  line-height: 1.45; letter-spacing: 0.05em; color: #b3a893; text-shadow: 2px 2px 0 #000; }
+.dth-wild-claim { color: #d0563f; }
+.dth-keys[hidden] { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
-  .dth-veil, .dth-band, .dth-title, .dth-rule, .dth-line, .dth-count, .dth-keys, .dth-edge { animation: none; }
+  .dth-veil, .dth-band, .dth-title, .dth-rule, .dth-line, .dth-count, .dth-keys, .dth-edge, .dth-wild { animation: none; }
 }
 `;

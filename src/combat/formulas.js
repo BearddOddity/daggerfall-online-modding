@@ -38,10 +38,12 @@ import { SPECIAL_ABILITY_BITS, PROFICIENCY_BITS } from '../systems/specialAdvant
 import { weaponMinDamage, weaponMaxDamage, weaponSkillUsed } from '../characters/weapons.js';   // AUDIT 18: GetBaseDamageMin/Max and GetWeaponSkillIDAsShort resolve the TEMPLATE, never a baked field or a display name
 import { equipTableOf, lowerCondition, dfuBlowWear, slotForBodyPart, EQUIP_SLOTS, weaponProficiencyFlag } from '../systems/equip.js';   // C-slice: DamageEquipment; CF1: GetWeaponSkillUsed as a ProficiencyFlag, -1 quirk included
 import { SHIELD_PARTS } from '../systems/armorMaterials.js';
+import { clawMetalDamage } from './clawMetal.js';   // BAL6-GAUNTLETS: the beast's claws take its gauntlets' metal
 import { totalWeight } from '../systems/inventory.js';   // EW1: ItemCollection.GetWeight, the one home for a stack's kg
 import { liveVampirism } from '../systems/racialLive.js';   // VU1: an import-free LEAF - vampirism.js cycles back here through loot.js
 import { breakNormalPowerConcealment } from '../systems/concealment.js';   // wave 31: BreakNormalPowerConcealmentEffects, in its own leaf so this import cannot cycle
 import { localizedText } from '../systems/textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language (an import-free leaf)
+import { blowTaken } from '../systems/blowTaken.js';   // TELL1: what the target takes - a leaf, for the brain that registers into it imports the motor that imports this file
 
 // ---- Dice100.cs verbatim ----
 export const dice100 = (chance, roll01 = Math.random()) => Math.floor(roll01 * 100) < chance;   // Random.Range(0,100) < chance
@@ -432,11 +434,26 @@ export function handToHandAttackDamage(attacker, target, damageMod, isPlayer, ro
   // a strength drain (diseases.js writes signed statMods) moved a
   // player's weapon damage and left their fists untouched.
   if (isPlayer) damage += damageModifier(liveStat(attacker, 'strength'));   // "not applied in classic" for AI - DFU preserves that
+  // BAL6-GAUNTLETS (combat/clawMetal.js): A DEPARTURE - the beast's claws add its gauntlets' metal where the weapon
+  // path's material modifier stands, after Strength and before the enemy-type term
+  if (isPlayer) damage += clawMetalDamage(attacker);
   damage += bonusOrPenaltyByEnemyType(attacker, target);
   return damage;
 }
 
 export const SKELETAL_WARRIOR_INDEX = 15;   // MonsterCareers.SkeletalWarrior
+
+/** RVN2 (bible/12-Enhanced-AI/Feud-Arc.md 13.2): NAMED VETOES on silver's double against a kind it doubles against -
+ *  `fn(target) -> true` keeps silver to its plain damage on that target (a Silver-scarred revenant's: its kind's double
+ *  gone). With none registered, or none answering true, DFU's double stands - in both cores (this one's Skeletal Warrior,
+ *  PCAAO's six beside it). A veto that throws is no veto. */
+const _silverVetoes = new Map();
+export function registerSilverDoubleVeto(name, fn) { if (typeof fn === 'function') _silverVetoes.set(name, fn); else _silverVetoes.delete(name); }
+/** Does silver double against `target` (its kind aside - the cores ask only for a kind it doubles against)? */
+export function silverDoubles(target) {
+  for (const fn of _silverVetoes.values()) { try { if (fn(target) === true) return false; } catch { /* a veto that throws is none */ } }
+  return true;
+}
 
 // ---- CalculateWeaponAttackDamage ----
 /** AUDIT 18: the pre-resolved `targetGroup` parameter is GONE. DFU
@@ -450,7 +467,7 @@ export function weaponAttackDamage(attacker, target, damageMod, weapon, rolls = 
   let damage = weaponDamageMods(weapon, wMin + Math.floor(rolls() * (wMax + 1 - wMin))) + damageMod;   // RF1: the weapon's own modifiers over ITS roll, before the swing's mods
   if (!target.isPlayer && target.careerIndex === SKELETAL_WARRIOR_INDEX) {
     if ((weapon.flags & 0x10) === 0) damage = Math.trunc(damage / 2);   // edged-weapon rule
-    if (weapon.material === 2) damage *= 2;                             // Silver
+    if (weapon.material === 2 && silverDoubles(target)) damage *= 2;    // Silver (RVN2: unless a veto keeps it plain)
   }
   damage += damageModifier(liveStat(attacker, 'strength'));
   damage += WEAPON_MATERIAL_MODIFIER[weapon.material] ?? 0;   // half of the in-game display, per the source comment
@@ -564,7 +581,7 @@ export function damageEquipment(attacker, target, damage, weapon, struckBodyPart
   }
 }
 
-export function calculateAttackDamage(attacker, target, { weapon = null, damageMod = 0, toHitMod = 0, backstabChance = 0, weaponAnimTime = 0, rolls = Math.random, dfRand = rand, onMonsterHit = null, onInflictPoison = null, say = null, enchantCtx = null, playerReflexes = null, unaware = false } = {}) {
+export function calculateAttackDamage(attacker, target, { weapon = null, damageMod = 0, toHitMod = 0, backstabChance = 0, weaponAnimTime = 0, rolls = Math.random, dfRand = rand, onMonsterHit = null, onInflictPoison = null, say = null, enchantCtx = null, playerReflexes = null, unaware = false, blowInfo = null } = {}) {
   if (!attacker || !target) return 0;
   // SOFTCAP1: THE FOE THIS BLOW WAS TRADED WITH, remembered on the player
   // for the tallies that follow it (hit or miss - a swing at a tough foe is
@@ -590,6 +607,9 @@ export function calculateAttackDamage(attacker, target, { weapon = null, damageM
     if (_playerAttackHook && attacker.isPlayer && !attacker.peer) {
       try { _playerAttackHook({ ...notes, damage, attacker, target, weapon }); } catch { /* a HUD is not the formula's problem */ }
     }
+    // ARENA-FIX 9/10: every resolution, whoever swung - the arena's judges count the misses and its crowd hears the
+    // critical strikes (scenes/arenaBouts.js attackResolved)
+    if (_resolutionListeners.size) for (const fn of _resolutionListeners.values()) { try { fn({ ...notes, damage, attacker, target, weapon }); } catch { /* a listener is not the blow's problem */ } }
     return damage;
   };
   // PCO1: THE REGISTERED CORE. FormulaHelper.CalculateAttackDamage is
@@ -598,7 +618,10 @@ export function calculateAttackDamage(attacker, target, { weapon = null, damageM
   // is DFU's CALLERS' work and runs after either core. The override gets
   // the whole option bag plus the notes.
   const core = _overrides.get('calculateAttackDamage');
-  const overridden = core ? core(attacker, target, { weapon, damageMod, toHitMod, backstabChance, weaponAnimTime, rolls, dfRand, onMonsterHit, onInflictPoison, say, playerReflexes, notes, unaware }) : undefined;
+  // WIDGET-RECOIL (FIELD BUGS 2026-10-03, SlipperyPeasant: "I think the recoil module isnt working either"): a core
+  // that rolls its own part hands it back (`onStruck`) - PCAAO's, on by default, rolled one the tail never saw, so the
+  // struck hook said -1 on every blow and the Shield Widget's "Attack On Shield" Recoil (its default) never fired
+  const overridden = core ? core(attacker, target, { weapon, damageMod, toHitMod, backstabChance, weaponAnimTime, rolls, dfRand, onMonsterHit, onInflictPoison, say, playerReflexes, notes, onStruck: (part) => (struckPart = part), unaware }) : undefined;
   let damage = 0;
   if (overridden !== undefined) {
     damage = overridden;
@@ -737,6 +760,9 @@ export function calculateAttackDamage(attacker, target, { weapon = null, damageM
     const m = mentorDamageTakenMult(target);
     if (m > 1) damage = Math.max(1, Math.round(damage * m));
   }
+  // TELL1 (bible/12-Enhanced-AI/Feud-Arc.md 3.2): what the TARGET takes - a staggered foe a quarter more - after either
+  // core and every scale of the striker's, before the reports below, so they say what landed (systems/blowTaken.js)
+  damage = blowTaken(damage, attacker, target, weapon, { kind: weapon && weaponSkillUsed(weapon.templateIndex) === SKILLS.Archery ? 'arrow' : 'melee', ...(blowInfo ?? {}) });   // TELL6d: what the blow was (an aimed shot's)
   // AUDIT 24 (wave 31) - A LANDED HIT ENDS THE ATTACKER'S NORMAL-POWER
   // CONCEALMENT, and it was unported at every door.
   //
@@ -815,12 +841,18 @@ export function calculateAttackDamage(attacker, target, { weapon = null, damageM
   // core's crits, materials and armour, which PCAAO's apply after the blow modifiers), so a power that shares the blow
   // (Ruhn's Cleave) shares what landed, never the number before the struck foe's own armour took its part
   if (attacker.isPlayer && !attacker.peer && !target.isPlayer && damage > 0) {
-    for (const fn of _playerStrikeListeners.values()) { try { fn(attacker, target, damage, weapon); } catch { /* a set is not the blow's problem */ } }
+    const info = { backstab: notes.backstab };   // RVN1: and whether it was a backstab (the fight's ledger, systems/feudLedger.js)
+    for (const fn of _playerStrikeListeners.values()) { try { fn(attacker, target, damage, weapon, info); } catch { /* a set is not the blow's problem */ } }
   }
   return report(damage);
 }
 
 let _playerAttackHook = null;
+const _resolutionListeners = new Map();
+/** ARENA-FIX 9/10: NAMED listeners told EVERY attack's resolution (any attacker, any target) - `{ critical, backstab,
+ *  hit, ineffective, damage, attacker, target, weapon }`: a miss is `damage` 0, `critical` the critical-strike roll's
+ *  success (skillsToHit). A name re-registered replaces, `null` removes. Reporting only - an answer is ignored. */
+export function registerAttackResolutionListener(name, fn) { if (typeof fn === 'function') _resolutionListeners.set(name, fn); else _resolutionListeners.delete(name); }
 /** HN1: the enhanced HUD's registration seam for the PLAYER'S attack
  *  resolutions (miss / ineffective / hit with damage, critical strike,
  *  backstab). Reporting only - registered by the enhanced HUD, never by
@@ -843,7 +875,8 @@ const _playerStruckListeners = new Map();
  *  `null` removes; the Ring of Namira keeps its one slot above. Reporting only - an answer is ignored. */
 export function registerPlayerStruckListener(name, fn) { if (typeof fn === 'function') _playerStruckListeners.set(name, fn); else _playerStruckListeners.delete(name); }
 const _playerStrikeListeners = new Map();
-/** AUDIT SET M2: NAMED listeners at the same tail for the other direction - `fn(attacker, target, damage, weapon)`, told
+/** AUDIT SET M2: NAMED listeners at the same tail for the other direction - `fn(attacker, target, damage, weapon, info)`
+ *  (RVN1: `info.backstab` - the blow landed as a backstab), told
  *  when MY attack (never a peer's resolved here) resolves with damage on a foe (never a player: a duel's blow is its
  *  own), the damage final, before any host subtracts it. A name re-registered replaces, `null` removes; an answer is
  *  ignored. */

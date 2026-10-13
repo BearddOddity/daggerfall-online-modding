@@ -59,13 +59,34 @@ const FLEE_AIM = 10;
 export const FOLLOW_STOP = 3;
 export const FOLLOW_SLACK = 1.5;
 export const FOLLOW_LEASH = 20;
+/** COMPANION-TRAIL (FIELD BUGS 2026-10-04b, Mac: "Companion pathing is really rough. They're also walking towards to
+ *  the wall, next to the exit that leads to outside"): a follower with no clear line to its leader walks the LEADER'S
+ *  OWN TRAIL (`follow.trail`, the crumbs crewAshore.js drops where the player walked) - the newest crumb it can see,
+ *  looked for every FOLLOW_SIGHT_S with at most FOLLOW_SIGHT_TRIES casts, the next crumb once it is within
+ *  FOLLOW_CRUMB_REACH. The street, a building and a dungeon without the pathing motor have no baked route, and straight at
+ *  the leader a companion walked into the wall beside every doorway the player had gone through. A line is clear when
+ *  a FOLLOW_SIGHT_RADIUS capsule reaches within FOLLOW_CRUMB_REACH of the point and the point is no more than
+ *  FOLLOW_SIGHT_DY above or below; a crumb further than FOLLOW_CRUMB_FAR is never looked at. */
+export const FOLLOW_SIGHT_S = 0.25;
+export const FOLLOW_SIGHT_TRIES = 6;
+export const FOLLOW_CRUMB_REACH = 0.8;
+export const FOLLOW_SIGHT_RADIUS = 0.25;
+export const FOLLOW_SIGHT_DY = 1.2;
+export const FOLLOW_CRUMB_FAR = 50;
+/** COMPANION-TRAIL: a follower walks while it is within FOLLOW_YAW_GATE_DEG of its way (turning as it goes) where a
+ *  pursuer stops to turn past 5.625 - the pursuit's gate stopped a companion on every bend of the player's path - and,
+ *  further than FOLLOW_RUN_M from its leader, at FOLLOW_RUN_PACE of its walk: a foe's walk (5 m/s at Speed 50) is
+ *  slower than the player's run (about 8), so a companion fell back to the catch-up's portal at every long run. */
+export const FOLLOW_YAW_GATE_DEG = 30;
+export const FOLLOW_RUN_M = 8;
+export const FOLLOW_RUN_PACE = 1.6;
 export const foeFrameDt = (dt) => Math.min(dt, FOE_MAX_FRAME_DT);
 export const GIVE_UP_TICKS = 200;   // EnemyMotor.GiveUpTimer refill (classic ticks; ~12.5s)
 import { GRAVITY, FIXED_DT, MAX_FRAME_DT, CLASSIC_TO_UNITY_RATIO, FALL_DAMAGE_THRESHOLD } from '../player/motor.js';   // the shared fall rule + the P16 fixed-timestep law; CH3: the fall threshold single-sources with the player's
 import { wrapAngle } from '../world/mat4.js';   // ONCRASH1: the port's one angle wrap, which cannot loop
 import { MOBILE_TYPES } from './mobileTypes.js';
 import { coverDistance } from '../ai/cover.js';   // TACT1: billboards are cover (sight, the clear shot)
-import { tacticsStep } from '../ai/tactics.js';   // TACT2: the tactics brain
+import { tacticsStep, tacticsNow, breakWindup } from '../ai/tactics.js';   // TACT2: the tactics brain; TELL1: its clock, for the stagger's end
 
 // C15 knockback (EnemyMotor.KnockbackMovement): classic units through
 // the speed ratio. Stored speed clamps at 40; motion caps at 25; the
@@ -360,6 +381,9 @@ export const DETOUR_ARRIVAL = 0.3;              // UpdateTimers zeroes the timer
  * WaterMove (3D pursuit gated to below the block water surface via
  * waterSurfaceY(x, z), the 2.5 head margin, beached = frozen).
  */
+/** ARENA-FIX 8: a walk to a mark (EnemyAI.walkTo) is done this near it, metres. */
+export const WALK_ARRIVE_M = 0.35;
+
 export class EnemyAI {
   constructor(collider, feet, yawRad, { liveSpeed = 50, isHostile = true, height = CAPSULE_HEIGHT, seesThroughInvisibility = false, behaviour = 'General', mobileId = -1, waterSurfaceY = null, spawnDistanceType = 0, playerInside = true, isActionDoor = null, rolls = Math.random, hasBowAttack = false, canCastRangedSpell = null, hasMagickaToCast = null, centreOffset = null, vitals = null } = {}) {
     this.collider = collider;
@@ -511,10 +535,14 @@ export class EnemyAI {
     // WERE-FRIGHT: the run from a fright (flee, below) - seconds left, and the point it runs from. No run by default.
     this.fleeLeft = 0;
     this.fleeFrom = null;
-    /** CREW-COMPANIONS: the leader a companion keeps to (the host sets it; null for every other foe). @type {{ feet: () => (number[]|null), stop?: number, leash?: number }|null} */
+    this.fleePace = 1;   // FLIGHT-FIRST: its run's share of its walk (flee, below)
+    /** CREW-COMPANIONS: the leader a companion keeps to (the host sets it; null for every other foe). COMPANION-TRAIL:
+     *  `trail` the crumbs where the leader walked, oldest first. @type {{ feet: () => (number[]|null), stop?: number, leash?: number, trail?: () => (number[][]|null) }|null} */
     this.follow = null;
     this._following = false;
     this._followWalking = false;
+    this._followPace = 1;   // COMPANION-TRAIL: the walk's share while following
+    this._crumb = null; this._trailMode = null; this._trailT = 0;   // COMPANION-TRAIL: the crumb held, 'leader' | 'crumb' | null, the next look
     this._returning = false;   // AUDIT CC-B3: drawn past the leash, coming home
     // TakeAction:443-449 sets stopDistance BEFORE GetDestination, and
     // both the approach test (:487) and the search ramp (:552) read it.
@@ -528,6 +556,11 @@ export class EnemyAI {
     this.knockbackSpeed = 0;   // C15: classic-through-ratio units; the scene sets it on landed hits
     this.knockbackDir = null;  // the attack ray direction (3D - flyers take the y)
     this.hurtKnock = false;    // per-step: speed above the hurt threshold (the scene's hurting input)
+    this.staggerUntil = 0;     // TELL1: a broken wind-up's stagger ends here, on the brain's clock (ai/tactics.js windupStruck)
+    this.staggered = false;    // per-step: staggered - CanAct false, its Hurt held (the scene's hurting input with hurtKnock)
+    this.overreachUntil = 0;   // TELL4: a missed telegraphed blow's punish window ends here, on the brain's clock (ai/tactics.js)
+    this.overreached = false;  // per-step: overreached - CanAct false as staggered, its swing's follow-through standing (no Hurt)
+    this.roarUntil = 0;        // RVN4: a last stand's roar holds it here, on the brain's clock, the Enhanced AI switch off (on, its ring's wind-up holds it)
     this._dist = Infinity;
     // P13 stealth state (EnemySenses fields)
     this.hasEncounteredPlayer = false;
@@ -539,7 +572,13 @@ export class EnemyAI {
   /** TakeAction:432 - `(entity.Stats.LiveSpeed + dfWalkBase) *
    *  GlobalScale`, re-derived on every pass rather than captured. A
    *  READ, not a field, so nothing can freeze it back. */
-  get speed() { return enemyMoveSpeed(this._liveSpeed()); }
+  get speed() { return enemyMoveSpeed(this._liveSpeed() + this._edgeSpeed()); }
+  /** RVN2 (bible/12-Enhanced-AI/Feud-Arc.md 13.2): an Arrow-wise revenant's Speed while its target is far (its stand's
+   *  `revenant.edge`, systems/revenantFeud.js ADAPT) - none for any other body. */
+  _edgeSpeed() {
+    const e = this.vitals?.()?.revenant?.edge;
+    return e?.farSpeed > 0 && this._dist > e.farAt ? e.farSpeed : 0;
+  }
 
   /** CH4 (the senses verify pass): the CLASSIC-gated senses halves.
    *  DFU's FixedUpdate runs the spawn-band recompute (:260-310) and
@@ -1458,7 +1497,7 @@ export class EnemyAI {
     // a coward's run, an archer's kiting - a foe in sight of its target, not detouring. Off, it answers false and
     // touches nothing.
     const _took = tacticsStep(this, dx, dz);
-    if (_took && (!detouring || this.fleeLeft > 0 || this._tac?.state === 'windup')) return;   // AUDIT TACT A6: a committed wind-up and a coward's run are never the detour's
+    if (_took && (!detouring || this.fleeLeft > 0 || this._tac?.state === 'windup' || this._tac?.state === 'dash')) return;   // AUDIT TACT A6: a committed wind-up and a coward's run are never the detour's; TELL6: nor a charge's run
     this._tacDir = null;
     // Ranged attacks (:468-470) - the FIRST branch of TakeAction's
     // action ladder, AHEAD of the detour (AUDIT 26 F011: the port took
@@ -1537,6 +1576,14 @@ export class EnemyAI {
    *  (transform1 sets Behaviour = Flying) and could be shoved out of
    *  its own transformation. */
   update(dt, playerFeet, senses = null, paralyzed = false, paused = false) {
+    // WAGONS1: a companion riding in the back of the player's wagon (scenes/crewAshore.js `seat`) takes no step - its
+    // feet are the seat's, wherever the wagon carries it, and it neither falls, walks nor fights until it gets down
+    const seat = this.seat?.();
+    if (seat) {
+      this.feet[0] = seat.feet[0]; this.feet[1] = seat.feet[1]; this.feet[2] = seat.feet[2];
+      this.yaw = seat.yaw; this.velY = 0; this.moving = false; this.isGrounded = true; this._acc = 0;
+      return;
+    }
     this._acc = (this._acc ?? 0) + Math.min(dt, MAX_FRAME_DT);
     while (this._acc >= FIXED_DT) {
       this._acc -= FIXED_DT;
@@ -1597,10 +1644,16 @@ export class EnemyAI {
    * pursuer does. It decides nothing and senses nothing while it runs; the pool that frightened it retires it when
    * `fleeLeft` is spent. A blow does not end the run: it shoves the foe as it shoves any (KnockbackMovement, the hurt
    * anim with it), and a frightened man keeps running once the shove is spent.
+   * FLIGHT-FIRST: `pace` - its run at this share of its walk (1, the walk, for every run but the revenants' flee law's:
+   * a special foe running for its life outruns a running player, systems/revenant.js REVENANT_FLEE_PACE).
    */
-  flee(fromFeet, seconds) {
+  flee(fromFeet, seconds, pace = 1) {
+    breakWindup(this);   // AUDIT TELL B1: a routed foe's wind-up goes with its fight
     this.fleeFrom = [fromFeet[0], fromFeet[1], fromFeet[2]];
     this.fleeLeft = seconds;
+    this.fleePace = pace > 0 ? pace : 1;
+    this._tacDir = null;   // FLIGHT-FIRST: and the brain's step (TACT2's ring, its back-step) with it - its walk read that
+    this._tacSpeed = 1;    // step before its own way (_walkStep), so a foe that broke while circling ran on round the ring
     // AUDIT WERE-FRIGHT F3: NOT its hostility. IsHostile false is DFU's PASSIVE foe - a blow on one turns the area
     // (MakeEnemiesHostile) and friendly protection spares one from a swing - and a routed foe is neither. The run
     // takes its target, which is all that stops it striking.
@@ -1653,21 +1706,85 @@ export class EnemyAI {
     if (!leader) { this.moving = false; return; }
     const d = Math.hypot(leader[0] - this.feet[0], leader[2] - this.feet[2]);
     const stop = this.follow.stop ?? FOLLOW_STOP;
-    if (d <= stop || (!this._followWalking && d <= stop + FOLLOW_SLACK)) { this._followWalking = false; this.moving = false; return; }
+    if (d <= stop || (!this._followWalking && d <= stop + FOLLOW_SLACK)) {
+      this._followWalking = false; this.moving = false; this._followPace = 1;
+      this._crumb = null; this._trailMode = null; this._trailT = 0;   // COMPANION-TRAIL: at heel - the next walk looks afresh
+      return;
+    }
     this._followWalking = true;
+    this._followPace = d > FOLLOW_RUN_M ? FOLLOW_RUN_PACE : 1;   // COMPANION-TRAIL: fallen back, it hurries
     const goal = this._followGoal(leader, dt);
     this.destination = [goal[0], leader[1], goal[2]];
     const aim = this.avoidObstaclesTimer > 0 ? this.detourDestination : this.destination;
     const dx = aim[0] - this.feet[0];
     const dz = aim[2] - this.feet[2];
     for (let i = 0; i < classicTicks; i++) {
-      if (!withinYaw(this.yaw, dx, dz, MOVE_YAW_GATE_DEG)) this.yaw = turnTowards(this.yaw, dx, dz);   // classic turns in place
+      if (!withinYaw(this.yaw, dx, dz, MOVE_YAW_GATE_DEG)) this.yaw = turnTowards(this.yaw, dx, dz);   // classic turns, on the classic ticks
     }
-    this.moving = withinYaw(this.yaw, dx, dz, MOVE_YAW_GATE_DEG);
+    this.moving = withinYaw(this.yaw, dx, dz, FOLLOW_YAW_GATE_DEG);   // COMPANION-TRAIL: and walks on while it turns
   }
 
-  /** CREW-COMPANIONS: where a following companion heads - straight at the leader (the pathing motor routes it). */
-  _followGoal(leader, dt) { return leader; }
+  /** CREW-COMPANIONS: where a following companion heads. COMPANION-TRAIL: the leader while it is in clear sight, else
+   *  the newest crumb of the leader's trail in sight, else the nearest crumb, else the leader (no trail: the straight
+   *  line it always walked). The pathing motor asks the trail first and takes its baked route when it has nothing. */
+  _followGoal(leader, dt) { return this._trailGoal(leader, dt) ?? this._nearestCrumb() ?? leader; }
+
+  /** COMPANION-TRAIL: whether a body walking from here would reach `to` - a FOLLOW_SIGHT_RADIUS capsule at the obstacle
+   *  probe's height (_obstacleCheck's points) cast flat at it, stopped no sooner than FOLLOW_CRUMB_REACH short of it
+   *  (a wall behind the point is not in the way), and the point within FOLLOW_SIGHT_DY of the feet. */
+  _clearLine(to) {
+    if (!(Math.abs(to[1] - this.feet[1]) <= FOLLOW_SIGHT_DY)) return false;
+    const dx = to[0] - this.feet[0], dz = to[2] - this.feet[2], d = Math.hypot(dx, dz);
+    if (d <= FOLLOW_CRUMB_REACH) return true;
+    const c = this._centre();
+    const p1 = [c[0], c[1] - this.height * OBSTACLE_P1_BELOW_CENTRE, c[2]];
+    const p2 = [p1[0], p1[1] + Math.min(this.height, DOOR_CROUCHING_HEIGHT) / 2, p1[2]];
+    return !(this.collider.capsuleCast(p1, p2, FOLLOW_SIGHT_RADIUS, [dx / d, 0, dz / d], d).dist < d - FOLLOW_CRUMB_REACH);
+  }
+
+  /** COMPANION-TRAIL: the trail's answer, or null when it has none - no trail, or no crumb in sight and none held. The
+   *  look (the line to the leader, then the crumbs newest first) runs every FOLLOW_SIGHT_S; between looks the held
+   *  answer stands, a held crumb giving way to the next once it is reached. */
+  _trailGoal(leader, dt) {
+    const trail = this.follow?.trail?.();
+    if (!trail?.length) { this._trailMode = null; this._crumb = null; return null; }
+    let i = this._crumb ? trail.indexOf(this._crumb) : -1;
+    if (this._trailMode === 'crumb' && i < 0) { this._trailMode = null; this._crumb = null; this._trailT = 0; }   // it left the trail (old, or the trail began again)
+    this._trailT -= dt;
+    if (this._trailT > 0) return this._trailMode === 'leader' ? leader : this._trailMode === 'crumb' ? this._crumbFrom(trail, i, leader) : null;
+    this._trailT = FOLLOW_SIGHT_S;
+    if (this._clearLine(leader)) { this._trailMode = 'leader'; this._crumb = null; return leader; }
+    const stride = Math.max(1, Math.ceil((trail.length - 1 - Math.max(i, 0)) / FOLLOW_SIGHT_TRIES));
+    for (let j = trail.length - 1, n = 0; j > i && n < FOLLOW_SIGHT_TRIES; j -= stride, n++) {
+      const p = trail[j];
+      if (Math.hypot(p[0] - this.feet[0], p[2] - this.feet[2]) > FOLLOW_CRUMB_FAR) continue;
+      if (this._clearLine(p)) { this._trailMode = 'crumb'; this._crumb = p; return this._crumbFrom(trail, j, leader); }
+    }
+    if (i >= 0) return this._crumbFrom(trail, i, leader);
+    this._trailMode = null; this._crumb = null;
+    return null;
+  }
+
+  /** COMPANION-TRAIL: the crumb at `i`, or the first after it not yet reached; past the newest, the leader. */
+  _crumbFrom(trail, i, leader) {
+    while (i < trail.length && Math.hypot(trail[i][0] - this.feet[0], trail[i][2] - this.feet[2]) <= FOLLOW_CRUMB_REACH) i++;
+    if (i >= trail.length) { this._trailMode = 'leader'; this._crumb = null; return leader; }
+    this._trailMode = 'crumb'; this._crumb = trail[i];
+    return this._crumb;
+  }
+
+  /** COMPANION-TRAIL: lost - no line to the leader nor to any crumb looked at - the nearest crumb inside
+   *  FOLLOW_CRUMB_FAR, held as the crumb to walk from (the next look tries the newer ones), or null. */
+  _nearestCrumb() {
+    const trail = this.follow?.trail?.();
+    if (!trail?.length) return null;
+    let best = -1, bd = FOLLOW_CRUMB_FAR;
+    for (let j = 0; j < trail.length; j++) {
+      const d = Math.hypot(trail[j][0] - this.feet[0], trail[j][2] - this.feet[2]);
+      if (d < bd) { bd = d; best = j; }
+    }
+    return best < 0 ? null : this._crumbFrom(trail, best, this.follow.feet?.() ?? trail[trail.length - 1]);
+  }
 
   /** WERE-FRIGHT: one fixed step of the run (flee, above). */
   _fleeStep(dt, paralyzed) {
@@ -1698,11 +1815,62 @@ export class EnemyAI {
       else { this.yaw = turnTowards(this.yaw, dx, dz); this.moving = false; }   // classic turns in place
     }
     if (paralyzed) this.moving = false;
-    this._walkStep(dt);   // the pursuit's own walk - the watch is the one foe frightened, and it walks
+    this._walkStep(dt, this.fleePace);   // the pursuit's own walk - the watch is frightened and walks; a special foe runs for its life (FLIGHT-FIRST)
+  }
+
+  /**
+   * ARENA-FIX 8 (2026-10-02, the port's own - DFU's arena is a mod's, and no DFU motor walks to a point it was told):
+   * A WALK TO A MARK. A bout's fighter walks in from its gate to its mark on the sand (scenes/arenaBouts.js walkIn) by
+   * the pursuit's own laws - the classic turn in place inside the 5.625 degree move gate, the same capsule, obstacle,
+   * ledge and detour probes and gravity (`_walkStep`) - at `pace` of its move speed. It decides and senses nothing on
+   * the way (the bout holds it); at WALK_ARRIVE_M of the point it stops and `walkArrived` says so. A blow shoves it as
+   * any foe. `walkGoal = null` ends it where it stands, its pace with it: the pace is the walk's own step's
+   * (`_walkGoalStep`), never a field a later pursuit reads (AUDIT PRE-MERGE 1003 D1: it was, and put back only at the
+   * motor's own arrival - the bout ends every walk in itself, at its mark or the walk's limit, so every fighter that
+   * walked in fought its bout at WALK_PACE).
+   */
+  walkTo(point, { pace = 1 } = {}) {
+    this.walkGoal = [point[0], point[1], point[2]];
+    this._pace = pace;
+    this.walkArrived = false;
+    this.moving = false;
+  }
+  /** ARENA-FIX 8: one fixed step of the walk to a mark (walkTo). */
+  _walkGoalStep(dt, paralyzed) {
+    this._clock += dt;
+    let classicTicks = 0;
+    this._classicTimer += dt;
+    while (this._classicTimer >= CLASSIC_UPDATE_INTERVAL) { this._classicTimer -= CLASSIC_UPDATE_INTERVAL; classicTicks++; }
+    const knocked = this.knockbackSpeed > 0;
+    this.canAct = false;
+    this.inSight = false;
+    this.detected = false;
+    this._updateDetourTimers(dt, !paralyzed && !knocked);
+    this.hurtKnock = false;
+    if (knocked) { this._knockbackStep(dt, classicTicks); return; }
+    const g = this.walkGoal;
+    const left = Math.hypot(g[0] - this.feet[0], g[2] - this.feet[2]);
+    if (left <= WALK_ARRIVE_M) {
+      this.walkGoal = null; this.walkArrived = true; this.moving = false;
+      this._walkStep(dt);
+      return;
+    }
+    this.destination = [g[0], g[1], g[2]];
+    const aim = this.avoidObstaclesTimer > 0 ? this.detourDestination : this.destination;
+    const dx = aim[0] - this.feet[0];
+    const dz = aim[2] - this.feet[2];
+    for (let i = 0; i < classicTicks; i++) {
+      const facing = withinYaw(this.yaw, dx, dz, MOVE_YAW_GATE_DEG);
+      if (!facing) this.yaw = turnTowards(this.yaw, dx, dz);   // the classic turn in place, as the run's
+      this.moving = facing;
+    }
+    if (paralyzed) this.moving = false;
+    this._walkStep(dt, this._pace);   // AUDIT PRE-MERGE 1003 D1: the walk's pace, for its own step alone
   }
 
   _step(dt, playerFeet, senses, paralyzed = false, paused = false) {
     if (this.fleeLeft > 0) { this._fleeStep(dt, paralyzed); return; }   // WERE-FRIGHT: a frightened foe only runs
+    if (this.walkGoal) { this._walkGoalStep(dt, paralyzed); return; }   // ARENA-FIX 8: a fighter walking to its mark
     // CH4 (the senses verify pass): DFU's cadence split, exactly -
     // sight/hearing/detection resolve EVERY FixedUpdate (the fixed
     // step here); the spawn-band recompute and the illusion re-roll
@@ -1722,6 +1890,16 @@ export class EnemyAI {
     // no CanAct/flyerFalls write. Folding the pause into `knocked`
     // carries all four, in DFU's own order.
     const knocked = this.knockbackSpeed > 0 && !paused;
+    // TELL1 (bible/12-Enhanced-AI/Feud-Arc.md 3.2): STAGGERED - its wind-up broken by a blow past its poise - it can do
+    // nothing, as a knock: CanAct false, standing, its Hurt held by the host. The port's own beat (no DFU motor has
+    // one), so it exists only with the Enhanced AI switch on, which alone stands a wind-up to break.
+    const staggered = this.staggerUntil > 0 && tacticsNow() < this.staggerUntil;
+    this.staggered = staggered;
+    // TELL4 (Feud-Arc.md 6.1): OVERREACHED - its telegraphed blow missed - locked as a stagger locks, but its Hurt is not
+    // asked (the sprite stands at its swing's follow-through). `locked` carries both wherever the stagger's lock reads.
+    const overreached = this.overreachUntil > 0 && tacticsNow() < this.overreachUntil;
+    this.overreached = overreached;
+    const locked = staggered || overreached || (this.roarUntil > 0 && tacticsNow() < this.roarUntil);   // RVN4: a roar's hold
     // AUDIT 26 F010: CanAct, EXPOSED. HandleParalysis and
     // KnockbackMovement clear it (:255, :317) and the attack/cast
     // components' bow-roll and spell branches live behind
@@ -1749,7 +1927,7 @@ export class EnemyAI {
     // HandleParalysis and KnockbackMovement have settled CanAct, and
     // BEFORE TakeAction reads avoidObstaclesTimer (:166-172).
     this._clock += dt;
-    this._updateDetourTimers(dt, !paralyzed && !knocked);
+    this._updateDetourTimers(dt, !paralyzed && !knocked && !locked);
     // MT-i: the host's targeting context arms the classic target
     // machine - a closure over the pool's shared candidate list
     // (enemyTargets.runTargetMachine; a hook, not an import, so the
@@ -1803,8 +1981,11 @@ export class EnemyAI {
     this.targetIsLocalPlayer = !this._armedTargeting || (this.target != null && this.target.isPlayer === true && this.target.isPeer !== true);
     // MT-iii's hostility narrowing, now on THIS step's target machine.
     const foeTarget = this._armedTargeting && this.target != null && !this.target.isPlayer;
-    this.canAct = !paralyzed && !knocked && (this.isHostile || foeTarget);
+    this.canAct = !paralyzed && !knocked && !locked && (this.isHostile || foeTarget);
     if (!this.canAct || paused) this._tacSkipped = true;   // AUDIT TACT D1/A3: a step it could not decide - the brain's word for a knock, never a clock's
+    // AUDIT TELL B1 (OPEN 4): a paralysis, a knock or a Calm BREAKS a wind-up, a run or a chain here and now - the brain is
+    // not asked while the foe cannot act, and a blow that waited for it held every blow, glinted and landed untold after
+    if (!this.canAct && this._tac?.state && !locked) breakWindup(this);
     if (targeting && targetFeet == null) {
       this.inSight = false;
       this.detected = false;
@@ -1842,10 +2023,10 @@ export class EnemyAI {
     // transform starts; the port's `moving` is a LATCH the classic
     // tick sets, and a latch left standing would walk the Seducer on
     // for up to a classic tick after DFU's has stopped dead.
-    if (paralyzed || paused || !(this.isHostile || foeTarget)) this.moving = false;
+    if (paralyzed || paused || locked || !(this.isHostile || foeTarget)) this.moving = false;
     // CREW-COMPANIONS: a companion (the host's `follow`) with no foe to fight - or one chased too far from its
     // leader - keeps to the leader instead: the pursuit's own turn-then-walk, aimed at the leader's feet.
-    this._following = !!this.follow && !paralyzed && !paused && !knocked && this._followWanted();
+    this._following = !!this.follow && !paralyzed && !paused && !knocked && !locked && this._followWanted();
     if (this._following) this._followTicks(classicTicks, dt);
 
     // C15 KnockbackMovement, verbatim: runs INSTEAD of pursuit (and
@@ -1922,7 +2103,11 @@ export class EnemyAI {
       // A5: `flies` ALONE opens it (:925) - a levitator gets no floor
       // lift, which is why the arm is spelled out rather than folded
       // into the branch condition above.
-      if (this.flies && this.avoidObstaclesTimer <= 0 && d[1] < 0) {
+      // CEIL-GHOST (FIELD BUGS 2026-10-09c, "Ghost companion isn't showing health bar - clipping into ceiling"): AND
+      // DURING COMBAT - never while following. A companion steers its feet at the leader's (_followTicks), so a leader a
+      // hair below it read as a descent, the lift turned it up, and it climbed till its feet were a metre off the floor
+      // or its body met the ceiling - a ghost's whole height (2.6 m) into the roof, its bar over it and hidden.
+      if (this.flies && !this._following && this.avoidObstaclesTimer <= 0 && d[1] < 0) {
         const hit = this.collider.raycast(
           this._centre(), [0, -1, 0],   // FindGroundPosition rays from transform.position (:224)
           this.height / 2 + FLYER_FLOOR_CLEARANCE);
@@ -1948,13 +2133,14 @@ export class EnemyAI {
     // under a parked foe leaves it frozen mid-air until it next
     // pursues - accepted: foes never ride movers (pre-C11 statics
     // did not either).
-    this._walkStep(dt);
+    this._walkStep(dt, this._following ? this._followPace : 1);   // COMPANION-TRAIL: a follower fallen back hurries
   }
 
   /** The grounded walker's step - _step's tail (the comment above its call), and a frightened foe's run (_fleeStep):
    *  the rest fast path, gravity, AttemptMove's obstacle and ledge probes with DFU's detour, and the one capsule
-   *  move, at whatever `moving` the caller's classic tick decided. */
-  _walkStep(dt) {
+   *  move, at whatever `moving` the caller's classic tick decided - at `pace` of its speed, which only a walk to a mark
+   *  (_walkGoalStep) passes (AUDIT PRE-MERGE 1003 D1). */
+  _walkStep(dt, pace = 1) {
     if (!this.moving && this._restGrounded) return;
     this.velY -= GRAVITY * dt;
     const dy = this.velY * dt;
@@ -1976,9 +2162,9 @@ export class EnemyAI {
         if (this._tacDir) { this._tacDir = null; this._tacBlocked = true; this.moving = false; }   // TACT2: a wall or a drop behind it: it stands its ground (AUDIT TACT A1: and the brain hears of it; TACT5: for the rest of the classic tick too - never walked on the way it faces, into a detour)
         else this._findDetour(dir2d);
       } else {
-        const k = this._tacDir ? this._tacSpeed : 1;
-        dxm = dir2d[0] * this.speed * k * dt;
-        dzm = dir2d[2] * this.speed * k * dt;
+        const sp = this.speed * (this._tacDir ? this._tacSpeed : 1) * pace;   // TACT2: the brain's step at its share of a walk; ARENA-FIX 8: a walk to a mark at its pace (1 everywhere else - AUDIT PRE-MERGE 1003 D1: the walk's step's own, so none outlives the walk)
+        dxm = dir2d[0] * sp * dt;
+        dzm = dir2d[2] * sp * dt;
       }
     }
     const r = this.collider.move(this.feet, dxm, dy, dzm, this.height, true, FOE_KEEPS_FLOOR);
@@ -2043,6 +2229,7 @@ export class EnemyAI {
     this.avoidObstaclesTimer = 0; this.checkingClockwiseTimer = 0; this.didClockwiseCheck = false; this.lastTimeWasStuck = -Infinity;
     this._acc = 0; this.knockbackSpeed = 0; this.hurtKnock = false; this.moving = false;
     this._restGrounded = false;   // AUDIT WORLD2 B12: a foe that takes the seat standing still re-grounds on its first step, not its first move
+    this._crumb = null; this._trailMode = null; this._trailT = 0;   // COMPANION-TRAIL: stood afresh, it looks afresh
   }
 
   /** FALL-HOLD (FIELD BUGS 2026-09-30b, ReynBlackwinter: "constant fps drop in overworld ... Resets after
@@ -2075,5 +2262,8 @@ export class EnemyAI {
       p[0] += offset[0]; p[1] += offset[1]; p[2] += offset[2];
     }
     this.lastGroundedY += offset[1];
+    const head = this._tac?.dash?.head;   // AUDIT TELL B10: a charge's run sweeps from where it last stood - in the world, which moved
+    if (head) { head[0] += offset[0]; head[1] += offset[2]; }
+    this._crumb = null; this._trailMode = null; this._trailT = 0;   // COMPANION-TRAIL: the trail is the layer's, begun again on the leader's jump
   }
 }

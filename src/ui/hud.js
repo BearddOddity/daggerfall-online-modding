@@ -23,6 +23,7 @@ import { drawLevelNotices } from './levelNotice.js';   // LV2: the level-up noti
 import { drawQuestHerald } from './questHerald.js';   // GUIDE3: the quest news, on the same one call
 import { drawQuestTracker } from './questTracker.js';   // GUIDE4: the quest the HUD follows, on the same one call
 import { drawRevenantCards } from './revenantCard.js';   // REVENANT-CARD: a revenant's portrait and words, on the same one call (and the presenter it registers)
+import { drawLootBanners } from './lootBanner.js';   // LOOT-BANNER: what arrived in the player's keeping, on the same one call (and the codex's door it registers)
 import { drawCrosshairAndModeIcon, crosshairCentreY } from './hudCrosshair.js';   // U38; AUDIT RETRO1 G5: the reticle's row, for the loot panel beside it
 import { playerDamageFlash } from './damageFlash.js';   // AUDIT 24 (wave 39): ShowPlayerDamage rides the one HUD call
 import { playerBloodScreen, SCREEN_SPATTER_MIN } from './bloodScreen.js';   // BLOOD2e: blood on the lens rides the same call
@@ -50,6 +51,7 @@ import { getBool } from '../systems/settings.js';   // AUDIT 28 W2: EnableArrowC
 import { getItem, isSummoned, ARROW_TEMPLATE } from '../systems/inventory.js';   // AUDIT 28 W2: GetItem(Arrow, priorityToConjured)
 import { EQUIP_SLOTS } from '../systems/equip.js';   // AUDIT 28 W2: the bow hand
 import { nativeMetrics } from './nativePanel.js';
+import { uiCanvas, onUiScreen } from './uiScreen.js';   // RETRO-UI: the HUD in the pillarbox, as DFU's CustomScreenRect lays it
 import { frameMark } from '../systems/frameClock.js';   // DISC22-C: the classic loot panel draws the frame resolved in THIS frame
 import { classicLootFrame } from '../systems/classicLootFrame.js';   // DISC22-C: a leaf - hud.js must not reach the item graph
 import { drawLootPanel } from './classicLootPanel.js';   // DISC22-C: quick loot's classic face
@@ -499,12 +501,18 @@ export function hideHudTextSurfaces(hudText = null) {
   drawQuestHerald({ hidden: true });
   drawQuestTracker({ hidden: true });
   drawRevenantCards({ hidden: true });   // REVENANT-CARD: the same door
+  drawLootBanners({ hidden: true });   // LOOT-BANNER: the same door
 }
 
 export function drawHud(renderer, canvas, art, vitals, heading01, dt = 0,
-  { font = null, cursorActive = false, reticleHidden = false, windowCoversHud = null, hudHidden = false, detected = null, playerXZ = null, gate = null, quest = null, party = null, ships = null, nodes = null, boats = null, largeHud = null, hover = null,
+  { font = null, cursorActive = false, reticleHidden = false, windowCoversHud = null, hudHidden = false, detected = null, playerXZ = null, gate = null, quest = null, wayOut = null, party = null, ships = null, nodes = null, boats = null, largeHud = null, hover = null,
     grip = null,   // CLIMB2: the enhanced climb's grip, { amount, low } or null
+    steed = null,   // STEED1: the ridden horse's breath, the same shape (systems/upkeepRuntime.js bar) - drawn in the grip's place, a rider holding no wall
     readied = null, weapon = null, weaponSheathed = true, quickUse = null, quickSwap = null, quickOffHand = null, quickSpell = null, quickSwitchHand = null } = {}) {   // PX30b: for the enhanced HUD's hand plaques; AUDIT 28 W2: the arrow counter's gate; AUDIT 64 F35: the host's previousWindow answer; QS3: the diamond's sheathe state and its two phone taps; QS6: the caption's spell chip press
+  // RETRO-UI (FIELD BUGS 2026-10-03): under retro mode's pillarbox the HUD lays out in DFU's CustomScreenRect - the
+  // pillarbox's canvas, drawn at its place (ui/uiScreen.js) - not over the black bars. Once: a UI canvas answers itself.
+  const ui = uiCanvas(canvas);
+  if (ui !== canvas) return onUiScreen(renderer, ui, () => drawHud(renderer, ui, art, vitals, heading01, dt, arguments[6]));
   // AUDIT 24 (wave 39): ShowPlayerDamage's red flash, under the bars.
   // THE FOUR HOSTS RULE, applied before the fact: drawHud is the one
   // host-agnostic call all four make, "last, over the viewmodel", so
@@ -656,6 +664,10 @@ export function drawHud(renderer, canvas, art, vitals, heading01, dt = 0,
   drawQuestHerald({ hidden: cursorActive || !hudRenderEnabled(), dt });
   drawQuestTracker({ hidden: cursorActive || !hudRenderEnabled() });   // GUIDE4: the tracker's card, the same gate and the same hide door
   drawRevenantCards({ hidden: cursorActive || !hudRenderEnabled(), dt });   // REVENANT-CARD: the same gate, its clock the frame's - no card stands on the classic skin, so this is outside its gate as the herald is
+  // LOOT-BANNER: the same gate and clock, outside the skin's gate for a reason of its own - the watcher reads and marks the
+  // pack on EVERY skin (the four hosts hand drawHud the player entity as `vitals`), so a piece found on the classic skin
+  // is not announced when the player switches to Enhanced Plus; only Plus draws a banner
+  drawLootBanners({ entity: vitals, hidden: cursorActive || !hudRenderEnabled(), dt });
   if (isEnhanced() && typeof document !== 'undefined') {
     drawLevelNotices({ hidden: cursorActive || !hudRenderEnabled() });
     drawEnhancedHud(vitals, heading01, dt, {
@@ -677,6 +689,7 @@ export function drawHud(renderer, canvas, art, vitals, heading01, dt = 0,
       playerXZ: playerXZ ?? null,
       gate: gate ?? null,   // WB1: the Oblivion Gate's scene XZ while the player stands in its ring - the compass's own mark
       quest: quest ?? null,   // GUIDE5: the tracker's quest's place, scene XZ, on the street - the compass's quest mark
+      wayOut: wayOut ?? null,   // WAYOUT1: underground, the way out along the walked trail, scene XZ (systems/wayOut.js)
       party: party ?? null,   // COMPASS-PARTY: the party's points (ui/partyMapMarks.js partyCompassPoints)
       ships: ships ?? null,   // AUDIT NAV1 (the helm): the sea's ships (scenes/navalHost.js compassShips)
       nodes: nodes ?? null,   // NODE-MARKS: the professions' nodes, each in its profession's colour (ui/nodeMarks.js nodeCompassPoints)
@@ -697,6 +710,7 @@ export function drawHud(renderer, canvas, art, vitals, heading01, dt = 0,
       quickSwitchHand: quickSwitchHand ?? null,   // MAC-R3: the main cell's hand switch
       escortBottom: escortBottomPx(canvas),   // UI3: how far down the escort faces reach (CSS px) - the status widget keeps below them
       grip,   // CLIMB2
+      steed,   // STEED1
     });
     // FE1 + AUDIT 39 F133: the escort column is not the classic skin's
     // - DaggerfallHUD adds it unconditionally (:183-185) and even the
@@ -751,7 +765,7 @@ export function drawHud(renderer, canvas, art, vitals, heading01, dt = 0,
     // it, so the bar survives the large HUD - drawn here after the
     // crosshair, the order the components are added in (:158-160).
     drawBreathBar(renderer, canvas, art, vitals, s2);
-    drawGripBar(renderer, canvas, art, grip, s2);   // CLIMB2: beside it, surviving the large HUD as it does
+    drawGripBar(renderer, canvas, art, grip ?? steed, s2);   // CLIMB2: beside it, surviving the large HUD as it does; STEED1: the horse's breath in its place
     // FE1: the escort faces survive the large HUD - the force-off
     // block (DaggerfallHUD.cs:214-220) never names escortingFaces.
     drawEscortFaces(renderer, canvas);
@@ -784,7 +798,7 @@ export function drawHud(renderer, canvas, art, vitals, heading01, dt = 0,
     drawVitalsBars(renderer, rig, skin, rects, indicators);
   }
   drawBreathBar(renderer, canvas, art, vitals, s);
-  drawGripBar(renderer, canvas, art, grip, s);   // CLIMB2
+  drawGripBar(renderer, canvas, art, grip ?? steed, s);   // CLIMB2; STEED1: the horse's breath in its place
   // Compass, bottom-right: strip window first, frame over it.
   // DaggerfallHUD.cs:254-257 sets compass.Position to
   // (screenRect.xMax - Size.x, screenRect.yMax - Size.y) and HUDCompass

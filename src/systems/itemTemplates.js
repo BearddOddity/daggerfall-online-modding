@@ -6,10 +6,10 @@
 // group's j-th entry is GROUP_TEMPLATE_INDICES[group][j]
 // (ItemHelper.GetEnumArray/GetItemTemplate).
 
-import { clampArmorVariant } from './armorMaterials.js';   // AUDIT 23 (items-6)
-import { conditionMultipliersByMaterial, valueMultipliersByMaterial, WEAPONS } from '../characters/weapons.js';   // AUDIT 23 (items-5); AUDIT 68 S27-weightForMaterial-dup: ItemBuilder's value ladder and the Weapons enum, one home each
+import { clampArmorVariant, isPlate, plateMetal } from './armorMaterials.js';   // AUDIT 23 (items-6); BAL6-GAUNTLETS: a plate piece's metal
+import { conditionMultipliersByMaterial, valueMultipliersByMaterial, WEAPONS, WEAPON_CONDITION_POOL } from '../characters/weapons.js';   // AUDIT 23 (items-5); AUDIT 68 S27-weightForMaterial-dup: ItemBuilder's value ladder and the Weapons enum, one home each; WEAPON-POOL: the one pool
 import { GROUP_TEMPLATE_INDICES } from './itemTemplatesData.js';
-import { WAGON_MODEL_ID } from './horseCartLaw.js';   // DISC24-B: the cart's picture is the wagon's model
+import { WAGON_KINDS, wagonKindOf } from './wagonKinds.js';   // WAGONS1: a wagon's picture is Mac's wagon of its kind (read at call time - wagonKinds.js reads this module's TRANSPORT_SMALL_CART)
 import TEMPLATES_JSON from '../characters/itemTemplates.json' with { type: 'json' };
 import { playerArchiveFor, resolvePaperdollRecord } from '../characters/paperdollArt.js';   // AUDIT 17f: SetRace, one home; NT3 (F006): the record law too
 import { itemDyeColor, itemDyeTarget } from './itemDye.js';
@@ -108,9 +108,11 @@ export const materialValue = (basePrice, material) => basePrice * 3 * (valueMult
 /** The item's BASE VALUE for cost math (DaggerfallUnityItem.value
  *  after ItemBuilder): weapons/plate = basePrice * 3 * mult[material];
  *  chain armor doubles; everything else is the template basePrice.
- *  Armor materials arrive as the 0x0000/0x0100/0x02xx enum. */
-export function itemBaseValue(item) {
-  const t = templateByIndex(item.templateIndex);
+ *  Armor materials arrive as the 0x0000/0x0100/0x02xx enum.
+ *  INT1: `lookup` the template reader - the item law's (systems/itemLaw.js lawTemplate) knows the rows a headless reader
+ *  never registers. */
+export function itemBaseValue(item, lookup = templateByIndex) {
+  const t = lookup(item.templateIndex);
   if (!t) return 1;
   // AUDIT 17e F14: CreateWeapon's arrow branch never applies the
   // material multiplier (ItemBuilder.cs) - an arrow is worth its
@@ -120,7 +122,7 @@ export function itemBaseValue(item) {
   if (item.group === 'Armor') {
     const m = item.material ?? 0;
     if (m === 0x0100) return t.basePrice * 2;                     // chain
-    if (m >= 0x0200) return materialValue(t.basePrice, m - 0x0200);   // plate
+    if (isPlate(m)) return materialValue(t.basePrice, plateMetal(m));   // plate (AUDIT CLAWS B2: the decode's one home)
     return t.basePrice;                                           // leather
   }
   return t.basePrice;
@@ -185,11 +187,6 @@ export const TRANSPORT_HORSE = 94;        // Transportation.Horse (template)
  *  animal archive's horse (TEXTURE.201 records 0-1 are the horses the
  *  world draws - systems/soundClips.js keys their neigh by it). */
 const BORROWED_ART_INDICES = new Set((GROUP_TEMPLATE_INDICES.Transportation ?? []).filter((i) => i !== TRANSPORT_HORSE));
-/** DISC24-B: the classic model a template's picture is baked from when it
- *  has no art of its own - the Small Cart's is the wagon itself, model
- *  41214 (systems/horseCartLaw.js WAGON_MODEL_ID, the one Horse Cart and
- *  Cargo trails behind the player). */
-const ITEM_MODEL_PICTURES = new Map([[TRANSPORT_SMALL_CART, WAGON_MODEL_ID]]);
 
 /** UseWorldTexture verbatim. */
 export function usesWorldTexture(item, template = templateByIndex(item.templateIndex)) {
@@ -220,7 +217,11 @@ export function usesWorldTexture(item, template = templateByIndex(item.templateI
  *  :651-652, C# int division). The port's plain-object factories
  *  minted none, so every torch/lantern/candle read as empty and no
  *  looted weapon carried a condition. Idempotent - an item that
- *  already has a condition (magic uses, a save round-trip) keeps it. */
+ *  already has a condition (magic uses, a save round-trip) keeps it.
+ *  WEAPON-POOL (2026-10-06): a weapon's hitPoints is the one pool every
+ *  weapon type shares (characters/weapons.js WEAPON_CONDITION_POOL),
+ *  not its row's - ammunition alone keeps the row's - and the material
+ *  scales it as before. */
 /** The OTHER SetItem law with a draw in it (DaggerfallUnityItem.cs
  *  :571): `message = (itemGroup == ItemGroups.Paintings) ?
  *  UnityEngine.Random.Range(0, 65536) : 0`. A painting's message is
@@ -235,6 +236,17 @@ export const rollPaintingMessage = (rolls = Math.random) => Math.floor(rolls() *
 /** DaggerfallUnityItem.ConditionPercentage (:460-463): `maxCondition > 0
  *  ? 100 * currentCondition / maxCondition : 100`, C# integer division. */
 export const conditionPercentage = (item) => ((item?.maxCondition ?? 0) > 0 ? Math.trunc(100 * (item.currentCondition ?? 0) / item.maxCondition) : 100);
+
+/** A piece's condition as a share of its maximum - the mend order's key, and a kit's before and after. */
+export const conditionShare = (item) => item.currentCondition / item.maxCondition;
+const wornFirst = (item) => (item.equipSlot != null ? 1 : 0);
+/** THE MEND ORDER. MEND-AIM's (2026-09-30, kurkku on Discord: "always repairing the most worn piece of equipment means
+ *  fixing arrows or random loot you picked up most of the time"), one home since MEND-WORN gave Repairs Objects the
+ *  same answer: what is WORN first - the player's own gear, never a piece of loot carried to sell - then the rest,
+ *  each the lowest share of its condition left first. A sort comparator, and the sort is stable, so two pieces at one
+ *  share keep the pack's order. Read by the repair kit (smithItems.js repairKitTargets) and Repairs Objects
+ *  (enchantments.js repairsObjectsTarget). */
+export const mendOrder = (a, b) => wornFirst(b) - wornFirst(a) || conditionShare(a) - conditionShare(b);
 
 // ---- ItemHelper.GetCustomItemsForGroup ----------------------------------
 /** FORAGE1: DFU's `customItemTemplates` by group - every LOADED mod's registered custom templates of a group, in
@@ -279,11 +291,11 @@ export function mintCondition(item) {
   if (item.maxCondition != null) return item;
   if (!Object.isExtensible(item)) return item;   // C-slice: the frozen pre-chargen stand-ins (INTERIM_WEAPON) carry no condition
   const t = templateByIndex(item.templateIndex);
-  let max = t?.hitPoints ?? 0;
+  let max = t && item.group === 'Weapons' && !isAmmunition(item) ? WEAPON_CONDITION_POOL : (t?.hitPoints ?? 0);   // WEAPON-POOL: one pool for every weapon type
   const mat = item.material;
   if (mat != null && max > 0) {
     if (item.group === 'Weapons') max = Math.trunc((max * (conditionMultipliersByMaterial[mat] ?? 4)) / 4);
-    else if (item.group === 'Armor' && mat >= 0x0200) max = Math.trunc((max * (conditionMultipliersByMaterial[mat - 0x0200] ?? 4)) / 4);
+    else if (item.group === 'Armor' && isPlate(mat)) max = Math.trunc((max * (conditionMultipliersByMaterial[plateMetal(mat)] ?? 4)) / 4);   // BAL6-GAUNTLETS: the plate decode's one home (armorMaterials.js plateMetal)
   }
   item.maxCondition = max;
   item.currentCondition = max;
@@ -295,12 +307,35 @@ export function mintCondition(item) {
  *  answers null for it) - the Small Cart's wagon. Null for every other
  *  item. */
 export function inventoryItemModel(item) {
-  return ITEM_MODEL_PICTURES.get(item?.templateIndex) ?? null;
+  // DISC24-B: the classic model a template's picture is baked from when it has no art of its own - the Small Cart's was
+  // the wagon Horse Cart and Cargo trails (model 41214); WAGONS1: Mac's wagon of its kind (ui/modelIcon.js's port door),
+  // the Small Cart's his Wagon Cart. No other template is pictured by a model.
+  if (item?.templateIndex === TRANSPORT_SMALL_CART) return WAGON_KINDS[wagonKindOf(item)].icon;
+  return null;
+}
+
+// ---- THUNDERLOCK-ART: a port-owned item's own pictures, by job ----------
+/** THUNDERLOCK-ART (2026-10-07, AUDIT SD III's companion; Mac: "The thunderlock/ammo also doesnt recieve proper artwork
+ *  in slots like the hotbar or inventory"): A CLASSIC WEAPON'S ICON IS ITS DOLL LAYER - GetInventoryTextureArchive hands
+ *  back the PlayerTextureArchive the doll draws from, which is why a classic icon carries the fist's notch - and the
+ *  port's own weapon was made the same way (tools/gunPaperdoll.mjs), so its pack tile and hotbar slot showed a doll layer
+ *  with a hole in it. A weapon of the port's OWN has pictures of its own to give, and registers them here: a provider
+ *  answers `{ archive, record }` for an item - `forPaperDoll` true on the doll, false in a list - or null, and DFU's
+ *  ladder answers as before. Registered by the item's home (systems/thunderlock.js), which imports this file. */
+const _ownImages = new Map();
+export function registerOwnItemImage(templateIndex, fn) { if (typeof fn === 'function') _ownImages.set(templateIndex, fn); else _ownImages.delete(templateIndex); }
+/** The port's own picture for an item and a job, or null for every item DFU's ladder answers. */
+export function ownItemImage(item, { forPaperDoll = false } = {}) {
+  const fn = _ownImages.get(item?.templateIndex);
+  const r = fn ? fn(item, { forPaperDoll }) : null;
+  return r && Number.isInteger(r.archive) && Number.isInteger(r.record) ? r : null;
 }
 
 export function inventoryItemImage(item, identity = undefined) {
   const t = templateByIndex(item.templateIndex);
   if (!t) return null;
+  // THUNDERLOCK-ART: a weapon of the port's own draws its own picture in a list, never its doll layer
+  { const own = ownItemImage(item); if (own) return { archive: own.archive, record: own.record, dye: itemDyeColor(item), dyeTarget: itemDyeTarget(item) }; }
   // MAC-D2 (Skibbster on Discord, 2026-09-21, with a screenshot of a
   // TOMATO on the "Small Cart" card): TRANSPORTATION HAS NO INVENTORY
   // ART, AND THE FIELDS THAT LOOK LIKE IT ARE ANOTHER ITEM'S.

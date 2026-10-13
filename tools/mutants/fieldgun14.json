@@ -49,8 +49,8 @@
   {
     "name": "FIELD-GUN14-6-a-gun-kill-drops-arrows",
     "file": "src/combat/arrowFlight.js",
-    "old": "  if (foe.entity?.items && !orbArchiveFor(m.weapon)) {",
-    "new": "  if (foe.entity?.items) {",
+    "old": "  if (foe.entity?.items && !orbArchiveFor(m.weapon) && !m.summoned",
+    "new": "  if (foe.entity?.items && !m.summoned",
     "tests": [
       "test/arrowflight.test.js"
     ]
@@ -58,8 +58,8 @@
   {
     "name": "FIELD-GUN14-7-one-host-forgets-the-pool",
     "file": "src/scenes/worldModes.js",
-    "old": "collider: () => interiorCtx?.collider, effects: interiorHitEffects })",
-    "new": "collider: () => interiorCtx?.collider })",
+    "old": "collider: () => interiorCtx?.collider, effects: interiorHitEffects, loot: interiorDropped })",
+    "new": "collider: () => interiorCtx?.collider, loot: interiorDropped })",
     "tests": [
       "test/arrowflight.test.js"
     ]

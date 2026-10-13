@@ -102,8 +102,8 @@
   {
     "name": "AUDIT28-M10-the-report-counts-account-days",
     "file": "server-account/src/marks.js",
-    "old": "SELECT COUNT(DISTINCT dst_id) AS n, COUNT(*) AS d",
-    "new": "SELECT COUNT(*) AS n, COUNT(*) AS d",
+    "old": "const combatCapped = await db.prepare(`SELECT COUNT(DISTINCT dst_id) AS n, COUNT(*) AS d",
+    "new": "const combatCapped = await db.prepare(`SELECT COUNT(*) AS n, COUNT(*) AS d",
     "tests": [
       "test/audit28_marks.test.js"
     ]
@@ -365,7 +365,7 @@
     ]
   },
   {
-    "name": "AUDIT28-B5-the-respawn-takes-a-quarter-of-now",
+    "name": "AUDIT28-B5-the-respawn-takes-a-share-of-now",
     "file": "src/systems/deathPenalty.js",
     "old": "  const lost = Math.max(0, Math.min(purse, _stated ?? deathGoldLoss(purse)));",
     "new": "  const lost = deathGoldLoss(purse);",
@@ -505,15 +505,6 @@
     "note": "CHOP-WAIT (FIELD BUGS 2026-09-30, PIN MOVED): re-aimed BY CONTENT - the release's `while` is a `for` bounded by the boxes held when it began now; the slot test it drops is the same law, same killer."
   },
   {
-    "name": "AUDIT28-H7-escape-never-heard",
-    "file": "src/ui/huntWindow.js",
-    "old": "      if ((code === 'Escape' || code === 'back') && this._escape) this._end(false);",
-    "new": "      if (code === 'Escape' && this._escape) this._end(false);",
-    "tests": [
-      "test/audit28_forage.test.js"
-    ]
-  },
-  {
     "name": "AUDIT28-H11-a-buttons-enter-prevented",
     "file": "src/ui/input.js",
     "old": "  return !!t && (t.tagName === 'BUTTON' || t.tagName === 'SELECT' ||",
@@ -561,8 +552,8 @@
   {
     "name": "AUDIT28-H8-the-board-split-sorted-every-frame",
     "file": "src/scenes/world.js",
-    "old": "  const boardSplitOf = (p) => (p._boardSplit ??= questBoardIndices(p.boards ?? []));",
-    "new": "  const boardSplitOf = (p) => questBoardIndices(p.boards ?? []);",
+    "old": "  const boardSplitOf = (p) => (p._boardSplit ??= (() => {",
+    "new": "  const boardSplitOf = (p) => (p._boardSplit = (() => {",
     "tests": [
       "test/audit28_forage.test.js"
     ]

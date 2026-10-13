@@ -12,9 +12,12 @@
 // THE FRAME a yard is laid out in is its building's own place in its town
 // (world/rmbLayout.js `recordAt` - the subrecord's origin, the same on every
 // client), in the world's axes as a room's pieces are: a piece's `pos` is
-// from there. THE LOT is the building's footprint (the box round its own
-// models) and YARD_MARGIN round it, never inside the house, never on
-// another building's footprint and (FB1001 ROAD-LOT) never on the town's
+// from there. THE LOT is the box round the building's own models and
+// YARD_MARGIN round it, never inside the house, never on another building's
+// ground - FB1009 HOME-FOOT: a building's ground is what its models' faces
+// cover seen from above (modelFootRects - its roofs, eaves and steps, never a
+// wall), not its box, so the open corner of an L or the forecourt a
+// Hammerfell house's door opens onto is its yard - and (FB1001 ROAD-LOT) never on the town's
 // road or a path - the pixel's own road tiles: the client measures it (the
 // service has no town to measure in) and the decorator refuses a piece off
 // it, its edges marked while a piece is placed (along the road's side where
@@ -36,20 +39,106 @@
 // outside, is a tab of the yard's panel (ui/decorPanel.js), its look tried on
 // the house as it is chosen and written when it is painted.
 //
+// YARD-LIGHT (2026-10-07, Discord through Mac - a lamp post and a torch in
+// a yard at night, dark: "i wish lights worked outside.."): A YARD'S LAMP IS
+// THE TOWN'S. A yard's piece carries no light of its own (net/decorLaw.js -
+// "an outdoor lamp is the town's"), and nothing lit it as the town either, so
+// a lamp post placed outside stood dark beside the street's lit ones. Now a
+// TEXTURE.210 flat standing in a yard lights as Daggerfall lights every one
+// standing in a town block (RMBLayout.AddLight, world/cityLights.js): the
+// DaggerfallLight [City] at the flat's top, in the town lanterns' hours,
+// colour and flicker, ranked with the street's own (yardLampOf, `lamps`;
+// scenes/world.js). Nothing is stored and nothing is switched: a lamp placed
+// before this lights as it stands. AUDIT YARD-LIGHT: a yard lights its first
+// YARD_LAMPS_MAX lamps (the densest Daggerfall block stands eight), hung the
+// town's own height above the picture, its reach scaled with the piece - and
+// no distance cuts one: the night's one selection ranks it with the street.
+//
 // Online alone - a yard is an online home's. Not a DFU member. Ledger A.
 // ═══════════════════════════════════════════════════════════════════
 
-import { createDecorRoom } from './decorRoom.js';
+import { createDecorRoom, decorBoxSeen, DECOR_DRAW, DECOR_SKIP } from './decorRoom.js';   // YARD-RANGE: a piece too small to see
+import { YARD_RANGE_TIERS, YARD_RANGE_DEFAULT, yardRangeOf, YARD_DRAW_M } from '../net/yardRange.js';   // YARD-RANGE: how far a stranger's yard is drawn
 import { createDecorTool } from './decorTool.js';
-import { decorYardPieceOf, DECOR_YARD_CAP } from '../net/decorLaw.js';
+import { decorYardPieceOf, DECOR_YARD_CAP, decorYardHighOk, DECOR_YARD_HIGH_WHY } from '../net/decorLaw.js';   // YARD-HEIGHT: how high a piece stands, and its words
 import { homeLookRecords } from '../world/homeLook.js';   // HOME-LOOK (AUDIT): the styles a roof's or a door's family holds
 import { onPathTile } from '../player/exteriorSurface.js';   // FB1001 ROAD-LOT: PlayerMotor.OnPathTile - Daggerfall's own road tiles
 import { RMB_TILE_SIDE } from '../world/locationEntrance.js';   // FB1001 ROAD-LOT: RMBLayout.RMBTileSide, a ground tile's side
 import { TERRAIN_TILE_DIM } from '../world/terrainSurface.js';
-import { homeOutsideKept, homeYardWhere } from '../systems/onlineHomes.js';   // GUILD-YARD: a hall's keepers keep its outside
+import { homeOutsideKept, homeYardWhere, homeCandidate } from '../systems/onlineHomes.js';   // GUILD-YARD: a hall's keepers keep its outside
+import { homeDecorShown } from '../net/homeVoteLaw.js';   // HOME-VOTE: a shunned home's yard stands for its insiders alone
+import { createYardNature, isNaturePiece, yardNatureFlat, yardTreeSet } from './yardNature.js';   // DECOR-OUTDOOR: a yard's trees and plants, in its town's season; DECOR-LPT: as Low Poly Trees' own
+import { remapSubMeshes } from '../world/texRemap.js';   // DECOR-OUTDOOR: a yard's models in its town's climate
+import { applyClimate } from '../world/climateSwaps.js';
+import { isNatureArchive, BLOCK_FLATS_OFFSET_Y } from '../world/rmbFlats.js';   // AUDIT YARD-LIGHT: and how far the town's flats stand below their lights
+import { LIGHTS_ARCHIVE, CITY_LIGHT_RANGE, CITY_LIGHT_INTENSITY, CITY_LIGHT_COLOR } from '../world/cityLights.js';   // YARD-LIGHT: the town's lantern
+import { GLOBAL_SCALE } from '../world/meshReader.js';
+import { transformedAabb } from '../render/frustum.js';   // FB1009 HOME-FOOT: a model's ground where its placement stands it
 
-/** AUDIT: how far from the eye a yard's pieces are drawn, metres (its flats stand in the billboard pass's own cull). */
-export const YARD_DRAW_M = 300;
+/** YARD-LIGHT: the light a yard's lamp gives - the town's lantern's (DaggerfallLight [City]: range 18, intensity 1,
+ *  white). The world host lights it as it lights theirs: the town lanterns' colour (CITY_LIGHT_COLOR_F32) and their
+ *  flicker, at the lamp's own reach (yardLampRows). */
+export const YARD_LAMP = Object.freeze({ range: CITY_LIGHT_RANGE, intensity: CITY_LIGHT_INTENSITY, color: CITY_LIGHT_COLOR });
+/** AUDIT YARD-LIGHT (L1): HOW MANY OF A YARD'S LAMPS LIGHT - the most TEXTURE.210 flats any Daggerfall town block stands
+ *  (eight, in GRVEAL01, GRVEAS01, GRVEAM01, CUSTAA02 and CUSTAA04 of the 920 RMB blocks; most stand three to five).
+ *  A yard holds sixty pieces: sixty lamps round one lot summed nine times the brightest ground in any Daggerfall block,
+ *  put the street's lanterns out of the classic set's sixteen, and looped a lane fragment over all forty-eight lights.
+ *  The first eight a yard stands light (decorRoom.js pushLights - the order they were placed); the rest stand unlit,
+ *  as every yard lamp stood before YARD-LIGHT. */
+export const YARD_LAMPS_MAX = 8;
+/** AUDIT YARD-LIGHT (L5): how far above its picture's top the town hangs a lantern's light - RMBLayout sinks a block's
+ *  flats by blockFlatsOffsetY and never their lights (0.15 m), so a yard's lamp hangs as far above its own. */
+export const YARD_LAMP_RAISE = -BLOCK_FLATS_OFFSET_Y * GLOBAL_SCALE;
+/**
+ * YARD-LIGHT: THE LIGHT A YARD'S PIECE GIVES (decorRoom.js `lampOf`) - a TEXTURE.210 flat's is the town's lantern, hung
+ * where the town hangs its own over a picture of its size (collectCityLights: the record's height plus the picture's -
+ * the drawn top and YARD_LAMP_RAISE above it); anything else gives none, and neither does a flat whose picture has not
+ * stood yet (`size` null). AUDIT YARD-LIGHT (L6): a piece scaled is the lamp scaled - its picture, its light's height
+ * above its foot and its reach alike, so it lights its ground as the town's lamp lights its own (the reach kept, a 4 m
+ * lamp post scaled four times stood its light sixteen metres up and lit next to nothing under it). The light carries
+ * its flicker slot (yardLampSlot - once, here, never a frame).
+ */
+export function yardLampOf(piece, size) {
+  if (piece?.flat?.[0] !== LIGHTS_ARCHIVE || !(size?.h > 0)) return null;
+  const k = piece.scale > 0 ? piece.scale : 1;
+  return { light: { ...YARD_LAMP, range: YARD_LAMP.range * k, slot: yardLampSlot(piece.id) }, lift: size.h + YARD_LAMP_RAISE * k };
+}
+/** YARD-LIGHT: the town's flicker slot a yard's lamp takes (CityLightAnimator), named by its piece - FNV-1a of the id -
+ *  so it keeps its own flicker whatever else stands (LA-LIGHTS1's law for the street's lanterns). */
+export function yardLampSlot(id) {
+  const s = String(id ?? '');
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return h >>> 0;
+}
+/**
+ * AUDIT YARD-LIGHT (L3, L4): THE YARDS' LAMPS AS THE NIGHT'S SCENE LIGHTS - pushed onto `out` (the world host's `csaLit`)
+ * as rows refilled in place from `rows` (PERF-LIGHTS' law: a night frame makes nothing for its lanterns): each lamp's
+ * place, the town's flicker at its slot (`animRanges`, read after the animator's tick) at the lamp's own reach, and the
+ * town lanterns' `color`. Answers `out`.
+ */
+export function yardLampRows(lamps, rows, animRanges, color, out) {
+  for (let i = 0; i < lamps.length; i++) {
+    const l = lamps[i];
+    const e = rows[i] ?? (rows[i] = { x: 0, y: 0, z: 0, range: 0, color: null });
+    e.x = l.x; e.y = l.y; e.z = l.z;
+    e.range = animRanges[l.slot % animRanges.length] * (l.range / CITY_LIGHT_RANGE);
+    e.color = color;
+    out.push(e);
+  }
+  return out;
+}
+
+/** AUDIT: how far from the eye a yard's pieces are drawn, metres - YARD-RANGE: its flats too (net/yardRange.js, its home). */
+export { YARD_DRAW_M };
+export { YARD_RANGE_TIERS, YARD_RANGE_DEFAULT, yardRangeOf };   // YARD-RANGE: the Other players card's law (net/yardRange.js)
+/**
+ * YARD-RANGE: THE SMALLEST A YARD'S PIECE IS DRAWN - half its size over its distance from the eye (decorRoom.js
+ * decorPieceSeen): a piece a metre across stands to 150 m, a chair's half-metre to 75 m, a cup's ten centimetres to 15
+ * m - about five pixels tall on a 1080-line screen at the default field of view, its draw and its shadow record skipped
+ * past it. The yard the owner stands in is never cut (they are placing in it).
+ */
+export const YARD_MIN_ANGLE = 1 / 300;
 /** How far past the house's footprint its lot runs, metres. */
 export const YARD_MARGIN = 6;
 /** How far outside its lot the owner may still stand and open the yard's decorator. */
@@ -61,8 +150,24 @@ export const YARD_MARK_HIGH = 1;
 /** A town's yards, believed this long; an unanswered ask waits this long before the next. */
 export const YARD_TOWN_TTL_MS = 60_000;
 export const YARD_RETRY_MS = 10_000;
+/**
+ * YARD-SHED (2026-10-06, the account service down - "D1 DB is overloaded. Requests queued for too long."): A TOWN'S
+ * YARDS ARE ASKED ONLY WITHIN REACH, AND A FAILED ASK BACKS OFF. Every built pixel's town was asked every minute - the
+ * whole streaming grid's, where a yard is drawn only within YARD_DRAW_M of the eye - and a failed ask again every
+ * YARD_RETRY_MS, so a database too slow to answer was asked six times as often: 3.0 million asks a day, 577 of the 930
+ * requests the service saw in 45 s of the outage. Now a town is asked while one of its homes stands within YARD_ASK_M of
+ * the player's feet (its yards drawn before they are in sight), and each failure in a row doubles the wait, to
+ * YARD_RETRY_MAX_MS.
+ */
+export const YARD_ASK_M = YARD_DRAW_M + 200;
+export const YARD_RETRY_MAX_MS = 300_000;
+/** The wait before a town's next ask after `n` failures in a row (ms). */
+export const yardRetryMs = (n) => Math.min(YARD_RETRY_MAX_MS, YARD_RETRY_MS * 2 ** Math.max(0, n - 1));
 /** How often the yards are brought in line with the town, seconds. */
 export const YARD_SYNC_S = 0.5;
+/** YARD-MERGE: how many yards' models are merged in one frame (decorRoom.js DECOR_MERGE_SETTLE_MS) - a town streaming in
+ *  stands every yard at once, and its merges are spread a frame each. */
+export const YARD_MERGES_A_FRAME = 1;
 /** What the decorator says of a piece off the lot, in the house, or on another building's ground. */
 export const YARD_OFF_LOT = 'Outside your lot - keep it within the marked edge.';
 export const YARD_IN_HOUSE = 'That is inside your house - place it in the yard around it.';
@@ -73,21 +178,92 @@ export const YARD_IN_HALL = "That is inside the hall - place it in the hall's ya
 export const YARD_HALL_FULL = `The hall's yard already holds ${DECOR_YARD_CAP} pieces.`;
 /** FB1001 ROAD-LOT: what the decorator says of a piece on the town's road or a path. */
 export const YARD_ON_ROAD = 'That is the road - keep the street and its paths clear.';
+/** YARD-HEIGHT: what the decorator says of a piece standing higher than a yard's may (net/decorLaw.js DECOR_YARD_HIGH) -
+ *  AUDIT Y3: the service's own refusal's sentence. */
+export const YARD_TOO_HIGH = DECOR_YARD_HIGH_WHY;
 /** How far into a wall's (or a road's) ground a piece may reach and still stand clear of it - touching is not in it. */
 export const YARD_EDGE_PAD = 0.05;
+/** FB1009 HOME-FOOT: the side of the cells a model's ground is measured in, metres (half Daggerfall's 0.8 m wall step). */
+export const YARD_FOOT_CELL = 0.4;
+
+/**
+ * FB1009 HOME-FOOT (the Discord, "Property Problem": "I can't place in front of my door but I can place in front of
+ * another's home"): THE GROUND A MODEL STANDS ON, seen from above - every face of it that covers ground (a roof, an
+ * eave, a stair's tread, a wall's top), in `cell`-metre cells, answered as rects [x0, z0, x1, z1] in the model's own
+ * frame (each row's runs, a run the row above shares one rect). A wall covers no ground: its face seen from above is a
+ * line. The box round the model was its ground, and Hammerfell's houses are L-shaped or stand an outside stair before
+ * their door - the door opens onto open ground inside the box (ARCH3D 600, 709 and their kin: 44% of the desert's
+ * houses), so the step before the owner's own door was "inside your house" while a neighbour whose door is in its box's
+ * side stood free. A face is sampled strictly inside itself, so a roof's edge on a cell's side never marks the next.
+ */
+export function modelFootRects(positions, indices, cell = YARD_FOOT_CELL) {
+  let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+  for (let i = 0; i < positions.length; i += 3) {
+    x0 = Math.min(x0, positions[i]); x1 = Math.max(x1, positions[i]);
+    z0 = Math.min(z0, positions[i + 2]); z1 = Math.max(z1, positions[i + 2]);
+  }
+  if (!(x1 > x0) || !(z1 > z0)) return [];
+  const W = Math.ceil((x1 - x0) / cell), H = Math.ceil((z1 - z0) / cell);
+  const hit = new Uint8Array(W * H);
+  for (let t = 0; t < indices.length; t += 3) {
+    const a = indices[t] * 3, b = indices[t + 1] * 3, c = indices[t + 2] * 3;
+    const ax = positions[a], az = positions[a + 2], bx = positions[b], bz = positions[b + 2], cx = positions[c], cz = positions[c + 2];
+    if (Math.abs((bx - ax) * (cz - az) - (cx - ax) * (bz - az)) < 2e-3) continue;   // a wall: no ground under it
+    const n = Math.max(1, Math.ceil(Math.max(Math.hypot(bx - ax, bz - az), Math.hypot(cx - ax, cz - az), Math.hypot(cx - bx, cz - bz)) / (cell / 2)));
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n - i; j++) {
+        const u = (i + 1 / 3) / n, v = (j + 1 / 3) / n, w = 1 - u - v;   // inside the face, never on its edge
+        const x = ax * w + bx * u + cx * v, z = az * w + bz * u + cz * v;
+        hit[Math.min(H - 1, Math.floor((z - z0) / cell)) * W + Math.min(W - 1, Math.floor((x - x0) / cell))] = 1;
+      }
+    }
+  }
+  const out = [];
+  let open = new Map();
+  for (let r = 0; r < H; r++) {
+    const next = new Map();
+    for (let q = 0; q < W;) {
+      if (!hit[r * W + q]) { q++; continue; }
+      let e = q;
+      while (e < W && hit[r * W + e]) e++;
+      const k = q * 65536 + e;
+      const rect = open.get(k) ?? [x0 + q * cell, z0 + r * cell, Math.min(x1, x0 + e * cell), 0];
+      if (!open.has(k)) out.push(rect);
+      rect[3] = Math.min(z1, z0 + (r + 1) * cell);   // the run carried up a row
+      next.set(k, rect);
+      q = e;
+    }
+    open = next;
+  }
+  return out;
+}
+/** FB1009 HOME-FOOT: a model's ground (modelFootRects) where its placement `m` (column-major) stands it - each rect's box
+ *  in m's frame, exact for a quarter turn (every Daggerfall building's), the box round it for any other. */
+export function footRectsAt(rects, m) {
+  return (rects ?? []).map(([rx0, rz0, rx1, rz1]) => {
+    const b = transformedAabb([rx0, 0, rz0, rx1, 0, rz1], m);
+    return [b[0], b[2], b[3], b[5]];
+  });
+}
 
 /**
  * A LOT from a building's frame: `origin` its own place and `box` the box round its models ([minX, minY, minZ, maxX,
- * maxY, maxZ]), both in one frame - answered relative to the origin: `house` its footprint [x0, z0, x1, z1] and `lot`
- * that footprint grown by `margin` [x0, z0, x1, z1], and `y` the ground's height (the box's foot).
+ * maxY, maxZ]), both in one frame - answered relative to the origin: `house` that box's footprint [x0, z0, x1, z1] and
+ * `lot` the box grown by `margin` [x0, z0, x1, z1], and `y` the ground's height (the box's foot). FB1009 HOME-FOOT:
+ * `walls` the ground the house stands on - `rects` (its models' faces seen from above, world.js, in the box's frame)
+ * relative to the origin, or its box where none are known.
  */
-export function yardLot(origin, box, margin = YARD_MARGIN) {
+export function yardLot(origin, box, margin = YARD_MARGIN, rects = null) {
   if (!Array.isArray(origin) || !Array.isArray(box) || box.length < 6) return null;
   const house = [box[0] - origin[0], box[2] - origin[2], box[3] - origin[0], box[5] - origin[2]];
   if (!(house[2] > house[0]) || !(house[3] > house[1])) return null;
-  return { house, lot: [house[0] - margin, house[1] - margin, house[2] + margin, house[3] + margin], y: box[1] - origin[1] };
+  const walls = Array.isArray(rects) && rects.length ? rects.map((r) => [r[0] - origin[0], r[1] - origin[2], r[2] - origin[0], r[3] - origin[2]]) : [house];
+  return { house, walls, lot: [house[0] - margin, house[1] - margin, house[2] + margin, house[3] + margin], y: box[1] - origin[1] };
 }
 const inRect = (x, z, r, pad = 0) => x >= r[0] - pad && x <= r[2] + pad && z >= r[1] - pad && z <= r[3] + pad;
+/** HOME-LINE (FIELD BUGS 2026-10-11b): how far (x, z) stands from the nearest of these footprints [x0, z0, x1, z1] - 0 on
+ *  one, Infinity for none. */
+export const yardGapTo = (rs, x, z) => (rs ?? []).reduce((m, r) => Math.min(m, Math.hypot(Math.max(r[0] - x, 0, x - r[2]), Math.max(r[1] - z, 0, z - r[3]))), Infinity);
 /**
  * FB1001 YARD-CORNER: WHETHER THE GROUND A PIECE COVERS MEETS A RECT. `poly` is that ground - its turned box's corners in
  * order (decorTool.js footprintOf), or its one point - and `r` a footprint [x0, z0, x1, z1] taken in by `pad` (touching
@@ -112,24 +288,47 @@ export function yardFootMeets(poly, r, pad = 0) {
 }
 /**
  * WHY A PIECE CANNOT STAND at `pos` (from the frame's origin), or null: off the lot, inside the house's footprint (a
- * piece on its roof too), or on another building's (`others`, their footprints in the same frame [x0, z0, x1, z1]).
+ * piece on its roof too - FB1009 HOME-FOOT: the lot's `walls`, the ground its faces cover), or on another building's
+ * (`others`, their ground's rects in the same frame [x0, z0, x1, z1]); a piece's middle on one of a building's rects is on
+ * it, so the seam the pad leaves between two of them lets nothing through.
  * AUDIT: `foot` - the ground it covers, offsets [dx, dz] from `pos` (decorTool.js footprintOf) - is asked too: all of
  * it on the lot, none of it in the house or on another building's ground (its middle alone let a long piece straddle a
  * wall). FB1001 YARD-CORNER: "none of it" is the ground it covers, not its corners (yardFootMeets). FB1001 ROAD-LOT:
- * nor on the town's road or a path (`roads`, the road's tiles in the same frame - yardRoadsOf).
+ * nor on the town's road or a path (`roads`, the road's tiles in the same frame - yardRoadsOf). YARD-HEIGHT: nor
+ * higher over the ground than DECOR_YARD_HIGH (the frame's origin stands on the town's ground - scenes/world.js).
+ * HOME-LINE (FIELD BUGS 2026-10-11b, ShikiX3: "I can't place in front of my door but I can place in front of another's
+ * home"; afjiz: "my property line goes a little far into the property beside me"; Mac: "Split at the midline"): nor any
+ * of it nearer another building's ground than the house's own - the lot is the house grown YARD_MARGIN, and two houses'
+ * lots overlap where they stand closer than twice that, so the ground between them is split down its middle (a tie the
+ * house's). The marked edge is still the lot's rectangle.
+ * YARD-LINE (FIELD BUGS 2026-10-12b, "I am unable to build in about 50% of my yard. It says that it belongs to another
+ * property no matter what I do"): the midline is drawn to `lines` alone - the ground of the buildings that hold a lot of
+ * their own (yardLineHolder) - never to a shop's, a temple's or a tavern's, which hold no yard to split with; `others`
+ * (every building's ground) is still never stood on. Unpassed, `lines` is `others`, as HOME-LINE had it.
  */
-export function yardWhyNot(pos, lot, others = [], foot = [], roads = []) {
+export function yardWhyNot(pos, lot, others = [], foot = [], roads = [], lines = others) {
   if (!lot || !Array.isArray(pos)) return YARD_OFF_LOT;
   const [x, , z] = pos;
   const corners = (foot ?? []).map(([dx, dz]) => [x + dx, z + dz]);
   const points = [[x, z], ...corners];
   if (!points.every(([px, pz]) => inRect(px, pz, lot.lot))) return YARD_OFF_LOT;
   const ground = corners.length ? corners : [[x, z]];
-  if (yardFootMeets(ground, lot.house, YARD_EDGE_PAD)) return YARD_IN_HOUSE;
-  if ((others ?? []).some((r) => yardFootMeets(ground, r, YARD_EDGE_PAD))) return YARD_ON_OTHER;
+  const meets = (r) => inRect(x, z, r) || yardFootMeets(ground, r, YARD_EDGE_PAD);   // FB1009 HOME-FOOT: its middle, or its ground
+  if ((lot.walls ?? [lot.house]).some(meets)) return YARD_IN_HOUSE;
+  if ((others ?? []).some(meets)) return YARD_ON_OTHER;
+  const own = lot.walls ?? [lot.house];
+  if (points.some(([px, pz]) => yardGapTo(lines, px, pz) < yardGapTo(own, px, pz))) return YARD_ON_OTHER;   // HOME-LINE; YARD-LINE: a lot's holder's
   if ((roads ?? []).some((r) => yardFootMeets(ground, r, YARD_EDGE_PAD))) return YARD_ON_ROAD;
+  if (!decorYardHighOk({ pos })) return YARD_TOO_HIGH;   // YARD-HEIGHT: never a tower - the service's own law
   return null;
 }
+/**
+ * YARD-LINE (FIELD BUGS 2026-10-12b): WHETHER A NEIGHBOURING BUILDING HOLDS A LOT the ground between it and a yard is split
+ * with - a building that could be a home (onlineHomes.js homeCandidate: Daggerfall's houses, a guild's hideout never), or
+ * one a home's record stands for (a guild hall's yard). `frame` is the town pixel's (scenes/world.js: its `type` and
+ * `faction`, the building's own record), `home` the town's home at its key, or null.
+ */
+export const yardLineHolder = (frame, bk, home = null) => !!home || homeCandidate({ buildingType: frame?.type, buildingKey: bk, factionId: frame?.faction ?? 0 });
 /**
  * FB1001 ROAD-LOT: THE ROAD UNDER A LOT - every ground tile of the built pixel `p` the lot reaches that is road or path,
  * as its square [x0, z0, x1, z1] in the frame of `at` (the building's own place, pixel-local). Road is what Daggerfall
@@ -228,25 +427,50 @@ export function yardLotQuads(lot, origin, high = YARD_MARK_HIGH, roads = []) {
  * THE TOWN'S YARDS, AND THE OWNER'S DECORATOR OUTSIDE. `deps` (the world host's - scenes/world.js):
  *   api          - net/accountClient.js accountDecor: yards(mapId), place (with `yard`), move, remove
  *   homes        - systems/onlineHomes.js: homeAt(mapId, key) - whose a home is, and whether it is the character's own
- *   built()      - the world's built pixels (each `{ px, py, homeTown, homeFrames }` - homeFrames: key -> { at, box },
- *                  pixel-local)
+ *   built()      - the world's built pixels (each `{ px, py, homeTown, homeFrames }` - homeFrames: key -> { at, box,
+ *                  rects }, pixel-local; FB1009 HOME-FOOT: `rects` the ground its models' faces cover, footRectsAt's)
  *   translation(px, py) - a pixel's place in the scene now
  *   feet()       - where the player stands (scene); outside() - whether the player walks the street (no building,
  *                  no dungeon, no saddle)
  *   collider()   - the world's collider (addMesh, removeBucket, surfaceHit)
+ *   cull(box)    - PERF-YARD: the host's view test of a piece's box in the scene (decorRoom.js DECOR_DRAW / DECOR_SHADOW /
+ *                  DECOR_SKIP), or none - every piece within YARD_DRAW_M drawn
  *   meshes, renderer, getTexture, uploadRecord, uploadRecordFrame, iconUrl - the pipeline's, as a room's pool takes them
  *   character(), realm(), wallet(region) - who writes, their record's act, the purse and the home's region's account
  *   doc, win, canvas, touch, actionOf(e), locked(), cursorOff(), stick(), say(line), refusal(word), openSlot(o), now()
  *   look         - HOME-LOOK: `{ preview(mapId, key, look|undefined), season() }` - the painter's preview on the house
+ *   seasonal()   - DECOR-OUTDOOR: Seasons of the Iliac Bay's helper while it stands, else null (scenes/yardNature.js)
+ *   trees        - DECOR-LPT: the world's Low Poly Trees, `{ door, sway(proto, share) }` (scenes/yardNature.js), or null -
+ *                  a yard's tree stands as the mod's own; the world reads the yards' near sets back (`treeSets`)
+ * DECOR-OUTDOOR: a built pixel also carries its `texRemap`, `season`, `townClimate`, `flatAnims` and `forest` ({ base, archive }:
+ * its climate's nature set and the season's archive of it) - a yard's pieces stand in its town's climate and season.
  */
 export function createHomeYards(deps) {
   const now = () => deps.now?.() ?? Date.now();
+  /** YARD-RANGE: how far a stranger's yard is drawn, now (the player's choice, read every frame - it lands at once). */
+  const range = () => yardRangeOf(deps.range?.());
+  /** YARD-RANGE: how far yard `y` is drawn - the one the owner stands in always, their own to YARD_DRAW_M. */
+  const reachOf = (y) => (y === cur?.yard ? Infinity : y.kept ? YARD_DRAW_M : range());
+  function nearEye(y, eye) {
+    const reach = reachOf(y);
+    if (!eye || reach === Infinity) return true;
+    const o = originOf(y);
+    return Math.hypot(o[0] - eye[0], o[2] - eye[2]) <= reach;
+  }
+  let _eye = null;
+  /** YARD-RANGE: the host's view test after the size's (a piece too small to see is skipped before the planes are asked). */
+  const seenCull = (box) => (_eye && !decorBoxSeen(box, _eye, YARD_MIN_ANGLE) ? DECOR_SKIP : deps.cull ? deps.cull(box) : DECOR_DRAW);
+  const _batches = [];
   /** @type {Map<number, {at: number, byKey: Map<number, any[]>}>} */
   const towns = new Map();
   const asking = new Map();
+  /** @type {Map<number, {at: number, n: number}>} YARD-SHED: each town's last failure and the failures in a row */
   const failed = new Map();
-  /** @type {Map<string, {pool: any, px: number, py: number, mapId: number, bk: number, t: number[], sig: string, lot: any, frame: any}>} */
+  /** @type {Map<string, {pool: any, px: number, py: number, mapId: number, bk: number, t: number[], sig: string, src: any[] | null, srcSig: string, kept: boolean, lot: any, frame: any, entry: any, trees: Map<string, any>, treeSet: any}>} */
   const yards = new Map();
+  const yardFigs = [];   // MWNPC18 (AUDIT MWNPC16-18 D4): figures()'s one list
+  let mergesLeft = 0;   // YARD-MERGE: this frame's merges still to make (draw refills it)
+  const merge = { take: () => (mergesLeft > 0 ? (mergesLeft--, true) : false), now };
   let syncIn = 0;
   /** @type {any} the owner's own yard the decorator stands in, or null */
   let cur = null;
@@ -258,23 +482,49 @@ export function createHomeYards(deps) {
   const writes = new Map();
 
   function ensure(mapId) {
+    if (deps.heard?.() === false) return;   // WD3 (AUDIT WD3 R6): a yard is laid out on its town's layout - none asked before it is heard
     const had = towns.get(mapId);
     if (had && now() - had.at < YARD_TOWN_TTL_MS) return;
-    if (asking.has(mapId) || now() - (failed.get(mapId) ?? -Infinity) < YARD_RETRY_MS) return;
+    const f = failed.get(mapId);
+    if (asking.has(mapId) || (f && now() - f.at < yardRetryMs(f.n))) return;   // YARD-SHED: each failure in a row doubles the wait
     const asked = wrote;
     const p = Promise.resolve().then(() => deps.api?.yards?.(mapId)).then((r) => {
       const list = r?.ok ? r.data?.yards : null;
-      if (!Array.isArray(list)) { failed.set(mapId, now()); return; }
+      if (!Array.isArray(list)) { failed.set(mapId, { at: now(), n: (failed.get(mapId)?.n ?? 0) + 1 }); return; }
       const byKey = new Map();
       for (const y of list) {
         if (!Number.isSafeInteger(y?.buildingKey) || !Array.isArray(y.pieces)) continue;
-        byKey.set(y.buildingKey, y.pieces.map(decorYardPieceOf).filter(Boolean));
+        byKey.set(y.buildingKey, y.pieces.map(decorYardPieceOf).filter((p) => p && decorYardHighOk(p)));   // YARD-SWEEP: nor a tower's piece from before YARD-HEIGHT
       }
       for (const [bk, w] of writes.get(mapId) ?? []) if (w.n > asked) byKey.set(bk, w.list);   // YARD-STALE: written since it was asked
       towns.set(mapId, { at: now(), byKey });
       failed.delete(mapId);
-    }, () => { failed.set(mapId, now()); }).finally(() => { asking.delete(mapId); });
+    }, () => { failed.set(mapId, { at: now(), n: (failed.get(mapId)?.n ?? 0) + 1 }); }).finally(() => { asking.delete(mapId); });
     asking.set(mapId, p);
+  }
+
+  /** DECOR-OUTDOOR: the built pixel a yard stands in, now (a season's turn builds it again). */
+  const entryOf = (y) => deps.built?.()?.get?.(`${y.px},${y.py}`) ?? null;
+  const nature = createYardNature({ renderer: deps.renderer, getTexture: deps.getTexture, uploadRecord: deps.uploadRecord, seasonal: () => deps.seasonal?.() ?? null, trees: deps.trees ?? null });
+  /** DECOR-LPT: A YARD'S TREE JOINS ITS NEAR SET while its piece stands (`got` - yardNature.js stand's answer, `live()`
+   *  whether the piece still stands as it was asked), and leaves it with the piece: the room lets go of what a stand holds
+   *  (`release`), the tree with it. A stand the piece outlived plants nothing - an older answer landing after a newer one
+   *  would stand in its place - and a release takes only the tree it planted. */
+  function plantTree(y, id, got, live) {
+    if (!got?.tree || !live()) return got;
+    const { tree, release } = got;
+    y.trees.set(id, tree);
+    y.treeSet = null;
+    return { ...got, release: () => { if (y.trees.get(id) === tree) { y.trees.delete(id); y.treeSet = null; } release?.(); } };
+  }
+  /** DECOR-OUTDOOR: A YARD'S MODEL IN ITS TOWN'S CLIMATE - its swaps written into the pixel's own table (the one the yard
+   *  draws with, `remapOf`), by the town's climate and season, as the town's own models' are (scenes/world.js
+   *  buildPixelNow's remapSubMeshes): the table held only the swaps of the models the town itself stood, so a fence the
+   *  town never stood drew in another climate's wood. */
+  function climateOf(y, gpu) {
+    const p = entryOf(y);
+    if (!p?.texRemap || p.townClimate == null) return null;
+    return remapSubMeshes(gpu?.subMeshes, p.texRemap, (a, r) => applyClimate(a, r, p.townClimate, p.season), { getTexture: deps.getTexture, uploadRecord: deps.uploadRecord });
   }
 
   /** The world point a yard's frame stands at, now. */
@@ -284,10 +534,23 @@ export function createHomeYards(deps) {
     return [t[0] + f.at[0], t[1] + f.at[1], t[2] + f.at[2]];
   };
   function makeYard(key, p, bk, frame) {
-    const y = { key, px: p.px, py: p.py, mapId: p.homeTown, bk, frame, t: [...deps.translation(p.px, p.py)], sig: '', lot: yardLot(frame.at, frame.box), pool: null };
+    const y = { key, px: p.px, py: p.py, mapId: p.homeTown, bk, frame, t: [...deps.translation(p.px, p.py)], sig: '', src: null, srcSig: '', kept: false, lot: yardLot(frame.at, frame.box, YARD_MARGIN, frame.rects), pool: null, entry: p, trees: new Map(), treeSet: null };
     y.pool = createDecorRoom({
       meshes: deps.meshes, renderer: deps.renderer, getTexture: deps.getTexture, uploadRecord: deps.uploadRecord, uploadRecordFrame: deps.uploadRecordFrame,
       collider: () => deps.collider?.() ?? null, origin: () => originOf(y),
+      // YARD-LIGHT: a lamp lights as the town's (yardLampOf) - the room's machinery mounts it when its picture stands, moves
+      // it with a recentre (restand) and takes it down with the piece; `lamps` reads them in the order the pieces stand
+      lampOf: yardLampOf,
+      merge,   // YARD-MERGE: a yard's models one mesh once it settles, a frame's budget at a time
+      flatAnims: () => entryOf(y)?.flatAnims ?? null,   // DECOR-OUTDOOR: a street's animal or flame moves as its town's own (the pixel's animator, ticked with it)
+      prepareModel: (gpu) => climateOf(y, gpu),   // DECOR-OUTDOOR: its town's climate
+      // DECOR-OUTDOOR: a tree or a plant in its town's season - the climate's own, drawn as its pixel draws its nature;
+      // DECOR-LPT: a tree Low Poly Trees stands, into the yard's near set while it stands
+      standFlat: (piece, at, live) => {
+        if (!isNaturePiece(piece)) return null;
+        const pe = entryOf(y);
+        return nature.stand(piece, at, { season: pe?.season ?? 0, natureArchive: pe?.forest?.archive ?? null, live }).then((got) => plantTree(y, piece.id, got, live));
+      },
     });
     yards.set(key, y);
     return y;
@@ -295,26 +558,55 @@ export function createHomeYards(deps) {
 
   /** THE YARDS BROUGHT IN LINE with the town: each home's pieces stood in its pixel (again where the town's answer
    *  changed, or the world recentred), a pixel gone taken down with its yards. */
+  /** YARD-SHED: whether one of a town pixel's homes stands within YARD_ASK_M of the player's feet - a host that says no
+   *  feet asks as before. */
+  function withinReach(p, feet) {
+    if (!feet) return true;
+    const t = deps.translation(p.px, p.py);
+    for (const [, frame] of p.homeFrames) {
+      if (!frame?.at) return true;   // a frame without its place: asked, as before
+      if (Math.hypot(t[0] + frame.at[0] - feet[0], t[2] + frame.at[2] - feet[2]) <= YARD_ASK_M) return true;
+    }
+    return false;
+  }
   function sync() {
     const live = new Set();
+    const feet = deps.feet?.() ?? null;
     for (const [pk, p] of deps.built?.() ?? []) {
       if (!p?.homeTown || !p.homeFrames) continue;
-      ensure(p.homeTown);
+      if (withinReach(p, feet)) ensure(p.homeTown);
       const town = towns.get(p.homeTown);
       for (const [bk, frame] of p.homeFrames) {
         const home = deps.homes?.homeAt?.(p.homeTown, bk) ?? null;
-        const pieces = town?.byKey.get(bk) ?? null;
+        // HOME-VOTE: a home the town voted below zero stands no yard but for its insiders (net/homeVoteLaw.js) - its
+        // pieces taken down where they stood, and stood again the moment its votes climb
+        const pieces = homeDecorShown(home) ? town?.byKey.get(bk) ?? null : null;
         if (!home || (!pieces?.length && !homeOutsideKept(home))) continue;   // a yard stands for a home with pieces, or for its owner (GUILD-YARD: a hall's keeper)
+        if (!homeOutsideKept(home) && range() === 0) continue;   // YARD-RANGE: none of a stranger's - taken down where it stood
         const key = `${pk}:${bk}`;
         live.add(key);
         const y = yards.get(key) ?? makeYard(key, p, bk, frame);
         const t = deps.translation(p.px, p.py);
         const moved = t[0] !== y.t[0] || t[1] !== y.t[1] || t[2] !== y.t[2];
-        const sig = pieces ? JSON.stringify(pieces) : '';
-        if (moved || (sig !== y.sig && !(cur?.yard === y && busyWriting()))) {
+        // YARD-RANGE: the town's answer written out again only when it is another answer - every half second, for every
+        // home of every built town, it was two thousand pieces stringified to learn nothing had changed (the town's lists
+        // are replaced, never written into: ensure and keep)
+        if (pieces && pieces !== y.src) { y.src = pieces; y.srcSig = JSON.stringify(pieces); }
+        const sig = pieces ? y.srcSig : '';
+        y.kept = homeOutsideKept(home);
+        // DECOR-OUTDOOR: its pixel BUILT AGAIN (a season's turn, an install, a painted home leaving the merge) - every piece
+        // stood again in the new pixel's climate table, animator and season, as the town's own flats are
+        const rebuilt = y.entry !== p;
+        // AUDIT 05b A4: the owner writing this yard holds it - the pieces standing are the truth until the decorator
+        // is put away, and the town's answer waits (its `sig` unread); moved or built again meanwhile, it stands again as it
+        // stands. The rebuild stood the town's answer under the open decorator - a hall's other keeper's write the panel
+        // was holding back, a piece being moved gone from under it.
+        const holding = cur?.yard === y && busyWriting();
+        if (moved || rebuilt || (sig !== y.sig && !holding)) {
           y.t = [...t];
-          y.sig = sig;
-          y.pool.set(pieces ?? y.pool.list());
+          y.entry = p;
+          if (!holding) y.sig = sig;
+          y.pool.set(holding ? y.pool.list() : pieces ?? y.pool.list());
         }
       }
     }
@@ -329,7 +621,7 @@ export function createHomeYards(deps) {
    *  them (not only within YARD_NEAR of it), then whose house stands nearest them - never the first the town stood. */
   function ownYardHere() {
     const feet = deps.feet?.();
-    if (!feet || !deps.outside?.()) return null;
+    if (!feet || !deps.outside?.() || deps.heard?.() === false) return null;   // AUDIT WD3 R6: nor furnished
     let best = null, bestRank = Infinity;
     for (const y of yards.values()) {
       const home = deps.homes?.homeAt?.(y.mapId, y.bk) ?? null;
@@ -343,13 +635,20 @@ export function createHomeYards(deps) {
     }
     if (!best) return null;
     const { y, home } = best;
-    const others = [];
+    const others = [], lines = [];
     const p = deps.built?.()?.get?.(`${y.px},${y.py}`);
     for (const [bk, f] of p?.homeFrames ?? []) {
       if (bk === y.bk) continue;
-      others.push([f.box[0] - y.frame.at[0], f.box[2] - y.frame.at[2], f.box[3] - y.frame.at[0], f.box[5] - y.frame.at[2]]);
+      // FB1009 HOME-FOOT: a neighbour's ground is what its faces cover too (its box, where none are known)
+      const ground = f.rects?.length ? f.rects : [[f.box[0], f.box[2], f.box[3], f.box[5]]];
+      const holds = yardLineHolder(f, bk, deps.homes?.homeAt?.(y.mapId, bk) ?? null);   // YARD-LINE: the midline is a lot's holder's alone
+      for (const r of ground) {
+        const g = [r[0] - y.frame.at[0], r[1] - y.frame.at[2], r[2] - y.frame.at[0], r[3] - y.frame.at[2]];
+        others.push(g);
+        if (holds) lines.push(g);
+      }
     }
-    return { yard: y, others, roads: yardRoadsOf(p, y.frame.at, y.lot), hall: !!home.hall };   // FB1001 ROAD-LOT: the road under the lot; GUILD-YARD: a hall's
+    return { yard: y, others, lines, roads: yardRoadsOf(p, y.frame.at, y.lot), hall: !!home.hall };   // FB1001 ROAD-LOT: the road under the lot; GUILD-YARD: a hall's
   }
 
   // THE DECORATOR OUTSIDE: the room's own tool over the yard the owner stands on - its pool the yard's, its writes the
@@ -386,7 +685,14 @@ export function createHomeYards(deps) {
   const tool = createDecorTool({
     doc: deps.doc ?? null, win: deps.win ?? null, canvas: deps.canvas ?? null, touch: !!deps.touch, renderer: deps.renderer, pool, names: new Map(),
     // GUILD-YARD: a hall's yard is `hall` - a piece's half goes to the guild's treasury, never the purse (decorTool.js)
-    room: () => (cur ? { kind: 'home', yard: true, ...(cur.hall ? { hall: true } : {}), where: homeYardWhere(cur), mapId: cur.yard.mapId, buildingKey: cur.yard.bk } : null),
+    // DECOR-OUTDOOR: `natureBase` - its climate's nature set, the one its catalogue offers trees and plants of
+    room: () => (cur ? { kind: 'home', yard: true, ...(cur.hall ? { hall: true } : {}), where: homeYardWhere(cur), mapId: cur.yard.mapId, buildingKey: cur.yard.bk, natureBase: entryOf(cur.yard)?.forest?.base ?? null } : null),
+    // DECOR-OUTDOOR: and the picture a nature piece is - in the ghost and the lists - in the yard's season
+    flatAs: (flat) => (cur && isNatureArchive(flat?.[0]) ? yardNatureFlat(flat, entryOf(cur.yard)?.season ?? 0) : flat),
+    // DECOR-LPT: the ghost of a tree or a plant is the picture it will stand as - the one door its piece asks
+    flatPicture: (flat) => (cur && isNatureArchive(flat?.[0]) ? nature.picture(flat, entryOf(cur.yard)?.season ?? 0, entryOf(cur.yard)?.forest?.archive ?? null) : null),
+    // AUDIT 05b A5: and a model it draws (the ghost, the preview) in the yard's town's climate first, as its pieces stand
+    prepareModel: (gpu) => (cur ? climateOf(cur.yard, gpu) : null),
     scanDeps: () => deps.scanDeps(),
     base: () => null,
     getGpuMesh: (id) => deps.meshes.getGpuMesh(id), cpuModels: deps.meshes.cpuModels, getTexture: deps.getTexture, uploadRecord: deps.uploadRecord, iconUrl: deps.iconUrl,
@@ -400,7 +706,7 @@ export function createHomeYards(deps) {
     openSlot: (o) => deps.openSlot?.(o), closeSlot: () => {},
     say: (l) => deps.say?.(l), refusal: (w) => deps.refusal?.(w) ?? null, now,
     // HOME-YARD: the lot - a piece off it refused, its edge marked
-    placeOk: (piece, foot) => (cur ? hallWords(yardWhyNot(piece.pos, cur.yard.lot, cur.others, foot, cur.roads)) : YARD_OFF_LOT),   // FB1001 ROAD-LOT: off the road
+    placeOk: (piece, foot) => (cur ? hallWords(yardWhyNot(piece.pos, cur.yard.lot, cur.others, foot, cur.roads, cur.lines)) : YARD_OFF_LOT),   // FB1001 ROAD-LOT: off the road
     lot: () => (cur ? yardLotQuads(cur.yard.lot, originOf(cur.yard), YARD_MARK_HIGH, cur.roads) : []),   // FB1001 ROAD-LOT: the edge along the road's side
     yardCap: DECOR_YARD_CAP,
     // HOME-LOOK: the house's outside, painted from the yard's panel
@@ -443,8 +749,9 @@ export function createHomeYards(deps) {
    */
   function frame({ dt, cam, overlayUp }) {
     syncIn -= dt > 0 ? dt : 0;
-    // AUDIT: the world recentred - every yard stood again this frame, never half a second in the old place
-    if (syncIn > 0) for (const y of yards.values()) { const t = deps.translation(y.px, y.py); if (t[0] !== y.t[0] || t[1] !== y.t[1] || t[2] !== y.t[2]) { syncIn = 0; break; } }
+    // AUDIT: the world recentred - every yard stood again this frame, never half a second in the old place; DECOR-OUTDOOR:
+    // nor half a second out of its rebuilt pixel's climate and season
+    if (syncIn > 0) for (const y of yards.values()) { const t = deps.translation(y.px, y.py); if (t[0] !== y.t[0] || t[1] !== y.t[1] || t[2] !== y.t[2] || entryOf(y) !== y.entry) { syncIn = 0; break; } }
     if (syncIn <= 0) { syncIn = YARD_SYNC_S; sync(); }
     if (!tool.flying() && !tool.panelOpen()) cur = ownYardHere();   // the yard is held while the decorator is up
     else if (cur && yards.get(cur.yard.key) !== cur.yard) {
@@ -472,6 +779,35 @@ export function createHomeYards(deps) {
     }
   }
 
+  const _treeSets = [];
+  /** DECOR-LPT: THE YARDS' NEAR SETS this frame - each yard standing a tree, its set (yardNature.js yardTreeSet) where the
+   *  yard stands now (a recentre moves it with its pieces); made again only when its trees changed, so the world's near
+   *  set is gathered again only then. */
+  function treeSets() {
+    _treeSets.length = 0;
+    for (const y of yards.values()) {
+      if (!y.trees.size) continue;
+      y.treeSet ??= { ox: 0, oy: 0, oz: 0, ...yardTreeSet([...y.trees.values()]) };
+      const o = originOf(y);
+      y.treeSet.ox = o[0]; y.treeSet.oy = o[1]; y.treeSet.oz = o[2];
+      _treeSets.push(y.treeSet);
+    }
+    return _treeSets;
+  }
+
+  const _lamps = [];
+  /** YARD-LIGHT: THE YARDS' LAMPS where they stand now (scene space), for the world's lanterns in their hours
+   *  (scenes/world.js, yardLampRows). AUDIT YARD-LIGHT: each yard's first YARD_LAMPS_MAX lamps in the order its pieces
+   *  stand (L1), and every yard standing - no distance cuts a lamp (L2: a cut at YARD_DRAW_M of the yard's origin put its
+   *  lamps out at once, unfaded, beside the street's lit ones; the night's one selection ranks them with the street's,
+   *  and its cap fades them as it fades theirs). The list is refilled and answered; each lamp is the light its yard
+   *  keeps (decorRoom.js mountLight's - x, y, z, its reach and its slot). */
+  function lamps() {
+    _lamps.length = 0;
+    for (const y of yards.values()) y.pool.pushLights(_lamps, YARD_LAMPS_MAX);
+    return _lamps;
+  }
+
   return {
     frame,
     rebase,
@@ -481,19 +817,43 @@ export function createHomeYards(deps) {
     draw(r = deps.renderer) {
       let n = 0;
       const eye = deps.eye?.() ?? null;
+      const cull = deps.cull ?? null;   // PERF-YARD: the host's view test, a piece's box at a time (decorRoom.js draw)
+      mergesLeft = YARD_MERGES_A_FRAME;   // YARD-MERGE: the frame's budget
       for (const y of yards.values()) {
-        const o = originOf(y);
-        if (eye && y !== cur?.yard && Math.hypot(o[0] - eye[0], o[2] - eye[2]) > YARD_DRAW_M) continue;
-        n += y.pool.draw(r, remapOf(y));
+        if (!nearEye(y, eye)) continue;   // YARD-RANGE: the player's distance for a stranger's, YARD_DRAW_M for one's own
+        _eye = y === cur?.yard ? null : eye;   // YARD-RANGE: never the yard being placed in
+        n += y.pool.draw(r, remapOf(y), _eye || cull ? seenCull : null);
       }
+      _eye = null;
       tool.draw(r, cur ? remapOf(cur.yard) : null);
       return n;
     },
     /** The yards' flats and the flat being placed, for the world's billboard pass. */
-    batches: () => [...[...yards.values()].flatMap((y) => y.pool.batches()), ...tool.batches()],
+    /** YARD-RANGE: as the models are - within the yard's reach (they had none: every standing yard's every flat, the
+     *  whole streamed grid's), each big enough to see; refilled in place every frame. */
+    batches() {
+      _batches.length = 0;
+      const eye = deps.eye?.() ?? null;
+      for (const y of yards.values()) if (nearEye(y, eye)) y.pool.batchesSeen(_batches, y === cur?.yard ? null : eye, YARD_MIN_ANGLE);
+      for (const b of tool.batches()) _batches.push(b);
+      return _batches;
+    },
+    /** MWNPC18: the yards' figures (one of Daggerfall's people set down outside), for the street's people lane - into one
+     *  list kept (AUDIT MWNPC16-18 D4: a frame's new arrays, two a yard). YARD-RANGE: only a yard within its reach, as
+     *  its flats are (batches) - a body never stands where its picture would not be drawn. */
+    figures: () => {
+      yardFigs.length = 0;
+      const eye = deps.eye?.() ?? null;
+      for (const y of yards.values()) if (nearEye(y, eye)) for (const e of y.pool.figures()) yardFigs.push(e);
+      return yardFigs;
+    },
+    /** DECOR-LPT: the yards' 3D trees, for the world's near set (scenes/world.js lowPolyTreesFrame). */
+    treeSets,
+    /** YARD-LIGHT: the yards' lamps, for the world's lanterns. */
+    lamps,
     /** The lot's edge while a piece is placed, on the world's decal pass. */
     drawDecals: (r = deps.renderer) => tool.drawMounts(r),
-    drawPreview: () => tool.drawPreview(null),
+    drawPreview: () => tool.drawPreview(cur ? remapOf(cur.yard) : null),   // AUDIT 05b A5: in the yard's climate, as it will stand
     cameraOverride: (c) => tool.cameraOverride(c),
     flying: () => tool.flying(),
     panelOpen: () => tool.panelOpen(),

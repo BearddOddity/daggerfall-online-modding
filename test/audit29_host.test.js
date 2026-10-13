@@ -46,7 +46,7 @@ function rig({ answer = null, clear = null } = {}) {
   };
   const door = {
     account: () => 'acct-1',
-    state: async () => (r.open ? { ok: true, data: { day, character: 'c1', tracks: r.tracks, today: {}, taken: [], stores: [], caps: { harvests: 60, stores: 5000 } } } : { ok: false, error: 'prof-closed' }),
+    state: async () => (r.open ? { ok: true, data: { day, character: 'c1', tracks: r.tracks, today: {}, taken: [], stores: [], caps: { stores: 5000 } } } : { ok: false, error: 'prof-closed' }),
     pixels: async (c, px) => ({ ok: true, data: { pixels: px.map(([x, y]) => ({ x, y, state: 'none' })), dungeons: [] } }),
     harvest: async (b) => { asked.push(b); return (answer ?? (() => ({ ok: true, data: { node: b.node, kind: b.kind, material: 'metal:iron', qty: 3, xp: 22, track: { profession: 'mining', xp: 22, rank: 1 }, today: 1 } })))(b); },
   };
@@ -189,6 +189,9 @@ test('AUDIT 29 C4: a kept harvest answered through the pump says its rank\'s ris
     const v = await ready(t);
     t.face(v);
     t.host.tick(0.016);
+    const centers = () => t.entry.batches.reduce((a, b) => a + (b.centers ?? 0), 0);
+    for (let i = 0; i < 4; i++) await tick();
+    const drawnBefore = centers();
     assert.equal(t.host.press(), true);
     for (let i = 0; i < 8 && t.host.acting(); i++) { t.setInput({ attack: true }); t.host.tick(MINE_ACT.swingS + 0.01); t.setInput({}); t.host.tick(0.01); }
     for (let i = 0; i < 6; i++) await tick();
@@ -196,7 +199,8 @@ test('AUDIT 29 C4: a kept harvest answered through the pump says its rank\'s ris
     assert.ok(!t.said.some((x) => /Mining 24 -> 25/.test(x)));
     const shown = t.host.nodesOf(PX, 150).filter((x) => x.what === 'vein').length;
     assert.ok(shown > 0);
-    const drawnBefore = t.entry.batches.reduce((a, b) => a + (b.centers ?? 0), 0);
+    // GATHER-SPEED (PIN MOVED): the node went with its act - being counted is gone from the world (profBook `gone`)
+    assert.equal(centers(), drawnBefore - 3, 'its node\'s flats taken down as its act ended, its harvest kept');
     t.clock.ms += 3_000;   // its wait past: the host's pump asks it again
     for (let i = 0; i < 10 && t.book.pendingHarvests; i++) { t.host.tick(0.016); await tick(); await tick(); }
     assert.equal(t.book.pendingHarvests, 0, 'answered through the pump');
@@ -204,8 +208,7 @@ test('AUDIT 29 C4: a kept harvest answered through the pump says its rank\'s ris
     assert.ok(t.said.includes('BANNER Apprentice Miner'));
     for (let i = 0; i < 4; i++) await tick();
     assert.ok(t.book.taken(v.key, 'ore'), 'taken by the service\'s word');
-    const centers = () => t.entry.batches.reduce((a, b) => a + (b.centers ?? 0), 0);
-    assert.equal(centers(), drawnBefore - 3, 'its node\'s flats taken down - its pixel stood again by the node\'s key (VEIN_FLATS)');
+    assert.equal(centers(), drawnBefore - 3, 'its node\'s flats still down - its pixel stood again by the node\'s key (VEIN_FLATS)');
   } finally { setForagingHost(null); }
 });
 
@@ -287,17 +290,17 @@ test('AUDIT 29: the hosts by source - the seams the audit moved', () => {
   assert.match(d, /const PROF_VEIN_ONLY = Object\.freeze\(\{ only: Object\.freeze\(\['dungeon'\]\) \}\);/);
   assert.match(d, /collider\.raycastHit\(from, dir, PROF_VEIN_WALL_M, PROF_VEIN_ONLY\)/);
   assert.match(d, /if \(!Number\.isFinite\(down\)\) continue;/);
-  assert.match(d, /isGateArena\(dfLocation\) \|\| !Number\.isSafeInteger/);
+  assert.match(d, /isGateArena\(dfLocation\) \|\| isArenaFloor\(dfLocation\) \|\| !Number\.isSafeInteger/);   // ARENA2: nor the arena's floor
   // C8: nature's rect - a WoD site's too
   assert.match(src('src/scenes/herbHost.js'), /locationRect: entry\.locationRect \?\? entry\.wodSite \?\? null/);
   assert.match(src('src/scenes/mineHost.js'), /locationRect: entry\.locationRect \?\? entry\.wodSite \?\? null/);
   // C1: the host's sight, handed in
-  assert.match(w, /clear: \(from, to, underground\) => \{/);
+  assert.match(w, /clear: \(from, to, underground, interior = false\) => \{/);   // PIN MOVED (INDOOR-SKIN): and a building's walls
   // B3 + B4: the fee on the first answer; the kept withdrawals settled on every good read and on the Stores page
   assert.match(w, /if \(f\.fee > 0\) \{ deductGold\(playerEntity, f\.fee\); saveSoon\.changed\(\); \}/);   // PROF-SAVE: and the save soon
   assert.doesNotMatch(w, /!r\.data\?\.repeat\) \{? ?deductGold/);
-  assert.match(g, /if \(r\?\.ok\) \{ refreshAt = 0; restandAll\(\); if \(book\.pendingWithdrawals \|\| book\.pendingCrafts\) deps\.onSettle\?\.\(\); \}/);
-  assert.match(src('src/ui/profPages.js'), /if \(\(book\.pendingWithdrawals \|\| book\.pendingCrafts\) && p\.settle && Date\.now\(\) - _stores\.settledAt > 30_000\)/);   // PROF5 (FOUND): a kept craft settles too
+  assert.match(g, /if \(r\?\.ok\) \{ refreshAt = 0; restandAll\(\); if \(book\.pendingWithdrawals \|\| book\.pendingCrafts \|\| book\.pendingDeposits\) deps\.onSettle\?\.\(\); \}/);   // PIN MOVED (AUDIT2 BAG1 K3): and a kept deposit
+  assert.match(src('src/ui/profPages.js'), /if \(\(book\.pendingWithdrawals \|\| book\.pendingCrafts \|\| book\.pendingDeposits\) && p\.settle && Date\.now\(\) - _stores\.settledAt > 30_000\)/);   // PROF5 (FOUND): a kept craft settles too; BAG1 (PIN MOVED): and a kept deposit
   // D4: a smith's open for trade
   assert.match(m, /return interiorBuilding\.insideOpenShop === false \? null : \{ kind: 'shop', fee: FORGE_FEE \};/);
 });

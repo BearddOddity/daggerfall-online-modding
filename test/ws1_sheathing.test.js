@@ -366,7 +366,8 @@ test('WS1: the vendored archive duck and its canonical paths; the bone-source li
 test('WS1: the wiring, by source - the third-person build takes the addons and the holster, the swap re-resolves it, the three hide sites, the options, the pref, the card, the data path, the build', () => {
   const fp = rd('src/combat/fpArm.js');
   assert.match(fp, /const boneSourcePaths = werewolf \? \[\] : boneSourcesFor\(TP_BASE_MODEL, skeletonPath, archives\);/);
-  assert.match(fp, /const arm = await assembleFirstPersonArm\(\{ skeletonBytes, parts: partBytes, boneSources \}\);/);
+  // PIN MOVED (MWNPC3): the binder takes the shared parse too
+  assert.match(fp, /let arm = await assembleFirstPersonArm\(\{ skeletonBytes, parts: partBytes, boneSources, parseNif: parseNifOnce \}\);/);   // PIN MOVED (HEAD-HELD, FIELD BUGS 2026-10-12b): `let` - a helm that bound nothing assembles it again
   assert.match(fp, /hasBone: boneProbe\(skeletonBytes, boneSources\), parseNif: parseNifOnce,/);
   assert.match(fp, /ammoCount: ammoCount \?\? \(hasAmmo \? Number\.MAX_SAFE_INTEGER : 0\),/g);
   assert.equal((fp.match(/ammoCount: ammoCount \?\? \(hasAmmo \? Number\.MAX_SAFE_INTEGER : 0\),/g) || []).length, 2, 'the build and the swap');
@@ -392,7 +393,9 @@ test('WS1: the wiring, by source - the third-person build takes the addons and t
   // "null" on the card) - the switch is the tile, and the tile's write rebuilds the standing body, as the row did
   const menu = rd('src/ui/enhancedMenu.js');
   assert.doesNotMatch(menu, /prefRow\('mwSheathing'/, 'no second switch, and no null on the card');
-  assert.match(menu, /mwSheathing: async \(\) => \{\s*\n\s*if \(!morrowindDataCount\(\) \|\| !playerEntity\?\.chargenDone\) return;[^\n]*\n\s*const \{ buildArmsFor \} = await import\('\.\.\/combat\/weaponRig\.js'\);\s*\n\s*await buildArmsFor\(playerEntity\);/, 'the tile rebuilds the holster into a standing body');
+  // MW-STEEL1: the rebuild is one helper now, the Steel Helm's tile beside the sheathing's
+  assert.match(menu, /const rebuildMorrowindBody = async \(\) => \{\s*\n\s*if \(!morrowindDataCount\(\) \|\| !playerEntity\?\.chargenDone\) return;[^\n]*\n\s*const \{ buildArmsFor \} = await import\('\.\.\/combat\/weaponRig\.js'\);\s*\n\s*await buildArmsFor\(playerEntity\);/, 'the tile rebuilds the holster into a standing body');
+  assert.match(menu, /\n  mwSheathing: rebuildMorrowindBody,\n/, 'the sheathing tile takes that rebuild');
   assert.match(menu, /set: \(i\) => \{ setPref\(c\.key, i === 1\); TILE_AFTER\[c\.key\]\?\.\(\); \} \};/, 'through the prefs switch\'s one write');
   const ds = rd('src/scenes/dataSource.js');
   const loosePush = ds.indexOf('archives.push(makeLooseArchive(loose));');

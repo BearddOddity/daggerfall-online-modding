@@ -20,22 +20,26 @@
 //  - A row the mod would refuse is listed with its reason (the plaque's refused rows, AUDIT DISC7 A4) and the
 //    press says the mod's own words (boatMenuRefusal).
 //  - SHIP-PACK (2026-10-01): every hull lists "Pick up" - a ship's refused while her deed is not in the pack.
+//  - HOLD-WEIGHT (FIELD BUGS 2026-10-05c): and any boat's while her parts, her hold on them, would outweigh the bearer's most.
 
 /** The verbs, by row id. */
 export const BOAT_VERB = Object.freeze({
   helm: 'helm', board: 'board', cargo: 'cargo', pack: 'pack', variant: 'variant', status: 'status', position: 'position',
   crew: 'crew', orders: 'orders',   // SHIP-CREW: the port's own - her crew's card, her captain's orders (no box of the mod's)
   companions: 'companions',   // CREW-COMPANIONS: her hands to take ashore, or send back aboard
+  cabin: 'cabin', door: 'door',   // SAILING-CABINS: the cabin and the existing animated door
 });
 /** The rows' words. */
 export const BOAT_MENU_TEXT = Object.freeze({
   helm: 'Take the helm', leave: 'Leave the helm', board: 'Board', cargo: 'Open storage', pack: 'Pick up',
   variant: 'Change style', status: 'Status', position: 'Position', crew: 'Crew', orders: 'Give orders', companions: 'Companions',
+  cabin: 'Enter cabin', door: 'Open / close door',
 });
 /** Why a row is refused - short, for the plaque's "(why)". */
 export const BOAT_MENU_WHY = Object.freeze({
   driving: 'at her helm', passengers: 'passengers aboard', moored: 'a deed ship stays afloat', sailing: 'not at the helm',
   noDeed: 'her deed is not in your pack',   // SHIP-PACK: a ship is picked up with her deed (comeSailAway.js PackBoat)
+  tooHeavy: 'her hold is too heavy',   // HOLD-WEIGHT: parts no take could lift again (comeSailAway.js partsTooHeavy)
 });
 
 /**
@@ -46,6 +50,7 @@ export const BOAT_VERB_BOX = Object.freeze({
   helm: { box: 'drive', mode: 'grab' }, pack: { box: 'drive', mode: 'steal' }, board: { box: 'board', mode: null },
   cargo: { box: 'cargo', mode: null }, variant: { box: 'variant', mode: null }, status: { box: 'status', mode: null },
   position: { box: 'position', mode: null },
+  door: { box: 'door', mode: null },
 });
 
 /**
@@ -74,7 +79,7 @@ export function boatTriggers(root, modelOf, models) {
  * A boat of mine's rows, in the plaque's shape ({id, label, disabled, why}).
  * @param {{ boxes: Map<string, any[]>|Set<string>, packable?: boolean, sailingThis?: boolean, sailing?: boolean,
  *   aboard?: boolean, passengers?: number, variants?: boolean, naval?: boolean, crewed?: boolean, companions?: boolean,
- *   noDeed?: boolean }} s
+ *   noDeed?: boolean, tooHeavy?: boolean, cabin?: boolean, cabinWhy?: string|null }} s
  */
 export function boatMenuRows(s) {
   const has = (b) => s.boxes.has(b);
@@ -82,9 +87,14 @@ export function boatMenuRows(s) {
   if (has('drive')) rows.push({ id: BOAT_VERB.helm, label: s.sailingThis ? BOAT_MENU_TEXT.leave : BOAT_MENU_TEXT.helm });
   if (has('board') && !s.aboard && !s.sailingThis) rows.push({ id: BOAT_VERB.board, label: BOAT_MENU_TEXT.board });
   if (has('cargo')) rows.push({ id: BOAT_VERB.cargo, label: BOAT_MENU_TEXT.cargo });
+  if (has('door') && s.cabin) {
+    rows.push({ id: BOAT_VERB.cabin, label: BOAT_MENU_TEXT.cabin, ...(s.cabinWhy ? { disabled: true, why: s.cabinWhy } : {}) });
+    rows.push({ id: BOAT_VERB.door, label: BOAT_MENU_TEXT.door });
+  }
   if (has('drive')) {
     const why = !s.packable ? BOAT_MENU_WHY.moored : s.sailingThis ? BOAT_MENU_WHY.driving : (s.passengers ?? 0) > 0 ? BOAT_MENU_WHY.passengers
-      : s.noDeed ? BOAT_MENU_WHY.noDeed : null;   // SHIP-PACK: a ship whose deed is not in the pack (the runtime's deedMissing)
+      : s.noDeed ? BOAT_MENU_WHY.noDeed   // SHIP-PACK: a ship whose deed is not in the pack (the runtime's deedMissing)
+        : s.tooHeavy ? BOAT_MENU_WHY.tooHeavy : null;   // HOLD-WEIGHT: her parts heavier than the bearer's most (the runtime's partsTooHeavy)
     rows.push(why ? { id: BOAT_VERB.pack, label: BOAT_MENU_TEXT.pack, disabled: true, why } : { id: BOAT_VERB.pack, label: BOAT_MENU_TEXT.pack });
   }
   if (has('variant') && s.variants) rows.push(s.sailing ? { id: BOAT_VERB.variant, label: BOAT_MENU_TEXT.variant, disabled: true, why: BOAT_MENU_WHY.sailing } : { id: BOAT_VERB.variant, label: BOAT_MENU_TEXT.variant });
@@ -109,6 +119,7 @@ export function boatMenuRows(s) {
  */
 export function boatMenuStart(box, rows, mode) {
   if (box == null) return 0;
+  if (box === 'door' && rows.some((r) => r.id === BOAT_VERB.cabin)) return rows.findIndex((r) => r.id === BOAT_VERB.cabin);
   const verb = box === 'drive' ? (mode === 'steal' ? BOAT_VERB.pack : BOAT_VERB.helm) : box;
   return rows.findIndex((r) => r.id === verb);
 }
@@ -118,7 +129,8 @@ export const boatMenuRefusal = (why) => (why === BOAT_MENU_WHY.driving ? 'You ca
   : why === BOAT_MENU_WHY.passengers ? 'You cannot pack a boat with passengers aboard!'
     : why === BOAT_MENU_WHY.moored ? 'A ship from a deed cannot be packed - she stays where she floats.'
       : why === BOAT_MENU_WHY.sailing ? 'Not while at the helm.'
-        : why === BOAT_MENU_WHY.noDeed ? 'Her deed must be in your pack to pick her up.' : null);   // SHIP-PACK: comeSailAway.js DEED_NOT_HELD_TEXT (pinned equal)
+        : why === BOAT_MENU_WHY.noDeed ? 'Her deed must be in your pack to pick her up.'   // SHIP-PACK: comeSailAway.js DEED_NOT_HELD_TEXT (pinned equal)
+          : why === BOAT_MENU_WHY.tooHeavy ? 'Her hold is too heavy to carry her packed. Lighten it first.' : null);   // HOLD-WEIGHT: HOLD_TOO_HEAVY_TEXT (pinned equal)
 
 /**
  * The box a verb is pressed on: the one aimed at when it is that verb's (AUDIT BOAT-MENU C6: the far ladder aimed at

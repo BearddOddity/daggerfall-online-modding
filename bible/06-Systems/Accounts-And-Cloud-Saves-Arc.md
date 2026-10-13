@@ -847,6 +847,31 @@ per **account** now, at Fight Life's own figure, and the refusal is
 **429 rather than 401**: telling a rate-limited player their credentials
 are wrong sends them to reset a password that was never the problem.
 
+**ACCT-RATE-MEM (2026-10-04, the login outage).** Mac: *"You log in and
+it sends you straight to title screen"*, *"We have 300 people trying to
+log in at once"*. F12 counted the bound with an `acct:` upsert in D1 on
+**every** authenticated request, so every read the game makes - a
+town's yards each minute, a home, a token - was also a write to the one
+database. D1's own query insights on the day: **4,783,193** runs of that
+upsert, the most time of any statement, beside the session and player
+reads every request already makes. Two relay deploys (#578, #558) sent
+every player back through the door at once; D1 answered *"overloaded.
+Requests queued for too long"*, the session read failed under it, the
+service said 500, the client went back to the title, and its retries
+were more of the same load.
+
+The bound is the same - `ACCOUNT_MAX` a window per account, 429 `rate` -
+counted in the isolate's memory (`accounts.js overAccountRate`), so an
+authenticated read writes nothing. **Per isolate**: a caller spread over
+several isolates meets the ceiling in each, a looser cap by that factor,
+which an abuse ceiling can afford and a write on every read could not.
+The window only moves forward (AUDIT RENOWN1, as `overRate`); past
+`ACCOUNT_RATE_KEYS` accounts the closed windows go, and if every one is
+open all of them do - a count forgotten frees a caller early and never
+refuses one. The open doors' `login:` and `ip:` keys stay in D1: they
+are few, and must hold across isolates. Pinned by
+`test/acctratemem.test.js`.
+
 ### F13 — the session secret rode in a URL
 
 `/v1/account` read `?secret=`. The code excused it: *"it is read-only,
@@ -2393,7 +2418,7 @@ ENUMERATED** applied to the one place a grant is usually a row:
 
 | | held when |
 |---|---|
-| **Founder** | registered, and first played by `FOUNDER_UNTIL`: `min(created_at, registered_at) <= FOUNDER_UNTIL` since FOUNDER3 (it read `registered_at` alone before; 1790294400 — 2026-09-25T00:00:00Z since FOUNDER2; it was 1790121600, 2026-09-23T00:00:00Z) |
+| **Founder** | registered, and first played by `FOUNDER_UNTIL` or named in `env.FOUNDER_HANDLES` (FOUNDER5): `min(created_at, registered_at, first_played_at) <= FOUNDER_UNTIL` - 1790337600, 2026-09-25T12:00:00Z since FOUNDER5 (the end of the 24th at UTC-12); `first_played_at` since FOUNDER4 (the first contact of a row the account shares a character with, migration 0078), the two before it since FOUNDER3 (it read `registered_at` alone before; 1790294400 — 2026-09-25T00:00:00Z since FOUNDER2; it was 1790121600, 2026-09-23T00:00:00Z) |
 | **Developer** | the handle is in `env.DEVELOPER_HANDLES` |
 | **sprout** | `nowS - created_at < SPROUT_S` (two weeks) |
 | **dev** | the same list as the Developer title |
@@ -3000,6 +3025,22 @@ holds the filter to it, instead of naming one file. The walk moved from
 `relayversion.test.js` into `test/importGraph.mjs` so both Workers are
 read by the same law; the relay's hash is unchanged.
 
+**IMPORT-GRAPH1 (2026-10-10, found by AUDIT TECH1).** The walk itself had
+the same hole, one level down. It stripped comments with two regexes,
+block comments first, so a line comment carrying a stray `/*` opened a
+"block" that ran to the next `*/` and swallowed every import between.
+The account Worker bundled nine files the walk never saw -
+`systems/partyScale.js`, `books.js`, `booksData.js`, `portBooks.js`,
+`potions.js`, `lootThemes.js`, `formats/bookFile.js`, `textRsc.js`,
+`rscTable.js` - and a change to any of them deployed nothing. The walk
+now parses each file (acorn, a devDependency) and reads its imports,
+re-exports and literal `import()`s in the order they are written; a JSON
+table is a leaf, as before. The nine are in the filter, and
+`test/accountdeploy.test.js` IMPORT-GRAPH1 holds each Worker's graph to
+the files esbuild itself bundles from its entry - wrangler's bundler - so
+the walk cannot drift from the Worker again. The relay's graph is the
+same sixty files in the same order, so its hash did not move.
+
 - `server-account/migrations/0005_played.sql` — `played_s`, `played_at`.
 - `server-account/src/accounts.js` — `creditPlay`; `accountView` gains
   `registeredAt` and `playedS`.
@@ -3140,7 +3181,7 @@ patreon titles. These also recieve their own unique glyphs. The account Dutchess
   - The client gates it coming in and keeps it as a system line on every tab, drawn in the title's orange.
   - The host parses it before /red and never guards it.
 - **The roster** (the chat's online column) shows glyphs only. The title stays over the name (`ui/nameLayer.js`,
-  `net/remotePlayers.js`) and on a chat line (`badgeNodes`).
+  `net/remotePlayers.js`) - and stood on a chat line (`badgeNodes`) until TITLE-C (2026-10-12, below) took it off.
 - **Founder** is closed. It was already derived from `registered_at <= FOUNDER_UNTIL` (2026-09-23T00:00Z), so no
   account registered since then could obtain it, and every account that holds it keeps it, both held and worn. A pin
   now holds both halves.
@@ -3169,8 +3210,9 @@ Mac: "Add a dueling K/D to the profile menu and player inspect profile", kept pe
   all measured inside the statement, so two tabs cannot both slip under a bound. A refused report is `recorded: false`,
   not an error (the duel was fought; it does not count again). A self-duel is `self` (400), a winner who is no account
   `no-player` (404).
-- **The routes.** `POST /v1/duel/loss { winner }` (the session is the loser, whatever the body says) and `POST
-  /v1/duel/record { id }` (any account's two counts, the id in the body), both behind a session; `GET /v1/account`
+- **The routes.** `POST /v1/duel/loss { winner }` (the session is the loser, whatever the body says - INT8, 2026-10-09:
+  RETIRED, answered 410 `retired`; a duel's result is the relay's signed `d1` receipt at `POST /v1/duel/claim`,
+  `06-Systems/Integrity-Arc.md` 5) and `POST /v1/duel/record { id }` (any account's two counts, the id in the body), both behind a session; `GET /v1/account`
   carries the caller's own as `account.duels`. The service is `acct8`.
 - **The client** (`src/net/accountClient.js accountDuels`): the loss and the ask go only with a stored session, the
   bearer in the header. `src/net/duelRecord.js` says a record ("3 won, 1 lost (K/D 3.00)"; no losses reads the wins)
@@ -3203,7 +3245,8 @@ five guests gave one account fifty wins in a quarter of an hour, with no duel.
   only ever remove a win of its own.
 - A refused report says which bound: `why` is 'guest', 'draw', 'gap', 'pair' or 'winner', and the client's line says
   it (`net/duelRecord.js duelUncountedText`; a draw says nothing more, the duel said it).
-- Pinned in `test/duel_record.test.js` over the real migrations; `tools/mutants/auditduel1.json` A1/B5.
+- Pinned in `test/duel_record.test.js` over the real migrations; `tools/mutants/auditduel1.json` A1 (B5 retired with the
+  report itself at INT8: a duel's result is the relay's receipt, `06-Systems/Integrity-Arc.md` section 5).
 
 ## PROFILE1 — the profile mark is a portrait (2026-09-25)
 
@@ -3796,7 +3839,8 @@ it".
   - Still registered accounts only. A guest from before the cutoff holds it the moment it registers.
   - The guard on `registered_at` stays first, because D1 gives a guest a NULL `registered_at`, which `Math.min` reads as 0.
 - **Not reached.** A player who played as a guest in one browser and registered in another has two rows and nothing
-  linking them. The account's row was first seen when it registered.
+  linking them. The account's row was first seen when it registered. FOUNDER4 (2026-10-04) reaches it where the two
+  rows share a character; two rows that share none are still not linked.
 - The account service is `acct15`, and the rule takes effect on that deploy.
 - Pins: `test/founder3.test.js` (4), including the service end to end (a guest first seen before the cutoff, registered
   through the Worker after it, wears Founder on its signed token). ACC3's, TITLE-N's and SHADOW-FANG's non-founder
@@ -3833,6 +3877,141 @@ owner out. So the way back is the operator's, and it is the player's own recover
 - Pins: `test/recoverop.test.js` (4). One drives the service end to end: the operator's statement, the game's own
   recovery with the code typed without dashes, a new code, the operator's copy dead, every earlier device signed out,
   and the same account with its Founder. `tools/mutants/recoverop.json` has 7 mutants, all dead.
+
+## GUILD-GRANT — gold into a guild's treasury, awarded by the operator (2026-10-03)
+
+Mac: "Can we award the empire of tamriel guild 1.6mil gold". No route mints gold into a treasury, and on purpose: every
+gold piece in one was carried in by a member (GUILD1), and only what realm characters carried in (`realm_gold`, AUDIT
+REALM L1-F3) buys a hall or comes back out (HALL-GOLD). So an award is the operator's, written by hand, like RECOVER-OP.
+
+1. **The dry run.** Actions, then "Guild gold grant" (`.github/workflows/guild-grant.yml`), then Run workflow with the
+   guild's name, the gold (digits only: `1600000`) and apply OFF, the default. The run's summary names the guild the
+   name found - its tag, its members, its treasury and the part of it that buys a hall - and both as the award would
+   leave them. Nothing is written.
+2. **The award.** Read the summary; run again with apply on. One statement (`tools/grantGuildGold.mjs`) adds the gold
+   to the treasury AND to `realm_gold`, so it buys a hall and comes back out to a realm character like any other, and
+   the ledger's trigger (0046) writes the line in the same statement: the Guild tab reads "The developers awarded the
+   guild 1,600,000" (`GUILD_LEDGER_WORDS.grant`).
+
+- The guild is found by its name key (`guildNameKey`: case, spaces and punctuation aside), the key the service holds
+  unique. The tool takes only a name a guild could be founded with and a whole award from 1 to the treasury's cap
+  (`GUILD_TREASURY_MAX`); the award is not held to one move's cap (`GUILD_MOVE_MAX`), which is a player's. An award that
+  would take the treasury past its cap, or a name that finds no guild, fails the run and writes nothing.
+- The inputs reach the scripts as environment, never pasted into a `run:` line, and the run shares the deploy's queue,
+  so it never runs beside a migration. It creates, migrates and deploys nothing.
+- Pins: `test/guildgrant.test.js` (4). One drives the service end to end: the dry run, the award, the ledger's line, a
+  realm character's withdrawal of it. Another runs the workflow's own steps in bash over D1's answer.
+  `tools/mutants/guildgrant.json` has 11 mutants, all dead.
+
+## SD-CLEARS — who broke an Abyss Dungeon, read by the operator (2026-10-08)
+
+Mac: "The first group clear of the new abyss dungeon is done. Can you pull up all of their names?" The hub's record
+keeps only the top fighter's name and how many fought (`top`, `n`, `11-Multiplayer/Super-Dungeons.md` section 2). The
+names are this service's: one `sd_kills` row a (slot, account) the kill's receipt was claimed for (SD9b, migration
+0090). No route reads them back by slot, so the operator reads them by hand. It writes nothing.
+
+1. Actions, then "Abyss Dungeon clears" (`.github/workflows/sd-clears.yml`), then Run workflow. Leave the slot empty
+   for the first Abyss Dungeon ever broken, or type its slot (1, 2, 3 ...).
+2. The run's summary lists every Abyss Dungeon broken (its slot, how many accounts claimed it, the first claim's
+   moment), then the asked slot's names, oldest claim first: how each earned it (`dealt` or `stood`), the level the
+   fight admitted, and whether its first write granted Hourbreaker or The Turning Hour.
+
+- A row is a registered account's alone: a guest's receipt is answered `guest` and kept on its device until it
+  registers, and an account that is gone takes its rows with it. So the names can be fewer than the record's `n`, and
+  grow as late claims land. A name is the account's handle as it stands now.
+- The slot is digits only (`tools/sdClears.mjs` `sdSlot`), the input reaches the scripts as environment, and the run
+  shares the deploy's queue. It creates, migrates and deploys nothing, and a run that finds nothing fails.
+- Pins: `test/sdclears.test.js` (3). One drives the service's own claim end to end and reads the names back; another
+  runs the workflow's own steps in bash over D1's answer. `tools/mutants/sdclears.json` has 9 mutants, all dead.
+
+## SERVER-POST — the server's post, a mailbox beside the hourglass (2026-10-08, acct97)
+
+Mac: "Let's develop an ingame server mailbox that goes next to the hourglass in the pause menu. It should show
+notifications whenever players have a message. First use is to utilize it for players being granted items."
+
+A piece of the server's post is the developers' to ONE registered account: a subject, a body, and at most one item. It
+is not a letter (MAIL1, 0007): a letter is a player's and carries words alone; nothing a player can do writes a piece -
+the operator's workflow is its only sender.
+
+- **The table** (0093, `server_post`): one row a piece - `to_id` (CASCADE with the account), `batch` (the operator's name
+  for the send; UNIQUE with `to_id`, so a send run twice sends once), `sender`, `subject`, `body`, `item` (the record as
+  the game keeps one, JSON, or NULL), `sent_at`, `read_at`, `claimed_at`, `claimed_by`. The table holds the post's
+  bounds itself (CHECKs: a subject of 1 to 80, a body of 1 to 1,200, an item that is JSON) - its writer is a statement
+  typed by hand.
+- **The law** (`src/net/postLaw.js`, read by both ends and the tool): the id's shape, a send's name, the bounds (80 and
+  1,200 characters), the sender's name (*The Developers*), the box's 50, and a head as the box lists it - an item's name
+  and rarity, never its record.
+- **The routes** (`server-account/src/post.js`, behind a session, a registered account's alone - `post-needs-account`,
+  403, as the letters' wall): `GET /v1/post/box` (the newest fifty heads, a gift still waiting first and the unread
+  next - fifty newer pieces never push a waiting gift out of sight; the counts unread and unclaimed), `POST
+  /v1/post/read` (the whole piece, and its first opening stamped), `POST /v1/post/claim` and `POST /v1/post/delete`. Every
+  read, claim and throw names the piece AND its reader in one statement: `no-post` for another's id and for none.
+- **The claim is the guild vault's take.** `{ id, character, realm }` - a realm character's record asked where it stands
+  FIRST (`realmActFirst`), the item written into the record one sequence on (`prepareRealmRecord`, `giveTradeGoods`) and
+  the piece stamped claimed in the same batch, guarded (`claimed_at IS NULL`, `mustChange`). A second claim is
+  `post-claimed`; an offline character's is `realm-only`; a batch D1 dropped with the piece still waiting is `server`
+  (503 - the service's failure, never "claimed"), which the client asks again. A record that names nothing is no item:
+  `post-no-item`, and it may be thrown away. The client puts the answer's record in its pack through the wire's clamp
+  (`validLootItem`), as the vault's take does; an answer it cannot hold ends the session (`abandon`), and a join reads
+  the record, which holds it.
+- **A gift is never thrown away unclaimed** (`post-unclaimed`), nor anybody's piece but the reader's (`no-post`); a
+  claimed piece or a message alone may go - deleted as it was read, so a claim that lands between leaves it claimed.
+- **The heartbeat carries it** (`post`, SCALE4c's fourth part): the box is looked at on the letterbox's clock
+  (`POST_POLL_MS`, three minutes) while the online lane runs.
+- **The mailbox** (`src/net/serverPost.js` PostBox, `src/ui/enhancedPost.js`): an envelope left of the hourglass on the
+  pause face - online, where the host hands its box (`hooks.post`, every host forwarding it as TIMERS1's source) - with
+  a count while anything waits (a piece unread, or an item not yet claimed, each once), kept live off the box's version.
+  It opens a window on the hourglass's stage: the pieces newest first, unread and waiting gifts marked, an item named in
+  its rarity's colour; a piece opened, its words and a Claim. The notification is the count, and a line on the world tab
+  when a look finds post (`postNoticeText` - the letterbox's own manner): *"Post from The Developers: "Hour's First" - The
+  Hourlock is waiting for you. Open the mailbox beside the hourglass in the pause menu, or type /mail."* **`/mail`**
+  (and `/mailbox`) opens it on either skin and wherever the player stands - the enhanced pause face with its window open
+  (`ui/pauseDoor.js`'s door; `worldModes.js` `openPauseAt` indoors and underground), since the classic pause window has
+  no envelope. A look that set out before a claim or an open of this sitting is never taken (the gift never "Waiting"
+  again); a claim the realm never answered says so (`unknown`), never "offline"; one claim a press. The window keeps
+  its place (the piece open, the line said, the focus) across a render of the pause face (`postKeep`); the face under
+  the account window is inert, and Tab never lands on what is inert.
+- **The operator's send** (`.github/workflows/server-post.yml`, `tools/sendServerPost.mjs`): Actions, then "Server post",
+  then Run workflow with the names (comma-separated usernames), the send's name, the item (a choice of the tool's names -
+  `none` or `hourlock`; an item is minted by the game's own code, never typed), the subject and the words (`\n` a line).
+  Apply off, the default, is a dry run: the summary names the accounts found and whether each already holds this send,
+  and a name that finds no registered account fails the run. Apply on writes one piece to each, once a send an account.
+  The dry run's summary shows the words as they will be sent (`--words`, in a block of their own; a `|` in a name
+  escaped). The inputs reach the scripts as environment; the run has its OWN queue (`server-post` - a concurrency group
+  keeps one pending run, so a send sharing the deploy's would cancel a deploy waiting behind another); it creates,
+  migrates and deploys nothing.
+- Pins: `test/serverpost_service.test.js` (5), `test/serverpost_client.test.js` (8), `test/serverpost_send.test.js`
+  (4). `tools/mutants/serverpost.json` has 33 mutants, all dead.
+
+## HOURS-FIRST — the first clear's title, aura and gun (2026-10-08, acct97, world179)
+
+Mac, of the thirteen the first clear's claims named (SD-CLEARS, above): "for all the accounts here I want to grant them a
+unique different version of the aura, a title named Hour's First, and each the gilded gun".
+
+- **By name, in config** (`server-account/wrangler.toml` `HOURS_FIRST_HANDLES`, the developers' law - FOUNDER5's): the
+  thirteen - aether, ArtemisGodfrey, CycleD0se, Duck, Kobakk, MackyWackyDeeJew, mayaamano, Nirnroot, ofrizz, rosalina,
+  ShikiX3, Temegast and Terra. `titles.js` `isHoursFirst` (a handle, case aside; a guest never) grants the title
+  **Hour's First** (`hoursfirst`) and its aura **The First Hour** (`firsthour`) while listed. No glyph (a TIER_LISTS
+  entry would owe one).
+- **The title** is drawn in the first dawn's colours (`ui/playerBadge.js` `HOUR_DAWN`, `HOUR_PEARL`, `HOUR_SUN`): rose gold
+  into pearl into the dawn's white, edged in black; its one colour the rose gold (#e68d71), no other title's.
+- **The aura** is The Turning Hour's wheel cast again (`render/auraRing.js` `turningLook`, its own kind, 7): the same
+  wheel, dial and measures in the dawn's colours (`FIRST_RGB`), its dial turning FORWARD where the Remnant's turns back
+  (`firstDialAngle` - the Hour's hands set going again by the first to break it), the Hour's own mark ablaze
+  (`FIRST_BLAZE`), and the first light's rays out to the marks (`FIRST_RAY`) - the Remnant's wheel has none. Its palette
+  is shaded a step deeper (`FIRST_SHADE`) so the dawn's pale end never washes out on a lit floor.
+- **The gun** is the post's first send: migration 0094 writes each of the thirteen one piece holding the Hourlock (the
+  gilded gun, `src/systems/gilded.js` `mintHourlock`, as its drop mints it) - the tool's own statement
+  (`node tools/sendServerPost.mjs --migration hours-first`), once a send an account. It lands with the deploy that ships
+  the mailbox; each claims it into the online character they are playing. Its names and its record are FROZEN in the
+  tool (`HOURS_FIRST`, `HOURS_FIRST_RECORD`; the test holds the record to the mint's own and every name to the title's
+  list) - an applied migration never runs again. A name added to `HOURS_FIRST_HANDLES` later is sent the gun by the
+  workflow, send name `hours-first-hourlock`, item `hourlock`: once an account. After the deploy, a dry run of that send
+  over the thirteen should read "already sent: yes" for each.
+- **The relay first**: the token's vocabulary (`identityToken.js` TITLES, AURAS) is in the relay's bundle, so world179
+  deploys before acct97 mints either (a relay without them refuses the token).
+- Pins: `test/hoursfirst.test.js` (4), and the first send in `test/serverpost_send.test.js`. `tools/mutants/hoursfirst.json`
+  has 11 mutants, all dead.
 
 
 ## RAID4 — the towns defended (2026-09-28, acct17)
@@ -4040,7 +4219,10 @@ to the end.
 `src/net/legalLaw.js` holds `TERMS_VERSION` and `PRIVACY_VERSION` for both ends. Each page carries its date as
 `<time datetime>`, pinned equal to its version, and its words are pinned to a hash, so the text cannot change without
 somebody deciding whether that is a new version. To revise a document: edit the page, move its Last Updated date and its
-version together, and re-hash. The site and the account Worker deploy separately, and the site's deploy waits for the
+version together, and re-hash. BR5 (2026-10-11) renamed the operator DFO Online in both and first moved both to
+2026-10-11; AUDIT BR5 put them back: a rename of the same project under the same terms is not material, and a new
+version refuses every sign-up from a build older than the service (`terms-stale`). So both stay 2026-09-28, the words
+re-hashed, and the account service is acct115 for the Patreon page's title alone (`10-UI/UI-Arc.md` BR5). The site and the account Worker deploy separately, and the site's deploy waits for the
 account service to serve the version the tree names (AUDIT PRE-MERGE 0929 T2), so the form never meets a Worker older
 than itself; a desktop build older than the service is told the documents changed, and to reload the game or update
 the app.
@@ -4345,3 +4527,1016 @@ players can also equip/unequip their glyphs".
 - **The card**: each glyph on the account card is a button now - full strength while shown, faded while hidden.
   Others see the change from the next hello, as a title. A relay before world143 shows every glyph.
 - Pins: `test/glyphwear.test.js`; `test/titlen.test.js` (MOD2's list).
+
+## AEGIS — Sureme's own: the Aegis of Oblivion, its glyph and the Oblivion Ward (2026-10-03, world160, acct73)
+
+The owner: "For the account named Sureme ... We are going to develop a title, glyph and new custom aura for this user.
+Title: Aegis of Oblivion. Theme: Purple. The references posted are for the glyph design and the aura design." Sureme's
+three references, all from Path of Exile: a sigil for the glyph ("this symble is from path of exile, i play that game
+alot" - a tall pillar and two short ones through a ring, over a black splash), and two ground marks for the aura ("i
+want one that is a full circle" - a whole violet circle with four small marks; "but with some stuff like this one" -
+broken arcs of violet runic script: beads on the line, curled ends, combs and a cross).
+
+- **The grant** (`server-account/wrangler.toml`, `server-account/src/titles.js`): `AEGIS_HANDLES = "Sureme"`, TITLE-N's
+  handle-list law (`TIER_LISTS.aegis`, `TIER_GLYPH.aegis`), and the FIRST list that grants an aura too:
+  `TIER_AURA = { aegis: 'oblivionward' }`. Until now an aura was only ever BOUGHT (WB9g's insignia, a sale recorded on
+  the row); this one is DERIVED, as a glyph is - held while the handle is listed and gone from the next token once it
+  is not, nothing written to the row. So `aurasHeld`, `auraWorn` and `auraRefusal` take the config (`env`) as
+  `titlesHeld` does, and every caller passes it: the wardrobe (`wardrobeOf`), the aura door (`accounts.js equipAura`)
+  and the mint's `au` (`index.js`). A list's aura is offered before any the Broker sold. A caller without the config
+  reads the Broker's alone, exactly as before. Never a guest's. No staff command rides it.
+- **The vocabulary** (`src/net/identityToken.js`, in the relay bundle): `aegis` joins TITLES and GLYPHS last, and
+  `oblivionward` joins AURAS after `dagonfire`. A relay before it refuses a token carrying any of the three
+  (`claimsValid`), so the relay is **world160** and the account service **acct73**; the account deploy waits for the
+  relay's `/health` to serve world160 (SHADOW-FANG's AUDIT B1). No frame changes shape.
+- **The title** (`src/ui/playerBadge.js`): "Aegis of Oblivion" in a gradient out of the void into the ward's light -
+  #7030e0, #b24dff, #ecdcff, every stop a violet - edged in black (`TITLE_EDGE`), its middle stop the colour a face
+  without gradients uses (the card's button, the classic face) and the glyph's. Chosen over a night sky, a day sky,
+  stone, grass and snow at 13 to 64 px beside the Apostle's periwinkle and the Protector's royal purple: the reverse
+  (light into the void) read as a bare name over a night sky and was lost on snow; a paler run lost its light end on
+  snow; a near-black start edged in violet was lost on the night sky. This one reads violet on all five.
+- **The glyph**: the reference drawn after it, not traced - a pillar risen up the middle, a short pillar each side, and a
+  wide ring lying across all three below the middle with the side pillars at its two ends ("I O I", the middle risen),
+  stroked in the title's violet; and the reference's black splash as `GLYPH_DETAIL` - five tendrils hung from the ring's
+  foot, mirrored, the outer two swept out past the pillars, filled in the abyss's violet (#4d1a94, darker than any stop
+  of the word). The reference's squared spiral read as a flag at a name's size and is left out; a skirt of straight
+  spikes read as an upside-down crown, and the tendrils in the title's lilac as a crown again. `O` on the classic face
+  (the ring, and Oblivion's initial); "Aegis of Oblivion" on the account card.
+- **The Oblivion Ward** (`src/render/auraRing.js`, the aura pass WB9g built): the same program draws both auras, the
+  aura picked per wearer (`uAura`, AURA_LOOK - its kind, its ring's radius 0.95 m against the fire's 0.85, its wall's
+  height 0.42 m). THE GROUND: the ring WHOLE - one line of light, lilac-white at its heart and violet round it,
+  breathing, two scribes of brighter light running round it - with a bezel of 48 fine ticks outside it turning the other
+  way; within it a ring of twelve runes in the second reference's script (`WARD_SCRIPT`: each a baseline along the ring
+  with a bead or a serif at each end, beads on the line, a comb or a chevron outward, a cross inward - no two alike),
+  turning slowly against the ring and lit one after another as if being written; four claws hung inward from the ring
+  at the diagonals (the first reference's marks), clear of the runes as they turn beneath; the abyss's violet mist
+  turning inside, gone under the feet. THE WALL: a veil of light to the shins in streaks that climb, and fourteen motes
+  rising off the ring. As it kindles it is drawn round from behind the wearer.
+- **The floating symbols** (the owner, after the first push: "Can you add like symbols that float and dissipate"): a
+  third draw, the ward's alone (`AURA_LOOK.glyphs` - the fire has none). Nine cards, each a rune of the ward's script
+  stood on end, lift off the ring and float up to the chest (WARD_GLYPH_RISE, 1.3 m), slowing toward the top, swaying,
+  drifting outward and tilting a little, always turned round the vertical to face the eye. As each climbs its strokes
+  blur and break into dust from the noise's low places up, and it fades in as it lifts off and out as it goes; then it
+  lifts again from a new place round the ring with a new rune. A flight lasts 3, 4 or 5 s (each dividing the clock, and
+  which flight it is wraps with it, so the wrap is whole); the nine are staggered, so some are always rising and some
+  always going. The flight is the vertex half's (`wardFlight`), the light the fragment half's (`wardSymbol`). Every rate is a whole number of cycles
+  over the clock, written as a division by its whole period, never a rounded decimal. THE FOUR HOSTS, untouched:
+  `scenes/world.js` owns the pass and gathers each wearer with their `aura` (auraFrame), drawing it on the street;
+  `scenes/worldModes.js` calls the same hook (`host.drawVeiledPeerBodies`) in a building and hands it to the dungeon as
+  `lateWorldDraw`, which `scenes/dungeonContext.js` calls; `scenes/exterior.js` (the fixed city) draws no peers and no
+  aura, as before WB9g - FLAGGED, unchanged.
+- **Seen**: the title and glyph in Chromium on the real name layer's sheet over the five grounds (13 to 64 px) beside
+  the Apostle, the Protector, Shadow Fang and Penitent; the ward in a real WebGL2 from above, from a third-person camera
+  and from low, at kindle 0, 0.5 and 1, and the symbols at several moments of their flights. `tools/auraProbe.mjs` now
+  draws both auras: 22/22 (the fire's 11 unchanged; the symbols lit over the ward to the chest, nothing over the fire).
+- Pins: `test/aegis.test.js` (12). `tools/mutants/aegis.json` (38, all dead). The vocabulary's exact lists in
+  `acc3titles.test.js` moved; the relay's pins moved to world160 crediting AEGIS (`auditbounty1.test.js` holds the
+  credit) and the account's to acct73. Seven older records re-aimed by content (`herald.json`, `penitent.json`,
+  `shadowfang.json`, `ribbon.json`, `wb9g.json` 3) and the version records in `soc1.json` and `gatekeys.json`.
+
+## PRIMARCH — GA00250's own: the Primarch, its glyph and the Golden Radiance (2026-10-04, world162, acct76)
+
+The owner: "The details here are for a custom title, glyph, and aura for ga00250", over GA00250's own words: "the title
+will be Primarch, the color will be that light gold color that you guys use in some places in the game menu" - with a
+screenshot of their name in the pause menu's pixel face ("that color") and a swatch - and "can the aura be a golden
+light around the character? like i've seen some rare mobs with it" (the elite foes' glow, `systems/hitFlash.js`
+ELITE_GLOW_GLSL: the sprite warmed toward gold, an edge of light round the silhouette, embers rising off it). No glyph
+was described at first; after the first push GA00250 sent a picture of a three-barred cross: "i'd like to that be the
+glyph design if possible. with the same color of the name".
+
+- **The grant** (`server-account/wrangler.toml`, `server-account/src/titles.js`): `PRIMARCH_HANDLES = "GA00250"`,
+  TITLE-N's handle-list law (`TIER_LISTS.primarch`, `TIER_GLYPH.primarch`) and AEGIS's: the second list that grants an
+  aura (`TIER_AURA.primarch = 'radiance'`), derived from the config at every ask as the Oblivion Ward is - held while the
+  handle is listed, gone from the next token once it is not, case-folded, never a guest's. Nothing else had to move:
+  AEGIS already made `aurasHeld`, `auraWorn` and `auraRefusal` read the config at every caller. No staff command rides it.
+- **The vocabulary** (`src/net/identityToken.js`, in the relay bundle): `primarch` joins TITLES and GLYPHS last, and
+  `radiance` joins AURAS after `oblivionward`. A relay before it refuses a token carrying any of the three
+  (`claimsValid`), so the relay is **world162** and the account service **acct76** (acct75 here until HOME-PRICE took it); the account deploy waits for the
+  relay's `/health` to serve world162. No frame changes shape.
+- **The title** (`src/ui/playerBadge.js`): "Primarch" in ONE colour, as asked - #d8cfae, the pixel menu's text
+  (`ui/enhancedStyle.js .px-mname`, the very rule the screenshot's name is drawn by; the screenshot's letters sample at
+  #d4ccb0 through its JPEG, the swatch at #e5e09e). A pin holds the title to that rule, so the two cannot drift. A
+  one-colour title wears every face's black text shadow (no gradient, no `TITLE_EDGE`); it read on all five grounds - a
+  night sky, a day sky, stone, grass and snow - in Chromium at 13 to 64 px. It is paler and greyer than the Founder's
+  and the Crowned's golds and warmer than the Champion's silver. (The name under it is drawn in `--bone`, #e9e4d9: the
+  two are near, which is the colour GA00250 chose.)
+- **The glyph** (GA00250's reference, drawn after it): THE THREE-BARRED CROSS - the shaft the full height up the
+  middle, a short bar near its head, the long crossbar under it (the glyph's widest), and low down a footrest as wide as
+  the head bar, slanting down to the right as the reference's does. Its widths and heights are the reference's, measured
+  off it; the shaft and bars are a little thicker (1.6 units against its 1.35) so the footrest's slant still reads at a
+  name's 13 px - chosen in Chromium over the reference's own thickness and a wider-barred one on the five grounds at 13
+  to 64 px. Filled, in "the same color of the name": the Primarch's gold, #d8cfae, the colour GA00250's name wears in
+  the menu they pointed at (the title's, as every grant's glyph is). Every bar is wound the shaft's way round, so the
+  fill is whole where they cross it. `t` on the classic face (a cross with its foot turned); "Primarch" on the account
+  card. (The first push drew the port's own glyph, a sword raised between two feathered wings; GA00250's cross replaced
+  it before merge, and world162's undeployed row was re-hashed in place for its word's comment.)
+- **The Golden Radiance** (`src/render/auraRing.js`, the aura pass WB9g built): the third look of the same program
+  (`uAura` 2, AURA_LOOK - its column's radius 0.6 m and height 2.2 m, no symbols). Light ABOUT THE BODY rather than a
+  mark at the feet. THE WALL: a column the body's width standing past the crown (the walking body is 1.8 m), lit as a
+  glowing shell is - faint where the eye looks through it across the body, brightest at its two edges where the eye
+  looks along it (the horizontal facing of its surface to the eye) - so it reads as a halo up the silhouette, never a
+  gold wash over the wearer; shafts of noise climbing it, whole to the chest and gone at its top, breathing; eighteen
+  golden motes rising its height at their own places and paces (the elite's embers). Seen from inside it - the wearer's
+  own first person - the column is not drawn (the fragment half reads the feet, `uAt`, beside the eye) and its motes are
+  dimmer: the wearer's own view is never veiled in gold. THE GROUND: a pool of the light, brightest at the feet and gone
+  before the quad's edge; a white-gold ring at the column's foot; twelve rays across the pool, turning a turn in 30 s.
+  It kindles up: the ground lights as the others' do and the column rises from the feet to past the crown. Its glow is a
+  gold a step paler than the elite's (#ffbd47) and its heart the title's own #d8cfae. Every rate is a whole number of
+  cycles over the clock (`radianceRatesWhole`), every pattern round a whole number, so no seam and no jump at the wrap.
+  THE FOUR HOSTS, untouched: the pass's hosts are AEGIS's (`scenes/world.js`, `scenes/worldModes.js`,
+  `scenes/dungeonContext.js`; `scenes/exterior.js` draws no aura - FLAGGED, unchanged).
+- **Seen**: the title and glyph in Chromium over the five grounds at 13 to 64 px; the radiance in a real WebGL2 round a
+  stand-in body from a third-person camera, from low, from above, from far, close, at half kindled, and from the
+  wearer's own eye looking level and looking down. `tools/auraProbe.mjs` now draws all three auras: 33/33 (the ring
+  whole and golden, the pool, no seam, no jump at the wrap, the column bright at its edges and faint across, dark beside
+  it and over the crown, nothing unkindled, risen to the waist at half kindled, no veil from inside).
+- Pins: `test/primarch.test.js` (11). `tools/mutants/primarch.json` (34, all dead). The vocabulary's exact lists in
+  `acc3titles.test.js` and `titlen.test.js` moved, and `aegis.test.js`'s newest-word and one-list pins (PIN MOVED); the
+  relay's pins moved to world162 crediting PRIMARCH (`auditbounty1.test.js` holds the credit), the account's to acct76.
+  Seven older records re-aimed by content, all dead (`aegis.json` 4, `herald.json`, `penitent.json`,
+  `shadowfang.json`), and the version records in `soc1.json` and `gatekeys.json`.
+
+## FOUNDER4 — Founder through a shared character (2026-10-04, acct76, migration 0078)
+
+Mac: "Before we merge this. We need to find a way to grant the founder title to everyone before the previous cut off
+date. Since people are still missing their founders title". Asked which ways (carry over a held guest session at
+sign-in; link shared characters; grant by name; move the cutoff later), Mac chose one: "Link shared characters".
+
+- **The cause.** FOUNDER3 reads Founder off when an account first played, its row's `created_at`, and said what it
+  could not reach: a player who played as a guest in one place and registered in another has two rows and nothing
+  linking them. The desktop app made that common. It is its own origin (`dagger://game`, `app/main.cjs`), so its
+  storage is not the browser's: a browser guest from before the cutoff who installed it and registered there has an
+  account first seen after the cutoff, and their play before it on a guest row nothing names. Signing in does not help
+  after the fact either - a device that signs in keeps only the new session (`ui/accountFlow.js doLogin`), and the
+  guest's secret is gone.
+- **The link** (`server-account/migrations/0078_founder_links.sql`): a CHARACTER both rows hold. A character's id is
+  minted on the player's own machine (`systems/characterId.js`, a UUID or a stamp and a random tail) and never told to
+  another player - the relay keys what it shares by a hash of the account and the id (`net/wire.js parkKeyOf`) - so a
+  character on two rows is one player's save on both. A row holds a character when the service recorded it there: a
+  cloud save of it (`saves.character_id`), its Renown track (`renown_tracks.char_id`), the realm's census of it
+  (`realm_census.char_id`), a realm character brought in from it (`realm_characters.origin_id`) or a customs pass spent
+  on it (`realm_passes.origin_id`). A realm character's own id is minted by the service for one account and links
+  nothing.
+- **The fact** (`players.first_played_at`): the earliest first play (FOUNDER3's: `created_at`, or `registered_at` where
+  earlier) of a row the account shares a character with, written only where it is EARLIER than the account's own, NULL
+  everywhere else. One hop - the row that holds the character, never a row linked through a row in between. Guests are
+  filled too, so a desktop guest linked to a browser guest from before the cutoff holds Founder the moment it registers.
+  It is a fact about when the player played, as `created_at` is, and grants nothing: `titles.js firstPlayed` reads it
+  beside the two it read, and Founder is still that against FOUNDER_UNTIL at every ask. The instant does not move and
+  nobody who holds Founder loses it. The players-column pin (`accountworker.test.js`) carries it.
+- **Once, at the deploy.** The migration gathers the holdings into a table of its own, indexed both ways, fills the
+  column in one statement and drops the table (0035's precedent). A character carried onto a new account after the
+  deploy is not linked by it; the statement can be run again by hand against the live database to count late arrivals.
+- **Not reached.** Two rows that share no character: a player who played before the cutoff and has not brought a single
+  character's save, track or realm character onto the new account, or whose old storage is gone with the characters in
+  it. Moving the cutoff, a by-name list and a sign-in carry-over were offered and not chosen.
+- The account service is still `acct76` - PRIMARCH's, undeployed, one deploy for both - and the rule takes effect when
+  that deploy applies 0078. No relay change: Founder is already in the token's vocabulary.
+- Pins: `test/founder4.test.js` (5) - the law; the migration run over a seeded database (each of the five records, the
+  earliest of several linked rows, nothing without a shared character or without an earlier one, one hop, guests
+  filled); its shape (the five sources, no table left behind); and the real Worker before and after 0078 (Founder in
+  the wardrobe and on the signed token). `tools/mutants/founder4.json` (12, all dead); three of `founder3.json`'s
+  re-aimed by content at the new `firstPlayed` (6, all dead). The acct76 pins credit FOUNDER4 beside PRIMARCH.
+
+## FOUNDER5 — Founder before the 25th on any clock, linked live, and by name (2026-10-07, acct92, migration 0087)
+
+Mac: "Can we grant every account before sept 25th the founder title. Ive tried this multiple times and its never
+worked". Asked how to reach the players no rule could prove (time zone and a name list; the cutoff moved to today;
+linking characters at every save; every account), Mac chose "Time zone + name list".
+
+- **Why four tries left people out.** FOUNDER2 to FOUNDER4 each held Founder for an account the service could PROVE
+  first played by 2026-09-25T00:00Z, and each widened the proof. Two kinds of player stayed outside every one of them.
+  The clock: 00:00Z on the 25th is 8pm on the 24th in New York and 5pm in Los Angeles, so a player in the Americas who
+  first played that evening - before the 25th on their own clock - held nothing (FOUNDER3 said so and kept the
+  instant). And no record: a player whose play before the cutoff the service never recorded - a guest's storage
+  cleared, a character never saved to the cloud, play on a device that shares no character with the account
+  (FOUNDER4's "Not reached") - cannot be proven by any rule the service can run.
+- **The clock** (`server-account/src/titles.js` FOUNDER_UNTIL): 1790337600, 2026-09-25T12:00:00Z - the end of
+  24 September on the last clock to reach the 25th (UTC-12). Twelve hours LATER than FOUNDER2's instant, so nobody who
+  held Founder loses it; every rule before it (first contact, FOUNDER4's link) is read against the new instant.
+- **The names** (`env.FOUNDER_HANDLES`, `titles.js` founderHandles and isNamedFounder): a comma list of handles in
+  `wrangler.toml`, case-insensitive, read the developers' way (handleList). A handle on it holds Founder whenever it
+  first played; a guest has no handle and holds none; a founder by the date holds it unlisted, and never twice. A list
+  in config and not a column, ACC3's law: Mac grants one by a reviewed, deployed edit, and taking a handle off takes the
+  title from the next token. Empty at ship: nobody by name yet - a player who reports it missing is added there.
+- **The link, kept live** (Mac, then: "I want to do this without my input"; `server-account/src/founderLink.js`
+  linkFirstPlay). FOUNDER4's link was written once, at 0078's deploy, and a character carried onto a new account after
+  it linked nothing until a person re-ran the statement. The same fact is now written as a character ARRIVES on an
+  account - a cloud save's new slot (`saves.js` putCard) and a customs (`realm.js` customsRealm) - for that account and
+  that character: the earliest first play of another row holding it, where earlier than the account's own. Never on
+  the token's path (about a mint a second, STORM-SHED); both writes are rare acts a player makes. It asks 0078's
+  holdings less `renown_tracks`, whose key puts the character second (the census was seeded from it when the realm
+  opened, and a track since is keyed by a realm id, which links nothing). One hop, earlier only; a failure is
+  swallowed after the write it follows has landed, and the next arrival links it. Migration
+  `0087_founder_live.sql` indexes `saves (character_id)` and `realm_characters (origin_id)` so neither is read whole.
+- **Still not reached, and why.** A player whose play before the 25th left no record on ANY row the service keeps -
+  never online as a guest, a guest row whose characters never reached it - cannot be proven by anything the service
+  can check: a character's id is a random UUID with no date in it, and anything the player's own machine says could
+  be typed by anyone. FOUNDER_HANDLES stays for them, optional and empty.
+- `ACCOUNT_VERSION` acct92 in both the Worker and `wrangler.toml`; migration 0087 (two indexes), no relay change
+  (Founder is already in the token's vocabulary), no client change. The version's pins moved to acct92.
+- Pins: `test/founder5.test.js` (7) - the clock, the names, the config and the real Worker (an account first seen at
+  10pm New York time on the 24th and one named in the config each wear Founder on the signed token; one neither holds
+  none); the live link's statement and indexes (its query plans read them), and the real Worker through a cloud save
+  and a customs (Founder the moment the character arrives; nothing for a character no earlier row holds, nor one
+  linked to a later row). `tools/mutants/founder5.json` (14: 12 dead, 2 equivalent as recorded). The pins of the old instant moved
+  (founder2, founder3, founder4, titlen, acc3titles; founder2.json's two records and titlen.json's TR-founder-cutoff-moved-forward re-aimed by content).
+
+## KNIGHT-HOUSE — a deed the realm gave, held off its character's record (2026-10-04, acct77)
+
+FIELD BUGS 2026-10-04d (`01-Overview/Field-Bugs-2026-10-04d.md`; the law is `06-Systems/Online-Arc.md` KNIGHT-HOUSE).
+A Knightly Order's house was Daggerfall's deed in the save and nothing on this service, so every other player's claim
+on it landed and the knight's own claim paid for it again. Migration `0079_home_deed.sql` adds `homes.deed`;
+`POST /v1/homes/deed` (`server-account/src/homes.js` holdDeed) reads the character's realm record and refuses `no-deed` unless the
+record holds that deed (`src/net/homeLaw.js` homeDeedOf, which the client's door reads too) in the layout the hold names;
+otherwise it writes the building's row marked `deed` (price and paid 0) in the town's one layout, counted against the
+hour's claims. Every other claim on it answers 409 `home-taken`; the owner's is a repeat that pays nothing; the town's
+answer leaves the row out for its own character and marks it `deed` for everyone else; the cap of three counts the
+homes bought (`deed = 0`); `/v1/homes/release` with `deed: true` removes only the caller's own deed row, and a deed's row
+is never sold as a home. `HOME_MOVE_CARRIED` carries `deed`. `ACCOUNT_VERSION` acct77 in both the Worker and
+`wrangler.toml`; twelve version pins moved. Deploy order: the service (0079, then acct77), then the client.
+
+## SHADOW-CLOAK — SirMcMobdon's own: the Holo Shadow Cloak (2026-10-04, world167, acct80)
+
+Mac: "So for SirMcMobdon, I want to build a new unique AURA specifically for his account. A holo shadow cloak with red
+accents. Extremely detailed". (Its name keeps the owner's word "Holo"; after the revision below nothing holographic is
+left in it.) SirMcMobdon already holds SHADOW-FANG's title and glyph (black #0d0709 to crimson
+#d3193c), so the cloak is drawn in that paint: the cloth is shadow, its light is red.
+
+- **The grant** (`server-account/wrangler.toml`, `server-account/src/titles.js`): no new list. `TIER_AURA.shadowfang =
+  'shadowcloak'` - SHADOW_FANG_HANDLES, the list that grants Shadow Fang, is the third to grant an aura with its title
+  (AEGIS's law, PRIMARCH's after it): held while the handle is listed, gone from the next token once it is not,
+  case-folded, never a guest's. Held is not worn: SirMcMobdon wears it from the account card's Aura row (`player.aura`),
+  as every aura is.
+- **The vocabulary** (`src/net/identityToken.js`, in the relay bundle): `shadowcloak` joins AURAS last. A relay before it
+  refuses a token carrying it (`claimsValid`), so the relay is **world167** and the account service **acct80** (world165 and acct78 on its branch, both renumbered
+  past main's SERPENT1, then the relay past SERPENT2 and the account past GLOBAL-MARKET, at the merges); the account deploy waits on the relay's `/health` to serve world167 (SHADOW-FANG's
+  AUDIT B1). No frame changes shape.
+- **The face** (`src/ui/playerBadge.js`): "Holo Shadow Cloak" (`AURA_TEXT`), its button on the account card in the
+  Shadow Fang's own paint (`AURA_PAINT.shadowcloak = 'shadowfang'`).
+- **The cloak** (`src/render/auraRing.js`, the aura pass WB9g built): the fourth look of the same program (`uAura` 3,
+  AURA_LOOK). Not a mark on the ground nor light round the body but a CLOAK ON IT, as Mac revised it after the first
+  push: "less digital, adjust hood since it's at a weird orientation, not as tall, more cape like, change the floating
+  elements to be more emblem like"; "For the emblems have it use that user's glyph"; "and when the user transforms into
+  a werewolf have this rip apart with fragments floating around". (The first push was a hooded robe to 1.97 m, its
+  hood a tall tube leaning back, with a scan line, a hex lattice, a rain of script, glitches, flicker, a HUD of
+  dashes, ticks, brackets and a radar sweep on the ground, and burning wisps; all of that is gone.)
+  - THE CAPE: its own mesh (`mesh: 'cloak'`, CLOAK_ROUND 48 round by CLOAK_ROWS 48 up, `auraCloakGrid`) shaped in the
+    vertex half - hung from the shoulders (1.42 m up, 0.27 m out from the body's axis at the sides - 0.54 m across - narrower front to back), falling and flaring to its
+    hem (0.4 m), its back hanging further out and trailing longest (the hem 0.1 m off the ground down the back, 0.26 m
+    at the front edges), fourteen folds deepening to the hem, the hem billowing and a wave running down the back.
+    Clasped at the throat (CLOAK_CLASP_Y 1.43): open below it, wider to the hem; the collar whole round the neck.
+  - THE HOOD, up round the head: its middle at the eye (CLOAK_HOOD_Y 1.68 m, EYE_HEIGHT 1.7), every bearing clear of the
+    head, sitting 3.5 cm behind the body's middle with its peak fallen 5 cm further back; its peak 1.88 m, 8 cm over
+    the 1.8 m crown ("not as tall"); narrower across than deep; its face open from 1.53 to 1.80 m, a brow over it.
+  - IT FACES ITS WEARER'S WAY: the wearers carry `yaw` (`scenes/world.js auraFrame` - one's own body's facing,
+    `player.bodyYawFor`, as the third person draws it; a peer's from `net/peerClimb.js peerBodyYaw`); `uYaw` turns the
+    mesh, and the mesh's seam (u 0 = 1) lies inside the opening or under the clasp.
+  - IT SHADES: the only look drawn premultiplied (`shade`, ONE / ONE_MINUS_SRC_ALPHA) where the others add, so the
+    cloth darkens what is behind it. ITS TWO SIDES ARE TWO DRAWS (`uSide`): its lining first (the faces turned from
+    the eye - front faces culled) and its outside over it (back faces culled), so one row's far cloth never lies over
+    the next row's near (drawn in one, the hood striped). The BENT mesh's own winding names each side - the frame's
+    front face is the game's: `world/mat4.js` HANDEDNESS mirrors the projection and the renderer winds CW, which the
+    probe draws too - and a pin holds every cell wound outward and unfolded at rest and under the strongest poses. (The
+    first cut named the sides by the rest pose's normal: posed, up to a quarter of the cloth was misnamed - AUDIT.)
+    The cloth's own normal against the eye now only lights it.
+  - THE CLOTH: its outside a dense shadow (#0d0709), stirring, its fold ridges catching a crimson sheen and a crimson
+    rim where it turns away; its LINING a deep red, seen through the opening; a mantle over the shoulders with a
+    scalloped edge stitched in crimson; embroidery - an edge line, a band of wolf's teeth and a fine inner line - down
+    both edges of the opening, round the hood's face (none down the closed collar, none on the frayed hem); the hem ragged,
+    its last hand's breadth coming apart into smoke that trails a hand below it, smouldering where it tears.
+  - THE EMBLEM - "that user's glyph": the badge's own path (`ui/playerBadge.js GLYPH_PATH.shadowfang`, SirMcMobdon's
+    wolf's head, and its eye, `GLYPH_DETAIL`) cut into straight edges (`glyphEdges`: M, L, Q and Z, each curve in four
+    chords; any other command refused) and filled even-odd in the shader (the badge fills nonzero - the same for a path that never crosses itself, which a pin
+    checks over the glyph's whole box) - crimson deepening
+    down to its mane, its outline lit, its eye an ember - inside a ring and a fine ring on a disc of shadow. On the
+    cape's back (0.98 m up, 0.15 m), as its clasp (4 cm) and rising off it. Its x is the frame's own right (world/
+    mat4.js HANDEDNESS: world +x on screen right), so the wolf faces the way the badge's does - from behind on the back,
+    from the front at the clasp, on every floating card.
+  - THE EMBLEMS ALOFT, its third draw: five, each rising 0.75 m off the back between the shoulder blades and the
+    shoulders and drifting out behind, turning a little either way as a medal on a thread, drawn in out of smoke and
+    falling back to smoke with embers where they form and break (lives of 5, 6 and 8 s, each dividing the clock); none
+    while the cloak is still forming.
+  - THE GROUND: a pool of shadow to 0.85 m, mist turning in it and drawn in, a dull crimson in the mist under the hem.
+  - TORN, when its wearer turns beast (Mac: "rip apart with fragments floating around"): `auraBeastStep` keeps each
+    wearer's `torn` - the seconds since the turn (mine, `liveLycanthropy(playerEntity).isTransformed`; a peer's, the
+    pose's `wb`), wrapped whole past the tear so the shreds' flights meet themselves, -1 while not turned. Over
+    CLOAK_RIP_S (1.2 s) the cape bursts outward, seams split across it on a warped grid and its pieces go one after
+    another, embers along every tear; torn through, no cloth is drawn at all. CLOAK_SHREDS (14) scraps of it - shadow
+    with smouldering torn edges, half of them with a strip of the opening's wolf's teeth - fly from their places on the
+    cape out to float round the beast (0.7 to 1.15 m out, 0.3 to 2.1 m up), going round either way at their own
+    paces, bobbing, turning and tumbling; dimmer to the beast's own eye. The emblems fade with the tear. A wearer first
+    seen already turned is already torn (no tear replayed); turned back, the cloak kindles again from nothing. Any
+    beast form tears it (the wereboar's too - neither body wears a cape).
+  - KINDLED: drawn in out of smoke from the hem up, embers along the line it has reached; the ground out from the feet.
+    Never seen from inside it: an eye within 0.3 m of the hood's middle (CLOAK_INSIDE_M - the wearer's own first person)
+    sees no shadow over the view, the cloth fading in over the next 0.15 m out; a camera over the wearer or a peer at
+    their shoulder sees it whole (AUDIT 2). Every rate whole over the
+    clock (`cloakRatesWhole`, the shreds' among them), every pattern round a whole number, so no seam and no jump at
+    the wrap. THE FOUR HOSTS: `scenes/world.js` WIRED (`auraFrame` hands each wearer's yaw, beast form and saddle;
+    `drawAuras` hangs and swings each cape - below); `scenes/worldModes.js` and `scenes/dungeonContext.js` draw through
+    world.js's pass, unchanged; `scenes/exterior.js` draws no aura - FLAGGED, unchanged).
+  - IT MOVES WITH THE BODY (Mac: "Does this work with the paper doll animations? Like the aura flows with it?", then
+    "Tie the cape to animations"). Two halves, both per wearer:
+    - THE POSE, off the body's own skeleton: `drawAuras` (after every body is posed and drawn this frame) reads the
+      third-person Morrowind body's bones - mine through `player/mwView.js mwViewBodyBones` (`combat/fpArm.js
+      thirdBones` / `armBonesInBody`: a bone's posed origin through `rigPointToBody`, the very frame drawThird places
+      by its feet and yaw, the race's weight across and height up), a peer's through `net/peerBodies.js bonesOf` (its
+      standing body, at the feet and EASED yaw it is drawn at). `auraCapePose` (CLOAK_BONES: both shoulder joints, the
+      neck, the head, both knees) gives the shoulders' middle and breadth (CLOAK_SHOULDER_HALF 0.2 m at rest, bounded
+      CLOAK_ACROSS 0.8-1.25), the head's middle (CLOAK_HEAD_ABOVE 9 cm past its joint along the neck) and the knees.
+      The vertex half hangs the cape from the shoulders where they stand - scaled between the feet and them, so a
+      crouch, a stride's bob and a taller or shorter race carry it, gathering out as it is pressed down; the collar
+      with the shoulders and the hem half as far; the hood with the head; the cloth as broad as the shoulders (the hood
+      the head's own size); and a knee carried past the cloth presses it out round it. `auraCapeStep` places each cape
+      where its body is DRAWN (its feet and yaw - mine `player.bodyFeetAt()`, not the camera's smoothed feet), from the
+      pose that body was DRAWN in (`fpArm` keeps it: the dungeon poses again before its auras are drawn - AUDIT).
+    - THE SWING, off how the wearer moves: `auraMotionStep`, stepped in `drawAuras` for every cloak drawn, whatever
+      its body (a rig or a sprite, mine or a peer's), from the feet and facing it is DRAWN at frame to frame - velocity and turning smoothed
+      (0.1 s), set where the hem would hang (CLOAK_SWING: 0.05 s of speed behind them up to 0.42 m - a walk's 4 m/s a
+      hand and a half; lifted 0.04 m per m/s of fall up to 0.25 m; lagging 0.12 s of turn up to 0.6 rad) and carried
+      there on a damped spring (1.2 Hz, damping 0.45: it swings past when they stop and settles). The vertex half
+      trails the cloth the more the lower, rising as a pendulum does; lifts and fills it in a fall; lags it round on a
+      turn below the shoulders (the fragment half's facing turned with it). A jump of more than 0.5 m in a frame and
+      faster than 30 m/s (a door, a teleport, a snapped step, the floating origin moving the world) is no motion:
+      nothing is read off it and the swing carries on as it was going (AUDIT 2: first it reset, then it zeroed the
+      speed - a sag and a swing back at every floating-origin crossing). A frame on the clock's same tick (a coarsened
+      clock) reads nothing; back after more than half a second (a death, the travel view) it hangs still; the spring is
+      stepped in sixtieths of a second, so a long frame never blows it up. It never hangs through the legs (below the
+      shoulders the cloth is pushed out along its own bearing to 0.15-0.22 m off the body's axis - AUDIT 2: pushed
+      along its own direction, a strafe reversed parted neighbours across the axis into a sheet across the legs),
+      never swings past 0.7 of its hang (so the pendulum never folds the hem over), swings shorter crouched, and a rise
+      never drops it below the feet; a knee's tent is 0.2 m at most.
+    - ON A BEHOLDER SPRITE (the EOTB lane, mine or a peer's walker or beast) it hangs from the sprite's figure since
+      SERAPH-WINGS v2, as the wings do - its shoulders by the pixel, facing as the sprite faces, folded when sunk to
+      the neck (SERAPH-WINGS, AUDIT 3). WITHOUT BONES - first person (which poses no third-person body; nor is the cape
+      drawn over one's own view), a peer with no body standing (building, past BODY_RANGE, a doll), the wolf's
+      skeleton - it hangs at rest (CLOAK_REST_POSE), my own pressed down to my body's height (`player.height` over
+      CAPSULE_HEIGHT - a crouch, a swim - to 0.4 at the least), and swings all the same. Off the bones the shoulders
+      stand no lower than that floor and the head 0.18 m over them at least (AUDIT 2: nearer, the collar folds). The head's turn (`uCapeH` w) is carried by the shader
+      and pinned, but nothing sets it yet: the head bone's axes in the retail skeleton are not verified here. The
+      inventory's paper doll draws no aura. A RIDER's cape is folded away (mine `player.riding`, a peer's pose `rd`):
+      its cloth and its emblems not drawn, its pool kept - a cape hung from a standing body would stand through the
+      horse.
+- **Seen**: in a real WebGL2 - through a scratch preview, not committed: the pass round a stand-in body (a lit floor,
+  so the shadow reads; mirrored as the game's projection is) from a third-person camera, behind, in front, beside, at
+  three-quarters, close on the hood, half kindled, through the tear and torn, posed (a run's trail, a turn's lag, a
+  crouch, a head turned, a stride's knee, a fall's lift), and from the wearer's own eye - and through the committed
+  `tools/auraProbe.mjs`, which draws all four auras with no body: 53/53, the cloak's 20 - no GL error; the floor past
+  its pool untouched and the pool round the hem; the cloth shading the floor behind it; nothing over the hood's
+  peak; the glyph on its back (the wolf lit, beside it dark, in red); the opening's embroidery either side, none
+  across its middle and its lining seen through it; the clasp lit; turned with its wearer; no jump at the wrap;
+  nothing unkindled against the frame with NO aura; drawn to the waist and not the hood at half, the hood read against
+  the lit floor; the emblems aloft; torn (splitting with embers mid-tear, no cloth once through); its shreds round the
+  beast; a run's swing; nothing over the wearer's own view (every point read in the frame: an off-canvas read now
+  throws); and its two sides by its own winding, unmirrored and as the game mirrors it. (AUDIT: four of its first
+  checks could not fail - three own-eye points read off the canvas, "unkindled" compared a frame with itself, the hood
+  was read against the black sky, and "open" passed with the opening gone.) NOT SEEN: in a real game client on a real
+  body (ARENA2's, the Morrowind rig's or Bloodmoon's wolf).
+- Pins: `test/shadowcloak.test.js` (19) - the vocabulary; the grant; the real service end to end (wardrobe and signed
+  token); the account card's note (the aura's name, never its key); the token (one carrying every glyph and the cloak
+  inside the relay's own bound) and the relay at world167; the law's measures (the hood's height and place, the
+  cape's, the opening, nothing of the projection left, the mesh's every cell two triangles tiling it); the emblem as
+  the badge's own path (the edges closed; the shader's inside the path's; nonzero and even-odd agreeing; a cubic, a
+  line or curve before a move and an edge that rounds to nothing refused); the vertex half (facing, back drape,
+  squash, the hood round the head, folds, the emblems rising and their cards' handedness, the burst, the shreds'
+  flights and their wrap); the cloth (the opening and the collar, its sides by the bent mesh's winding, outside and
+  lining, rim, the glyph on its back and its eye, the clasp, the mantle, the embroidery and none down the collar, the
+  torn hem's trailing smoke, the back trailing longest, the first person, the kindling and its embers, the wrap); the
+  tear (seams first, pieces by three quarters, none through, and `auraBeastStep`); the ground; the emblems and
+  shreds (the opening's teeth on half the shreds); the draw (farthest first; premultiplied; the lining with front faces
+  culled, then the outside with back faces culled; the emblems before the cloth for an eye in front, the shreds after it
+  always, none of it with the ground's depth offset; no cloth round the wearer's own eye; the shreds' cards only once
+  torn and alone once through; a rider's cape folded; the frame's
+  state handed back on a throw); the hosts; the pose (crouch, lean, head and its turn, breadth, trail, pendulum,
+  twist, lift, knee, the billow, the vertices' wrap, never below the feet, a knee's tent capped); the winding (every
+  cell outward and unfolded at rest and under the strongest poses; a strafe never through the legs); no `pow` of a
+  negative base anywhere the cloak's shader runs; and the swing and the pose from the body (the spring, the rig's
+  frame against drawThird's own model, the bones, the placing, the crouch, a peer's bones off its standing body).
+  All of the shader RUN in `test/glsl.mjs`. `tools/mutants/shadowcloak.json` (150, all dead). The vocabulary's
+  newest-word and one-list pins in `aegis.test.js` and `primarch.test.js` moved (PIN MOVED), `shadowfang.test.js`'s
+  wardrobe holds the cloak; the relay's pins moved to world167 crediting SHADOW-CLOAK (`auditbounty1.test.js` holds the
+  credit), the account's to acct80 (past SERPENT1's world165 and acct78, then the relay past SERPENT2's world166 and the account past GLOBAL-MARKET's acct79, at the merges of main). Re-aimed by
+  content, all dead: `aegis.json` (4), `primarch.json` (4), `wb9g.json` (1) and the version records in `soc1.json`,
+  `gatekeys.json` and `fb1004d_knight_house.json`. The revisions changed nothing on the wire: the relay and the account
+  are world167 and acct80.
+- **AUDIT** (Mac: "Tie the cape to animations and also perform a comprehensive audit"): four read-only lenses over the
+  whole of it - the grant, the wire and the deploy; the frame's wiring in its hosts; the shader and the draw; the pins,
+  the mutants, the probe and the docs. Found and fixed:
+  - BLOCKER: the aura draw call had landed after a `//` on its own line in `drawAuras` when the cape's pose was wired
+    in - no aura of any kind would have been drawn - and the hosts pin's `[^\n]*` read through the comment. Moved out;
+    the pin now reads the line's code half and a mutant comments the call out.
+  - The version: main's SERPENT1 took world165 and acct78 first - renumbered to world166 and acct79 at the merge; then main's SERPENT2 took world166 - the relay renumbered to world167 at the next; then main's GLOBAL-MARKET took acct79 - the account renumbered to acct80 at the merge before the pull request.
+  - The side split (above), the farthest-first order (a farther cloak's shadow or a farther aura's light used to lie
+    over a nearer cloak), the emblems before the cloth for an eye in front of the wearer, no cloth worked out round
+    the wearer's own eye, the shreds' cards alone once torn through, the frame's state handed back in a `finally`.
+  - `pow` of a maybe-negative base (the cloth's radius at its back half took one - undefined in GLSL; a driver's
+    exp2/log2 answers NaN): squares written as squares, the rim's base clamped, and a pin over every pow the cloak's
+    shader takes. The ground's quad answers nothing past its pool, no `atan(0,0)`; an emblem card works nothing out
+    past its disc or while it shows nothing.
+  - The swing's floating-origin pop, the trail through the legs, the crouched fold, the hem below the feet, an
+    unbounded knee tent, the dungeon's one-frame pose lead, the rider's cape, the swing read off a raw yaw while the
+    body turns on an eased one (now stepped where the cape is drawn).
+  - The account card said "Wearing shadowcloak." - its key (`ui/accountFlow.js`, every aura); now its name. The
+    `aurasHeld` comment named the wrong order. The hem's embroidery band lay wholly inside the hem's fray and was never
+    seen: removed.
+  - Pins that could not fail (the hosts regex, "the mesh whole", "just below the hem, smoke", four probe checks) made to
+    fail; laws with no pin or mutant (the billow, the kindle's embers, the shreds' teeth, the back trailing longest,
+    first-seen-already-torn, the fog on the shadow) pinned.
+  - The neighbours' pins, run after: the yaw's step had its own whole-turn wrap (ONCRASH1 C2's one home is
+    `world/mat4.js` wrapAngle - now used, with a pin turning across the half turn and a mutant taking the long way);
+    a `peerBodies.js` comment naming the rig's singleton tripped MWBODY1's "never the instance" (reworded); PRIMARCH's
+    draw pin read the old nearest-first order (now farthest first). The shader's trail cap had no pin a clamped swing
+    could reach: the winding pin now flings it past its reach.
+  - Left as they are, said here: the fragment half measures the cloth in its rest-pose metres, so a crouch squashes
+    the back's emblem to the crouch's height; an off-screen peer body keeps its last pose (as its skin does); a gear
+    rebuild hangs the cape at rest for those frames; the head's turn is carried but unset.
+- **AUDIT 2** (Mac: "Audit everything"): five read-only lenses over the whole branch - the shader and the draw (in real
+  WebGL: transform feedback, a half-float NaN scan, A/B renders); the runtime that feeds the cape; the grant, the wire,
+  the deploy and both merges of main; the safety net (hand mutations in a copy); the docs and the process. Found and
+  fixed:
+  - The cloth's "inside" was the eye's distance from the wearer's AXIS, flat: a third-person camera looking down from
+    past about 70 degrees ghosted its own cape (none at all close in), a peer within 1 m faded and within 0.55 m was
+    gone, a peer below the eye was never drawn. Now the eye's distance from the HOOD'S MIDDLE, in three dimensions (0.3
+    m, fading over 0.15 m) - in the draw and in the fragment half alike.
+  - The fragment half read `uCapeH`, which only the vertex half declared - a stage a driver refuses, and the one program
+    is all four auras (caught by the new eager compile below before it shipped; declared).
+  - The swing: a coarsened clock's repeated tick zeroed the speed every other frame (a run trailed a tenth of its
+    trail); a floating-origin crossing sagged and swung back; a 1-3 m placement read as 60-175 m/s and flicked the hem;
+    back after a gap the old trail swung on. All as above.
+  - The legs' push along the cloth's own direction (above); the pose off the bones floored (above) and the shader's
+    hang never negative (0/0 at a pose at the feet).
+  - The cloth and its cards drew with the ground's depth offset (-1, -4): slivers over a body before it. Off for them.
+    Tearing, the shreds were laid before the cloth for an eye in front and lay under its shade: now after it.
+  - `peerBodies.bonesOf` called the rig unguarded, the one rig call there without AUDIT MWBODY A1's catch: caught.
+    The swim's height now presses the sprite body's cape too (it read `player.crouching`). No pose object per drawn
+    body per frame, no closure per cloak.
+  - The first merge of main had kept the account's whole version history twice (107 KB on the line): once now. The arc
+    said the account renumbered past SERPENT2: the relay alone did.
+  - The net: nothing compiled each stage whole - `test/glsl.mjs` compiles a body on its first call, with the test's
+    bindings standing in for any name, so a stage reading another's uniform passed; `eager` now compiles every body at
+    load and the cloak's stages are compiled bare, and the evaluator refuses a keyword or reserved word as a name (the
+    fix above first named a variable `out`). The shared rest pose's two guards, the spring's substeps, the swing's
+    three caps, the floors, the opening's narrowing, the swim's floor were unpinned - pinned; the host pins matched
+    through a leading `//` - they read code now; three probe checks could not fail (over the hood's peak against black
+    sky, an unkindled point in the sky, the shreds counted off the ground's pool) - read against the lit floor and off
+    the pool. 24 mutants added, 19 re-aimed: `shadowcloak.json` 150, all dead.
+  - Docs: the hem's teeth (the band is the opening's), "THE FOUR HOSTS, untouched" (world.js is wired), far/near for
+    the culled sides, world165 in the Testing row, a pronoun in `shadowfang.test.js`, five cites main already had wrong
+    (`fpArm.js` drawThird and its refold, `mwView.js` mwViewDrawBody and its drawThird, `world.js` the two body calls,
+    `fpArm.js` clipSweepTimes).
+  - Left as they are, said here: a compile failure or a slow compile of the one program takes all four auras with it
+    (the eager compile and the probe are the guard); the off-screen peer's pose, the gear rebuild's rest frames, the
+    emblem's crouch squash and the unset head turn as above.
+
+## SERAPH-WINGS — the developers' own: the Seraph Wings (2026-10-05, world168, acct81)
+
+Mac, sending a painted angel whose wings are long ribbons of golden light: "So I want to build an aura for the
+developers. These are based off this image above. Golden Angel wings that flow"; then "Just want to make sure this
+properly attachs to the back of the eye of the Beholder skins + morrowind skins" and "I want this to be insane". The
+wings are drawn from that idea - plumes of flowing light out of the back - in the pass's own shader; nothing of the
+painting is used.
+
+- **The grant** (`server-account/src/titles.js`): `DEVELOPER_AURA = 'seraphwings'`, held while the handle is in
+  DEVELOPER_HANDLES - the developer title and glyph's own list, read off the config at every ask as they are -
+  case-folded, never a guest's, gone from the next token once the handle is off it. `aurasHeld` gives the listed
+  titles' auras first (TIER_AURA), then the wings, then what the Broker sold. Held is not worn: a developer wears them
+  from the account card's Aura row, as every aura is.
+- **The vocabulary** (`src/net/identityToken.js`, in the relay bundle): `seraphwings` joins AURAS last. A relay before it
+  refuses a token carrying it (`claimsValid`), so the relay is **world168** and the account service **acct81**; the
+  account deploy waits on the relay's `/health` to serve world168 (SHADOW-FANG's AUDIT B1). No frame changes shape. A
+  token with every glyph and the wings stays inside the relay's 640.
+- **The face** (`src/ui/playerBadge.js`): "Seraph Wings" (`AURA_TEXT`); the button in the Founder's gold (`AURA_PAINT
+  seraphwings: 'founder'`) - the wings' own colour, where the developer title's paint is a red.
+- **The look** (`src/render/auraRing.js`, the fifth: `AURA_LOOK.seraphwings`, kind 4, its own mesh `wings`, added whole -
+  light, never a shadow):
+  - THE WINGS: two layers a side - WING_PLUMES (8; 9 before WINGS-FIT) long primaries fanned from below level (-0.7
+    rad) to high over the head (1.25 rad), the high ones long (WING_REACH 0.6 - 1.3 m; were 0.95 - 2.2), and inside
+    them WING_COVERTS (4; was 6) short coverts (WING_COVERT: 0.28 - 0.5 m; were 0.45 - 0.8) that give a wing its
+    body, softer. Each plume a broad strand
+    (0.12 m with its glow's sheath; was 0.34) and two fine ones (0.035 m; were four, 0.08) bundled about it as a
+    feather's barbs; ribbons of WING_SEGS (32) segments (`auraWingsGrid`, 72 strands; were 150), laid along a curve
+    out of the upper back - rising first, then out along the
+    plume's angle, the tips drooping as a long feather's do - turned to the eye along their length.
+  - THEY FLOW: waves run out along each strand (1/4 Hz, and a flutter at 1/2 Hz on every strand); the fan breathes (1/6 Hz);
+    and every eight seconds THE BEAT (`wingBeat`, WING_BEAT): a slow stroke, the fan swept down and its tips forward,
+    fast down and slow back up, the tips after the roots - the light flaring with it. In the fragment half noise and a
+    pulse of light run out along each strand; gold (WING_RGB), white-hot at the heart, amber at a frayed edge, the tips
+    burning as they fray; faint where they leave the back.
+  - THE BACKLIGHT: one card of radiance behind the upper back (WING_HALO_M 1.2 m; 2.6 before WINGS-FIT), square to the eye - a soft gold glow,
+    white at its heart, rays turning slowly in it (1/30 Hz and 1/15 Hz), flaring with the beat.
+  - THE SPARKS (WING_MOTES 24; 0.04 by 0.18 m since WINGS-FIT, were 0.05 by 0.26): streaks of light riding a strand out and past its tip, long along their way as the eye
+    sees it and brightest at their head; their lives (3, 4, 5 s) dividing the clock.
+  - THE GROUND: a faint pool of gold beneath (WING_POOL_R 1.0 m; was 1.3).
+  - THE LIGHT ON THE WORLD (`auraWingLights`, WING_LIGHT): a gold carried light behind the shoulders of the nearest
+    three wearers within 40 m of the eye (4.5 m as kindled, at seven tenths - WINGS-FIT; was 7 m), fed into every host's light list through world.js
+    `peerTorchLights` - the open world's (where the city's light colour stands for every carried light) and the
+    dungeon's and the building's (where it is gold: the light is tagged `aura`, and the dungeon's flame tint,
+    worldModes.js `_dgTint`, passes it by - AUDIT 3; in the abyss with its torches out it stays, halved by the
+    candle's law, as an aura is no torch). None while the wings are closed (below).
+  - Unfurling from the root as they kindle (the backlight and the sparks after them); nothing laid over an eye standing
+    among them (the wearer's own first person); drawn without the ground's depth offset. Every rate whole over the
+    clock (`wingRatesWhole`).
+- **On the back, both bodies:**
+  - THE TORSO: every point is laid along the torso's own axes (`uTorsoU`, `uTorsoF` - `auraTorso`, carried on the pose
+    as `torso`): up the spine (`bip01 spine2` to the neck, joined to CLOAK_BONES; the neck to the head without it),
+    across the shoulders, forward out of the chest square to both - so the wings lean as the back leans and turn as
+    the shoulders turn. Upright where the bones cannot say, or where a back would be upside down.
+  - A MORROWIND BODY: its posed bones as drawn (fpArm.thirdBones mine, peerBodies.bonesOf a peer's) - the shoulders'
+    middle (`uCapeS`, its breadth setting the roots apart), the torso above.
+  - AN EYE OF THE BEHOLDER SPRITE has no bones: what stands for them is read off the frame drawn (`auraSpriteBones`,
+    EOTB_FIGURE) - its base over the feet, its metres a pixel, its form and its facing (player/eotbBody.js `figure()`,
+    handed to player/mwView.js through the sprite's door and kept as `mwViewSpriteFigure()`; a peer's walker's or, on
+    foot, a beast's `figureOf`, net/peerRiders.js). AUDIT 3: BY THE PIXEL - the shoulder line 86 px over the frame's
+    foot (the sets' own measure 78 - 88 px whatever the frame holds: Idle 88, IdleMelee 80, IdleSpell 84, IdleRanged
+    87 - about 1.63 m at 0.019 m a pixel), the neck 91, the head's joint 96 and the upper spine 75; a beast's frames
+    at 0.68 of that (1.70 m at 0.029 m a pixel, measured 1.65 - 1.74); as broad as its metres a pixel are to 0.019 m
+    (within bounds). The first cut put the shoulders at 0.8 of the frame's HEIGHT, and a frame is as tall as what it
+    holds - a sword up, a staff, a hand raised to cast (to 174 px): with a weapon out they hung 0.3 - 1 m over the head
+    and jumped as it was drawn or sheathed. A crouch sinks them with the sprite. None read off a rider's frame (the
+    horse's too) nor the first-person billboard's (it stands on the camera: its figure lifted the cloak's hood off the
+    eye and the cloth was drawn round it - AUDIT 3). FACING: my own sprite's - eotbBody's UpdateOrientation facing,
+    `figure().yaw` - not the camera's (AUDIT 3: walking back, the sprite showed its face and the cloak and the wings
+    faced away over it; strafing they were a quarter turn off); a peer's walker and their aura already read the same
+    `peerBodyYaw`. SUNK: a figure whose shoulders fall below the crouch's floor (swimming, the quad's top at the
+    waterline) is `sunk` - the cloak folds and the wings close, unlit, as on a rider (AUDIT 3: hung at the floor, they
+    floated over the swimmer).
+  - A RIDER WITHOUT BONES hangs them from the rest pose lifted by the saddle (AURA_SADDLE_M 0.81 m: RIDE_EYE_HEIGHT less
+    EYE_HEIGHT).
+  - And swung as the cape is (`auraMotionStep` - `uSwing`: a run's trail sweeping them back the further out, a fall
+    lifting them, the roots where they were).
+- **The hosts** - THE FOUR HOSTS: `scenes/world.js` WIRED - the draw hangs and swings every look with a mesh of its own
+  (`auraLookOf(w.aura).mesh`), mine off my rig else my sprite's figure, a peer's off their rig else their walker's
+  figure (a walker's, or a beast's on foot); the wings' light rides `peerTorchLights`; `scenes/worldModes.js` WIRED
+  (AUDIT 3) - it builds the dungeon's light list from `host.peerLights` and its flame tint now passes an aura's light
+  by; `scenes/dungeonContext.js` draws through world.js's pass, unchanged; `scenes/exterior.js` draws no aura -
+  FLAGGED, unchanged.
+- **Seen**, in headless Chromium's WebGL2 through the pass itself over a stand-in body: behind, in front,
+  three-quarters, beside, from above, half kindled, running, mid-beat, on a 2.09 m Beholder frame and on a Morrowind
+  torso leaning into a run; and through the committed `tools/auraProbe.mjs`: 62/62, the wings' 9.
+- Pins: `test/seraphwings.test.js` (19 since AUDIT 3) - the vocabulary; the grant; the service end to end; the account card's note;
+  the token and the relay; the law (rates whole, the mesh, the fan); the vertex half RUN (roots, sides, the fan's order,
+  none in front, the facing, ribbons turned to the eye, waves beyond the breath and along each strand, the breath, the
+  roots still, the wrap); on the body (pose, breadth, trail, lift); the light RUN; the ground and the sparks; no pow of a
+  negative and no NaN; the draw (the mesh, farthest first, added whole, the offset, the wings' own mesh, each wearer's
+  torso); the hosts (mine off my rig else my sprite, a peer's likewise); the Morrowind back (the torso's axes, a lean, a
+  turn, its guards, the wings along it); the Beholder back (the figure's shoulders, a crouch, a beast, a peer's, the
+  sprite's own `figure()`, the plumbing, the saddle); the coverts and the beat; the backlight and the sparks; the light
+  on the world. `tools/mutants/seraphwings.json` (75, all dead; 93 since AUDIT 3). The relay's and the account's pins moved to world168
+  and acct81 crediting SERAPH-WINGS; the vocabulary, paint, flames, version and host-line records re-aimed by content.
+- Left as they are, said here: not seen in a running game client with a real body (the probe and the previews draw a
+  stand-in); the wings stay on a wearer turned beast (a beast's sprite frame carries them higher) and on a rider;
+  from first person, looking to the side or behind, the wearer sees their own wings - only what stands in front of
+  the eye is spared; the sprite figure's shoulder line is one measure for every set and every frame (within a hand of
+  each - AUDIT 3); outdoors the wings' light takes the city's light colour; one program draws all five auras, so a
+  compile failure would take them all (the eager compile and the probe are the guard).
+
+### AUDIT 3 (2026-10-05, Mac: "1. Audit this 2. Ensure Sir Mcmobdens new aura also appears on the eye of the Beholder 3. Ensure other players can sew all auras")
+
+Five lenses: the shader and the draw, the attachment and the cloak on a Beholder sprite, the peers, the test net, and
+the grant, versions and docs. What they found, and what was done:
+
+- **OTHERS SEE AN AURA WORN NOW, NOT AT THE NEXT AREA (AURA-LIVE, `src/net/online.js` `rehello`).** The relay reads a
+  badge - the aura, the title, the glyphs - off the token alone, and a token rides a hello, so an aura put on at the
+  account card or the Broker lit at the wearer's own feet at once and at nobody else's until they changed area (the
+  Broker even said so: "Others see it once you change area."). Now each open socket - the room's and every halo's -
+  says hello again on a fresh token, through a NEW socket of the same id: the relay already takes that as a reconnect
+  (the old socket loses the id and is closed CLOSE_REPLACED with no leave said, the first hello's stamp is kept so a
+  host keeps its seat, and the new hello's join is fanned - every peer reads it as the badge now, `_refresh`). The old
+  socket speaks for the room until the new one's token is minted (`_promote`), so nothing goes unsaid but a hello's
+  round trip; its replaced close is ignored (it is no room's by then), so it is never the one-seat verdict; a
+  replacement whose room went while it minted is closed, one the relay refuses takes the old socket with it and the
+  ordinary retry says hello, one that never opens is dropped past the longest backoff. At most once a REHELLO_GAP_MS
+  (3 s), the latest badge. No relay change, no version: the relay's own reconnect law does it. `scenes/world.js`
+  asks for it when my aura (`ownAura`) differs from the one the last minted token said (`_auraHeard`, set by the
+  minter's hook) - so a mint, which said it already, asks nothing. Pinned end to end through the real Room
+  (`test/auralive.test.js`, 6): a peer draws it, no leave, the host's seat kept, not superseded, taken off the same
+  way; a run of changes one hello; a halo's socket too; the refusals.
+- **The draw cap 32** (AURA_DRAW_MAX, was 16 - a hub's crowd is more than sixteen, and the seventeenth wearer in reach
+  was drawn by nobody); **a peer who blinks out of the list keeps their kindling** for AURA_FORGET_S (2 s) - it was lit
+  again from nothing at every frame without their pose.
+- **The Beholder sprite** (the cloak and the wings alike - the cloak hangs from the same figure since v2, and its
+  record in SHADOW-CLOAK now says so): BY THE PIXEL, not the frame's height; my own sprite's FACING; none in FIRST
+  PERSON; SUNK in water folded and closed; a beast's figure on foot, mine and a peer's (above).
+- **The radiance's inside fade is 3D** (`outside` - out of the column, over or under it too: a camera high over a
+  wearer saw no column, judged by the distance across the ground alone).
+- **The wings' light in a dungeon is gold** (tagged `aura`, passed by the flame tint) and none while closed.
+- **The net:** a crouched or mounted wearer's upright back (a zeroed torso collapsed every strand onto the shoulder,
+  unpinned); a back laid flat; a peer's figure driven through the real layers; the light off the pose's shoulders; the
+  saddle pinned to the motor's (RIDE_EYE_HEIGHT less EYE_HEIGHT). `tools/mutants/seraphwings.json` 93 (18 new),
+  `tools/mutants/auralive.json` 12, `primarch.json` one more (the inside fade by the ground alone); records re-aimed
+  by content (the shoulder line, the frame's height, the crouch, the light's aura, the symbols, my facing, the flames);
+  ACC1d's late token recorded equivalent - the promotion's own guard (`_promote`) refuses a replaced socket's hello too.
+- **Docs:** the cloak on a sprite (SHADOW-CLOAK and Rendering.md no longer say it hangs at rest there), the probe's
+  count (the wings' 9), the flutter (every strand's), the header of `auraRing.js`.
+- **Left as they are, said:** a rider's cloak stays folded (v1's own law - "It folds away while you ride"), the wings
+  over the saddle; the sprite's cloak is centred on the feet, and some frames draw the torso up to 0.2 - 0.4 m aside;
+  the hood's radius does not scale with BillboardScale; my own cloak and wings are drawn whole while I am concealed
+  (a peer's are hidden with them); the sprite figure's objects are made each frame (a handful of small objects per
+  wearer); an old relay that does not know an aura refuses the whole token (the deploy order - the relay first -
+  keeps that from happening); a client older than an aura draws none for it.
+
+### AUDIT 4 (2026-10-05) - the shader and draw lens, landed after the merge of AUDIT 3
+
+- **THE BACKLIGHT OVER THE WEARER'S OWN EYE.** The card is 2.6 m across and square to the eye, its middle about 0.36 m
+  from the first-person eye; looking down, its lower half hung in front of the feet and washed the view gold (measured
+  in a real WebGL: 41% of the frame brighter at 85 degrees down) - `wingNear` spared only what lay within 0.9 m. It now
+  fades by the eye's distance from its middle (WING_HALO_NEAR 0.9 - 1.6 m, carried to the fragment half in `vS.x`):
+  gone from the wearer's own eye, whole from a third-person camera's or a peer's at arm's length.
+- **A STALE `sunk`** (AUDIT 3's): the rest, crouch and saddle path reused the pose and never cleared it - a swim and
+  then a ride kept the wings closed and unlit, and the cloak folded, for the whole ride. Cleared there.
+- **THE TIP'S BOWTIE:** the last segment's tangent was taken backward, so its across flipped at the tip and its two
+  triangles crossed (faint - 7% of a strand's peak at most). Forward at the tip too.
+- **HARDENING:** no `pow` of a negative in the backlight's rays (a cos a hair under -1); the strand's index math kept
+  whole (`floor((k + 0.5) / n)`, no `mod`) for a GPU that divides through a reciprocal.
+- **Checked clean:** both stages compile and link; no NaN or Inf over 564 scenes into a float target; the draw ranges
+  exact; the GL state handed back the same for all five auras; every rate whole; the other four auras bit-identical
+  to main over 80 frames; the cloak right on the taller sprite poses.
+- **Left as it is, said:** the wings are the heaviest look per wearer after the cloak (about 1.9 screens of fragments
+  for one wearer 3 m from the camera; estimated about 1 ms on a mid-range desktop GPU and 4 - 6 ms on an integrated
+  one at 1080p, close up) - only the developers wear them. Cheaper ways are recorded for a later pass: the broad
+  strands' noise per vertex, a smaller backlight, an indexed mesh, broad strands alone past 12 m. The sin hash's large
+  arguments (the sparks') hash coarsely on some mobile GPUs.
+- Pins: `test/seraphwings.test.js` 20 (the backlight's fade from the eye; a swim then a ride or a crouch, open and lit;
+  no strand twisted at its tip); `tools/mutants/seraphwings.json` 97 (four new, one re-aimed). The probe 62/62.
+
+### WINGS-FIT (2026-10-05, Mac: "the wings should sit farther back on the eye of the beholder skin. Currently it attachs way to close and clips on certain rotational directions instead of moving with rotation. Also, the aura itself is WAY too bright. It really needs to match this and the slimness of the wings"; then "I also think theyre way to long, too large and overbearing")
+
+Sent with the reference painting again: slim ribbons of pale gold, apart, with dark between them, and a faint glow
+behind the head.
+
+- **WHY A BEHOLDER'S WINGS CLIPPED.** The sprite is a flat card through its feet, square to the eye, and it writes
+  depth over its whole figure. The wings rooted a hand (WING_ROOT.back 0.12 m) behind the card's axis - inside the
+  body as it stands - so seen from a side or a three-quarter the near wing's root stood inside the body's outline on
+  the screen and nearer the eye than the card: laid over the body with a hard edge where the strand passed through
+  the card. Measured through the vertex half (the shader RUN, 40 points a strand, every strand): from 45 degrees off
+  the front round to the side, 7 - 981 points of a wing nearer the eye than the card and inside the body's outline
+  (0.25 m of the axis, under the head); rooted deeper, none from the front round to 97.5 degrees (the nearest 0.31 m
+  from the axis) - past that the eye is behind the wearer and the near wing nearer it than the body. Seen in headless Chromium's WebGL2 over a stand-in flat card from eight
+  bearings, before and after.
+- **THE FIX** (`render/auraRing.js`): a sprite's wings root WING_SPRITE_BACK (0.25 m, as big as the sprite is drawn)
+  further back - `auraSpriteBones` gives it as `wingBack`, `auraCapePose` carries it on the pose (0 for a rig's bones,
+  which have a back of their own; a pose reused from a sprite drops it, and the rest, crouch and saddle path clears
+  it), the pass uploads it (`uWingBack`) and the vertex half roots every strand and the backlight that much deeper;
+  the light on the world sits behind the roots where they are. A wing crosses the card no nearer the axis, as the eye
+  sees it, than its own depth behind the axis (`|z| / sin` of the bearing) - past the body's outline. A Morrowind body
+  is unchanged.
+- **AND TURNING WITH IT** (`player/eotbBody.js` `figureYaw`): a sprite facing nowhere yet (Vector3.zero - before a
+  first walk or placing) shows the eye its FRONT (ARENA-FIX 14), but its figure answered no facing and the camera's yaw
+  stood in: the wings hung on the eye's side, over the sprite's face, and turned with the camera round it. It now
+  faces the eye there, so the wings hang behind it.
+- **SLIM, SHORT AND SOFT, to the painting:** about six tenths as long - the primaries 0.6 - 1.3 m (were 0.95 - 2.2,
+  a span of four metres over a two-metre body; now about the body's height), the coverts 0.28 - 0.5 m (were 0.45 -
+  0.8), the pool 1.0 m (was 1.3), the sparks 0.04 by 0.18 m (were 0.05 by 0.26); three strands a plume (one broad, two fine; were five), a third as broad (0.12 m
+  and 0.035 m; were 0.34 and 0.08), eight primaries and four coverts a side (were nine and six) - 72 strands, 13,824
+  vertices (were 150, 28,800); each strand's light about half (its sheath 0.1, its glow 0.32, its heart 0.42 - 0.70 with
+  the pulse; were 0.22, 0.55, 0.6 - 1.2) and the beat's flare 0.25 (was 0.4); the backlight 1.2 m (was 2.6) and about a
+  third as bright; the pool under half (0.07); the sparks softer; the light on the world 4.5 m at seven tenths (was 7 m
+  at full). A strand's heart at its brightest over the clock 1.34 (was 2.70), the backlight's 0.96 (was 3.65), the pool
+  0.15 (was 0.33).
+- Pins: `test/seraphwings.test.js` 21 - WINGS-FIT's own (the depth carried, dropped and uploaded, the roots there, THE
+  LAW from the front round to either side and many at the old depth, the backlight and the world's light behind the
+  roots, the slimness, the length and the light's caps; the low plumes short in the shape);
+  the figure facing nowhere facing the eye; the pool and the world's light re-pinned dimmer; a turn's sweep of the
+  shorter tip (0.15 m for half a radian; was 0.3). `tools/auraProbe.mjs`: the wings' grid every 0.1 m (slim strands
+  fell between a 0.2 m grid's points), out either side and over the rest pose's crown, and nothing past 1.6 - 1.8 m
+  (their reach; at 2.2 m those points lay inside it). `tools/mutants/seraphwings.json` 115,
+  all dead (eighteen new; eight re-aimed by content - the root, the heart, the figure, the backlight's place, rays and
+  heart, my facing, the light's pose). One older record, every plume as long as the highest, survived the shorter wings
+  (its only killer was the lowest tip's height, off the ground at 2.2 m but not at 1.3) - pinned now in the shape:
+  the lowest primary under seven tenths of the highest. The backlight and the light on the world behind a sprite's
+  roots, pinned. The probe 62/62.
+- **Left as it is, said:** from the side a Beholder's wings now start a hand behind its back, where a Morrowind body's
+  leave the back itself (the card cannot hide a root nearer it); from a back three-quarter the near wing still lies
+  over the body - it is nearer the eye than the body there, as it would be; at the beat's height the tips sweep
+  forward and from the side the near one passes in front of the body - it is in front of it; the body's outline in
+  the law is one measure (0.25 m either side) for every set, not read off the frames; not seen in a running game
+  client with a real sprite.
+
+## CRYSTAL-FIST — Flylighter's own: the Crystal Fist, its glyph and the Crystal Resonance (2026-10-05, world171, acct83)
+
+The owner, for Flylighter: "Title: Crystal Fist", "Glyph: Referenced above" - a 54x49 picture of three purple slashes
+falling down to the right, every one of its pixels #a349a4 - and "Aura: Aura, also purple, would be a circle of tiny
+purple squares going up and down out of the ground. Something similar to what you see here, but the color 'gradient'
+would be unnecessary", pointing at Octavia in Warframe (a ring of a music visualiser's bars about her). The video is not
+read here; the aura is drawn from the sentence.
+
+- **The grant** (`server-account/src/titles.js`): `CRYSTAL_FIST_HANDLES = "Flylighter"` (`server-account/wrangler.toml`)
+  grants the title, its glyph (`TIER_GLYPH.crystalfist`) and the aura (`TIER_AURA.crystalfist: 'resonance'`) together,
+  case-folded, read off the config at every ask - TITLE-N's handle-list law, as AEGIS, PRIMARCH and SHADOW-CLOAK.
+  Flylighter stays in DISCIPLE_HANDLES: two titles held, one worn; taking the handle off this list takes the three and
+  leaves the Disciple.
+- **The vocabulary** (`src/net/identityToken.js`, in the relay bundle): `crystalfist` last in TITLES and GLYPHS,
+  `resonance` last in AURAS. A relay before it refuses a token carrying them, so the relay is **world171** (world170 on its branch, renumbered past
+  main's FEUD at the merge of main) and the
+  account service **acct83**: THE RELAY FIRST, then the account service, then the site (the account deploy waits on the
+  relay's `/health` - SHADOW-FANG's AUDIT B1). Every token acct83 mints for Flylighter carries the glyph whether or not
+  they wear anything, so an account deployed first by hand would shut them out of every room until the relay landed
+  (the AUDIT's finding: this line first had the order backwards). No frame changes shape.
+- **The face** (`src/ui/playerBadge.js`): "Crystal Fist" in ONE colour, `CRYSTAL_PURPLE` #a349a4 - the reference's own;
+  no gradient and no edge, every face's black text shadow. The glyph traced off the reference's pixels: three bands
+  falling down to the right at 45 degrees, their ends cut square, one thickness (the reference's seven pixels across) and
+  even gaps (its six); the middle corner to corner, the upper and the lower two thirds its length (48 to 72 pixels),
+  each beside its middle - filled in the title's purple. `\` on the classic face. "Crystal Resonance" on the account
+  card, its button in the Crystal Fist's purple (`AURA_PAINT`). Seen in Chromium at 13 to 64 px over a night sky, a day
+  sky, stone, grass and snow: the three slashes read from 16 px; at 13 px they read as a hatch.
+- **The look** (`src/render/auraRing.js`, the sixth: `AURA_LOOK.resonance`, kind 5, on the pass's own strip - no mesh,
+  no third draw, added whole):
+  - THE WALL: RESONANCE_COLUMNS columns round the feet at RESONANCE_R (0.8 m) - one on each face of the strip, which is
+    AURA_STEPS (48) round - each a stack of tiny squares, RESONANCE_SQUARE_M (0.042 m) a side at RESONANCE_PITCH_M
+    (0.06 m) up the column, RESONANCE_CELLS (10) at most, so the wall is 0.6 m. As many of a column's squares stand lit
+    as its level now: `resonanceLevel(k, t)` - a wave of three crests running round the ring (61 cycles in the clock's
+    120 s, about every two seconds), a second of two crests running against it (41, about every three), each column's
+    own bounce (59) and a beat through them all once a second - in node alone: the draw counts every column once a frame
+    on the wearer's own clock (`resonanceLitInto`, `resonanceClock` - the frame's clock offset by the wearer's seed) and
+    hands the counts to the shader (`uResLit`), so every GPU lights exactly the squares the law names. A kindled column's
+    foot always stands lit (the level's floor is 0.08). A square is the purple itself, covering whole; its edge a pixel
+    wide.
+  - THE GROUND: a square at each column's foot, lying on the ring.
+  - Drawn PREMULTIPLIED (AURA_LOOK `shade`, the cloak's blend): a square covers what is behind it in the purple, so a
+    square over its foot, the far wall through the near or a bright ground never sum to a paler colour.
+  - FAR OFF: a square under a couple of pixels fades to its cell's average cover (the scene's own derivatives), so the
+    rows do not moire.
+  - It kindles UP: every column's foot first, the rest rising after. Every rate whole over the clock and none stopped
+    (`resonanceRatesWhole`); every wave a whole number of crests round the ring, so no seam behind the wearer; the ring
+    never repeats inside the clock.
+- **The hosts** - THE FOUR HOSTS: no host changed. `scenes/world.js` draws every look through the pass by its key;
+  `scenes/worldModes.js` and `scenes/dungeonContext.js` draw through world.js's pass; `scenes/exterior.js` draws no
+  aura - FLAGGED, unchanged.
+- **Seen** through the committed `tools/auraProbe.mjs` in headless Chromium's WebGL2: 71/71, the resonance's 9 - no GL
+  error; every square node's law stands lit is lit in #a349a4 itself and every square over a column's top dark, square
+  for square; over a bright floor still #a349a4; another moment, other squares, every one the frame; its feet on the
+  ring from above, read inside it where the wall stands over nothing; no jump at the wrap; nothing unkindled.
+- Pins: `test/crystalfist.test.js` (12) - the vocabulary and the face; the glyph's shape against the reference; the grant
+  (case-folded, beside the Disciple, off the list, a guest, the other lists' holders); the service end to end; the token
+  and the relay (world171); the name over a head, the account card's rules and the classic face; the look's law; the
+  columns' law (the level at recorded moments, up and down, the ring's columns differing, the feet first while it kindles,
+  no repeat inside the clock, a wearer's own clock); the wall RUN square by square on node's counts (the purple covering
+  whole, the gaps, an edge a pixel wide, the far-off fade); the ground RUN (and nothing, never a NaN, at the middle); the
+  draw (the counts handed, premultiplied). `tools/mutants/crystalfist.json` (45, all dead). The relay's and the account's pins
+  moved to world171 and acct83 crediting CRYSTAL-FIST (`auditbounty1.test.js` holds the credit); the vocabulary's exact
+  lists moved in `acc3titles`, `titlen`, `aegis`, `primarch`, `shadowcloak` and `seraphwings`; nineteen records in
+  `aegis.json`, `herald.json`, `penitent.json`, `primarch.json`, `seraphwings.json`, `shadowcloak.json` and
+  `shadowfang.json`, and the version records in `soc1.json`, `gatekeys.json` and `fb1004d_knight_house.json`, re-aimed by
+  content.
+- Left as they are, said here: not seen in a running game client; the title is the reference's own purple, which over a
+  night sky is the weakest one-colour title (WCAG 3.65; the Protector's 4.36) and on the classic face carries no edge -
+  kept as the owner gave it, a lighter purple the owner's call; the squares are flat on the strip's faces, so at the
+  ring's two sides, seen edge on, they narrow to lines; the columns stand on a wearer turned beast and on a rider as the
+  ring of fire does; one program draws all six auras, so a compile failure would take them all (the eager compile in
+  `test/shadowcloak.test.js` and the probe are the guard).
+
+## DEV4 — RookieG a developer (2026-10-05, with CRYSTAL-FIST's acct83)
+
+The owner: "Also add RookieG(Dev) as developer"; asked whether the brackets were part of the name, "RookieG(Dev)" - and
+then "Change RookieG(Dev) to RookieG". `DEVELOPER_HANDLES` holds `RookieG`, fifth: the developer title, the dev glyph,
+/red, /mute and /unmute (titles.js `canModerate`) and the developers' Seraph Wings, case-folded as every list is. The
+handle exactly: `RookieG(Dev)` (a handle may carry brackets - `net/handleShape.js` HANDLE_RE) is another account and
+holds none of it, nor does a near name. Pins: `test/titlen.test.js` (the list, the handle case-folded, the bracketed
+handle and four near names refused); `tools/mutants/titlen.json` DEV4-rookieg-not-granted (the bracketed handle listed
+instead - dead) and DEV3's record re-aimed by content.
+
+### CRYSTAL-FIST AUDIT (2026-10-05, the owner: "Audit this")
+
+Four lenses over the change, read-only while they read (the grant, the token and the relay; the shader and the draw; the
+faces and the glyph; the pins, the mutants and the docs), every finding checked against the code before it was fixed.
+
+| # | Finding | Fixed |
+| --- | --- | --- |
+| A1 | MEDIUM: the deploy order written backwards (wire.js's version comment, this page) - and "refused once they wear either", where acct83 signs the glyph into every token of Flylighter's: an account deployed first by hand shuts them out of every room | the relay first, then the account (AUDIT B1's wait); world170's row, never deployed, re-hashed in place (world171 since the merge of main, past FEUD's world170) |
+| A2 | MEDIUM: the shader's own `fract(sin(x) * 43758)` hash lit other squares than node's law on a GPU (float32, each vendor's sin) - in nearly half the samples, unseen by a float64 pin and an 80% probe | the counts are node's, handed over each frame (`uResLit`); the probe square for square |
+| A3 | MEDIUM: not one colour - added light summed a square over its foot, the far wall through the near and any bright ground to a pale pink (255, 139, 255 in the probe) | premultiplied (`shade`); the probe holds #a349a4 over a dark and a bright floor |
+| A4 | LOW-MEDIUM: the squares' fixed edge would moire past about 15 m | an edge a pixel wide; a cell under a couple of pixels its average cover |
+| A5 | LOW: a glow cut into a line over each column's top | the glow gone |
+| A6 | LOW: the ring repeated every six seconds (1/2, 1/3, 1/2 Hz) and two wearers six seconds of seed apart rose as one; `uSeed` unused | rates 61, 41, 59 in 120 s; the wearer's own clock (`resonanceClock`) |
+| A7 | (found fixing A3) the ground's middle, where atan(0, 0) is no number, painted white under the premultiplied blend | the ground answers the ring's feet alone |
+| A8 | LOW: the widest-token pin left out `ar` and `cl`; with them a token is 639 of 640 | `test/shadowfang.test.js` carries both |
+| A9 | LOW: the glyph's ends square where the reference's corners are rounded two pixels | each corner taken off alike |
+| A10 | LOW: pins - the ring "inside the fire's" up to 0.9 m; a frozen bounce or a dropped beat passed both sides; the kindle's foot unpinned; two tautologies | the recorded levels, the strict radius, the foot first, a stopped rate refused |
+| A11 | LOW: docs - "a one-colour title wears every face's black text shadow" (not the classic face's); Rendering.md's probe count; a comment that credited CRYSTAL-FIST with ARENA-LADDER's renumbering; RESONANCE_RGB a second literal of the purple | each corrected; the purple imported |
+| A12 | (the mutation run) `Math.max(1, ...)` in `resonanceLit` could never act - the level's floor keeps a kindled foot lit | the dead guard gone |
+
+Left, said: the title's contrast (the "Left as they are" above); the classic face's backslash rests on FONT0003's glyph 59
+having a width, as `~`, `^` and `|` do - no ARENA2 here to read it; a token with every glyph AND `gx` was over the
+relay's 640 before this change (no player holds every glyph). Pins: `test/crystalfist.test.js` (12, rewritten for A2-A10),
+`test/shadowfang.test.js` (A8); `tools/mutants/crystalfist.json` 45, all dead; the probe 71/71.
+
+## SPRITE-FACE — the wings face as the sprite's picture does (2026-10-05)
+
+Mac: "For the wing aura we implemented for developers. The sprite rotation on character input is a little finicky and
+make the aura misallign".
+
+- **The cause.** An Eye of the Beholder sprite is drawn from one of ORIENTATIONS (8) pictures, ANGLE_PER_ORIENTATION
+  (45) degrees apart about the line from the figure to the eye (`player/eotbBillboard.js` orientationFor), and a change
+  of facing reaches the picture only at UpdateOrientation's tenth-of-a-second gate and then DELAYED_FRAMES (3) frames
+  later, when the mod's delayed repaint lands (UpdateBillboardDelayed - the mod's own, ported 1:1 and left as it is).
+  The Seraph Wings and the Shadow Cloak were hung on the facing the walk WANTS (`lastMoveDirection`; a peer's pose
+  facing), which turns at once and smoothly: on a key the wings swung round before the picture did, and at rest they
+  stood up to half a picture (22.5 degrees) off it - sliding as the eye went round while the picture held, then the
+  picture jumped. A peer's (8-way `viewOf` against the pose's smooth facing) and a rider's (the horse's picture, the
+  camera-turned body's yaw standing in) the same.
+- **The law** (`portrayedYaw`, beside orientationFor in `player/eotbBillboard.js`): orientationFor run backwards - the
+  facing a picture SHOWS, seen along the line to the eye: that line's bearing turned back by the picture's angle, the
+  middle of its bucket. A figure facing it is drawn in that picture from every line of sight; any facing portrays its
+  bucket's middle, never more than half a picture off; no line of sight, no facing.
+- **Mine** (`player/eotbBody.js` `facing()`): each frame drawn, `{ yaw, turn }` - `yaw` the picture SHOWN (the repaint
+  that has landed) about the eye of the frame it was drawn in, `turn` the walk's facing (`turnYaw`) - before any walk
+  the picture's own, its front to the eye (WINGS-FIT's law; the re-run of the re-aimed mutant lists found `turnYaw`'s own
+  reading of the eye could never differ from it - `WINGSFIT-facing-nowhere-the-cameras` survived on it - so that branch
+  is gone and the record aimed at the one fallback left). In the saddle too (the horse's picture faces as the rider's does - no figure, no shoulders,
+  but a facing); none in first person (the billboard on the camera faces no bearing) or undrawn. The figure keeps its
+  shoulders and no longer carries a facing. `player/mwView.js` keeps it beside the figure (`mwViewSpriteFacing`).
+- **A peer's** (`net/peerRiders.js` `faceOf`, the walkers' and the riders' layers alike): the view each figure is drawn
+  in about my eye, recorded as it is drawn (`faceDrawn`), with the pose's facing as `turn`; a rider's and a beast's too;
+  none undrawn or with no eye.
+- **The aura** (`render/auraRing.js`): `auraSpritePosed(w, fig, face)` poses a sprite wearer on its picture's facing -
+  with a figure its shoulders, without one (a rider) the rest pose over the saddle; `auraCapeStep` keeps the body's
+  turning beside it (`w.turnYaw`), none for a body drawn as it turns (a rig); `auraMotionStep` swings by the turning, so a
+  picture changing a whole view is no turn - the cloak does not twist and the wing tips' trail does not slide and spring
+  back at each change, and a velocity is read along the body. `scenes/world.js` hangs mine (the gather and the draw) and
+  each peer's on it - a peer's gathered so too, after the layers have drawn them, so the wings' light on the world
+  (auraWingLights, read off the gather) stands where the wings do. THE FOUR HOSTS: world.js WIRED; worldModes.js and dungeonContext.js draw through world.js's pass,
+  unchanged; exterior.js draws no aura - FLAGGED, unchanged.
+- **The sprite's own turning is the mod's** - its eight pictures, its gate, its delayed repaint - and is not changed; the
+  aura now follows it exactly, picture for picture and frame for frame.
+- Pins: `test/spriteface.test.js` (5) - the law (the round trip from every line of sight, the bucket's middle, half a
+  picture at most, no line no facing); my body DRIVEN frame by frame (every frame the picture shown; a key turning the
+  walk first and the picture after the delay, the wings with the picture; the eye going round, the picture changing and
+  the wings with it, the walk still; the saddle; first person; undrawn); a peer's walker, beast and rider driven through
+  the real layers (the view, not the pose; another eye; no eye); the aura's side (posed, kept, the swing unmoved by a
+  picture's change where reading the picture would have twisted it); the wiring. `tools/mutants/spriteface.json` (16,
+  all dead - the first of them the old behaviour itself, the walk's facing hung). Old pins moved: `seraphwings`
+  (the facing off facing(), the wiring), `shadowcloak` (the gather and the draw lines), `climb5`; records re-aimed by
+  content in `seraphwings.json` (5), `shadowcloak.json` (2), `climb5.json` and `auditclimbarc.json`.
+- Left, said: not seen in a running game client - the test drives the real sprite body and the real peer layers frame
+  by frame, no GPU; the wings still stand on a rider at the saddle's rest pose (no shoulders read off a horse's frame).
+
+## LEGACY7 — Project Legacy's lines and the tombstone (2026-10-06, acct87 - acct84 on its branch, renumbered past SERPENT-SET's acct84, then YARD-SHED's acct85, then YARD-HEIGHT's acct86 at the merges of main)
+
+Mac: "online integration with permadeath (Bloodline) or non-permadeath (Enduring)". The record is
+`06-Systems/Legacy-Arc.md` section 9; the service's half is `server-account/src/legacy.js` and migration
+`0084_legacy.sql` (0083 on its branch).
+
+- **`lineages`**: one row a family an account founded online - its id (`fam-...`, the client's), surname, model (the
+  founder's, for good: `lineage-model`), record (bounded, `LINEAGE_MAX_BYTES`) and `rev`. `/v1/realm/lineages` lists
+  them; `/v1/realm/lineage` writes one only past its rev, a stale write answered 409 with the stored record to merge
+  into. At most `LINEAGES_MAX` an account.
+- **`realm_characters.lineage_id`, `person_id`**: a character born with `{ lineage, person }` (`/v1/realm/create`) is
+  that living member of the account's own line, named for good; never one another character played (`lineage-played`,
+  a unique index behind it). A birth whose first save never landed is resumed, as customs' is.
+- **`realm_characters.dead_at`** - THE TOMBSTONE (`/v1/realm/die`, under the lease): never joined again (`dead`, 410),
+  checkpointed or traded; refused at the relay's door (`realmCharacterHeld`); off the roster, and no slot held
+  (`REALM_CHARACTERS_MAX` counts the living in `createRealm`, `customsRealm` and `customsRefusal`). AUDIT LEGACY III
+  O12: it acts in nothing - `index.js` asks `legacy.js isTombstone` of every body that names a `character`, before any
+  route (`dead`, 410), the token's mint alone excepted (no act: it mints a tombstone `rc` 0).
+- **The house on the token** (LEGACY7 part two): the identity mint signs a realm character's house (`hn`, `hc`, `hb`,
+  `hg` - `src/net/houseLaw.js`, `legacy.js realmHouseOf`) through the name filter, never a tombstone's, and leaves it
+  unsaid rather than take a token past `TOKEN_MAX_CHARS`; `/v1/realm` lists each tile's house. The relay (world174)
+  stamps it on every row.
+- **Two players wed** (LEGACY7 part three): `/v1/realm/wed` takes one HALF of a wedding - the caller's realm character
+  under its lease, the handshake `sid` the two clients agreed on the relay's `wed` frame, and the other's account as the
+  relay stamped it (`partner`, never the caller's own) - into `realm_wed_halves`; the second half naming the first's
+  account makes the union (`realm_unions`, one row a sid, asked IN the write so a race makes one and neither character
+  is wed meanwhile), each side's card kept as it stood (`a_card`, `b_card`: the realm name, the house through the name
+  filter, sex, race and face off the line). A half lives `WED_HALF_LIFE_S` (five minutes), and an account holds one at a time (a second takes its first back - one
+  row an account). Refused: `wed-no-line` (a
+  character of no line), `wed-already`, `wed-partner` (theirs dead, of no line, or wed meanwhile), `wed-spent` (another
+  pair's sid) - 409 each - and `dead`, `lease`, `body`. A union ends with either's tombstone (`died`) or delete
+  (`gone`), `ended_by` whose; `/v1/realm/die` takes `why: 'retired'` for an elder's mantle passed, which keeps it.
+  `/v1/realm/unions` lists the account's unions, each from its own side.
+- **Deploy**: the relay (world174 - the house's stamp and the `wed` frame; world172 on its branch, renumbered past
+  main's WATCH-FIX and SERPENT3 at the merge) first, then the migration and the service (acct87), then the site - the
+  new site founds, tombstones and weds at the service.
+
+## HANDLE-EMAIL - a username is never an email address (2026-10-11, acct117)
+
+The owner: "ban account names as email". The handle is the name the world reads (`server-account/src/accounts.js`
+displayName - the token's `n`, every roster, every home's owner, every board note), so a player who typed their
+address into the Username field published it to everyone they met. HANDLE_RE takes any character but a space, `@`
+among them.
+
+- **The law.** `src/net/handleShape.js` handleLooksLikeEmail: a handle carrying an `@` is an address - none can be
+  written without one. Asked after the shape (a handle still starts with a letter), before the filter.
+- **At registration.** `handleRefusal` answers `email`, so `/v1/auth/register` refuses `handle-email`, worded in
+  `net/accountClient.js` REFUSALS; nothing is written and the guest stays a guest.
+- **At the form.** `ui/accountFlow.js` doRegister refuses it before any request, in the service's own sentence. Asked
+  there alone - never in localRefusal, which the sign-in and the recovery share - so a handle chosen before still signs
+  in and recovers by it.
+- **One chosen before.** It keeps its handle, its `handle_lc`, its sign-in and its roles (the wrangler.toml `*_HANDLES`
+  lists are keyed by handle); displayName reads its guest name in its place, so the token, the login's answer, every
+  roster and every row written from now on carry the guest name. The player's own account card still shows them the
+  handle they sign in with (`handle`, beside `name`).
+- **OPEN - the copies written before.** displayName's answer was written down by value wherever a name is kept (a
+  home's `owner_name`, a guild's roster and ledgers, board notes, letters, seat edicts - forty-odd columns): those still
+  read the address until the row is written again. A migration putting the guest name back in each, matched on the
+  handle exactly, was drafted and held for the owner's word - it rewrites rows across the live database. There is still
+  no rename route (OPEN above), so such a player cannot choose a new handle.
+- acct117 (with YARD-SWEEP, `06-Systems/Online-Arc.md`).
+- **Pinned**: `test/handleemail.test.js` (4) - the law and the refusal's order and sentence; the real route refusing
+  one; an address chosen before signing in, named by its guest name in the login and the token, its card showing its
+  handle; the form refusing before any request and never refusing the sign-in; `tools/mutants/handleemail.json` (6,
+  all killed).
+
+## NAME-AS - the name the room reads: the account's, or the character's (2026-10-12, acct122)
+
+Mac: "I want to add an option to the profile menu where players can toggle to use their account name or character
+name for ingame use".
+
+The room reads the token's `n` - ACC1g: no client writes a name, and ACC1a (Mac, 2026-09-21: "the account name would be
+used for online") made it the account's. So a choice of name cannot be the client's: a device that relabelled itself
+would be the only screen that believed it (NAME-ADOPT's bug, inverted). The choice is the account row's, and the mint
+signs it.
+
+- **The choice** (`server-account/migrations/0111_name_as.sql`, `server-account/src/accounts.js` NAME_AS, nameAsOf,
+  chooseNameAs): `name_as` 'character', or null for the account's - so every row that never chose reads as every player
+  read before. `POST /v1/account/name { as }` answers `{ ok, nameAs }`; any other word is 400 `no-name-as`. The account
+  view says it (`nameAs`).
+- **The mint** (`/v1/auth/token`, accounts.js wornNameOf): the account's name, or - where the row chose its
+  character's - the realm character's own name, off the row the token is minted for: `server-account/src/realm.js`
+  realmMintFacts answers `name`, a fifth answer of SCALE4f's one read of that row, never a second statement
+  (`test/scale4f.test.js` holds it to its own read beside the four). Never a word of the request: the body names WHICH
+  character, as it always did. Another account's character, one not in play, or none named: the account's, silently -
+  there is nothing to wear. The answer says `name` (the token's - the room's), `accountName` (the account's own),
+  `nameAs`, and, where the character's name stood aside, `nameWhy` and `nameWord`.
+- **When a character's name stands aside for the account's** (wornNameRefusal). It cannot ride the wire as it stands -
+  `src/net/identityToken.js` claimsValid refuses a token whose `n` is not nameIsIssuable, so a name signed past that law
+  is a player who cannot connect: `long` (past NAME_MAX, 24 - a realm name may be 32), `letters` (an accent, a symbol
+  past plain text, or no letters at all), `refused` (the name filter's, with the word it caught - NAME-F: a refusal
+  names it). `email` - HANDLE-EMAIL's law, worn as it is chosen: an address is never read out. And `taken`: ANOTHER
+  ACCOUNT'S USERNAME. A handle is unique and is how an account is found - a letter, a guild invitation, a commission,
+  staff's `/tp @name` - and `src/net/handleShape.js` keeps the guests' generated names out of that space by their shape
+  alone. A character's name is chosen at chargen and its shape promises nothing, so it is asked here: one read of the
+  unique `handle_lc` index, and only of a name that could be a handle at all (one word, HANDLE_RE - a name with a space
+  never can). The player's own handle is theirs to wear as their character's name. A name another player's character
+  or a guest also wears is no claim on any account - the roster's `#tag` tells them apart, as it always has.
+- **The device keeps two names** (`src/net/accountClient.js` accountTokenMinter, adoptIdentity): the stored session is
+  the account's picture - the profile mark's name - so it adopts `accountName`; the live sessions take `name`, the
+  room's: NAME-ADOPT's law one field further (my own roster row, my chat lines and the `@name` that pings me are the
+  room's name). A service before acct122 answers `name` alone, adopted as it always was.
+- **Said once** (`src/scenes/world.js` adoptIssued, accountClient.js nameWhyText): "Your character's name cannot be
+  shown online: <the reason>. Others see you as <the name the room reads>." - once, in the chat, until the reason
+  changes or goes; every room mints, and the line is the player's, not a room's.
+- **The room hears it at once** (`src/ui/accountFlow.js` chooseName, `src/systems/ownGlyphs.js` ownNameAsAt, world.js
+  nameAsFrame). A choice the service took STAMPS the stored session (`nameAsAt`, forward only, the flow's own clock);
+  the world host, seeing a stamp it has not acted on (its online frame, after the others' blows and before the realm
+  door's, the seat's and the dead's returns), says hello again on every open socket - the presence session's and every
+  chat channel's, since a line's name and a channel's roster are the channel's own - through AURA-LIVE's door
+  (`src/net/online.js` rehello), on a fresh token that signs the new name. Keyed on the stamp and never on a mint's
+  word: a mint already in flight when the choice landed answers the old name, and adopting its word would hide the
+  choice - or, against a store another device left behind, loop. A choice made on another device moves no stamp here
+  and is simply what every later mint signs. THE FOUR HOSTS: `scenes/world.js` wired - its online frame serves the
+  streaming exterior, `scenes/worldModes.js`'s interiors and `scenes/dungeonContext.js`'s dungeons, one online
+  session for all three, so no pause hook is threaded; `scenes/exterior.js`, the single-town bench, runs no online
+  session and has nothing to say a hello in.
+- **The card** (`src/ui/enhancedAccount.js` nameAsRow, NAME_AS_CHOICES). In the Account section, beside the name it goes
+  by: "Name in game", Account name / Character name, the chosen one pressed (`aria-pressed`) and worn in the
+  wardrobe's own vocabulary - the card brings no design language of its own; `src/ui/enhancedStyle.js` holds the one
+  rule, the note tight under its buttons - and one line under them: "Others see <account name> over your head and in
+  chat." or "Others see the name of the character you play online, or <account name> where it cannot be shown." A
+  service before NAME-AS states no choice, and gets no toggle.
+- **Where a name stood in for an account, the account now.** The slice swept every place a player's name is used as an
+  identity before it built - the relay's (staff's `/tp`, `/find`, the hub's record), the service's (every typed name
+  resolves against `handle_lc`) and the client's - and two of them joined the room's name to an account:
+  - **A friend's letter** (`src/ui/socialPanel.js`, `src/net/mail.js`, `server-account/src/letters.js` `toAccount`).
+    The friends list's name is the hub's, the room's: a character's two words (no username at all), or a word that IS
+    another account's username - which that account would have been sent. The row's Letter addresses the friend's
+    account now, and a name typed over it is a username again; a guest friend is refused `reader-guest`, in its own
+    words (the row's shape test is gone - a name's shape says nothing of a username any more); the answer names the
+    reader as the world reads their account (HANDLE-EMAIL: never an address). The row's name rides beside the account
+    (`mail.js` sendCall): a service from before NAME-AS reads the name alone, and every name it signed was an
+    account's - the username the row shows - so a client deployed first still reaches the friend.
+  - **A notice-board note's duel** (`server-account/src/board.js` `by`, world.js answerNote): the author found among the
+    players here by account - the relay's `sub` against the note's `by` - never by the account name the note was
+    signed with. A service without `by`, by name as before.
+- **What stays the account's.** What the service keeps by value - a home's owner, a guild roster's member, a board
+  note's author, a letter's sender, the leaderboards - is an account's record, and a letter, an invitation and a
+  commission are addressed by username. Migrations 0009, 0010 and 0013 wrote "a name over a head is the account's" and
+  "a character's name is never shown to another player" as law; 0111 records it as a choice, the account's by default.
+- **No relay change.** `n` was always "the display name" (identityToken.js), and claimsValid ties it to nothing but
+  the wire's own law, so the relay draws whatever the mint signs. `RELAY_VERSION` stays world197. acct122 - acct121 on its branch,
+  renumbered past BAL9 at the merge (`05-Combat/Balance-Arc.md` section 15 took acct121 the same day).
+- **Pinned**: `test/nameas_service.test.js` (6) - the law; the route; the mint over a real realm character; the
+  fallbacks through the real mint; a letter by account; a note's account. `test/nameas_client.test.js` (7) - the
+  minter's two names; the reason in words; the stamp; the flow; the card; the host by source; a friend's letter's
+  wire. `test/mail1.test.js`'s friend-letter pin re-aimed and driven end to end over the real service - the letter
+  reaches the friend's account and not the account whose username is the row's word. `test/scale4f.test.js`'s oracle
+  carries the fifth answer; `test/accountworker.test.js`'s schema pin the column. `tools/mutants/nameas.json` - 39,
+  all dead. Re-aimed: ACCOUNT_VERSION's pins at acct122 (PIN MOVED; BAL9c's service-behind-the-law record re-aimed
+  with them, its mutant still below law 3's floor); CHAT1's and AUDIT DROPS F's online-frame order,
+  for the frame's call; SHADOW-FANG's skin pin on the mint's adoption (the account's name beside the answer it keeps
+  whole); and by content, the records whose lines NAME-AS rewrote - ACC1b-14 (the mint signs the worn
+  name), MAIL-shape-after-rate and TAB-to-not-kept (a friend's account beside the name), NAME-ADOPT-2 and -6, and
+  SFSKIN's and WB9g's session and guard records (the stamp beside them). TAB-guest-friend-written is retired with its
+  line: `mail1.json` is 50.
+- **Not seen on a GPU.** The toggle, the line and the hello said again are driven in node; nobody has watched them in
+  the game. Worth a pass with a second player: choose Character name over the pause menu and watch the name over your
+  head change on their screen; name a character something the filter refuses and read the chat.
+
+## TITLE-C - no title in the chat (2026-10-12)
+
+Mac: "I also want to remove titles from appearing in the chat". TITLE-R (2026-09-24) took the title off the roster and
+kept it "over names and within chat itself"; a chat line now wears no title either. It wears the glyphs and the
+guild's tag after the name - the roster row's own order - and the title is worn over the head (`ui/nameLayer.js`,
+`net/remotePlayers.js`, the travel view's) and on the Inspect card (`ui/profileWindow.js`). A letter's sender line keeps
+its title: a letter is the letterbox's, not the chat. The record and its pins are `06-Systems/Chat-Roster-And-Names.md`
+TITLE-C.

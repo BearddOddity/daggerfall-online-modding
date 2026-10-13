@@ -34,6 +34,7 @@ import { RMB_SIDE } from '../world/locationLayout.js';
 import { directionHintString } from './talk.js';   // wave 27: one compass law
 import { staticNpcData, isChildNPCData } from '../characters/staticNpc.js';   // QP1: the one SetLayoutData law
 import { collectInteriorPeople } from '../characters/interiorPeople.js';   // QP1: the one people mapper
+import { hasInteriorModels } from '../world/interiorLayout.js';   // FIELD BUGS 2026-10-05 CRYPT-SALE: a room that cannot be laid out is not for sale
 import { buildingSummaries } from '../world/buildingSummaries.js';   // D9: GetBuildingList's own per-block building walk (RMBLayout.GetBuildingData)
 import { localizedTable } from './textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language
 
@@ -67,7 +68,11 @@ export function npcKnowsAboutItem(npcSeed, buildingKey, socialGroup = 0, questio
 // Special1-4, Town23 and Town4 - the port listed Palaces and
 // Furniture stores, which classic never offers. The list is built in
 // BUILDING_TYPES enum order (DFU walks the enum), and three captions
-// were paraphrased rather than taken from DFU's strings.
+// were paraphrased rather than taken from DFU's strings. PROF-FOUND
+// (2026-10-12): the Furniture Store, Carpentry's workbench, is asked
+// after again under its own group AFTER these (world/buildingNames.js
+// OPENED_SHOP_TYPES; scenes/townTalk.js, systems/topicTree.js) - this
+// list stays DFU's.
 const SKIPPED_BUILDING_TYPES = new Set([
   BUILDING_TYPES.HouseForSale, BUILDING_TYPES.Town4, BUILDING_TYPES.FurnitureStore,
   BUILDING_TYPES.Palace, BUILDING_TYPES.House1, BUILDING_TYPES.House2,
@@ -138,9 +143,23 @@ export function blockBuildingCount(dfBlock) {
  *  @param exteriorBuildings dfLocation.exterior.buildings
  *  @param blocks layoutLocation().blocks (y->x order preserved)
  *  @returns per-block arrays of merged buildingDataList copies */
+/** WD3 (AUDIT WD3 G4): guild factions a mod's location files name that this game carries no guild for - 1000 is the
+ *  Archaeologists Guild's (its own mod's faction), which Beautiful Villages writes on a guild hall entry of four
+ *  villages. DFU, without that mod, hands the entry to the first guild hall of the grid: Bubandanis' Mages Guild and
+ *  Tulaedax's Fighters Guild answered "You get no response", and Tulaedax's Mages hall took the Fighters' faction.
+ *  An entry naming no guild of this game draws for no hall - each hall takes its own guild's entry. */
+export const UNCARRIED_GUILD_FACTIONS = Object.freeze(new Set([1000]));
 export function mergeNamedBuildings(exteriorBuildings, blocks, { locationIndex = 0 } = {}) {
+  return drawNamedBuildings(exteriorBuildings, blocks, { locationIndex }).out;
+}
+/** ARENA1: the same draw, answering besides each block instance's merged list the location entries it DREW and kept
+ *  (a draw a building replacement handed back is not among them) - world/arenaCity.js strips exactly the entries the
+ *  cell the arena takes drew, so every other building keeps the entry it always drew. */
+export function drawNamedBuildings(exteriorBuildings, blocks, { locationIndex = 0 } = {}) {
+  const drawnBy = new Map();   // block -> [the location's BuildingData objects it drew]
   const pool = exteriorBuildings
     .filter((b) => isNamedBuildingType(b.buildingType))
+    .filter((b) => !(b.buildingType === BUILDING_TYPES.GuildHall && UNCARRIED_GUILD_FACTIONS.has(b.factionId)))
     .map((b) => ({ data: b, used: false }));
   const next = (type) => {
     for (const it of pool) {
@@ -203,10 +222,11 @@ export function mergeNamedBuildings(exteriorBuildings, blocks, { locationIndex =
         list[i].buildingType = BUILDING_TYPES.GuildHall;
         list[i].factionId = 414;
       }
+      if (drawn?.used) drawnBy.set(b, [...(drawnBy.get(b) ?? []), drawn.data]);
     }
     out.set(b, list);
   }
-  return out;
+  return { out, drawn: drawnBy };
 }
 
 /** Build the location's named-building directory.
@@ -229,8 +249,9 @@ function blockInstanceOf(blocks, d) {
  *  (the interior host's shop identity: type/quality/seed/faction).
  *  HOME1: and the building's MODEL (`modelIdNum`, locationBuildings'
  *  own read below - the first 3D object of its subrecord), because a
- *  house bought at its own door is priced off that model's radius
- *  (banking.js housePrice, what Daggerfall's bank asks); the block's
+ *  house bought at its own door is priced off that model (HOME-PRICE:
+ *  the ground its ARCH3D box stands on, net/homeLaw.js
+ *  homeOnlinePrice - the bank's radius x 1280 is offline's); the block's
  *  building data carries no model, so the door's record had none and
  *  every house read as unpriceable. */
 export function buildingDataForDoor(exteriorBuildings, blocks, door, { locationIndex = 0 } = {}) {
@@ -238,8 +259,10 @@ export function buildingDataForDoor(exteriorBuildings, blocks, door, { locationI
   const inst = blockInstanceOf(blocks, door);
   const data = inst ? merged.get(inst)?.[door.recordIndex] : null;
   if (!data) return null;
-  const model = inst.dfBlock?.rmbBlock?.subRecords?.[door.recordIndex]?.exterior?.block3dObjectRecords?.[0] ?? null;
-  return { ...data, buildingKey: makeBuildingKey(inst.x ?? 0, inst.y ?? 0, door.recordIndex), modelIdNum: model?.modelIdNum ?? null };
+  const sub = inst.dfBlock?.rmbBlock?.subRecords?.[door.recordIndex];
+  const model = sub?.exterior?.block3dObjectRecords?.[0] ?? null;
+  // FIELD BUGS 2026-10-05 CRYPT-SALE: whether the room can be laid out at all - a graveyard's crypt cannot
+  return { ...data, buildingKey: makeBuildingKey(inst.x ?? 0, inst.y ?? 0, door.recordIndex), modelIdNum: model?.modelIdNum ?? null, hasInterior: hasInteriorModels(sub) };
 }
 
 /**
@@ -285,6 +308,7 @@ export function locationBuildings(exteriorBuildings, blocks, { locationIndex = 0
         recordIndex: i,
         modelId: model?.modelId ?? null,
         modelIdNum: model?.modelIdNum ?? null,
+        hasInterior: hasInteriorModels(sub),   // FIELD BUGS 2026-10-05 CRYPT-SALE
       });
     }
   }
@@ -339,6 +363,7 @@ export function questorCandidateBuildings(exteriorBuildings, blocks, {
         isNamedBuilding: isNamedBuildingType(data.buildingType),
         buildingName: generateBuildingName(data.nameSeed, data.buildingType,
           { ...nameOpts, factionId: data.factionId }),
+        factionId: data.factionId,   // AUDIT QA2: the hall's own faction - a questor's guild rung asks it (person.js reseatMovedQuestor)
         npcs,
       });
     }

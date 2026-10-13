@@ -121,7 +121,7 @@ test('CAMP1 by source: both exterior hosts roll it after the single roll comes b
   // off, so its timer arm stands unchanged - which is why the two hosts
   // no longer share this pin.
   {
-    const i = w.indexOf('function runEncounterTick(');
+    const i = w.search(/^[ \t]*function runEncounterTick\(/m);   // CITE-ANCHOR: the declaration, not a comment's anchor that quotes it
     const fn = w.slice(i, w.indexOf('\n  }\n', i));
     assert.doesNotMatch(fn, /getPref\('wildernessCamps'\)/, 'world.js: no camp gate left in the per-minute tick');
     assert.doesNotMatch(fn, /const campHit = rollCampEncounter\(/, 'world.js: no live timer roll left in the per-minute tick');
@@ -129,7 +129,7 @@ test('CAMP1 by source: both exterior hosts roll it after the single roll comes b
   assert.doesNotMatch(w, /import \{ rollCampEncounter,/, 'world.js: the unused timer entry point is dropped from the import');
   assert.match(w, /import \{ rollCampEncountersOnChunkLoad, amGroupRollOwner, campAnchorSpot, CAMP_SIGHT_RADIUS \} from '\.\.\/systems\/campEncounters\.js';/, 'world.js: only the chunk-load twin, the ownership guard and the far anchor are imported now (BOUNTY1\'s pack spacing and shout come in with TV7\'s band import since the merge of main)');
   for (const [name, h] of [['exterior.js', e]]) {
-    const i = h.indexOf('function runEncounterTick(');
+    const i = h.search(/^[ \t]*function runEncounterTick\(/m);   // CITE-ANCHOR: the declaration, not a comment's anchor that quotes it
     const fn = h.slice(i, h.indexOf('\n  }\n', i));
     assert.ok(fn.indexOf('_standEncounterFoe(hit, playerFeet)') < fn.indexOf("getPref('wildernessCamps') !== false"), `${name}: the group roll sits AFTER the single roll's break, so the two never both fire on one minute`);
     // TIME1: and the sky beside the minute - the camp's day and night are the sky's, the minute the character's own
@@ -208,7 +208,7 @@ test('CAMP1 by source: the group roll is skipped while resting - camps/packs onl
   // exterior.js keeps the timer, so it keeps the gate.
   for (const host of ['src/scenes/exterior.js']) {
     const h = read(host);
-    const i = h.indexOf('function runEncounterTick(');
+    const i = h.search(/^[ \t]*function runEncounterTick\(/m);   // CITE-ANCHOR: the declaration, not a comment's anchor that quotes it
     assert.match(h.slice(i, i + 200), /function runEncounterTick\(playerFeet, isResting = false\) \{/, `${host}: the tick knows whether it's servicing a rest`);
     const fn = h.slice(i, h.indexOf('\n  }\n', i));
     assert.match(fn, /if \(!isResting && getPref\('wildernessCamps'\)/, `${host}: the camp/pack roll is gated off during rest`);
@@ -272,18 +272,17 @@ test('CAMP1-REST: the rest interrupt is SIGHT first - a seen foe reports at any 
 });
 
 // CAMP-REST (2026-09-19): time skips that are not the rest window must not be replayed as walking time. The exhaustion
-// collapse, a camp meal and a forage/hunt search advance the clock without touching the encounter cursor, so the next
+// collapse, a camp meal and a forage/hunt search (the hunt's retired with it, HUNT-OUT 2026-10-04) advance the clock
+// without touching the encounter cursor, so the next
 // frame's catch-up rolled them with isResting=false and the timer's 180-minute boundary fired a guaranteed group.
 test('CAMP-REST by source: every time skip is spent through the tick as a rest, and a campmate does not notice a sleeping player', () => {
   const w = read('src/scenes/world.js'), e = read('src/scenes/exterior.js'), ef = read('src/scenes/exteriorFoes.js');
   assert.match(w, /playerTicker\.advance\(60\);\s*\n[^\n]*\n[^\n]*\n\s*runEncounterTick\(walkMode && playerSpawned \? player\.pos : cam\.pos, true\);/, 'world.js: the collapse hour is spent as a rest');
   assert.equal((w.match(/advanceMinutes: \(n\) => \{ playerTicker\.advance\(n\); runEncounterTick\(walkMode && playerSpawned \? player\.pos : cam\.pos, true\); \}/g) ?? []).length, 2, 'world.js: the camp meal and the rest (LIVED1: one shape now, the rest\'s minutes the character\'s own)');
-  // the hunt's search the same shape, and `quiet` (AUDIT of FIELD BUGS 2026-10-02: a box taken away rolls no encounter)
-  assert.equal((w.match(/advanceMinutes: \(n, \{ quiet = false \} = \{\}\) => \{ playerTicker\.advance\(n\); if \(!quiet\) runEncounterTick\(walkMode && playerSpawned \? player\.pos : cam\.pos, true\); \}/g) ?? []).length, 1, 'world.js: the forage/hunt search');
   assert.match(e, /playerTicker\.advance\(60\);[^\n]*\n\s*runEncounterTick\(walkMode \? player\.pos : cam\.pos, true\);/, 'exterior.js: the collapse hour');
   assert.equal((e.match(/advanceMinutes: \(n\) => \{ playerTicker\.advance\(n\); runEncounterTick\(walkMode \? player\.pos : cam\.pos, true\); \}/g) ?? []).length, 2, 'exterior.js: the camp meal and the rest (LIVED1: one shape now, as world.js\'s camp meal and rest)');
   assert.match(ef, /const campAsleep = f\.campId != null && !!senses\.playerEntity\?\.isResting && !isLocalPlayerTarget\(ai\.target\);/, 'a campmate, not already on the player, while the player rests');
-  assert.match(ef, /noTargetMode: campAsleep,/, 'the target machine leaves the player off its list for it');
+  assert.match(ef, /noTargetMode: campAsleep,[^\n]*\n\s*dropLocal: wildUnaware,/, 'the target machine leaves the player off its list for it (WILD-ALERT: and the local player alone for a wilderness foe that has not noticed a fast traveller - test/wildalert.test.js, test/wildalertfix.test.js)');
 });
 
 // ═══ CAMP-FAR (2026-09-24) ══════════════════════════════════════════

@@ -48,7 +48,7 @@ const ROUTED = {
   'src/scenes/exterior.js': 1,
   'src/scenes/hostMagic.js': 6,
   'src/scenes/menu.js': 1,
-  'src/scenes/world.js': 13,
+  'src/scenes/world.js': 16,
   'src/scenes/worldModes.js': 7,
   'src/systems/answerPipeline.js': 24,
   'src/systems/artifactEffects.js': 1,
@@ -128,7 +128,7 @@ const ROUTED = {
   'src/ui/pauseWindow.js': 1,
   'src/ui/potionMakerWindow.js': 4,
   'src/ui/prisonScreen.js': 1,
-  'src/ui/profPages.js': 16,   // L10N4: the anvil's metals, Leather, Arrows, All and the smith's lone metals are DFU's words
+  'src/ui/profPages.js': 6,   // L10N4: the anvil's metals, Leather, Arrows, All and the smith's lone metals are DFU's words
   'src/ui/profileWindow.js': 19,
   'src/ui/questJournal.js': 19,   // GUIDE2 (main): locationInRegionProvince lives in questLens.js now
   'src/ui/questLens.js': 1,

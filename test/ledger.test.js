@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { SPELL_MAKER_EFFECTS } from '../src/systems/spellEffects.js';
 import { SERVICE_DESTINATION } from '../src/systems/guildServiceFlow.js';
 import { GENERATOR_VERSION } from '../src/world/roadsCache.js';
+import { resolveAnchor, maskAnchors } from '../tools/citeAnchor.mjs';   // CITE-ANCHOR: a cite names its line by a quote
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const LEDGER = readFileSync(join(ROOT, 'bible/01-Overview/Port-Ledger.md'), 'utf8');
@@ -203,7 +204,7 @@ test('TC1 ledger: the six re-measured section-C rows are struck, and each names 
       file: 'src/systems/regionPower.js', built: /rumorMill\?\.addNonQuestRumor\?\./ },
     // Fast travel: transport ownership, the mint the row said nothing had.
     { head: /~~FAST TRAVEL residue~~/, slice: /TC1 2026-09-02/,
-      file: 'src/systems/shopStock.js', built: /add\(\{ group: 'Transportation', templateIndex: TRANSPORT_SMALL_CART \}\);/ },   // DISC24-B: the constant's home is itemTemplates.js now; the SHELVING the row names is here
+      file: 'src/systems/merchantYards.js', built: /const h = mintCondition\(setItemFields\(\{ group: 'Transportation', templateIndex: TRANSPORT_HORSE \}\)\);/ },   // DISC24-B: the constant's home is itemTemplates.js now; MERCHANT-YARDS: the SELLING the row names is the Stable's now (the General Store's shelf until 2026-10-10); PIN MOVED (STEED1): three horses a day, each minted so (stableHorses)
     { head: /~~PatchRegionIndex legacy-save fix~~/, slice: /U32 \+ U41/,
       file: 'src/formats/mapsFile.js', built: /export function patchRegionIndex\(regionIndex, canonicalRegionName\)/ },
     { head: /~~Biography GP arm ledger note/, slice: /TC1 2026-09-02/,
@@ -237,14 +238,19 @@ test('TC1 ledger: the six re-measured section-C rows are struck, and each names 
   // remainder above it. A hard-coded `:465-468` here would have gone
   // green on a row naming a stranger, which is exactly CD's lesson, so
   // the cite is READ OUT of the row and RESOLVED against the file.
-  const cite = /systems\/inputActions\.js:(\d+)-(\d+)/.exec(keybind);
+  // CITE-ANCHOR: the row names the note by its first line; the note runs from there to its last sentence
+  const cite = new RegExp(String.raw`systems\/inputActions\.js:"([^"]+)"(?:\.\."([^"]+)")?`).exec(keybind);
   assert.ok(cite, 'the joystick row must point at the flag that carries the owner decision');
-  const ia = readFileSync(join(ROOT, 'src/systems/inputActions.js'), 'utf8').split('\n');
-  const cited = ia.slice(Number(cite[1]) - 1, Number(cite[2])).join('\n');
+  const iaText = readFileSync(join(ROOT, 'src/systems/inputActions.js'), 'utf8');
+  const ia = iaText.split('\n');
+  const first = resolveAnchor(maskAnchors(iaText), ia, cite[1], cite[2] ?? null).line ?? 0;
+  assert.ok(first, `the Ledger's inputActions.js anchor names no line: "${cite[1]}"`);
+  const last = ia.findIndex((l, i) => i >= first - 1 && /joystick law is flagged here any longer\./.test(l)) + 1;
+  const cited = last && last - first <= 15 ? ia.slice(first - 1, last).join('\n') : ia[first - 1];
   assert.match(cited, /GP3 \(the same day\) BUILT THE CONTROLLER CURSOR/,
-    `the Ledger cites the gamepad note at inputActions.js:${cite[1]}-${cite[2]}, which is not it (GP1 narrowed the flag to the window and the cursor, GP2 to the cursor, GP3 retired it - the note stands where the flag stood)`);
+    `the Ledger cites the gamepad note at inputActions.js:${cite[1]} (line ${first}), which is not it (GP1 narrowed the flag to the window and the cursor, GP2 to the cursor, GP3 retired it - the note stands where the flag stood)`);
   assert.match(cited, /joystick law is flagged here any longer\./,
-    'the cited range must hold the WHOLE note, not its first line');
+    'the cited note must run from its first line to its last sentence, within fifteen lines');
   // ROAD-G G6 (2026-09-04) BUILT the other one, so this half flipped
   // from "recorded against section A" to "shipped": the row must strike
   // the recorded clause, say so, and name the module - and the module
@@ -333,10 +339,14 @@ test('AUDIT 58 F5 ledger: the RE-INTEGRATED road system has its own section A ro
   // block, which is the whole point of the pin. His data (setRoadsData),
   // ours when his will not load, and ours when the player has turned the
   // mod off - every path ends at a network, none of them at no roads.
-  assert.equal(wiring.length, 3, 'all three road wires are in that block');
-  assert.equal(wiring.filter((l) => /setRoadsData\(/.test(l)).length, 1, 'one of them is his');
-  assert.equal(wiring.filter((l) => /setRoads\(settlementsOf\(maps\)/.test(l)).length, 2,
-    'and two fall to the port\u2019s own network - the mod off, and the mod unloadable');
+  // PIN MOVED (AUDIT LANDFORMS C3): FIVE, the same law. Online his arrays are
+  // asked again before ours stands in (retryModRoads), so his land late on a
+  // second wire, and ours stands in on a third once every try has failed -
+  // still inside this block, still every path ending at a network.
+  assert.equal(wiring.length, 5, 'all five road wires are in that block');
+  assert.equal(wiring.filter((l) => /setRoadsData\(/.test(l)).length, 2, 'two of them are his - at once, and late online');
+  assert.equal(wiring.filter((l) => /setRoads\(settlementsOf\(maps\)/.test(l)).length, 3,
+    'and three fall to the port\u2019s own network - the mod off, the mod unloadable, and online once every try failed');
   assert.equal(host.split('\n').filter((l) => /terrainGen\.setRoads(Data)?\(/.test(l)).length, wiring.length,
     'and world.js holds no road wire OUTSIDE that block - every one of them is in the ungated statement above');
 
@@ -345,9 +355,13 @@ test('AUDIT 58 F5 ledger: the RE-INTEGRATED road system has its own section A ro
   // the day it was written, and the pin above re-derived the no-gate fact
   // without ever reading the number, so the one pointer a reader is sent to
   // could name anything. The cite is now sliced and checked.
-  const cite = /`src\/scenes\/world\.js:(\d+)-(\d+)`/.exec(row);
+  // CITE-ANCHOR: the cite names the block by its first line's words; the block is that line through its close
+  const cite = new RegExp(String.raw`\`src\/scenes\/world\.js:"([^"]+)"(?:\.\."([^"]+)")?\``).exec(row);
   assert.ok(cite, 'the row no longer cites the wiring by line');
-  const citedLines = host.split('\n').slice(Number(cite[1]) - 1, Number(cite[2]));
+  const hostLines = host.split('\n');
+  const first = resolveAnchor(maskAnchors(host), hostLines, cite[1], cite[2] ?? null).line ?? 0;
+  const close = hostLines.findIndex((l, i) => i >= first && l === '  });') + 1;
+  const citedLines = hostLines.slice(first - 1, close);
   const cited = citedLines.join('\n');
   assert.match(cited, /terrainGen\.setRoadsData\(/, 'the cited range misses his-data wire');
   assert.match(cited, /terrainGen\.setRoads\(settlementsOf/, 'the cited range misses the fallback wire');

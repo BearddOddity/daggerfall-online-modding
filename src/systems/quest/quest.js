@@ -94,6 +94,10 @@ export function ensureUidAtLeast(uid) { if (uid > _uid) _uid = uid; }
 /** Test seam. */
 export function resetUid() { _uid = 0; }
 
+/** QUEST-SHELF (2026-10-08): whether a quest is set aside - abandoned, kept to be reclaimed (machine.js shelveQuest). It
+ *  stands in the machine untouched: no tick, no questor's door shut, no topics, no site links, nothing stood in a scene. */
+export const isShelved = (quest) => quest?.shelvedAt != null;
+
 export class Quest {
   constructor({ rolls = Math.random, nowSeconds = null, skySeconds = null, worldSeconds = null, raisedSeconds = null, hooks = null, actionFactory = null, questClockStepMax = null } = {}) {
     this.uid = nextUid();
@@ -125,7 +129,7 @@ export class Quest {
     this.nowSeconds = nowSeconds;  // () => classic game seconds (machine-injected) - TIME3: the character's own clock, the countdowns'
     this.skySeconds = skySeconds ?? nowSeconds;   // TIME3: () => the sky's seconds - an hour, a date, a season (DailyFrom, a notice's daytime); the one clock offline
     this.worldSeconds = worldSeconds ?? nowSeconds;   // TIME3: () => the event clock's seconds - the journal's dates are stamped on it
-    this.raisedSeconds = raisedSeconds;   // TIME3: () => the session's raised seconds, or null - a countdown charges them whole (quest/clock.js)
+    this.raisedSeconds = raisedSeconds;   // TIME3: () => the session's raised seconds, or null - online a countdown charges none of them (QCLOCK-WORLD, quest/clock.js)
     this.questClockStepMax = questClockStepMax;   // WORLD7: () => world seconds - the most one played frame charges a Clock or a spawn interval (machine-injected; Infinity offline)
     this.hooks = hooks;            // machine hooks: showPopup/changeReputation/log
     this.actionFactory = actionFactory;   // (line, quest) -> action | null (the machine's registry)
@@ -155,6 +159,11 @@ export class Quest {
     this.pendingClickRearms = [];            // Quest.cs:48 - resources whose click clears after the current task
     this.questors = new Map();               // Quest.cs:47 - symbol name -> QuestorData { symbol, name }
     this.oneTime = false;                    // Quest.OneTime - QuestListsManager stamps it at load (Q2b-ii)
+    // QUEST-SHELF (2026-10-08, Mac: "All quests should be able to be abandoned and reclaimed"): ABANDONED, KEPT. The
+    // character-clock second it was set aside (null: not set aside - machine.js shelveQuest / reclaimQuest), and the
+    // Places whose site links it held then (their symbol names - the links stand again from them on its reclaim).
+    this.shelvedAt = null;
+    this.shelvedSites = null;
   }
 
   // ---- Q1 structure ----
@@ -226,7 +235,13 @@ export class Quest {
     // AUDIT 28 W4 (Quest.cs:284): the SmallerDungeons setting AS OF the
     // quest's start, frozen in - marker assignments are not relocated
     // when the setting flips, so the dungeon a quest points at keeps
-    // the size the quest compiled with.
+    // the size the quest compiled with. DSIZE1 (AUDIT DELVE A8): and the
+    // medium ask with it (MEDIUM_DUNGEONS_STATE); online, the world's
+    // sizes (ONLINE_DUNGEONS_STATE - SD-ONLINE; AUDIT SD III D9: it said
+    // "Disabled", the whole dungeon, E4's before the world's sizes);
+    // offline the machine's Start then takes a linked dungeon's size
+    // where a port's size is either side (E5, machine.js
+    // startQuestImmediate - AUDIT SD III D6: never online).
     this.smallerDungeonsState = smallerDungeonsStateNow();
   }
 
@@ -529,6 +544,8 @@ export class Quest {
       tasks: [...this.tasks.values()].map((t) => t.getSaveData()),
       oneTimeDisplayedMessages: [...this.oneTimeDisplayedMessages],
       shareId: this.shareId ?? null,   // DISC22-F: the shared copy's identity - the port's own member, absent in DFU's saves
+      shelvedAt: this.shelvedAt ?? null,   // QUEST-SHELF: the port's own, absent in DFU's saves (an older envelope: not set aside)
+      shelvedSites: this.shelvedSites ? [...this.shelvedSites] : null,
       // TIME3: the clock its countdowns stand on - the holder's own, as it read when this was taken. A party member's copy
       // moves them onto theirs by the distance (quest/questStamps.js); an envelope without it is from before TIME3.
       ownSecondsAt: Number.isFinite(this.nowSeconds?.()) ? Math.floor(this.nowSeconds()) : null,
@@ -547,6 +564,8 @@ export class Quest {
     this.uid = data.uid;
     ensureUidAtLeast(data.uid);
     this.shareId = typeof data.shareId === 'string' && data.shareId ? data.shareId : null;   // DISC22-F
+    this.shelvedAt = Number.isFinite(data.shelvedAt) && data.shelvedAt !== 0 ? data.shelvedAt : null;   // QUEST-SHELF
+    this.shelvedSites = this.shelvedAt != null && Array.isArray(data.shelvedSites) ? data.shelvedSites.filter((n) => typeof n === 'string') : null;
     this.questComplete = data.questComplete;
     this.questSuccess = data.questSuccess;
     this.questName = data.questName;

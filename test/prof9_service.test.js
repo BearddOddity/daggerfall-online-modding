@@ -57,7 +57,8 @@ test('PROF9 service: a Hunter\'s Stew at the fire - its Raw Meat, Mushroom and R
   const r = await s.call('/v1/prof/craft', ask, mac.secret);
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assert.deepEqual([r.body.recipe, r.body.quality, r.body.count, r.body.maker, r.body.marked, r.body.first, r.body.xp, r.body.hand], ['stew:north', -1, 1, 'Silverthorn', false, true, 20 + FIRST_CRAFT_XP, null]);
-  assert.deepEqual([r.body.track.profession, r.body.track.xp], ['cooking', 520]);
+  // PIN MOVED (CRAFT3): a dish is Cooking's, its track its craft's - the XP credited to Provisioning's row, none to a 'cooking' one
+  assert.deepEqual([r.body.track.profession, r.body.track.xp, s.xpOf(mac, 'provisioning'), s.xpOf(mac, 'cooking')], ['provisioning', 520, 520, 0]);
   assert.equal(r.body.pieces.length, 1);
   const p = r.body.pieces[0];
   const v = await verifyProductRecord(p.record, s.identityPublic, { subtle: globalThis.crypto.subtle });
@@ -68,13 +69,13 @@ test('PROF9 service: a Hunter\'s Stew at the fire - its Raw Meat, Mushroom and R
   assert.deepEqual(r.body.stores.map((st) => st.material).sort(), ['food:meat', 'food:mushroom', 'p1:13']);
   const again = await s.call('/v1/prof/craft', ask, mac.secret);
   assert.deepEqual([again.body.repeat, again.body.xp, again.body.pieces[0].provenance], [true, 520, p.provenance], 'asked twice: the row\'s answer');
-  assert.deepEqual([s.stores(mac, 'food:meat'), s.xpOf(mac, 'cooking')], [[['own', 5]], 520], 'nothing moved twice');
+  assert.deepEqual([s.stores(mac, 'food:meat'), s.xpOf(mac, 'provisioning')], [[['own', 5]], 520], 'nothing moved twice');   // PIN MOVED (CRAFT3): Provisioning's track
   const second = await s.cook(mac, 'stew:north');
   assert.deepEqual([second.body.first, second.body.xp], [false, 20], 'the second stew: no 500');
   const clean = await s.cook(mac, 'stew:north', { clean: true });
   assert.deepEqual([clean.body.xp, clean.body.quality], [30, -1], 'a clean pan: half again, never a quality');
   assert.deepEqual((await s.cook(mac, 'stew:north')).body, { error: 'stores-short' }, 'the Root Bulb gone');
-  assert.equal(s.xpOf(mac, 'cooking'), 520 + 20 + 30);
+  assert.equal(s.xpOf(mac, 'provisioning'), 520 + 20 + 30);   // PIN MOVED (CRAFT3): Provisioning's track
   assert.deepEqual((await s.cook(mac, 'stew:south')).body, { error: 'stores-short' }, 'the southern Root Bulb is its own material');
   // AUDIT PROF-541 R2-S7: the southern Stew is the same dish - its first no 500 (Mac's J7: once per piece and base); a
   // Supper, another dish, its own 500 - north first, then south none
@@ -88,7 +89,7 @@ test('PROF9 service: a Hunter\'s Stew at the fire - its Raw Meat, Mushroom and R
   assert.deepEqual([supN.status, supN.body.first, supN.body.xp], [200, true, 20 + FIRST_CRAFT_XP], 'a Supper: its own 500');
   const supS = await s.cook(mac, 'supper:south');
   assert.deepEqual([supS.status, supS.body.first, supS.body.xp], [200, false, 40], 'the southern Supper: none (the rank\'s tier 2 now - 20 x 2)');
-  assert.match(ACCOUNT_VERSION, /^acct71$/   /* PIN MOVED (PROF10, PROF12, AUDIT PROF-541): the live version */);
+  assert.match(ACCOUNT_VERSION, /^acct123$/   /* PIN MOVED: acct123, HACKED-GOLD (a purse, a letter of credit or a coin pile past one DFU int a law finding; staff read who gained past the bucket and whom a character traded with; no migration; acct121 then acct122 on its branch, renumbered past BAL9 and NAME-AS at the merges); PIN MOVED: acct122, NAME-AS (the account name or the played realm character name as the name the room reads, chosen on the profile card, migration 0111; a letter to a friend and a board note author found by account; acct121 on its branch, renumbered past BAL9 at the merge); PIN MOVED: acct121, BAL9 (item law 3 - the potency and wellspring lines and the arcane three lawful; no migration); PIN MOVED: acct120, D1-LOAD (the seat registry read from the kept rows of the isolate by every caller, the lease read before it is written; no migration; acct119 on its branch, renumbered past GATHER-SPEED + MARKET-SPEED at the merge); PIN MOVED: acct119, SEAT-LEASE (the Turning settled by one request at a time under a lease, migration 0110); PIN MOVED: acct117, YARD-SWEEP + HANDLE-EMAIL (the yard pieces above the height cap swept, migration 0109, and none served; a username never an email address, one chosen before read as its guest name); PIN MOVED: acct116, CRAFT-HOLD (the exploit audit: the INT3 hold follows a crafted piece, a held character with crafts at the account neither deleted nor depositing nor supplying, and the CRAFT-WORTH patron worth; no migration; acct115 on its branch, renumbered past BR5 at the merge); PIN MOVED: acct115, BR5 (the Patreon link page titled by the product name; acct113 on its branch, renumbered past GUILD-SEEN and GUILD3 at the merge); PIN MOVED: acct114, GUILD3 (the guilds made plain: the silver lines by kind and way, the whole list of holds, the Failing fall, the High Master by the band; no migration; acct112 then acct113 on its branch, renumbered past SCALE4f-h and GUILD-SEEN at the merges); PIN MOVED: acct113, GUILD-SEEN (the guild roster says when each member was last online); PIN MOVED: acct112, SCALE4f + SCALE4g + SCALE4h (acct111 on its branch, renumbered past HOME-VOTE at the merge); PIN MOVED: acct111, HOME-VOTE (a town's votes on its homes, migration 0108 - acct109, then acct110, on its branch, renumbered past PATRON-LOAD and PATRON-LOAD II at the merges); PIN MOVED: acct110, PATRON-LOAD II (the region's traders read by its own indexes - D1 overloaded; migration 0107); PIN MOVED: acct109, PATRON-LOAD (the region's traders read reckons no patrons - D1 overloaded; no migration); PIN MOVED: acct108, TECH1 (the item law's version 2 - a weapon's technique line, after LW15 took acct107; bible/05-Combat/Weapon-Techniques.md); PIN MOVED: acct107, LW15 (THE PATRONS, migration 0106 - acct105, then acct106, on its branch, renumbered past INT11-INT14 and SCALE4d at the merges); PIN MOVED: acct106, SCALE4d (the token's mint on a D1 session, no migration); PIN MOVED: acct105, INT7-INT10 (the INTEGRITY arc's lane 2, migration 0104 - acct102 on its branch, renumbered past the Chapters' acct103 at the merge); PIN MOVED: acct103, the Chapters (CHAP1-CHAP7b) past UNWITNESSED-ORE's acct102, BAG-CRAFT's acct101, INT1-INT6's acct100, CARDS9-CARDS10's acct99, PERMADEATH-HOUSES' acct98, SERVER-POST's acct97, TAVERN CARDS' acct96 and SCALE4's acct95 at the merges; PIN MOVED (PROF10, PROF12, AUDIT PROF-541, SILVER-WAYS' acct71, the arena merge's acct72, AEGIS's acct73, BAG1 and GUILD2's acct74, HOME-PRICE's acct75, PRIMARCH and FOUNDER4's acct76, FIELD BUGS 2026-10-04d KNIGHT-HOUSE's acct77, SERPENT1's acct78, GLOBAL-MARKET's acct79, SHADOW-CLOAK's acct80, SERAPH-WINGS' acct81, AUDIT ARENA-LADDER's acct82, CRYSTAL-FIST's acct83, SERPENT-SET and SILVER-FINDS' acct84, YARD-SHED's acct85, YARD-HEIGHT's acct86, LEGACY7's acct87, STORM-SHED's acct88, STORM-SHED 2's acct89, TEXT-F1's acct90, CAP-OFF's acct91, FOUNDER5's acct92, CRAFT2-CRAFT5's acct93, SD9b's acct94 - acct91 on its branch, renumbered past CAP-OFF, FOUNDER5 and CRAFT2-CRAFT5 at the merges; SCALE4a-c's acct95 - acct94 on its branch, renumbered past SD9b at the merge): the live version */);   // PIN MOVED: acct120, D1-LOAD (the seat registry read from the kept rows of the isolate by every caller, the lease read before it is written; no migration; acct119 on its branch, renumbered past GATHER-SPEED + MARKET-SPEED at the merge); PIN MOVED: acct119, GATHER-SPEED + MARKET-SPEED (a harvest's, the professions' state's and a market read's reads batched into a few round trips; the seats' places off the isolate's kept rows for a Levy, a Tithe and a board's listings; no migration; acct118 on its branch, renumbered past SEAT-LEASE at the merge); PIN MOVED: acct105, INT11-INT14 (the INTEGRITY arc's lane 3, migration 0105)
 });
 
 test('PROF9 service: a dish\'s rank is asked (the Tart 10, the Feast 70 - refused below, nothing spent); XP follows the rank - a stew at rank 55 is 20 x tier 5, never a quarter; a Master\'s full track credits none, answered so', async () => {
@@ -98,26 +99,28 @@ test('PROF9 service: a dish\'s rank is asked (the Tart 10, the Feast 70 - refuse
   s.stock(mac, FEAST);
   assert.deepEqual([(await s.cook(mac, 'tart:south')).status, (await s.cook(mac, 'tart:south')).body], [403, { error: 'prof-rank' }]);
   assert.deepEqual([s.stores(mac, 'food:apple'), s.raw.prepare('SELECT COUNT(*) AS n FROM prof_crafts').get().n], [[['own', 4]], 0], 'refused before anything moved');
-  s.setXp(mac, xpForRank(10), 'cooking');
+  // PIN MOVED (CRAFT3): a dish's rank is read on Provisioning's track (seeded after the migrations, so under the craft's id)
+  s.setXp(mac, xpForRank(10), 'provisioning');
   const tart = await s.cook(mac, 'tart:south');
   assert.deepEqual([tart.status, tart.body.xp, s.stores(mac, 'p2:17')], [200, 40 + FIRST_CRAFT_XP, []]);
-  s.setXp(mac, xpForRank(69), 'cooking');
+  s.setXp(mac, xpForRank(69), 'provisioning');
   assert.deepEqual((await s.cook(mac, 'feast:hearth')).body, { error: 'prof-rank' });
-  s.setXp(mac, xpForRank(55), 'cooking');
+  s.setXp(mac, xpForRank(55), 'provisioning');
   s.stock(mac, STEW);
   const at55 = await s.cook(mac, 'stew:north');
   assert.deepEqual([at55.body.xp, topTierOf(55)], [5 * 20 + FIRST_CRAFT_XP, 5]);
   assert.equal(at55.body.xp, cookXp(55) + FIRST_CRAFT_XP);
-  s.setXp(mac, PROF_XP_MAX, 'cooking');
+  s.setXp(mac, PROF_XP_MAX, 'provisioning');
   s.stock(mac, STEW);
   const full = await s.cook(mac, 'stew:north', { clean: true });
-  assert.deepEqual([full.status, full.body.xp, s.xpOf(mac, 'cooking')], [200, 0, PROF_XP_MAX]);
+  assert.deepEqual([full.status, full.body.xp, s.xpOf(mac, 'provisioning')], [200, 0, PROF_XP_MAX]);   // PIN MOVED (CRAFT3): Provisioning's track
 });
 
 test('PROF9 service: the cook\'s choices - a Cook\'s dish two servings, each its own piece and record (3.3: "+1 serving a dish"), its XP the cook\'s, not the servings\'; a Provisioner\'s dish carries its hand 2 (record and piece); a Chef\'s feast its hand 1, a Chef\'s stew none', async () => {
   const s = await stand();
   const mac = await s.registered('Mac');
-  s.setXp(mac, xpForRank(50), 'cooking', { spec50: 'cook' });
+  // PIN MOVED (CRAFT3): the Cook, the Provisioner and the Chef stand under Provisioning's track, Cooking's craft
+  s.setXp(mac, xpForRank(50), 'provisioning', { spec50: 'cook' });
   s.stock(mac, STEW, 2);
   const two = await s.cook(mac, 'stew:north');
   assert.equal(two.status, 200, JSON.stringify(two.body));
@@ -127,12 +130,12 @@ test('PROF9 service: the cook\'s choices - a Cook\'s dish two servings, each its
   assert.deepEqual(two.body.pieces.map((p) => s.product(p.provenance)?.owner), [mac.id, mac.id]);
   assert.deepEqual(s.stores(mac, 'food:meat'), [['own', 2]], 'one cook\'s inputs');
   // the Provisioner
-  s.setXp(mac, xpForRank(100), 'cooking', { spec50: null, spec100: 'provisioner' });
+  s.setXp(mac, xpForRank(100), 'provisioning', { spec50: null, spec100: 'provisioner' });
   const prov = await s.cook(mac, 'stew:north');
   assert.deepEqual([prov.body.hand, prov.body.count], [2, 1]);
   assert.deepEqual([readProductRecord(prov.body.pieces[0].record).f, s.product(prov.body.pieces[0].provenance).hand], [2, 2]);
   // the Chef: a feast's hand, a stew's none
-  s.setXp(mac, xpForRank(100), 'cooking', { spec100: 'chef' });
+  s.setXp(mac, xpForRank(100), 'provisioning', { spec100: 'chef' });
   s.stock(mac, FEAST);
   s.stock(mac, STEW);
   const feast = await s.cook(mac, 'feast:hearth', { clean: true });
@@ -146,18 +149,20 @@ test('PROF9 service: the cook\'s choices - a Cook\'s dish two servings, each its
 test('PROF9 service: the crafter\'s limit holds Cooking at Journeyman while two other crafts stand past it - credited to the cap, answered so', async () => {
   const s = await stand();
   const mac = await s.registered('Mac');
+  // PIN MOVED (CRAFT3): the limit counts the five crafts' tracks - a dish's Provisioning held while Smithing and Building
+  // (Carpentry's craft) stand past 50
   s.setXp(mac, xpForRank(60), 'smithing');
-  s.setXp(mac, xpForRank(60), 'carpentry');
-  s.setXp(mac, xpForRank(JOURNEYMAN_RANK + 1) - 10, 'cooking');
+  s.setXp(mac, xpForRank(60), 'building');
+  s.setXp(mac, xpForRank(JOURNEYMAN_RANK + 1) - 10, 'provisioning');
   s.stock(mac, STEW);
   const r = await s.cook(mac, 'stew:north');
-  assert.deepEqual([r.status, r.body.xp, s.xpOf(mac, 'cooking')], [200, 9, xpForRank(JOURNEYMAN_RANK + 1) - 1]);
+  assert.deepEqual([r.status, r.body.xp, s.xpOf(mac, 'provisioning')], [200, 9, xpForRank(JOURNEYMAN_RANK + 1) - 1]);   // PIN MOVED (CRAFT3): Provisioning's track
 });
 
 test('PROF9 service: a Provisioner\'s dish lists on the market among the Dishes and is read with its hand - the Crafted view and the lister\'s own; 0069 gives every piece a hand column, none before it, and refuses a hand that is no cook\'s', async () => {
   const s = await stand();
   const mac = await s.registered('Mac');
-  s.setXp(mac, xpForRank(100), 'cooking', { spec100: 'provisioner' });
+  s.setXp(mac, xpForRank(100), 'provisioning', { spec100: 'provisioner' });   // PIN MOVED (CRAFT3): the Provisioner stands under Provisioning's track
   s.stock(mac, STEW);
   const made = await s.cook(mac, 'stew:north');
   const provenance = made.body.pieces[0].provenance;
@@ -170,7 +175,7 @@ test('PROF9 service: a Provisioner\'s dish lists on the market among the Dishes 
   const crafted = await s.call('/v1/market/read', { character: mac.character, region: DF, view: 'crafted', hubs: HUBS }, mac.secret);
   assert.equal(crafted.body.rows.find((x) => x.piece?.provenance === provenance)?.piece?.hand, 2);
   // a plain dish reads no hand
-  s.setXp(mac, xpForRank(0), 'cooking');
+  s.setXp(mac, xpForRank(0), 'provisioning');   // PIN MOVED (CRAFT3): Provisioning's track
   s.stock(mac, STEW);
   const plain = await s.cook(mac, 'stew:north');
   const pp = plain.body.pieces[0].provenance;

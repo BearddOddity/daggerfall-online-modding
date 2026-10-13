@@ -350,10 +350,12 @@ test('PICKUP-FEED: off a document the face answers false and the line is said (a
   assert.deepEqual(said, ['You take the Ruby.']);
 }));
 
-test('PICKUP-FEED: the ENHANCED skin shows the cards - one node on the body, one sheet, a card per pickup in its tier, "+N Gold" with no second "+", and the take says nothing (mutants: the node never appended; the sheet injected twice; the tier not worn)', () => withPage((pg) => withQuickLoot(() => {
+test('PICKUP-FEED: the ENHANCED skin shows the cards - one node on the body, one sheet, a card per pickup in its tier, "+N Gold" with no second "+", and the take says nothing; a piece new to the player in Rare or better is the loot banner\'s and takes no card (mutants: the node never appended; the sheet injected twice; the tier not worn; the banner\'s piece carded twice)', () => withPage((pg) => withQuickLoot(() => {
   setPref(LOOT_RARITY_KEY, true);
   try {
-    const items = [item('Stormcaller', { rarity: 'rare', identified: true }), gold(35)];
+    // PIN MOVED (LOOT-BANNER, ui/lootBanner.js): a Rare or better piece new to the player is announced by its banner at
+    // the right edge, so the tier this card wears is the feed's own top one - Magic
+    const items = [item('Stormcaller', { rarity: 'magic', identified: true }), gold(35)];
     foldQuickLoot(frameOf('pile:1', items));
     quickLootArm('QuickLootAll');
     const said = [];
@@ -368,7 +370,7 @@ test('PICKUP-FEED: the ENHANCED skin shows the cards - one node on the body, one
     assert.ok(style && style.parent === pg.doc.head, 'its own sheet, in the head');
     const cards = pg.cards();
     assert.deepEqual(cards.map(cardText), ['+Stormcaller', '+35 Gold'], 'the pile\'s order, the first nearest the centre');
-    assert.equal(cards[0].dataset.rarity, 'rare', 'the tier the name is coloured by');
+    assert.equal(cards[0].dataset.rarity, 'magic', 'the tier the name is coloured by');
     assert.equal(cards[1].classList.contains('is-gold'), true);
     assert.equal(find(cards[1], 'pickfeed-plus').length, 0, 'gold\'s words carry their own "+"');
     assert.equal(find(cards[0], 'pickfeed-plus').length, 1);
@@ -381,8 +383,17 @@ test('PICKUP-FEED: the ENHANCED skin shows the cards - one node on the body, one
     showPickups([{ item: gold(1), count: 1 }]);
     const nm = find(pg.cards()[0], 'pickfeed-name')[0];
     assert.deepEqual([nm.classList.contains('bump-b'), nm.classList.contains('bump-a')], [true, false], 'a second bump restarts the pop');
-    showPickups([{ item: item('Stormcaller', { rarity: 'rare', identified: true }), count: 2 }]);
+    showPickups([{ item: item('Stormcaller', { rarity: 'magic', identified: true }), count: 2 }]);
     assert.equal(find(pg.cards()[0], 'pickfeed-count')[0].textContent, '×3', 'an item\'s count');
+    // LOOT-BANNER: a Rare piece new to the player takes no card - the banner announces it - and the take still says no
+    // line for it; the same piece already the player's (picked back up) is carded in its tier as ever
+    const before = pg.cards().length;
+    const fresh = item('Gravecleaver', { rarity: 'rare', identified: true });
+    assert.equal(showPickups([{ item: fresh, count: 1 }]), true, 'the take says nothing: the banner is its words');
+    assert.equal(pg.cards().length, before, 'and no card');
+    const mine = item('Gravecleaver', { rarity: 'rare', identified: true, acquired: true });
+    assert.equal(showPickups([{ item: mine, count: 1 }]), true);
+    assert.equal(pg.cards()[0].dataset.rarity, 'rare', 'my own piece back: a card in its tier');
     // one sheet, however many cards
     showPickups([{ item: item('Ruby'), count: 1 }]);
     assert.equal(pg.doc.head.children.filter((c) => c.id === PICKUP_FEED_STYLE_ID).length, 1);
@@ -515,7 +526,7 @@ test('PICKUP-FEED: the sheet is the skin\'s - the pixel face, the plaque\'s veil
   assert.match(css, /\.pickfeed-card\[data-rarity\] \.pickfeed-name \{ color: var\(--rar\); \}/, 'the name in its tier');
   assert.match(css, /scale\(var\(--hud-scale, 1\)\)/, 'the HUD\'s scale');
   assert.match(css, /\.pickfeed \{[^}]*z-index: 4;/, 'the HUD\'s own layer - every window stands over it');
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.pickfeed-card, \.pickfeed-count, \.pickfeed-name \{ animation: none !important; transition: none !important; \} \}/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.pickfeed-card, \.pickfeed-count, \.pickfeed-name, \.pickfeed-plus, \.haul-fill \{ animation: none !important; transition: none !important; \} \}/);   // HAUL-CARDS (PIN MOVED): a haul card's "+N" pop and its bar's slide too
   assert.match(css, /\.pickfeed-card\.pf-over \{ display: none; \}/);
 });
 
@@ -525,7 +536,7 @@ test('PICKUP-FEED: FOUR HOSTS - every quick-loot take in every host hands the ta
   const files = { 'src/scenes/world.js': 2, 'src/scenes/exterior.js': 2, 'src/scenes/worldModes.js': 2, 'src/scenes/dungeonContext.js': 1 };
   for (const [f, n] of Object.entries(files)) {
     const src = rd(f);
-    assert.match(src, /import \{ showPickups \} from '\.\.\/ui\/pickupFeed\.js';/, `${f}: the feed's door`);
+    assert.match(src, /import \{ showPickups(, showHaul)? \} from '\.\.\/ui\/pickupFeed\.js';/, `${f}: the feed's door`);   // HAUL-CARDS (PIN MOVED): the world host takes the haul's door beside it
     const calls = src.match(/quickLootTake\([^\n]*/g) ?? [];
     assert.equal(calls.length, n, `${f}: the calls`);
     for (const c of calls) assert.match(c, /\{ getQuest: [^\n]*, took: showPickups \}\)/, `${f}: ${c.slice(0, 60)}... hands the take the cards`);

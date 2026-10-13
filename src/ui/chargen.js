@@ -1678,7 +1678,7 @@ export class ChargenFlow {
       // here, exactly as on the race and class-list boxes. What DOES
       // act is the hotkey every AddButton binds unconditionally
       // (:377): M and F (DialogShortcuts.txt Male/Female,
-      // dialogShortcuts.js:"Male: 'M', Female"). Each button's handler sets the gender
+      // dialogShortcuts.js:"ResetBonusPool: 'Ctrl-U',"). Each button's handler sets the gender
       // AND closes the window (:59-71), which is what { setGender }
       // already does - so the two keys take the same door the mouse
       // does, and the bare 'confirm' that used to advance is gone.
@@ -1847,7 +1847,7 @@ export class ChargenFlow {
       // while the name TextBox holds focus with no character filter
       // (CreateCharCustomClass.cs:156-158). The port had a 'plus' arm
       // that spent a point, and a 'minus' arm that was DEAD: the shared
-      // overlay table (ui/input.js:"four hosts read that") matches '-' inside its char
+      // overlay table (ui/input.js:"if (e.key.length === 1 && /[a-zA-Z0-9 '-]/.test(e.key))") matches '-' inside its char
       // class first, so '-' arrives as 'char:-' and types a hyphen into
       // the class name, exactly as DFU's unfiltered TextBox does. The
       // pair was therefore asymmetric - a keyboard could spend from the
@@ -1926,7 +1926,7 @@ export class ChargenFlow {
       else if (action === 'plus') this.spendStat(1);
       // AUDIT 17k follow-up: 'minus' was UNREACHABLE from a keyboard.
       // overlayAction tests the typed-character class FIRST and the
-      // hyphen is a literal inside it (input.js:"four hosts read that"), so the '-' key
+      // hyphen is a literal inside it (input.js:"if (e.key.length === 1 && /[a-zA-Z0-9 '-]/.test(e.key))"), so the '-' key
       // always arrives as 'char:-' - a point could be spent and never
       // taken back except by clicking the spinner. '+' and '=' were
       // never affected (neither is a typed character here).

@@ -718,6 +718,11 @@ carries none. The court's four carry `SCORE_PRESS` and read -15.8 / -15.4 / -14.
 which also plays one player through the whole fight and the song after it. See `11-Multiplayer/World-Bosses.md` section
 15; `test/wb10a_gate_score.test.js`.
 
+SD13 (2026-10-07): THE SCORE OF THE HOUR (`systems/sdScore.js`) - the Hollow's and the Shattered Hour's nine songs by
+the same door and the same law's shape: made notes registered by name, seamless, pressed (`HOUR_PRESS`, a ceiling a
+decibel under the clip), held by the world host's `hourScoreFrame` ahead of the court's and the arena's. See
+`11-Multiplayer/Super-Dungeons.md` section 7 and its SD13 record; `tools/sdScoreProbe.mjs`; `test/sd13_score.test.js`.
+
 ## FIELD-WIND1 (2026-09-29): the wind was a moan - a bed the port makes
 
 The Discord through Mac: "A repetitive moaning sound in the open world." The port's wind (WIND3, `systems/windAudio.js`;
@@ -733,3 +738,79 @@ MAKES, under a string key, as `registerSound` registers a decoded WAV, so every 
 `setPitch` on `loop`'s handle (playbackRate, live, beside WX2's `setVolume`). The wind rides `loop`: one source for the
 whole blow, its gain and pitch set live. The riding loop is unchanged - its clips are made to be replayed.
 `01-Overview/Field-Bugs-2026-09-29e.md`; `test/field_wind1.test.js`.
+
+## AUDIT SD III, SD20d (2026-10-07): a named bed - a loop the engine runs
+
+The Hour's beds (`scenes/sdAir.js`) and the Deadlands' (`scenes/deadlandsAir.js`) rode the riding loop's shape
+(`setLoop`, `setLoop3d`: a non-looping source re-armed from its `ended` - DFU's `if (!isPlaying) Play()`, right for a
+hoofbeat's swap): at every pass of a bed a gap of the main thread's dispatch, the Hour's void every 5.8 s, its works
+every 2. Two doors on the engine (`systems/audio.js`): `setBed(name, clip, { volume, pitch })` and `setBed3d(name, clip,
+pos, opts)` - a NAMED bed, one buffer looping in the engine itself (`src.loop`), its volume and pitch live, moved each
+call; the same call each frame keeps the one source; it rises from nothing as it begins and fades to nothing as it is
+let go (`clip` null) or swapped for another clip, over 0.4 s (the arena's crowd bed's `BED_FADE_S` - a bed cut at its
+level pops). `loop3d`'s handle fades as `loop`'s does (`fadeStop` - the Rift's bell was cut as its dungeon went). The
+riding loop keeps its shape. A made loop is darkened as a loop (`systems/arenaSound.js` `lowpassLoop`: the one-pole run
+on from the state the loop's end leaves - begun from nought, it stepped at its seam each pass; FIELD-WIND1's wind ran its
+filters twice for the same reason). Two song writers merge a note laid where the same voice already strikes it into one
+note, its loudest and longest (`systems/sdScore.js`, `systems/gateScore.js`: thirty-three doubled note-ons in the Hour's
+nine songs, twenty-five in the Warden's war). Every score is let go by a fade (`music.fadeOut`), never a cut: the Hour's,
+the court's and the arena's. See `11-Multiplayer/Super-Dungeons.md` section 16's SD20d; `test/sd20d_audio.test.js`.
+
+## MIDI-OUT1 (2026-10-11): the music on a MIDI device - a recorded departure
+
+A player asked for MIDI out. Settings > Audio > Music has a **MIDI out** row (`port:midiOut`, the uiPrefs shelf's
+`midiOut`: the output's name, '' for none). The button names the device and a click steps to the next one connected,
+then Off. The first click is the one that asks the browser for MIDI (`requestMIDIAccess`, no sysex), so a player who
+never touches the row is never asked. Safari has no Web MIDI and the row says so. The desktop app's permission handler
+already grants the game page every permission, so it needs nothing.
+
+THE SAME SONGS, ANOTHER VOICE. `MidiOutSongPlayer` (`systems/midiOut.js`) IS a SongPlayer. It overrides only the
+methods that touch the audio graph and hands the device each event instead, timestamped on the Web MIDI clock
+(performance.now, which the player keeps as its clock). The lookahead pump, the loop and its seam, the stall skip and
+the channel state stay the one scheduler's. `SongPlayer` grew two seams for it: `_origin(lead)`, where a song or a
+loop's next pass begins, and `_skip(toTick)`, the stall's fold. `noteSeconds` is the voice's note length, exported so
+both voices keep it. `MusicService` builds this player when a device is picked and connected (`adoptMidiOut`: at boot,
+at every pick, when a device is plugged in or pulled out). A MIDI.BSA song that is sounding moves across from its top.
+The latest pick wins, and a pick the player has already moved past never sounds. A pulled device hands the music back
+to the synth and is left silent. A replacement pack is audio and plays as it did.
+
+WHAT THE DEVICE IS SENT, AND WHAT IS OURS:
+- **Channel events as their bytes**, clamped to seven bits: note-ons, controllers (the sustain pedal among them),
+  program changes, pitch bend and both pressures. The court's score adds accents past 127, and a data byte with bit 7
+  set is a status byte to a device. HMI's own events, meta events and sysex are not sent.
+- **The note-offs are the player's.** It releases each note at the length the synth gives it, a window at a time, and
+  ignores the stream's releases. The songs made in code carry lengths and no note-offs. Chrome has never had
+  `MIDIOutput.clear()`, so a release queued seconds ahead could not be taken back and would cut the next song's note.
+  A key struck again while it still sounds is released at the strike, just before it, and the earlier note's own
+  release is dropped: a note-off ends whichever note holds the key. That covers a re-strike on the release's own tick
+  too, where origin + tick + length can round 1.8e-15 s past origin + (tick + length) and a device orders by timestamp.
+- **The volume is CC7.** MusicVolume and the video mute (`trackGain`: the setting alone, as a pack has it, because
+  MUSIC_GAIN is the FM bank's trim), a song's own level (WBX9) and the switch's fade (DISC20-B) make one gain, and
+  every channel's CC7 is multiplied by its SQUARE ROOT: General MIDI's CC7 law is 40 log10(v/127) dB, amplitude
+  (v/127)^2 - the synth's own `volumeGain` - so CC7 x sqrt(g) sounds g. A device has no headroom past 127, so a
+  song's level over 1 tops out once volume x level passes 1. It is re-sent when one moves: the slider and the mute at once, a fade each pump. A re-level is
+  never queued under a CC7 the window already holds. The press (WB10a) belongs to the synth and is not applied.
+- **A clean device per song.** A song starts as `freshChannelState` starts the synth: CC121, program 0, pan and bend
+  centred, volume full and scaled, a millisecond before its origin. A stop releases every note it struck (a note-on
+  still queued is answered just after itself), then sends the pedal up and all-notes-off on every channel, now and
+  again after the last message queued. The next song begins after that.
+- **A stalled tab** skips its gap as the synth does, and tells the device each control's last value past it, in the
+  order those last values came (a bank select before the program it selects).
+
+AUDIT MIDI-OUT1 (2026-10-11, the owner: "Audit this"). A high-effort review of the slice found ten candidates; eight
+were real and are fixed. (1) CC7 was scaled LINEARLY, so the default volume played at -12 dB where the synth plays -6,
+and every fade ran along the square - now the square root, above. (2) A key struck again while it sounded was cut by
+the earlier note's release. (3) A fresh song's first window was queued inside `play()` at whatever fade the player
+held, so a player whose fade stood at 1 struck the opening notes at full before `_playBuiltIn` dropped it for the rise -
+`_playBuiltIn` now takes a fresh song's fade down BEFORE the play too (on the synth the order changes nothing). (4) A
+tab's Restore wrote the pick to Off on the shelf alone and the music stayed on the device - it goes through
+`setMidiOut`. (5) The row walked the outputs by index, so two devices sharing a name trapped it - `nextMidiOut` walks
+distinct names - and (6) a pulled pick stepped to Off rather than to the device that is there. (7) The stall re-sent
+controls in the order each was first seen. (8) A song asked for before the first gesture waited for an AudioContext
+a device does not need - adopting a device plays it. And a stop on a player with nothing sounding sends nothing. Not
+taken: a song's level clamping at CC7 127 (no device has headroom past it; at the default volume every level the
+scores carry fits) and the cost of a switch's quiet bursts (both stops now quiet once). With (2) in, the release-slack
+of the first cut was dead code - the overlap release covers the rounded re-strike - and went, with its two mutants.
+
+Port-Ledger A: THE MUSIC ON A MIDI DEVICE. Pins: `test/midiout1.test.js`, 15 tests; `tools/mutants/midiout1.json`,
+28 mutants, all dead.

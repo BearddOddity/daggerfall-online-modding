@@ -90,9 +90,9 @@ test('QUEST-PARTY 3b executed: a marker\'s foe rides flagged (1, and 2 once a bl
   imp.entity.health = imp.entity.maxHealth - 3;
   assert.deepEqual(a.p.foesFrame(true).qf.find((e) => e[0] === imp.seq), [imp.seq, 'M0B00Y16', '_imp_', 3], 'touched');
   const m = pool('mmm-0002');
-  m.p.applyFoes('aaa-0001', { ...frame, qf: frame.qf.map((e) => (e[0] === imp.seq ? [e[0], e[1], e[2], 7] : e)) });
+  m.p.applyFoes('aaa-0001', { ...frame, qf: frame.qf.map((e) => (e[0] === imp.seq ? [e[0], e[1], e[2], 8] : e)) });
   await settle();
-  assert.equal(m.p.foes.filter((f) => f.puppet === 'aaa-0001' && f._pupQuest?.s === '_imp_').length, 0, 'a flag outside 0-3 is a malformed word: no quest foe');
+  assert.equal(m.p.foes.filter((f) => f.puppet === 'aaa-0001' && f._pupQuest?.s === '_imp_').length, 0, 'a flag outside 0-7 is a malformed word: no quest foe (DESYNC-ZERO: 4 is the private-quest bit)');
 });
 
 test('QUEST-PARTY 3b executed: two party members in one building each stood the imp at its marker - the higher id\'s untouched copy stands down, its copy of the quest counts the other\'s, and a stranger\'s frame stands down nothing', async () => {
@@ -160,8 +160,8 @@ test('QUEST-PARTY 3b by source: the building pool\'s net and the party\'s law, i
   assert.match(wm, /applyOwnHit\(id, data\) \{ return mode === 'interior' && interiorFoes \? interiorFoes\.applyHit\(id, data\) : mode === 'dungeon'/);
   assert.match(w, /onPeerHit: \(hit, fate\) => hitSend\(\{ \.\.\.hit, own: 1 \}, fate\),/, 'a blow on a peer\'s foe in the building is marked own');
   assert.match(w, /toWire: \(feet\) => \[feet\[0\], feet\[1\] - state\.compensation\[1\], feet\[2\]\],\n\s*toScene: \(p\) => \[p\[0\], p\[1\] \+ state\.compensation\[1\], p\[2\]\],\n\s*\} : null\),/, 'the room\'s frame is the pose\'s');
-  assert.match(w, /foesQuestShare: \(\) => questShareSeam,/);
-  assert.match(w, /exteriorFoes\.setQuestShare\(questShareSeam\);/, 'one law for both pools');
+  assert.match(w, /foesQuestShare: \(\) => partyOnlyQuestShare\(questShareSeam\),/, 'PIN MOVED (QUEST-OWNER, 2026-10-12): the seam narrowed to the owner\'s party');
+  assert.match(w, /exteriorFoes\.setQuestShare\(partyOnlyQuestShare\(questShareSeam\)\);/, 'one law for both pools');
   assert.match(w, /const ownStream = \(now\) => \{\n\s*if \(!online \|\| online\.status !== 'open' \|\| !online\.ownOk \|\| !isWorldRoom\(online\.room\)\) return false;/, 'only through a relay that carries the lane');
   assert.match(w, /if \(!online\.sendOwnFoes\(frame\)\) \{ _ownFullAt = -Infinity; return false; \}/);
   assert.match(w, /online\.onOwnFoes = \(id, data\) => \{ modes\?\.applyOwnFoes\?\.\(id, data\); \};/);
@@ -169,5 +169,5 @@ test('QUEST-PARTY 3b by source: the building pool\'s net and the party\'s law, i
   assert.match(w, /onInteriorLeave: \(\) => \{ const n = handOverRoomFoes\(\);/, 'the building\'s door hands my foes to those who stay');
   assert.match(w, /const _handed = handOverFoes\(\) \|\| handOverRoomFoes\(\);/, 'and a death in it');
   assert.match(w, /const handOverRoomFoes = \(\) => \{[\s\S]*?if \(\(isPrivateQuestFoe\(f\) \|\| f\._keptTag\) && !social\?\.isPartyPeer\(q\.id\)\) continue;[\s\S]*?return frame && online\.sendOwnFoes\(frame\) \? \(modes\?\.dropOwnHanded\?\.\(\) \?\? 0\) : 0;/, 'a quest\'s foe to the party alone (CURSE-SYNC: a private quest\'s)');
-  assert.match(w, /if \(\(m === 'interior' \|\| m === 'dungeon'\) && online\?\.ownOk && isWorldRoom\(online\.room\) && partnerStandsQuestFoes\(\{/, 'the wave indoors');
+  assert.match(w, /if \(\(m === 'interior' \|\| m === 'dungeon'\) && online\?\.ownOk && isWorldRoom\(online\.room\) && partnerStandsQuestFoes\(\{ questName: handle\.foe\?\.parentQuest\?\.questName, symbol: handle\.foe\?\.symbol\?\.name, [^\n]*, foes: modes\?\.insideFoes\?\.\(\) \?\? \[\] \}\)\) return true;/, 'the wave indoors - VERMIN-SHARED (PIN MOVED): left to the sharer only while the room\'s pool holds its foe of this wave\'s Foe');
 });

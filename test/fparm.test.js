@@ -620,7 +620,7 @@ test('MW-D9f: the rig gates the step on ready() and the draw on active()', () =>
 
   // ready() must not require the mesh, or the deadlock comes straight back.
   const src = rd('src/combat/fpArm.js');
-  assert.match(src, /const ready = \(\) => !!\(built && built\.ok && \(actionState \|\| movementState \|\| jumpState \|\| idleState\) && renderer\);/,   // MW-D39: the jump slot counts here too
+  assert.match(src, /const ready = \(\) => !!\(built && built\.ok && \(actionState \|\| movementState \|\| jumpState \|\| idleState \|\| hitState \|\| deathState\) && renderer\);/,   // MW-D39: the jump slot counts here too; PIN MOVED (MWNPC4): and the recoil and the death
     'ready() is update()\'s own requirements - no mesh term, no camera term (MW-D26 widened the clip term)');
 });
 
@@ -1430,7 +1430,9 @@ test('MW-D27: the faceIndex THREAD is unbroken, swept at the source', () => {
   const arm = readFileSync('src/combat/fpArm.js', 'utf8');
   assert.match(arm, /buildTpBody\(\{ race, female, beast, faceIndex, faceMatch,/,
     'buildFpArm no longer hands the face to the body build');
-  assert.match(arm, /playerBodyRows\(parts, race, female, \{ beast, faceIndex, faceMatch \}\)/,
+  // PIN MOVED (MWNPC14, Morrowind-NPCs.md section 19): the picker takes a vampire's face beside the rest
+  // PIN MOVED (MWNPC17, section 25): and an NPC's walked head and hair
+  assert.match(arm, /playerBodyRows\(parts, race, female, \{ beast, faceIndex, faceMatch(, vampire(, walk)?)? \}\)/,
     'the body build no longer hands the face to the picker');
   // TR2: the menu's inline opts moved into weaponRig's ONE HOME - the
   // sweep follows the thread there (menu -> buildArmsFor ->
@@ -1456,6 +1458,8 @@ import {
 import { armorRecords, clothingRecords, raceBeastFlag, pickWeaponRecord, facePools, MOD_WEAPON_TO_MW } from '../src/formats/mwFirstPerson.js';
 import { OWN_MW_MODELS } from '../src/characters/ownWeaponModels.js';   // FIELD-GUN-MW2: counted off the table, not typed
 import { OWN_MW_ARMOR } from '../src/characters/ownArmorModels.js';   // MW-BRIG1: and the armour
+import { CLOAK_NAMES } from '../src/characters/ownClothingModels.js';   // MW-CLOAK1: and the cloak
+import { CLOTHING_NAME } from '../src/formats/mwItemMap.js';
 import { ARMOR_ENUM } from '../src/combat/enemyEquipment.js';
 import { ARMOR_MATERIAL } from '../src/systems/armorMaterials.js';
 
@@ -1483,9 +1487,15 @@ test('MW-D28: the map is TOTAL - every DF equippable x material answers, or the 
   // empty hands in Morrowind first person.
   const own = cover.filter((c) => c.kind === 'own');
   // MW-BRIG1: and the port's own ARMOUR, one row per template x material it dresses, inside the mod's space
-  assert.equal(own.length, Object.keys(OWN_MW_MODELS).length + OWN_MW_ARMOR.length, 'every own-model weapon and armour piece answers a row');
+  // MW-CLOAK1: and the port's own CLOAK, one row per garment index that wears it (a man's and a woman's of each)
+  const cloakIndices = Object.entries(CLOTHING_NAME).filter(([, n]) => CLOAK_NAMES.includes(n)).map(([i]) => Number(i));
+  assert.deepEqual(cloakIndices, [154, 155, 191, 192], 'the Casual and Formal Cloak, a man\'s and a woman\'s');
+  assert.equal(own.length, Object.keys(OWN_MW_MODELS).length + OWN_MW_ARMOR.length + cloakIndices.length, 'every own-model weapon, armour piece and cloak answers a row');
+  assert.deepEqual(own.filter((o) => o.own === 'ownClothingModels').map((o) => o.index), cloakIndices);
   assert.ok(own.every((o) => o.model && o.item), 'an own row names its mesh and its item');
-  assert.deepEqual(own.filter((o) => o.own === 'ownArmorModels').map((o) => o.index), OWN_MW_ARMOR.map((a) => a.templateIndex));
+  // MW-STEEL1: the classic walk comes first, so the Steel plate's seven rows stand before the mod's brigandine - a set,
+  // compared as one
+  assert.deepEqual(own.filter((o) => o.own === 'ownArmorModels').map((o) => o.index).sort((a, b) => a - b), OWN_MW_ARMOR.map((a) => a.templateIndex).sort((a, b) => a - b));
   // Declared sprites are present, named, and reasoned.
   const sprites = cover.filter((c) => c.kind === 'sprite');
   assert.ok(sprites.length >= 10, 'the Arrow rows are not declared');
@@ -1716,7 +1726,7 @@ test('MW-D29: shadows trim the skin - whole slots gone, single sides kept on the
 test('MW-D29: the thread is unbroken - the menu reads the equip table, the build wears it', () => {
   const arm = readFileSync('src/combat/fpArm.js', 'utf8');
   // NUDE-FLATS: through the upper weld's door (composeWornModest composes, then welds a bare woman's chest)
-  assert.match(arm, /composeWornModest\(\{ pieces: armor \?\? \[\], armors: armors \?\? \[\], clothes: clothes \?\? \[\], bodyPool: parts, female, colourOf \}, showNudity\(\)\)/);
+  assert.match(arm, /composeWornModest\(\{ pieces: armor \?\? \[\], armors: armors \?\? \[\], clothes: clothes \?\? \[\], bodyPool: parts, female, colourOf, helmStyle \}, showNudity\(\)\)/);   // MW-STEEL1: and the Steel Helm switch
   assert.match(arm, /const armors = esmBytes\.flatMap\(\(e\) => walk\(e, 'armors', armorRecords\)\);/);
   assert.match(arm, /const clothes = esmBytes\.flatMap\(\(e\) => walk\(e, 'clothes', clothingRecords\)\);/);
   // MW-D31: ONE composition serves both rigs - buildFpArm composes,
@@ -2291,7 +2301,7 @@ test('MW-D32: raceRecords reads RADT by hand-laid offsets - heights at 120, flag
 test('MW-D34: the third-person model matrix carries the measured chirality flip and adjustScale', () => {
   // MEASURED through the real composite (mwArmProbe L5b): the 3P body
   // rides drawRigSpriteBox into the world's mirrorProjectionX lens, and
-  // the port's world convention is left-handed (motor.js:"spawn(x, y, z)" - the
+  // the port's world convention is left-handed (motor.js:"let mx = (sin * cp * input.forward + cos * input.strafe)" - the
   // player's right is +X at yaw 0), so a right-handed NIF actor placed
   // with a pure rotation reads MIRRORED on screen. The -u on the local
   // side axis is the same basis adaptation the mirror gives every
@@ -2667,7 +2677,7 @@ test('MW-D38: the weapon\u2019s material is READ - a daedric sword is not the ty
   assert.notEqual(fpWeaponKey(iron, false), fpWeaponKey(daedric, false), 'two materials of one type must be two keys');
   assert.match(fpWeaponKey(daedric, false), /:Daedric:/);
   const arm = readFileSync('src/combat/fpArm.js', 'utf8');
-  assert.match(arm, /pickWeaponRecord\(allWeapons, mwType, weapon \? materialName\(weapon\) : null, \{ has \}\)/,   // MW-D50: and among the records the archives carry
+  assert.match(arm, /pickWeaponRecord\(allWeapons, mwType, weapon \? materialName\(weapon\) : null, \{ has, shape: dfWeaponShape\(weapon, WEAPONS\) \}\)/,   // MW-D50: and among the records the archives carry
     'the hand\u2019s weapon is not resolved by its material');
   const code = arm.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
   assert.ok(!/weapon\.materialName|item\.materialName/.test(code), 'the phantom field is still read somewhere');
@@ -3020,11 +3030,15 @@ test('MW-D39: readySpell and castSpell are the two doors, and neither gates the 
   assert.equal(arm.status().spellReady ?? false, false);
   const src = readFileSync('src/combat/fpArm.js', 'utf8');
   // the stance re-composes on ready, and the three group readers take the flag
-  assert.equal((src.match(/animWeaponType\(built\.mwType, sheathed, spellReady\)/g) || []).length, 5,
-    'idle, movement (x2), the weapon group and the torch\'s carried-left rule (MW-D51) must all read the spell stance');
+  // PIN MOVED (MWNPC9, bible/04-Characters/Morrowind-NPCs.md section 14b): the idle, the jump and the movement read it
+  // through `stanceOf()` - the stance a non-biped creature takes bare - which reads it once
+  assert.equal((src.match(/animWeaponType\(built\.mwType, sheathed, spellReady\)/g) || []).length, 3,
+    'stanceOf, the weapon group and the torch\'s carried-left rule (MW-D51) must all read the spell stance');
+  assert.equal((src.match(/= stanceOf\(\);/g) || []).length, 3, 'the idle, the jump and the movement through stanceOf');
   assert.match(src, /readySpell\(ready\) \{[\s\S]*?refreshWeaponGroup\(\);\n      resetIdle\(\);\n      resetMovement\(\);/);
-  // a cast in flight is abandoned by an un-ready (an aborted spell)
-  assert.match(src, /if \(!want && upper === UPPER_BODY\.Casting\)/);
+  // PIN MOVED (MW-CAST1): an un-ready mid-cast is the spell GOING - Daggerfall clears the ready at its release - so
+  // the cast finishes and the stance drops at its end (it used to be taken for an abort and dropped mid-motion)
+  assert.match(src, /if \(!want && upper === UPPER_BODY\.Casting\) \{ unreadyAfterCast = true; return false; \}/);
   // the cast plays the group's own section and lands back in the stance
   assert.match(src, /if \(!playAction\(`\$\{type\} start`, `\$\{type\} stop`, 0\)\)/);
   assert.match(src, /case UPPER_BODY\.Casting:\n\s+\/\/ MW-D39[\s\S]*?upper = UPPER_BODY\.WeaponEquipped;/);
@@ -3054,7 +3068,10 @@ test('MW-D39: the hosts wire it through the rig\u2019s one door, on the referenc
   // ROAD-E6 moved the moment: the door is CastReadySpell's PlayOneShot
   // (:430-435), it takes the release handler the engine parks its
   // resolution on, and it ANSWERS - false when PlayOneShot refused.
-  assert.match(rig, /castSpellAnim: \(rangeType, element, onRelease = null\) => \{\n\s+cast\.n = \(cast\.n \+ 1\) & 0xffff; cast\.rangeType = rangeType \| 0;[^\n]*\n\s+(?:eotbBody\.cast\(\);[^\n]*\n\s+)?fpArm\.castSpell\(rangeType\);\n\s+return fpsSpellCasting\.playOneShot\(element, onRelease\);/,
+  // PIN MOVED (MW-CAST1): the door now asks whether the Morrowind arm on screen took the cast, and if it did the release
+  // waits for its "<type> release" (fpsSpellCasting's hold) - still ONE door, the range, the element and the release
+  // PIN MOVED (CAST-SPEED): and the caster's rate, read once here and handed to both lanes (systems/castSpeed.js)
+  assert.match(rig, /castSpellAnim: \(rangeType, element, onRelease = null\) => \{\n\s+cast\.n = \(cast\.n \+ 1\) & 0xffff; cast\.rangeType = rangeType \| 0;[^\n]*\n(?:\s+eotbBody\.cast\(\);[^\n]*\n)?(?:\s*\/\/[^\n]*\n)*\s+const rate = castRate\(entity\);\n\s+const armCasts = fpArm\.castSpell\(rangeType, rate\) && \(fpArm\.active\(\) \|\| fpArm\.thirdActive\(\)\);\n(?:\s*\/\/[^\n]*\n)*\s+return fpsSpellCasting\.playOneShot\(element, onRelease, armCasts \? \{ hold: \(\) => fpArm\.takeCastRelease\(\) \|\| !fpArm\.castInFlight\(\), rate \} : \{ rate \}\);/,
     'the cast must have one door, and it carries the range, the element and the release');
   for (const host of ['src/scenes/dungeonContext.js', 'src/scenes/world.js']) {
     const h = readFileSync(host, 'utf8');
@@ -3062,7 +3079,8 @@ test('MW-D39: the hosts wire it through the rig\u2019s one door, on the referenc
     // it hangs off the CAST moment - which since ROAD-E6 is the
     // startCastAnim dep (the spend), not onCastReadySpell (the release
     // the engine now parks on the animation's fifth frame).
-    assert.match(h, /startCastAnim: \(sp, onRelease\) => !?!?weaponRig\??\.?castSpellAnim\??\.?\(sp\?\.rangeType, sp\?\.element, onRelease\)/,
+    // MW-CAST1: world.js asks the LIVE rig (the interior's indoors), so its count reaches the pose
+    assert.match(h, /startCastAnim: \(sp, onRelease\) => !?!?(?:\(modes\?\.liveArm\?\.\(\)\?\.rig \?\? weaponRig\)|weaponRig)\??\.?castSpellAnim\??\.?\(sp\?\.rangeType, sp\?\.element, onRelease\)/,
       `${host} does not hand the cast its range and its release`);
     assert.ok(!/castSpellAnim/.test(h.slice(h.indexOf('onNewReadySpell'), h.indexOf('startCastAnim'))),
       `${host} casts on the READY moment - the spell has not gone yet`);
@@ -3081,7 +3099,7 @@ test('AUDIT 36 F1: ALL THREE hosts run the cast animation, on the cast moment, w
 
 test('AUDIT 36 F2: an INSTANT self-cast animates - the cast latches its own stance', async () => {
   const src = readFileSync('src/combat/fpArm.js', 'utf8');
-  const fn = src.slice(src.indexOf('    castSpell(rangeType = 2) {'), src.indexOf('    /** The held bow comes up.'));
+  const fn = src.slice(src.indexOf('    castSpell(rangeType = 2, rate = 1) {'), src.indexOf('    /** The held bow comes up.'));   // PIN MOVED (CAST-SPEED): the cast's rate
   // the old gate refused a cast that arrived before any frame read the
   // ready - which is EVERY CasterOnly spell, readied and cast in one
   // synchronous call (hostMagic readySpell -> castInput for range 0).
@@ -3176,8 +3194,12 @@ test('PX27: the arm\u2019s REACH is swept over every clip, not the idle alone', 
   assert.equal(clipSweepTimes(null, null).length, 25);
   // and the build uses it
   const arm = readFileSync('src/combat/fpArm.js', 'utf8');
-  assert.match(arm, /const sweep = clipSweepTimes\(sources, idleCheck\);\n    const union = clipUnionBounds\(arm, poseAt, sweep\);/,
+  // PIN MOVED (MWNPC3): the sweep is the default (the player's arm); a rig never looked out of (reachSweep: false -
+  // the peers' and the NPCs' builds) takes the idle's reach instead
+  assert.match(arm, /const sweep = reachSweep \? clipSweepTimes\(sources, idleCheck\) : null;\n    const union = sweep \? clipUnionBounds\(arm, poseAt, sweep\) : null;/,
     'the build must measure the reach over the sweep');
+  assert.match(arm, /const reach = union \? armReach\(eye, union\) : idleReach;/);
+  assert.match(arm, /reachSweep = true,/, 'and sweeps unless asked not to');
   // AUDIT 37 F1: and the IDLE reach is measured SEPARATELY, over the
   // idle's own times - not aliased to the swept one, which would put
   // the near plane back on the widest pose.

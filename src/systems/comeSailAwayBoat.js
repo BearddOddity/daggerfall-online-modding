@@ -54,25 +54,23 @@
 //     audioClips                                                ComeSailAway.audioClips (Start's five)
 //   }
 
-import { PrefabNode, instantiatePrefab } from '../world/prefabNode.js';
+import { PrefabNode, instantiatePrefab, prefabShapeStamp } from '../world/prefabNode.js';
 import { applyRuntimeMaterials, bundleSlots, dfMaterial, gameTextureFromName } from './comeSailAwayModels.js';
 import { createAnimator } from '../world/unityAnimator.js';
 import { instanceParticleSystems } from '../world/unityParticles.js';
+import { HULL_NAMES, HULL_PRICES, HULL_WEIGHTS, VARIANT_NAMES } from './comeSailAwayHulls.js';   // INT1: the table's leaf - the item law reads it in a Worker
 
 /** ComeSailAway.firstHullModelID - SpawnBoat asks for 112410 + hull. */
 export const FIRST_HULL_MODEL_ID = 112410;
 /** The seven trigger prefabs and what Start registers on them (PlayerActivate.RegisterCustomActivation, 3.2). */
 export const TRIGGER_MODEL = Object.freeze({ drive: 112400, board: 112401, cargo: 112402, door: 112403, variant: 112404, status: 112405, position: 112406 });
-export const HULL_NAMES = Object.freeze(['Rowboat', 'Large Boat', 'Small Ship', 'Large Galley', 'Carrack']);
-export const HULL_PRICES = Object.freeze([4000, 8000, 100000, 200000, 150000]);
-export const HULL_WEIGHTS = Object.freeze([30, 120, 2400, 48000, 240000]);
+export { HULL_NAMES, HULL_PRICES, HULL_WEIGHTS, VARIANT_NAMES };
 /** SHIP-PACK (2026-10-01, the review before the merge: "Allow larger ships to be picked up, just like smaller vessels"):
  *  what a hull's parts weigh packed - the table's, and never more than the Large Boat's. The three ships' rows (2,400 to
  *  240,000 kg) were never an item's in the mod, whose ships were never packed: in the pack they would hold the bearer
  *  under the water, sink any boat she sailed ("You're going to need a bigger boat") and take nothing more aboard. */
 export const PACKED_WEIGHT_MAX = HULL_WEIGHTS[1];
 export const packedHullWeight = (hull) => Math.min(HULL_WEIGHTS[hull], PACKED_WEIGHT_MAX);
-export const VARIANT_NAMES = Object.freeze(['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']);
 /** AUDIT PRE-MERGE 0928 O1: the variant objects each hull's prefab carries under its `Variants` node (GetVariantCount) -
  *  the Large Boat's seven, and none on the rest, whose SpawnBoat never reads its variant. */
 export const HULL_VARIANT_COUNTS = Object.freeze([0, 7, 0, 0, 0]);
@@ -477,8 +475,21 @@ export function setLights(boat, value) {
 
 /** `GetComponent<Animator>()` on a node: its runtime (world/unityAnimator.js), or null. */
 export const animatorOf = (node) => node?.getComponent('Animator')?.animator ?? null;
-/** Every Animator a boat carries, for the frame's step (Unity updates each after the scripts' Update). */
-export const boatAnimators = (boat) => [...boat.GameObject.walk()].flatMap((n) => n.getComponents('Animator').map((c) => c.animator).filter(Boolean));
+/** SEA-TOWN (FIELD BUGS 2026-10-11c): each boat tree's Animators, kept while every tree's shape stands (prefabNode.js
+ *  prefabShapeStamp - prefabColliders.js keeps a tree's colliders by the same stamp). Read-only: the list is shared. */
+const _animators = new WeakMap();   // root -> { stamp, list }
+/** Every Animator a boat carries, for the frame's step (Unity updates each after the scripts' Update). SEA-TOWN: found
+ *  once a tree shape - the walk of every node (a galleon's 1,228) was made for every boat, every frame. A tree's
+ *  Animators change only with its shape: a node hung or a component added (each bumps the stamp), a runtime attached
+ *  only as an instance is imported, before it is hung under its parent (importCustomGameobject). */
+export const boatAnimators = (boat) => {
+  const root = boat.GameObject, stamp = prefabShapeStamp();
+  const had = _animators.get(root);
+  if (had && had.stamp === stamp) return had.list;
+  const list = [...root.walk()].flatMap((n) => n.getComponents('Animator').map((c) => c.animator).filter(Boolean));
+  _animators.set(root, { stamp, list });
+  return list;
+};
 /** CSA-F: every particle system of a boat's tree, as Unity's ParticleSystem update finds them. */
 export const boatParticleSystems = (boat) => [...boat.GameObject.walk()].flatMap((n) => n.getComponents('ParticleSystem').map((c) => c.particleSystem).filter(Boolean));
 
@@ -628,7 +639,10 @@ export function getBoatTransforms(boat, parent, ctx, reinitialize = false) {
       val3.setParentKeepWorld(child);
       val3.localPosition = [0, 0, 0];
       val3.localRotation = [0, 0, 0, 1];
-      fixDeformationsAwake(val3.addComponent({ type: 'FixDeformations', interval: 0.1, timer: 0 }), val3);
+      // AUDIT GN2-RG1/RG9: the renderer's own cadence where its prefab names one (a BakeCadence: the new galleon's,
+      // world/galleonRig.js BAKE - her rope every frame, each canvas from its own timer); the mod's carry none: verbatim
+      const cadence = child.getComponent('BakeCadence');
+      fixDeformationsAwake(val3.addComponent({ type: 'FixDeformations', interval: 0.1, timer: cadence?.timer ?? 0, ...(cadence?.everyFrame ? { everyFrame: true } : {}) }), val3);
     }
     getBoatTransforms(boat, child, ctx, reinitialize);
   }

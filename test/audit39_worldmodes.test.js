@@ -113,8 +113,9 @@ test('AUDIT39 #34: an in-flight interior swing does not land its hit frame under
   // PIN MOVED (AUDIT 39r): the overlay gate is unchanged, but the rig
   // now takes the paralysis flag its two above-ground siblings take
   // (WeaponManager.cs:235-239). The gate under test is `overlayHeld ?
-  // [] :`, which still reads exactly as it did.
-  assert.match(WM, /for \(const ev of \(overlayHeld \? \[\] : interiorWeapon\.frame\(dt, \{ paralyzed \}\)\)\) \{/,
+  // [] :`, which still reads exactly as it did. PIN MOVED (TELL6e: a knocked-down player swings nothing - the rig's
+  // paralysis flag takes the knockdown beside the paralysis, systems/blowEffects.js knockedDown).
+  assert.match(WM, /for \(const ev of \(overlayHeld \? \[\] : interiorWeapon\.frame\(dt, \{ paralyzed: paralyzed \|\| knockedDown\(\) \}\)\)\) \{/,
     'the rig MACHINE is held; the events it would have yielded do real work');
   // ...and the viewmodel still paints, outside the gate
   assert.match(WM, /\n\s+interiorWeapon\.draw\(\{ paralyzed \}\);/);
@@ -195,7 +196,7 @@ test('AUDIT39 #64: the impact recovers the arrow whatever the damage, and never 
   const said = [];
   const dmg = playerArrowHitFoe(
     { weapon: { material: 0 }, pos: [0, 1, 0], dir: [0, 0, 1] }, foe,
-    { playerEntity: { isPlayer: true }, playerFeet: [0, 0, -1], dealDamage: (f, d) => dealt.push(d), say: (l) => said.push(l) });
+    { playerEntity: { isPlayer: true }, playerFeet: [0, 0, -1], dealDamage: (f, d) => dealt.push(d), say: (l) => said.push(l), rolls: () => 0 });   // PIN MOVED (ARROW-LODGE): the shaft survives its strike - under ARROW_LODGE_CHANCE
   assert.equal(dmg, 0);
   assert.deepEqual(dealt, [], 'no damage, no door - the pool owns the death chain');
   assert.equal(foe.entity.items.length, 1, 'the arrow is recoverable from the TARGET, damage or not');
@@ -276,9 +277,10 @@ test('AUDIT39 #64: all three non-dungeon hosts mark the shaft and resolve it', (
     // FIELD-GUN17 appended one key at all three - the muzzle offset,
     // null for every weapon but the Thunderlock. The claim this arm
     // makes is LastBowUsed, and it is still asserted whole.
-    ['src/scenes/world.js', 'arrows.fire(cam.pos, fwd, { fromPlayer: true, weapon: weaponRig.playerWeapon.weapon, muzzle: weaponRig.thunderlockMuzzle(fieldOfView()) })'],
-    ['src/scenes/exterior.js', 'arrows.fire(eye, fwd, { fromPlayer: true, weapon: weaponRig.playerWeapon.weapon, muzzle: weaponRig.thunderlockMuzzle(fieldOfView()) })'],
-    ['src/scenes/worldModes.js', 'interiorArrows.fire(player.eye, eyeDir(), { fromPlayer: true, weapon: interiorWeapon.playerWeapon.weapon, muzzle: interiorWeapon.thunderlockMuzzle(fieldOfView()) })'],
+    // PIN MOVED (STUCK-ARROWS): and one more - whether the round was conjured (DFU's isArrowSummoned)
+    ['src/scenes/world.js', 'arrows.fire(cam.pos, fwd, { fromPlayer: true, weapon: weaponRig.playerWeapon.weapon, muzzle: weaponRig.thunderlockMuzzle(fieldOfView()), summoned: shot.summoned })'],
+    ['src/scenes/exterior.js', 'arrows.fire(eye, fwd, { fromPlayer: true, weapon: weaponRig.playerWeapon.weapon, muzzle: weaponRig.thunderlockMuzzle(fieldOfView()), summoned: shot.summoned })'],
+    ['src/scenes/worldModes.js', 'interiorArrows.fire(player.eye, eyeDir(), { fromPlayer: true, weapon: interiorWeapon.playerWeapon.weapon, muzzle: interiorWeapon.thunderlockMuzzle(fieldOfView()), summoned: shot.summoned })'],
   ]) {
     const s = src(f);
     assert.ok(s.includes(fire), `${f} rides LastBowUsed on the shaft`);
@@ -322,9 +324,9 @@ test('AUDIT39 #65: the interior arrow update takes the four impact options it ne
   assert.match(call, /onFoeHit: \(m, t\) => interiorFoes\?\.arrowHitFoe\(m, t\),/);
   // ...and the PLAYER's shaft damages through the pool that owns the
   // billboard, the same `_encounter` split this host's sinks take -
-  // world.js:"and it reads the"'s own law, so a killed watchman still runs the crime
+  // world.js:"DW-D: UnderwaterPresentationEffects.SuppressPlayerIndirectLight"'s own law, so a killed watchman still runs the crime
   // and the corpse.
-  assert.match(call, /dealDamage: \(f, d\) => \(f\._encounter\n\s+\? interiorFoes\?\.damageFoe\(f, d, player\.pos, m\.dir, \{ kind: 'arrow' \}\)[^\n]*\n\s+: interiorGuards\?\.hurtGuard\(f, d, player\.pos, m\.dir\)\),/);
+  assert.match(call, /dealDamage: \(f, d\) => \(f\._encounter\n\s+\? interiorFoes\?\.damageFoe\(f, d, player\.pos, m\.dir, \{ kind: 'arrow', weapon: m\.weapon \?\? null \}\)[^\n]*\n\s+: interiorGuards\?\.hurtGuard\(f, d, player\.pos, m\.dir, \{ kind: 'arrow' \}\)\),/);   // PIN MOVED (AUDIT FEUD 2: the encounter pool's shaft carries its bow - a metal weakness rides to a puppet's owner)   // PIN MOVED (TELL1: and the blow's kind - a shaft's weight on a wind-up)
   // the player-side arm of the same call
   assert.match(call, /onPlayerArrowHitFoe: \(m, t\) => playerArrowHitFoe\(m, t, \{/);
   // the enemy hit runs the melee arm's own payload: pain voice, sound,

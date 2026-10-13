@@ -50,7 +50,7 @@
   {
     "name": "PROF2-6-unconfirmed-any-tier",
     "file": "src/net/nodeLaw.js",
-    "old": "  const d = drawFromTable(table, unit('vein', x, y, day, slot, 3), unit('vein', x, y, day, slot, 4), confirmed ? 7 : 2);",
+    "old": "  const d = drawFromTable(table, unit('vein', x, y, day, slot, 3), unit('vein', x, y, day, slot, 4), confirmed ? 7 : UNCONFIRMED_VEIN_TIER);",
     "new": "  const d = drawFromTable(table, unit('vein', x, y, day, slot, 3), unit('vein', x, y, day, slot, 4), 7);",
     "tests": [
       "test/prof2_law.test.js"
@@ -87,7 +87,7 @@
   {
     "name": "PROF2-10-unconfirmed-dungeon-deep",
     "file": "src/net/nodeLaw.js",
-    "old": "  const d = drawFromTable(table, unit('dvein', dungeon, 0, day, slot, 3), unit('dvein', dungeon, 0, day, slot, 4), confirmed ? 7 : 3);",
+    "old": "  const d = drawFromTable(table, unit('dvein', dungeon, 0, day, slot, 3), unit('dvein', dungeon, 0, day, slot, 4), confirmed ? 7 : UNCONFIRMED_VEIN_TIER);",
     "new": "  const d = drawFromTable(table, unit('dvein', dungeon, 0, day, slot, 3), unit('dvein', dungeon, 0, day, slot, 4), 7);",
     "tests": [
       "test/prof2_law.test.js"
@@ -192,11 +192,12 @@
   {
     "name": "PROF2-22-a-gem-into-full-stores",
     "file": "server-account/src/professions.js",
-    "old": "        CASE WHEN COALESCE((SELECT SUM(qty) FROM prof_stores WHERE player = ?1 AND char_id = ?4 AND material = ?15), 0) < ?11 THEN ?15 END, ?13, ?2, ?3",
-    "new": "        ?15, ?13, ?2, ?3",
+    "old": "        CASE WHEN COALESCE((SELECT SUM(qty) FROM ${T} WHERE player = ?1 AND char_id = ?4 AND material = ?14), 0) < ?11 THEN ?14 END, ?13, ?2, ?3",
+    "new": "        ?14, ?13, ?2, ?3",
     "tests": [
       "test/prof2_service.test.js"
-    ]
+    ],
+    "note": "CAP-OFF (2026-10-07, Mac: \"Remove the cap on life skills\") (PIN MOVED, re-aimed by content): the gem is ?14 now."
   },
   {
     "name": "PROF2-23-smelt-from-nothing",
@@ -219,8 +220,8 @@
   {
     "name": "PROF2-25-bought-smelted-own",
     "file": "server-account/src/professions.js",
-    "old": "      SELECT ?1, ?3, ?2, ?4, ?5, ${per} * (?5 - MIN(?5, ${bought})), ${per} * MIN(?5, ${bought}),\n",
-    "new": "      SELECT ?1, ?3, ?2, ?4, ?5, ${per} * ?5, 0,\n",
+    "old": "      SELECT ?1, ?3, ?2, ?4, ?5, ${per} * (?5 - MIN(?5, ${bought})), ${per} * (MIN(?5, ${bought}) - MIN(?5, ${loose})), ${per} * MIN(?5, ${loose}),\n",
+    "new": "      SELECT ?1, ?3, ?2, ?4, ?5, ${per} * ?5, 0, 0,\n",
     "tests": [
       "test/prof2_service.test.js"
     ]
@@ -291,7 +292,7 @@
   {
     "name": "PROF2-33-no-stone-tile",
     "file": "src/scenes/mineHost.js",
-    "old": "const at = nearestStone(samples, tilemap, locationRect, tx, ty, VEIN_STONE_REACH, rocks ?? []) ?? outside(natureStandsAt(",
+    "old": "const at = nearestStone(samples, tilemap, locationRect, tx, ty, VEIN_STONE_REACH, solid, clear, beach) ?? outside(natureStandsAt(",
     "new": "const at = outside(natureStandsAt(",
     "tests": [
       "test/prof2_client.test.js"
@@ -345,8 +346,8 @@
   {
     "name": "PROF2-39-a-forge-for-nothing",
     "file": "src/net/decorLaw.js",
-    "old": "enchant: 200_000, forge: 50_000, workbench: 50_000, loom: 50_000, mason: 50_000, jeweller: 50_000 });",
-    "new": "enchant: 200_000, forge: 0, workbench: 50_000, loom: 50_000, mason: 50_000, jeweller: 50_000 });",
+    "old": "enchant: 200_000, forge: 50_000, workbench: 50_000, loom: 50_000, mason: 50_000, jeweller: 50_000, vendor: 25_000 });",
+    "new": "enchant: 200_000, forge: 0, workbench: 50_000, loom: 50_000, mason: 50_000, jeweller: 50_000, vendor: 25_000 });",
     "tests": [
       "test/prof2_client.test.js",
       "test/homestations.test.js"

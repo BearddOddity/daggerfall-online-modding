@@ -75,7 +75,14 @@ export function createSceneCache() {
  *  it. */
 export const addPermanentScene = (cache, sceneName) => { cache.permanent.add(sceneName); };
 export const containsPermanentScene = (cache, sceneName) => cache.permanent.has(sceneName);
-export const removePermanentScene = (cache, sceneName) => { cache.permanent.delete(sceneName); };
+export const removePermanentScene = (cache, sceneName) => {
+  cache.permanent.delete(sceneName);
+  for (const n of [...cache.permanent]) if (n.startsWith(`${sceneName}|`)) cache.permanent.delete(n);   // WD3: and its other layouts' visits
+};
+/** WD3 (AUDIT WD3 R1): A PERMANENT SCENE'S VISIT IN ANOTHER LAYOUT of its town (a house's town pinned out, its pack
+ *  not loaded) - kept beside the scene, never over it, and given back when the town next stands in that layout; it
+ *  goes with the scene when the house is sold or the room expires. */
+export const layoutSceneName = (sceneName, layout) => `${sceneName}|${layout || 'classic'}`;
 
 /** The player's own dropped piles, deep-copied. They are the third
  *  thing a scene holds in this port because the port keeps a pile's
@@ -125,6 +132,9 @@ const copySceneEntry = (d) => ({
   // writer's own frame), and `terrainScale` the ground an exterior height stood on - absent on an entry written
   // before either was carried, which the restoring host reads as the old raw frame on the prefab's 1.5.
   frame: d.frame ?? null, terrainScale: d.terrainScale ?? null,
+  // WD3: the layout of the town an interior was cached in (systems/layoutPins.js) - only where a layout mod changed the
+  // town; an entry without one was cached in Daggerfall's own
+  ...(typeof d.layout === 'string' && d.layout ? { layout: d.layout } : {}),
 });
 
 /** CacheScene (:84-98). DFU caches exactly TWO kinds of thing for a
@@ -156,6 +166,30 @@ export function restoreCachedScene(cache, sceneName) {
   const data = cache.scenes.get(sceneName) ?? null;
   cache.scenes.delete(sceneName);
   return data;
+}
+
+/** WAGONS2 (AUDIT): A TRAVELLING ROOM'S OTHER LAYOUTS FOLDED BACK. A ship's cabin boarded in a town laid out by another
+ *  mod was kept apart, its visits there saved beside it (`layoutSceneName` - WD3); since a room that travels is no
+ *  town's (scenes/worldModes.js restoreInteriorScene), those visits are folded into the room itself - their placed
+ *  pieces, what those hold, the owner's own things, the floor's piles, torches and camps, the furniture taken out -
+ *  each piece once (by its id), and the copies forgotten. A room with none is left as it is. */
+export function foldLayoutCopies(cache, sceneName) {
+  const copies = [...cache.scenes.keys()].filter((n) => n.startsWith(`${sceneName}|`));
+  for (const n of [...cache.permanent].filter((k) => k.startsWith(`${sceneName}|`))) cache.permanent.delete(n);
+  if (!copies.length) return 0;
+  const base = copySceneEntry(cache.scenes.get(sceneName) ?? {});
+  for (const n of copies) {
+    const c = copySceneEntry(cache.scenes.get(n));
+    cache.scenes.delete(n);
+    const ids = new Set(base.decor.map((pc) => pc.id)), added = new Set();
+    for (const pc of c.decor) if (!ids.has(pc.id)) { base.decor.push(pc); ids.add(pc.id); added.add(String(pc.id)); }
+    for (const [id, list] of Object.entries(c.decorItems)) if (added.has(id)) base.decorItems[id] = list;   // what a piece of its own holds, with it
+    for (const [id, item] of Object.entries(c.decorOwn)) if (!(id in base.decorOwn)) base.decorOwn[id] = item;
+    base.droppedPiles.push(...c.droppedPiles); base.droppedTorches.push(...c.droppedTorches); base.camps.push(...c.camps);
+    for (const k of c.hiddenBase) if (!base.hiddenBase.includes(k)) base.hiddenBase.push(k);
+  }
+  cache.scenes.set(sceneName, base);
+  return copies.length;
 }
 
 /** DECOR1e: A SOLD ROOM'S PLACED PIECES, taken out of its scene and answered as they were - none of them stands again
@@ -220,6 +254,25 @@ export function clearSceneCache(cache, { start = true } = {}) {
     });
   }
   cache.scenes = kept;
+}
+
+/** PERMADEATH-HOUSES (bible/06-Systems/Legacy-Arc.md section 10c): A HOUSE'S SCENE HANDED ON - `sceneName`'s entry and
+ *  its other layouts' visits (layoutSceneName), out of ANOTHER save's cache (snapshotSceneCache's shape - a dead
+ *  member's), into `cache` as permanent scenes: the heir finds the house as its owner left it. Sans corpses, as the
+ *  world's own move keeps a permanent scene. Answers how many entries came. */
+export function graftPermanentScene(cache, snap, sceneName) {
+  let n = 0;
+  for (const e of Array.isArray(snap?.scenes) ? snap.scenes : []) {
+    const name = String(e?.sceneName ?? '');
+    if (name !== sceneName && !name.startsWith(`${sceneName}|`)) continue;
+    const d = copySceneEntry(e);
+    d.lootContainers = d.lootContainers.filter((c) => c.containerType !== LOOT_CONTAINER_TYPES.CorpseMarker);
+    cache.scenes.set(name, d);
+    cache.permanent.add(name);
+    n++;
+  }
+  cache.permanent.add(sceneName);
+  return n;
 }
 
 /** GetSceneCache / RestoreSceneCache (:150-190) - the save shape.

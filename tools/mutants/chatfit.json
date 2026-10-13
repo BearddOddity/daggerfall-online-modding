@@ -10,9 +10,9 @@
  { "name": "CHATFIT-the-name-keeps-no-title-attribute", "file": "src/ui/chatPanel.js",
    "old": "      nameEl.title = r.name;", "new": "      nameEl.title = '';", "tests": ["test/chatfit.test.js"] },
  { "name": "CHATFIT-the-inner-is-not-in-the-column", "file": "src/ui/chatPanel.js",
-   "old": "  whoInner.append(whoHead, whoList, whoMore);\n  who.append(whoInner);", "new": "  who.append(whoHead, whoList, whoMore);", "tests": ["test/chatfit.test.js"] },
+   "old": "  whoInner.append(whoHead, whoList, whoMore);   // CHAT-FIND: the search strip goes above the heading (placeFind)\n  who.append(whoInner);", "new": "  who.append(whoHead, whoList, whoMore);", "tests": ["test/chatfit.test.js"] },
  { "name": "CHATFIT-the-line-wears-the-glyphs-before-the-name", "file": "src/ui/chatPanel.js",
-   "old": "  const layLine = (r) => { r.node.replaceChildren(...[r.chan, r.time, ...r.before, r.nameEl, ...r.after, r.tag, r.text].filter(Boolean)); };", "new": "  const layLine = (r) => { r.node.replaceChildren(...[r.chan, r.time, ...r.after, r.nameEl, ...r.before, r.tag, r.text].filter(Boolean)); };", "tests": ["test/chatfit.test.js"] },
+   "old": "  const layLine = (r) => { r.node.replaceChildren(...[r.chan, r.time, r.nameEl, ...r.after, r.tag, r.text].filter(Boolean)); };", "new": "  const layLine = (r) => { r.node.replaceChildren(...[r.chan, r.time, ...r.after, r.nameEl, r.tag, r.text].filter(Boolean)); };", "tests": ["test/chatfit.test.js"] },
  { "name": "CHATFIT-the-badge-pass-re-lays-every-line-every-frame", "file": "src/ui/chatPanel.js",
    "old": "        if (r.badgeKey === key) continue;\n", "new": "", "tests": ["test/chatfit.test.js"] },
  { "name": "CHATFIT-the-badge-pass-skips-the-peek", "file": "src/ui/chatPanel.js",
@@ -24,7 +24,7 @@
  { "name": "CHATFIT-a-lost-peer-is-a-stranger", "file": "src/net/online.js",
    "old": "    const p = this.peers.get(id) ?? this._known.get(id);\n    return p ? { title: p.title ?? null,", "new": "    const p = this.peers.get(id);\n    return p ? { title: p.title ?? null,", "tests": ["test/chatfit.test.js"] },
  { "name": "CHATFIT-my-own-line-wears-no-badge", "file": "src/net/online.js",
-   "old": "    if (id === this.id) return { title: this.title ?? null, glyphs: Array.isArray(this.glyphs) ? this.glyphs : [], gt: this.gt ?? null };\n", "new": "", "tests": ["test/chatfit.test.js"] },
+   "old": "    if (id === this.id) return { title: this.title ?? null, glyphs: Array.isArray(this.glyphs) ? this.glyphs : [], gt: this.gt ?? null, ...(this.house ? { house: this.house } : {}) };\n", "new": "", "tests": ["test/chatfit.test.js"] },
  { "name": "CHATFIT-the-host-reads-the-presence-session-not-the-channel", "file": "src/scenes/world.js",
    "old": "      badgeOf: (id) => chatSessionOf(chatLog?.active)?.badgeOf?.(id) ?? null,", "new": "      badgeOf: (id) => online?.badgeOf?.(id) ?? null,", "tests": ["test/chatfit.test.js"] }
 ]

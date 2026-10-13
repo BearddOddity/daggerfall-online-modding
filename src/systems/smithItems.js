@@ -77,19 +77,23 @@
 // set gem's own price with it.
 // ═══════════════════════════════════════════════════════════════════
 import {
-  recipeById, QUALITY_EFFECTS, TOOL_LIFE, MASTERWORK, REPAIR_KIT_TEMPLATE, KIT_REPAIR, FIELD_KIT_REPAIR, KIT_CEILING, INGOT_MATERIAL, ARMOR_PLATE,
-  ARMOR_CHAIN, PROVENANCE_RE, makerName, QUALITY_NAMES,
+  recipeById, QUALITY_EFFECTS, TOOL_LIFE, MASTERWORK, REPAIR_KIT_TEMPLATE, KIT_REPAIR, FIELD_KIT_REPAIR, KIT_CEILING, kitReach, INGOT_MATERIAL, ARMOR_PLATE,
+  ARMOR_CHAIN, PROVENANCE_RE, makerMark, QUALITY_NAMES,
   jewelPoints, jewelPointsPct,   // PROF10: a piece of jewellery's points and its worth
   jewelHandOk,   // AUDIT PROF-541 J6: the hand a piece keeps, one its recipe takes
 } from '../net/recipeLaw.js';
 import { enchantmentRowCost } from './enchanting.js';   // AUDIT PROF-541 J4: a Rare roll the piece's points hold
 import { minedMaterial } from '../net/professionLaw.js';
 import { weaponOfMaterial, armorOfMaterial, createWeapon } from '../combat/enemyEquipment.js';
-import { setItemFields, mintCondition, templateByIndex, registerItemUseHandler, conditionPercentage } from './itemTemplates.js';   // AUDIT ECON R2: the card's own percentage
+import { setItemFields, mintCondition, templateByIndex, registerItemUseHandler, conditionPercentage, conditionShare, mendOrder } from './itemTemplates.js';   // AUDIT ECON R2: the card's own percentage; MEND-WORN: the mend order's one home
 import { registerTabledLootHandler, registerEnemyLootExtra } from './loot.js';   // REPAIR-EASE: the field kit's two loot doors
 import { itemLongName } from './itemInfo.js';
 import './profTemplates.js';   // the Repair Kit's row (692), registered with the ores and ingots
-import { applyRarity, rarityEligible, RARE_FLAVOURS } from './lootRarity.js';
+import { applyRarity, rarityEligible, RARE_FLAVOURS, reforgeAffix, reforgeableLines } from './lootRarity.js';   // CRAFT4: and the Reforge with Essence's roll
+import { pieceQuality, temperRefusal, temperStep, reforgeEssence } from '../net/temperLaw.js';   // CRAFT4: the temper
+import { readProductRecord } from '../net/productRecord.js';   // CRAFT4: a tempered piece's record, re-signed
+import { itemIsIdentified } from './tradeModes.js';   // CRAFT4: a line the Reforge sees, known
+import { isEquipped } from './equip.js';   // CRAFT4: and never on a worn piece
 import { unitWeightInKg, ARROW_TEMPLATE } from './inventory.js';   // MEND-AIM: the arrow, never mended
 import { seededRng } from './wind.js';
 import { createForagingItem } from './foragingInstall.js';
@@ -150,7 +154,7 @@ function setJewel(item, r, hand) {
 export function mintPiece({ recipe, quality, seed, maker = null, marked = false, dye = null, hand = null }, provenance) {
   const r = recipeById(recipe);
   if (!r || typeof provenance !== 'string' || !PROVENANCE_RE.test(provenance)) return null;
-  const mark = makerName(maker);
+  const mark = makerMark(maker);   // TEXT-F1
   if (r.kind === 'siege') return null;   // PROF4: the Ram Kit is the Stores' (and made with the sieges)
   if (r.kind === 'dish') return mintDish({ recipe, maker, hand }, provenance);   // PROF9: a dish, its cook's hand the record's
   if (r.kind === 'arrows') {
@@ -169,6 +173,7 @@ export function mintPiece({ recipe, quality, seed, maker = null, marked = false,
     item.value = kitValue(minedMaterial(r.metal).tier);
     item.recipe = r.id;   // AUDIT 31 H3: the recipe it was minted of, read before any look-alike's
     item.provenance = provenance;
+    if (Number.isInteger(quality) && quality >= 0) item.quality = Math.min(MASTERWORK, quality);   // CRAFT5: its quality its reach (kitReach) - none for a kit made before
     if (mark) item.maker = mark;
     return item;
   }
@@ -220,6 +225,7 @@ export function mintPiece({ recipe, quality, seed, maker = null, marked = false,
 export function asMinted(item) {
   if (!item?.provenance || item.legendary || item.customEnchantments?.length) return false;
   if (item.reforged !== undefined || item.imprint !== undefined) return false;   // AUDIT LOOT F3: a line the Reforge rolled again, a power imprinted - the record mints neither
+  if (item.honed !== undefined) return false;   // AUDIT LOOT II C1: nor a line honed past its roll (LOOT17) - the market's mint would hand back the roll, the shards and the gold gone
   if ((item.foodStage ?? 0) > 0) return false;   // PROF9: a dish spoiled since it was cooked - the record mints it fresh
   const e = item.enchantments ?? [];
   if (item.rarity !== 'rare') return e.length === 0;
@@ -243,6 +249,56 @@ export function pieceOfRecipe(item, recipeId) {
 /** PROF4: whether a minted piece is furniture - the home's things (DECOR2b's furnishings), never the pack. */
 export const isCraftedFurniture = (item) => item?.group === 'Furniture';
 
+// ─── CRAFT4: THE TEMPER AND THE REFORGE, ON THE PIECE (Professions-Arc 41.7) ─────
+
+/** The fields a temper takes off the piece its new record mints - the quality's condition, weight and roll. */
+const TEMPER_MINTED = Object.freeze(['maxCondition', 'weightInKg', 'quality', 'rarity', 'affixes', 'enchantments', 'name', 'isIdentified', 'value']);
+/**
+ * A TEMPER, ON THE PIECE (temperLaw.js): the service's answer - `quality` the quality it made, a made piece's `record`
+ * re-signed - laid on the pack's piece, one step from its own. A made piece still as its record mints (asMinted) is
+ * what the new record mints: the quality's condition, weight and roll (a Superior's Magic, off the record's seed), its
+ * wear kept as a share. Any other piece - a found one, a made one enchanted since - takes the step's condition and
+ * weight alone (temperStep): its Loot Rarity and its lines are its own. Answers whether the piece took it (an answer of
+ * another step, or a record of another piece, changes nothing).
+ * @param {any} item @param {{ quality?: number, record?: string|null }} answer
+ */
+export function temperItem(item, { quality, record = null } = {}) {
+  const from = pieceQuality(item);
+  if (!item || temperRefusal(item) || quality !== from + 1) return false;
+  const share = item.maxCondition > 0 ? conditionShare(item) : 1;
+  const c = typeof item.provenance === 'string' && asMinted(item) ? readProductRecord(record) : null;
+  const fresh = c && c.p === item.provenance && c.r === item.recipe && c.q === quality
+    ? mintPiece({ recipe: c.r, quality: c.q, seed: c.c, maker: c.m, marked: c.a === 1, dye: c.u ?? null, hand: c.f ?? null }, c.p) : null;
+  if (fresh) {
+    for (const k of TEMPER_MINTED) { if (fresh[k] === undefined) delete item[k]; else item[k] = fresh[k]; }
+  } else {
+    const step = temperStep(from);
+    item.maxCondition = Math.max(1, Math.round(item.maxCondition * step.condition));
+    if (step.weight !== 1) item.weightInKg = Math.round(unitWeightInKg(item) * step.weight * 100) / 100;
+    item.quality = quality;
+  }
+  item.currentCondition = Math.max(0, Math.min(item.maxCondition, Math.round(item.maxCondition * share)));
+  return true;
+}
+/** Why a piece's line may not be reforged with Essence, or null: 'not' (no Magic or Rare line the Reforge may roll -
+ *  reforge.js's own law), 'unknown' (not yet identified), 'worn' (take it off first), 'line' (not the line it was
+ *  reforged on). */
+export function essenceReforgeRefusal(item, index) {
+  if (!reforgeEssence(item?.rarity) || !reforgeableLines(item).length) return 'not';
+  if (!itemIsIdentified(item)) return 'unknown';
+  if (isEquipped(item)) return 'worn';
+  if (!reforgeableLines(item).includes(index)) return 'line';
+  return null;
+}
+/** CRAFT4: the stations' words - a piece changed under the press (taken off, moved, raised elsewhere), and a temper or a
+ *  reforge the service made that the piece left the pack before it took. */
+export const TEMPER_MOVED_TEXT = 'That piece is not as it was - look again.';
+export const TEMPER_LOST_TEXT = 'The temper was paid for, but the piece left your pack or changed before it took the step.';
+export const REFORGE_LOST_TEXT = 'The Essence was spent, but the piece left your pack or changed before its line was rolled.';
+/** A REFORGE WITH ESSENCE, ON THE PIECE: the line rolled again off the service's `seed` (lootRarity.js reforgeAffix - the
+ *  Loot arc's own Reforge, its name and price following, the line marked). Answers the new line, or null. */
+export const reforgeItem = (item, index, seed) => (essenceReforgeRefusal(item, index) || !Number.isSafeInteger(seed) ? null : reforgeAffix(item, index, seededRng(seed >>> 0)));
+
 // ─── THE REPAIR KIT'S USE ────────────────────────────────────────────
 
 /** Whether a kit of metal `m` mends an item: a weapon of the metal, a plate piece of it, and Steel's the chain too.
@@ -255,15 +311,15 @@ export function kitMends(m, item) {
   if (item.group === 'Armor') return item.material === ARMOR_PLATE + m || (m === 1 && item.material === ARMOR_CHAIN);
   return false;
 }
-const conditionShare = (it) => it.currentCondition / it.maxCondition;
 /** KIT-CEILING: the condition no kit mends a piece past - three quarters of it (recipeLaw.js KIT_CEILING), ROUNDED DOWN:
- *  an Iron Dagger's 50 stops at 37 (74%), never 38 (76% - the overhaul's sharp band, pcaao.js, the smith's to give). */
-export const kitCeiling = (it) => Math.floor(it.maxCondition * KIT_CEILING);
+ *  an Iron Dagger's 50 stops at 37 (74%), never 38 (76% - the overhaul's sharp band, pcaao.js, the smith's to give).
+ *  CRAFT5: `kit` the kit's own reach - a Superior or Masterwork kit's nine tenths (recipeLaw.js kitReach). */
+export const kitCeiling = (it, kit = null) => Math.floor(it.maxCondition * kitReach(kit));
 /** AUDIT ECON R2: WHETHER A KIT HAS ANYTHING TO GIVE A PIECE - more than a hundredth of its condition below the ceiling.
  *  A piece a kit mended stops AT the ceiling, and a blow later stood a point or two under it: worn, it came first in
  *  the order, and the hotbar, the classic pack's no-art fallback and the chooser's focused first row spent a whole kit
  *  on it - "The Daedric Longsword is mended: 75% to 75%." - with a flail at 20% beside it. */
-export const kitGives = (it) => kitCeiling(it) - it.currentCondition > Math.floor(it.maxCondition / 100);
+export const kitGives = (it, kit = null) => kitCeiling(it, kit) - it.currentCondition > Math.floor(it.maxCondition / 100);
 /**
  * MEND-AIM: THE PIECES A KIT COULD MEND in `items`, in the order it takes them unaimed - what is WORN first (the player's
  * own gear, never a piece of loot carried to sell), then the rest, each the lowest share of its condition left first.
@@ -274,9 +330,8 @@ export const kitGives = (it) => kitCeiling(it) - it.currentCondition > Math.floo
 export function repairKitTargets(kit, items) {
   if (!kit || kit.templateIndex !== REPAIR_KIT_TEMPLATE || !Array.isArray(items)) return [];
   const metal = kit.fieldKit === true ? FIELD_KIT : kit.kitMetal;   // REPAIR-EASE: a field kit mends any metal, by less
-  const worn = (it) => (it.equipSlot != null ? 1 : 0);
-  return items.filter((it) => it !== kit && kitMends(metal, it) && kitGives(it))   // KIT-CEILING: below it, by more than a hundredth
-    .sort((a, b) => worn(b) - worn(a) || conditionShare(a) - conditionShare(b));
+  return items.filter((it) => it !== kit && kitMends(metal, it) && kitGives(it, kit))   // KIT-CEILING: below it, by more than a hundredth (CRAFT5: the kit's own)
+    .sort(mendOrder);   // MEND-WORN: the order's one home, Repairs Objects' too (itemTemplates.js)
 }
 /**
  * A KIT USED (PROF0 9.3: "repairs 25% of an item's condition, once"): the piece it is AIMED at (MEND-AIM), or unaimed the
@@ -295,7 +350,7 @@ export function useRepairKit(kit, items, { target = null, pack = items } = {}) {
   const it = target == null ? want[0] : want.includes(target) ? target : null;
   if (!it) return null;
   const before = conditionShare(it), from = conditionPercentage(it);
-  it.currentCondition = Math.min(kitCeiling(it), it.currentCondition + Math.ceil(it.maxCondition * (kit.fieldKit === true ? FIELD_KIT_REPAIR : KIT_REPAIR)));   // KIT-CEILING: never past three quarters
+  it.currentCondition = Math.min(kitCeiling(it, kit), it.currentCondition + Math.ceil(it.maxCondition * (kit.fieldKit === true ? FIELD_KIT_REPAIR : KIT_REPAIR)));   // KIT-CEILING: never past three quarters - CRAFT5: nine tenths, a Superior or Masterwork kit's
   const i = items.indexOf(kit);
   if (i >= 0) items.splice(i, 1);
   return { item: it, before, after: conditionShare(it), from, to: conditionPercentage(it) };
@@ -304,12 +359,16 @@ export function useRepairKit(kit, items, { target = null, pack = items } = {}) {
  *  R5: "three quarters", never "75%" - the smallest pieces stop at 74% (an Iron Dagger's 37 of 50), and were refused
  *  as "past 75%" under a card that read 74%. */
 export const KIT_CEILING_TEXT = 'A kit mends nothing past three quarters. A smith can do the rest.';
+/** CRAFT5: a Superior or Masterwork kit's - its nine tenths. */
+export const KIT_CEILING_HIGH_TEXT = 'Even a Superior kit mends nothing past nine tenths. A smith can do the rest.';
+/** CRAFT5: the refusal the kit's own reach says. @param {any} kit */
+export const kitCeilingText = (kit) => (kitReach(kit) === KIT_CEILING ? KIT_CEILING_TEXT : KIT_CEILING_HIGH_TEXT);
 /** KIT-CEILING: the pieces of the kit's metal it holds back - worn below whole, and at its ceiling or within a hundredth
  *  of it (kitGives). Read in the player's own pack (`localItems`), whichever list the kit was used from. */
 const kitHeldBack = (kit, items) => {
   if (!kit || kit.templateIndex !== REPAIR_KIT_TEMPLATE || !Array.isArray(items)) return [];
   const metal = kit.fieldKit === true ? FIELD_KIT : kit.kitMetal;
-  return items.filter((it) => it !== kit && kitMends(metal, it) && it.currentCondition < it.maxCondition && !kitGives(it));
+  return items.filter((it) => it !== kit && kitMends(metal, it) && it.currentCondition < it.maxCondition && !kitGives(it, kit));
 };
 /** The kit's metal's word, for its refusal ("Nothing of Mithril here wants mending."). */
 export const kitMetalName = (kit) => METALS[kit?.kitMetal] ?? 'its metal';
@@ -338,7 +397,7 @@ export function repairKitUse(item, collection, { target = null, chooseTarget = f
   // KIT-CEILING: pieces the kit could take held back at three quarters - say so, rather than that none wants mending.
   // AUDIT ECON R3: and each refusal is a REFUSAL - the kit is kept, and the hotbar (quickslots.js) says it and never
   // strikes gold under it, which it did once a refusal became the answer for any gear between 75% and whole
-  if (!done && kitHeldBack(item, pack).length > 0) return { kind: 'repairKit', text: KIT_CEILING_TEXT, refused: true };
+  if (!done && kitHeldBack(item, pack).length > 0) return { kind: 'repairKit', text: kitCeilingText(item), refused: true };   // CRAFT5: the kit's own reach
   if (!done) return { kind: 'repairKit', text: item?.fieldKit === true ? 'Nothing here wants mending.' : `Nothing of ${kitMetalName(item)} here wants mending.`, refused: true };   // REPAIR-EASE
   // AUDIT 30 C8: a marked piece's name is its maker's - "Silverthorn's Longsword", never "The Silverthorn's"
   const long = itemLongName(done.item);
@@ -388,7 +447,7 @@ export function craftedText(pieces) {
   // a piece whose name is its maker's mark ("Silverthorn's Mithril Longsword") takes no article and no quality word -
   // PROF4 found PROF3 saying "an Silverthorn's..." whenever the maker's name began with a vowel
   const marked = typeof it.maker === 'string' && it.maker && (it.quality === MASTERWORK || it.marked === true);
-  const word = !marked && Number.isInteger(it.quality) && !Number.isInteger(it.kitMetal) ? `${QUALITY_NAMES[it.quality]} ` : '';
+  const word = !marked && Number.isInteger(it.quality) ? `${QUALITY_NAMES[it.quality]} ` : '';   // CRAFT5: a kit's quality too - its reach
   const one = marked ? name : `${/^[AEIOU]/.test(word || name) ? 'an' : 'a'} ${word}${name}`;
   if (isCraftedFurniture(it)) return `You made ${one} - it waits among your things for a room to stand in`;
   return pieces.length > 1 ? `You made ${pieces.length} ${name}s` : `You made ${one}`;

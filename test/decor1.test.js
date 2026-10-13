@@ -81,7 +81,7 @@ async function stand() {
 }
 const T0 = 1_800_000_000;
 const HOME = { mapId: 1291010263, buildingKey: 0x10203 };
-const home = (extra = {}) => ({ ...HOME, region: 17, character: 'char-aldric', price: 42000, ...extra });
+const home = (extra = {}) => ({ ...HOME, region: 17, character: 'char-aldric', price: 42000, layout: null, ...extra });
 const piece = (extra = {}) => ({ id: 'p1', model: 41000, flat: null, pos: [1.5, 0, -2.25], rot: [90, 0, 0], scale: 1, light: null, storage: false, paid: 180, ...extra });
 /** AUDIT REALM2 S2: A HOUSE AND A PIECE ARE A REALM CHARACTER'S, paid on its record - rich enough for every piece a pin
  *  places. `owner()` seats one for an account and claims the house on its record; `at(extra)` is a body in its name,
@@ -396,7 +396,7 @@ test('DECOR1 the catalogue - "Everything Daggerfall furnishes": every interior P
   assert.equal(keys(filterDecor(cat, { sort: 'price', radiusOf })).at(-1) !== 'm41120', true, 'an unmeasured piece sorts last by price');
   assert.deepEqual(keys(filterDecor(cat, { kinds: ['storage'], sort: 'name' })), ['m41811', 'm41003']);
   assert.deepEqual([decorSize(0.2), decorSize(0.5), decorSize(1.25), decorSize(null)], ['small', 'medium', 'large', null]);
-  assert.equal(Object.keys(DECOR_KINDS).length, 13);   // HOME-DOORS: and the doors, hung in a doorway
+  assert.equal(Object.keys(DECOR_KINDS).length, 18);   // HOME-DOORS: and the doors, hung in a doorway; HOME-VENDOR: and the people; DECOR-DUNGEON: and a dungeon's own furniture; DECOR-OUTDOOR: and the street's, and the climate's nature; DECOR-MODS: and the town mods' furnishings
 });
 
 // DECOR1c: a room's pool over fakes of the host's own seams - the pipeline's meshes and textures, the renderer, the room's
@@ -553,15 +553,24 @@ test('DECOR1c the room\'s host (worldModes.js): one pool on the room\'s own coll
   assert.match(m, /const placed = \(data\.decor \?\? \[\]\)\.map\(decorPieceOf\)\.filter\(Boolean\);\n    if \(interiorHome \|\| _seatHallVisit\) interiorDecor\.keep\(placed\); else interiorDecor\.set\(placed\);[^\n]*\n    interiorDecor\.setItems\(data\.decorItems\);/);   // PIN MOVED (SEAT-HALL): the palace's hall shares the line   // PIN MOVED (AUDIT SEATS-3): the visit's latch (C2)
   assert.match(m, /mountQuestResources\(\);\n      loadHomeDecor\(\);/);
   assert.ok(m.indexOf('loadHomeDecor();   // DECOR1c') > m.indexOf('restoreInteriorScene();\n      // AUDIT 63 F22'), 'after the restore, which latched the home and kept the save\'s record');
-  assert.match(m, /const visit = _decorVisit;\n    askDecorList\(\{\n      ask: \(\) => host\.homeDecor\.list\(homeTownOf\(b\), b\.buildingKey, seat\),\n      live: \(\) => visit === _decorVisit && interiorBuilding === b && _decorListed !== visit,\n      stand: \(r\) => \{\n        _decorListed = visit;[^\n]*\n        const pieces = r\.data\.pieces\.map\(decorPieceOf\)\.filter\(Boolean\);\n        interiorDecor\.set\(pieces\);/);   // AUDIT DECOR-SHELL 2: a list that did not stand stands nothing (askDecorList, decorshell.test.js)   // DECOR2a: the pieces kept for the strays' reckoning   // PIN MOVED (SEAT-HALL): the palace's hall shares the line
+  assert.match(m, /const visit = _decorVisit;\n    askDecorList\(\{\n      ask: \(\) => host\.homeDecor\.list\(homeTownOf\(b\), b\.buildingKey, seat\),\n      live: \(\) => visit === _decorVisit && interiorBuilding === b && _decorListed !== visit,\n      stand: \(r\) => \{\n        _decorListed = visit;[^\n]*\n(?:        \/\/[^\n]*\n)*        const shown = homeDecorShown\(interiorHome\);\n        const pieces = r\.data\.pieces\.map\(decorPieceOf\)\.filter\(\(p\) => p && \(shown \|\| decorStaysShunned\(p\)\)\);[^\n]*\n        interiorDecor\.set\(pieces\);/);   // AUDIT DECOR-SHELL 2: a list that did not stand stands nothing (askDecorList, decorshell.test.js)   // DECOR2a: the pieces kept for the strays' reckoning   // PIN MOVED (SEAT-HALL): the palace's hall shares the line; PIN MOVED (HOME-VOTE): a shunned home's pieces stand for its insiders alone (AUDIT B2: but its trader)
   assert.match(m, /interiorArrows\.draw\(renderer, interiorCtx\.texRemap\);\n    interiorDecor\.draw\(renderer, interiorCtx\.texRemap\);/);
   assert.match(m, /const _decorFlats = \[\.\.\.interiorDecor\.batches\(\), \.\.\.decorTool\.batches\(\)\];[^\n]*\n      if \(_decorFlats\.length\) renderer\.drawBillboards\(_decorFlats, camRight, UP_Y\);/);
   assert.match(m, /targets\.push\(\.\.\.interiorDecor\.targets\(\)\);/);
   assert.match(m, /if \(key\.startsWith\('decor:'\)\) \{ activateDecor\(decorIdOfKey\(key\)\); return true; \}/);
-  assert.match(m, /function decorOwnerHere\(\) \{\n    if \(interiorHome\) return interiorHome\.own;\n    const b = interiorBuilding;\n    if \(!b\) return false;\n    if \(b\.buildingType === BUILDING_TYPES\.Ship\) return ownsShip\(playerEntity\);\n    return isHouseOwned\(playerEntity\.houses \?\? \[\], b\.regionIndex \?\? 0, b\.buildingKey \?\? 0\);\n  \}/);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA P9): a house's deed read where it stands - never an isle town's building (houseOwnedAt)
+  assert.match(m, /function decorOwnerHere\(\) \{\n    if \(privateVisitRoom\) return false;\n    if \(interiorCabin\) return true;\n    if \(interiorHome\) return interiorHome\.own;\n    const b = interiorBuilding;\n    if \(!b\) return false;\n    if \(b\.buildingType === BUILDING_TYPES\.Ship\) return ownsShip\(playerEntity\);\n    return houseOwnedAt\(b, b\.buildingKey \?\? 0\);\n  \}/);
   assert.match(m, /if \(!piece\?\.storage\) return;\n(?:    if \(\(interiorHome\?\.hall && interiorHome\.member\) \|\| interiorSeatHall\?\.member\) \{ openHallChest\(\); return; \}[^\n]*\n)?    if \(!decorOwnerHere\(\)\) \{\n      if \(interiorHome\) say\(homeBelongsLine\(interiorHome\)\);\n      return;\n    \}\n    const win = interiorInventory\(\{ loot: \{ items: \(\) => interiorDecor\.itemsOf\(id\), storage: true \} \}\);/);   // SHIP-STORE: the owner's storage, two-way; GUILD1d (re-aimed by content): a hall's member opens the guild's chest first   // PIN MOVED (SEAT-HALL): the palace's hall shares the line
   assert.match(m, /const t = decorNames\.get\(decorKey\(piece\)\) \?\? \(piece\.storage && piece\.model != null \? houseContainerName\(piece\.model\) : null\);/);
   assert.match(w, /const homeDecor = params\.has\('online'\) \? accountDecor\(\{ fetch: \(u, i\) => globalThis\.fetch\(u, i\), storage: appStorage\(\) \}\) : null;/);
   assert.match(w, /\n    homeDecor,   \/\/ DECOR1c/);
 });
 
+
+test('HOME-VENDOR the catalogue: the people Daggerfall stands in its rooms are pieces too - kind Vendors, named Vendor N - so a home may stand one and make it its trader (mutants: the people unread; read as decorations)', () => {
+  const blocks = [{ rmbBlock: { subRecords: [{ interior: { block3dObjectRecords: [], blockFlatObjectRecords: [], blockDoorRecords: [],
+    blockPeopleRecords: [{ textureArchive: 182, textureRecord: 3 }, { textureArchive: 182, textureRecord: 3 }, { textureArchive: 184, textureRecord: 17 }] } }] } }];
+  const people = decorCatalogue(collectDecor(blocks)).filter((e) => e.kind === 'people');
+  assert.deepEqual(people.map((e) => [e.key, e.count, e.name]), [['f182.3', 2, 'Vendor 1'], ['f184.17', 1, 'Vendor 2']]);
+  assert.equal(DECOR_KINDS.people, 'Vendors');
+});

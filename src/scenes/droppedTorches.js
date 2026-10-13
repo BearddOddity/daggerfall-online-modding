@@ -39,7 +39,7 @@
 // mod's settings assigned on the foe's own manager (CasterOnly - no
 // saving throw, the foe its own caster) - the port's applySpell - and
 // the mod's light effect beside it: an active entry the magic round
-// counts down (AddState stacks a re-hit's rounds), a point light and a
+// counts down (a re-hit renews its rounds - effects.js renewRounds, STACK-CAP), a point light and a
 // looping flame billboard (TEXTURE.375 record 0, the fire missile's
 // flight loop, drawn upside down as the mod scales it) riding the foe
 // while the entry lives. ContinuousDamageHealth declares no
@@ -55,7 +55,7 @@
 import { GLOBAL_SCALE, pickFoeHit, RAY_DISTANCE, DEFAULT_ACTIVATION_DISTANCE } from '../player/activate.js';
 import { templateByIndex } from '../systems/itemTemplates.js';
 import { TEMPLATES } from '../systems/useItem.js';
-import { applySpell } from '../systems/effects.js';
+import { applySpell, renewRounds } from '../systems/effects.js';
 import { calculateSuccessfulHit, calculateStruckBodyPart } from '../combat/formulas.js';
 import { liveStat } from '../systems/statMods.js';
 import { worldMinutes } from '../systems/worldTick.js';
@@ -309,10 +309,11 @@ export function createDroppedTorches({
     const sinks = foeSinks?.(f) ?? { hurt: (n) => { f.entity.health = Math.max(0, (f.entity.health ?? 0) - n); } };
     applySpell({ effects: [e], element: 0, rangeType: 0 }, level, f.entity, sinks, rolls, { entity: f.entity });
     if (st.fireLight) {
-      // the light effect: duration alone; AddState stacks a re-hit's rounds (0x4426)
+      // the light effect: duration alone; a re-hit renews its rounds, never stacks them (STACK-CAP - the mod's AddState,
+      // 0x4426, adds them up; it takes no initial round, so a fresh one stands at the whole duration)
       const list = (f.entity.activeEffects ??= []);
       const inc = list.find((a) => a.kind === ENEMY_FIRE_KIND);
-      if (inc) inc.roundsRemaining += st.fireDuration;
+      if (inc) renewRounds(inc, st.fireDuration);
       else list.push({ kind: ENEMY_FIRE_KIND, key: ENEMY_LIGHT_EFFECT_KEY, roundsRemaining: st.fireDuration });
     }
   }
@@ -485,6 +486,20 @@ export function createDroppedTorches({
       if (fl.batch) fl.batch.origin = fl.pos;
     }
   }
+  /** AUDIT LANDFORMS II G1: THE GROUND MOVED UNDER A PIXEL - a rebuild the reference never makes (the road network
+   *  landing, which the landforms cut metres into the land; a late World of Daggerfall pack; the gate's clearing) -
+   *  and what lies in its box [x0, x1) x [z0, z1) rides it by `dy(x, z)`, the ground's own move under it (world.js's
+   *  publish). Left where it lay, a dropped light hung over a cut or lay buried in a fill - up to 28 m - and the next save kept it so. */
+  function groundMoved(x0, z0, x1, z1, dy) {
+    for (const d of dropped) {
+      if (!(d.pos[0] >= x0 && d.pos[0] < x1 && d.pos[2] >= z0 && d.pos[2] < z1)) continue;
+      const m = dy(d.pos[0], d.pos[2]);
+      if (!m) continue;
+      d.pos[1] += m;
+      if (d.batch) { renderer.destroyBillboardBatch(d.batch); d.batch = renderer.createBillboardBatch(DROPPED_ARCHIVE, d.record, d.size, [d.pos]); d.batch.frame = d.anim?.frame ?? 0; }
+      d.loop?.move?.(d.pos);
+    }
+  }
   /** HandheldTorchesSaveData (0x4c34 / 0x4cc8): position, time and template of each; restored by spawning each. */
   const snapshot = (toWorld = (p) => p) => dropped.filter((d) => d.template).map((d) => { const p = toWorld(d.pos); return { position: [p[0], p[1], p[2]], time: d.time, itemTemplateIndex: d.template }; });
   function restore(list, fromWorld = (p) => p) {
@@ -498,7 +513,7 @@ export function createDroppedTorches({
   }
 
   return {
-    spawnLightSource, spawnLightSourceProjectile, tick, lights, batches, targets, hoverName, activate, destroyAll, collectPixel, offsetAll, snapshot, restore,
+    spawnLightSource, spawnLightSourceProjectile, tick, lights, batches, targets, hoverName, activate, destroyAll, collectPixel, offsetAll, groundMoved, snapshot, restore,
     igniteFoe, foeBurning,
     get dropped() { return dropped; }, get projectiles() { return projectiles; },
     setOnPickedUp(fn) { onPickedUp = typeof fn === 'function' ? fn : null; },

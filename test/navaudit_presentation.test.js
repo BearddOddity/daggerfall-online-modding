@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { sea, seeded } from './navalSea.mjs';
+import { sea, seeded, modShipsPool, knowAll } from './navalSea.mjs';
 import { sparsOf, FLAME_AWASH, BLAST_SHAKE, NEAR_BOOM_M, FAR_FADE_M, FAR_MATCH, GUN_PITCH_JITTER, GUN_GAIN_JITTER_DB, HIT_CONFIRM_REF_M, HIT_BURST_MAX, GUN_KICK, NEAR_LIFE_M, FAR_LIFE_EVERY,
   NAVAL_TAG_RANGE, NAVAL_TAG_NEAR, NAVAL_TAG_MAX, TAG_LIFT, SAIL_HO_RANGE, SAIL_HO_GAP_S, SAIL_HO_CHECK_S, bearingWords, withArticle,
   SMOKE_FROM, SMOKE_SPAN, DAMAGE_LIST_FROM, DAMAGE_LIST_MAX, DAMAGE_LIST_EASE_S, TIMBER_PER_HIT, sailsShown, lineOver } from '../src/scenes/navalHost.js';
@@ -124,15 +124,18 @@ test('AUDIT NAV1 (the presentation) she lists to her seed\'s side and goes down 
   }
 });
 
-test('AUDIT NAV1 (the presentation) her spars as drawn: the corners of every rigid mesh under her hull\'s mesh object, in its frame - never a skinned sail\'s bind pose (the Carrack\'s reads 101 m); the Large Boat\'s rigs apart (6 to 9.4 m); her depth her highest point at her LAST pose, over her mesh\'s lift, and SINK_CLEAR (mutants: the skinned sails counted, another rig\'s counted, one measure for every rig, the pose at rest measured, the lift dropped)', async () => {
+test('AUDIT NAV1 (the presentation) her spars as drawn: the corners of every rigid mesh under her hull\'s mesh object, in its frame - never a skinned sail\'s bind pose (the Carrack\'s reads 101 m); the Large Boat\'s rigs apart (6.3 to 9.5 m, Mac\'s Tiny Ship - the mod\'s 6 to 9.4); her depth her highest point at her LAST pose, over her mesh\'s lift, and SINK_CLEAR (mutants: the skinned sails counted, another rig\'s counted, one measure for every rig, the pose at rest measured, the lift dropped)', async () => {
   const h = await sea({ hull: 2 });
   const top = (sp) => sp.lift + Math.max(...sp.points.map((p) => p[1]));
   const carrack = place(h, 'merchantCarrack', [300, 0, 0]);
   const c = sparsOf(carrack.boat, h.pool.models);
-  assert.ok(Math.abs(top(c) - 47.51) < 0.05, `the Carrack's mainmast truck, not her sails' bind pose (${top(c).toFixed(2)})`);
+  // PIN MOVED (SHIPS-2, 2026-10-07): the Carrack is Mac's carrack - her flagstaff's truck over her main topmast 21.90 m
+  // up (the mod's mainmast truck stood 47.51); the Large Boat is Mac's Tiny Ship - her mesh at her root (the mod's 0.1
+  // over it), her first plan's lateen's yard 7.3 m up, her second's bare masthead 6.3, her fourth's topmast's truck 9.5
+  assert.ok(Math.abs(top(c) - 21.9) < 0.05, `the Carrack's flagstaff's truck, not her sails' bind pose (${top(c).toFixed(2)})`);
   const boats = [0, 1, 3].map((variant) => sparsOf(place(h, 'merchantCoaster', [300 + variant * 40, 0, 0], { variant }).boat, h.pool.models));
-  assert.ok(boats.every((b) => Math.abs(b.lift - 0.1) < 1e-6), 'the Large Boat\'s mesh stands 0.1 m over her root');
-  assert.deepEqual(boats.map((b) => Math.round(top(b) * 10) / 10), [9.3, 6, 9.4], 'her lateen, her short mast, her tall mast');
+  assert.ok(boats.every((b) => Math.abs(b.lift) < 1e-6), 'the Large Boat\'s mesh at her root');
+  assert.deepEqual(boats.map((b) => Math.round(top(b) * 10) / 10), [7.3, 6.3, 9.5], 'her lateen, her short mast, her topmast');
   assert.equal(sparsOf(null, h.pool.models), null);
   // the host measures a rig once and a ship once: two Large Boats of two rigs go down to two depths
   const s = await sea({ hull: 2 });
@@ -140,7 +143,8 @@ test('AUDIT NAV1 (the presentation) her spars as drawn: the corners of every rig
   const short = place(s, 'merchantCoaster', [300, 0, 60], { variant: 1, seed: 0 });
   for (const e of [tall, short]) e.ship.damage.apply({ hull: 1e6, sail: 0, crew: 0 }, 0);
   s.host.frame(0.1);
-  assert.ok(tall.sinkUnder > short.sinkUnder + 2, `the tall mast goes deeper (${tall.sinkUnder.toFixed(1)} vs ${short.sinkUnder.toFixed(1)})`);
+  // (PIN MOVED, SHIPS-2: Mac's Tiny Ship's topmast's truck 3.2 m over her bare masthead - 1.9 m deeper at her last pose)
+  assert.ok(tall.sinkUnder > short.sinkUnder + 1.5, `the tall mast goes deeper (${tall.sinkUnder.toFixed(1)} vs ${short.sinkUnder.toFixed(1)})`);
   // the law: her highest point at her last pose (by the head, to starboard - seed 0), over her mesh's lift, SINK_CLEAR more
   const sp = sparsOf(tall.boat, s.pool.models);
   const last = sinkAngles(0, 1);
@@ -230,6 +234,9 @@ test('AUDIT NAV1 (the presentation) she burns as she goes down: a burning ship h
   h.host.applyPeerHit('peer', navalHitData('local', { n: e.n, hull: 5, fire: true, zone: 'hull' }));
   h.run(0.5);
   assert.equal(flames.length, 3, 'three fires along her deck');
+  // PIN MOVED (TOUGHER-SHIPS): her toughened hull takes two of a hit's most (navalWire.js NAVAL_HIT_MAX) - the first leaves her afloat
+  h.host.applyPeerHit('peer', navalHitData('local', { n: e.n, hull: 400, zone: 'holed' }));
+  assert.equal(e.ship.damage.state, SHIP_STATES.afloat);
   h.host.applyPeerHit('peer', navalHitData('local', { n: e.n, hull: 400, zone: 'holed' }));
   assert.equal(e.ship.damage.state, SHIP_STATES.sinking);
   assert.ok(e.ship.damage.fire > 0, 'her fires burn on as she goes down');
@@ -274,7 +281,14 @@ test('AUDIT NAV1 (the presentation) a scuttled prize burns to the waterline and 
     h.host.frame(0.1);
     worst = Math.max(worst, h.host._effects.drawList().filter((p) => (p.kind === 'ember' || p.kind === 'smoke') && p.pos[1] < -0.2).length);
   }
-  assert.ok(flames.length === 3 && flames.every((f) => f.out != null && f.out < SINK_SECONDS / 2), `out by the time her deck is under (${flames.map((f) => f.out?.toFixed(1)).join(', ')})`);
+  // PIN MOVED (GALLEON, 2026-10-01): each out as the sea reaches its place on her - a metre over her deck, her trim's
+  // lift at her fires' reach fore and aft - her depth sinkUnder x the square of the time: the new galleon's 6.2 m deck
+  // under her spars' reach goes under past half her SINK_SECONDS, where the mod's went before them
+  const b = hullBuild(e.ship.hull), reachZ = (b.beam || 4) * 1.6;
+  let awash = 0;
+  while (awash < SINK_SECONDS && e.sinkUnder * (awash / SINK_SECONDS) ** 2 < b.deck + 1 - FLAME_AWASH + reachZ * Math.sin(SINK_PITCH * NAVAL_DEG * awash / SINK_SECONDS)) awash += 0.05;
+  assert.ok(awash < SINK_SECONDS * 0.6, `her deck under well before she is (${awash.toFixed(1)} s)`);
+  assert.ok(flames.length === 3 && flames.every((f) => f.out != null && f.out <= awash + 0.2), `out by the time her deck is under at ${awash.toFixed(1)} s (${flames.map((f) => f.out?.toFixed(1)).join(', ')})`);
   assert.equal(worst, 0);
 });
 
@@ -313,7 +327,7 @@ test('AUDIT NAV1 (the presentation) THE MIX, my broadside: each report at one ov
     for (let i = 0; i < 12; i++) { at.t += 0.05; h.host.frame(0.05); }
     const reports = played.filter((s) => s.k === NAVAL_SFX.cannon);
     const n = reports.length;
-    assert.equal(n, hull === 2 ? 6 : 7, 'every gun heard');
+    assert.equal(n, 5, 'every gun heard');   // PIN MOVED (GALLEON, 2026-10-01): the Small Ship's five ports a side (SHIPS-2, 2026-10-07: and Mac's carrack's)
     const lo = 10 ** (-GUN_GAIN_JITTER_DB / 20) / Math.sqrt(n), hi = 10 ** (GUN_GAIN_JITTER_DB / 20) / Math.sqrt(n);
     assert.ok(reports.every((r) => r.v >= lo - 1e-9 && r.v <= hi + 1e-9), `each at 1/sqrt(${n}), jittered (${reports.map((r) => r.v.toFixed(2))})`);
     assert.ok(reports.every((r) => Math.abs(r.opts.pitch - 1) <= GUN_PITCH_JITTER + 1e-9), 'each its own pitch');
@@ -345,17 +359,18 @@ test('AUDIT NAV1 (the presentation) THE MIX, a broadside across the bay: the far
   };
   const close = await heard(150);
   const closeReports = close.filter((s) => s.k === NAVAL_SFX.cannon);
-  assert.ok(closeReports.length >= 6 && !close.some((s) => s.k === NAVAL_SFX.cannonFar), 'near: her reports, no roll');
+  // PIN MOVED (GALLEON, 2026-10-01): a Small Ship's volley is five guns now - Mac's galleon's ports
+  assert.ok(closeReports.length >= 5 && !close.some((s) => s.k === NAVAL_SFX.cannonFar), 'near: her reports, no roll');
   assert.ok(closeReports.every((r) => r.v >= 10 ** (-GUN_GAIN_JITTER_DB / 20) - 1e-9), 'another\'s guns each at full weight - only my own ripple is scaled');
   const off = await heard(700);
   const rolls = off.filter((s) => s.k === NAVAL_SFX.cannonFar);
   assert.equal(off.filter((s) => s.k === NAVAL_SFX.cannon).length, 0, 'far: no near report');
   assert.equal(rolls.length, 1, 'one roll a volley');
-  assert.ok(Math.abs(rolls[0].v - FAR_MATCH * Math.sqrt(6)) < 1e-9, `at FAR_MATCH x sqrt(6) (${rolls[0].v})`);
+  assert.ok(Math.abs(rolls[0].v - FAR_MATCH * Math.sqrt(5)) < 1e-9, `at FAR_MATCH x sqrt(5) (${rolls[0].v})`);
   assert.equal(rolls[0].opts.far, true, 'held off the ear as a far sound');
   const mid = await heard(NEAR_BOOM_M);
   const midReports = mid.filter((s) => s.k === NAVAL_SFX.cannon), midRoll = mid.filter((s) => s.k === NAVAL_SFX.cannonFar);
-  assert.ok(midReports.length >= 6 && midRoll.length === 1, 'in the band: both');
+  assert.ok(midReports.length >= 5 && midRoll.length === 1, 'in the band: both');
   // each at its own place in the band: x = 0 at NEAR_BOOM_M - FAR_FADE_M, 1 at + FAR_FADE_M - the reports by cos, the roll
   // by sin: equal power across it (the feet at the origin)
   const xOf = (p) => Math.min(1, Math.max(0, (Math.hypot(p[0], p[2]) - (NEAR_BOOM_M - FAR_FADE_M)) / (2 * FAR_FADE_M)));
@@ -365,7 +380,7 @@ test('AUDIT NAV1 (the presentation) THE MIX, a broadside across the bay: the far
   }
   const x0 = xOf(midRoll[0].p);
   assert.ok(x0 > 0.3 && x0 < 0.7, `the volley in the band's middle (${x0.toFixed(2)})`);
-  assert.ok(Math.abs(midRoll[0].v - FAR_MATCH * Math.sqrt(6) * Math.sin(x0 * Math.PI / 2)) < 1e-9, 'the roll coming in by the sine of its first gun\'s place');
+  assert.ok(Math.abs(midRoll[0].v - FAR_MATCH * Math.sqrt(5) * Math.sin(x0 * Math.PI / 2)) < 1e-9, 'the roll coming in by the sine of its first gun\'s place');
   assert.ok(FAR_FADE_M > 0 && FAR_FADE_M < NEAR_BOOM_M);
   const gone = await heard(NAVAL_SOUND_RANGE[NAVAL_SFX.cannonFar].maxDistance + 200);
   assert.equal(gone.filter((s) => s.k === NAVAL_SFX.cannon || s.k === NAVAL_SFX.cannonFar).length, 0, 'past its range: nothing (the inverse law never reaches silence)');
@@ -471,19 +486,32 @@ test('AUDIT NAV1 (the presentation) her colours by her state: her faction\'s whi
   h.run(0.2);
   assert.equal(e.boat.FlagEmitter.isEmitting, true, 'taken: colours again -');
   assert.equal(e.boat.flagColor, null, '- the captor\'s orange (FlagMaterial\'s, the player\'s boats\' own)');
-  // the Carrack's graft
+  // the Carrack's colours. PIN MOVED (SHIPS-2, 2026-10-07): Mac's carrack carries her own, as the galleon does
+  // (world/carrackModel.js: the galleon's FlagObject at her main topmast's truck, under her hull's node) - nothing grafted
   const c = place(h, 'pirateFlagship', [400, 0, 0], { seed: 0 });
   assert.ok(c.boat.FlagObject, 'a Carrack at sea flies her colours');
-  assert.equal(c.boat.FlagObject.parent.name, 'CarrackMast1', 'on her tallest mast - heeling with it');
+  assert.equal(c.boat.FlagObject.parent.name, 'NewCarrack', 'her own, under her hull - heeling with it');
   const at = c.boat.MeshObject.inverseTransformPoint(c.boat.FlagObject.position);   // her hull's own frame: the swell heels it
-  assert.ok(Math.abs(at[0]) < 0.05 && Math.abs(at[1] - 47.51) < 0.05 && Math.abs(at[2] + 3.09) < 0.05, `at its truck (${at.map((v) => v.toFixed(2))})`);
+  assert.ok(Math.abs(at[0]) < 0.05 && Math.abs(at[1] - 21.75) < 0.05 && Math.abs(at[2] - 8.93) < 0.05, `at her main topmast's truck (${at.map((v) => v.toFixed(2))})`);
+  // the graft: a flagless sea ship given FLAG_DONOR_HULL's colours on her tallest mast's truck - the mod's own Carrack's,
+  // as the game stands her when Mac's carrack's model will not load (test/navalSea.mjs modShipsPool)
+  const mod = await modShipsPool();
+  try {
+    const hm = await sea({ hull: 2, pool: mod.pool });
+    const g = place(hm, 'pirateFlagship', [400, 0, 0], { seed: 0 });
+    assert.equal(g.boat.FlagObject?.parent?.name, 'CarrackMast1', 'the mod\'s Carrack: on her tallest mast - heeling with it');
+    const gat = g.boat.MeshObject.inverseTransformPoint(g.boat.FlagObject.position);
+    assert.ok(Math.abs(gat[0]) < 0.05 && Math.abs(gat[1] - 47.51) < 0.05 && Math.abs(gat[2] + 3.09) < 0.05, `at its truck (${gat.map((v) => v.toFixed(2))})`);
+    const ownMod = mod.pool.spawnNow(Object.assign(new Boat(4, 0), { uid: 7 }), { position: [0, 0, 0], rotation: [0, 0, 0, 1] });
+    assert.equal(ownMod.FlagObject, null, 'a player\'s mod Carrack: the mod\'s rig as it is');
+  } finally { mod.restore(); }
   assert.equal(c.boat.FlagEmitter, c.boat.FlagObject.getComponentInChildren('ParticleSystem').particleSystem);
   assert.equal(c.boat.FlagEmitter.renderer.m_RenderMode, 4, 'a mesh flag - the world draws it as her colours');
   h.run(1);
   assert.ok(c.boat.FlagEmitter.particleCount > 0 && c.boat.particleSystems.includes(c.boat.FlagEmitter), 'flying, among her particle systems');
   assert.deepEqual(c.boat.flagColor, NAVAL_FACTIONS.pirate.flag, 'the black');
   const own = h.pool.spawnNow(Object.assign(new Boat(4, 0), { uid: 7 }), { position: [0, 0, 0], rotation: [0, 0, 0, 1] });
-  assert.equal(own.FlagObject, null, 'a player\'s Carrack: the mod\'s rig as it is');
+  assert.equal(own.FlagObject?.parent?.name, 'NewCarrack', 'a player\'s Carrack: her own colours, as a player\'s galleon');
   assert.equal(FLAG_DONOR_HULL, 2);
   // the card: the hostile red last, so it wins over a navy's or a merchantman's colour
   const i = (sel) => NAVAL_HUD_CSS.indexOf(sel);
@@ -824,7 +852,8 @@ test('AUDIT NAV1 (the presentation) THE ARCS AS LINES (#4): each ball\'s arc ARC
   assert.ok(Math.abs(d[6 * NAVAL_STRIDE + 3] - (seg - off) / ARC_DASH_M) < 1e-5, 'continuous into the next segment');
   const host = readFileSync(new URL('../src/scenes/navalHost.js', import.meta.url), 'utf8');
   // PIN MOVED (SHIP-WATCH): the particles carry the far ships' lamps too, laid into the effects' list first
-  assert.match(host, /const particles = effects\.drawList\(\);\n\s*lampsInto\(particles\);[^\n]*\n\s*return \{ particles, balls: shots\.balls\(\), floaters: shots\.floaters\(\), aim: aimDraw, time: clock \};/);
+  // PIN MOVED (SALVAGE): the floaters a wreck's wreckage marked among them
+  assert.match(host, /const particles = effects\.drawList\(\);\n\s*lampsInto\(particles\);[^\n]*\n\s*return \{ particles, balls: shots\.balls\(\), floaters: shots\.floaters\(\)\.map\(\(f\) => \(isSalvage\(f\.lot\) \? \{ \.\.\.f, wreck: true \} : f\)\), aim: aimDraw, time: clock \};/);
 });
 
 test('AUDIT NAV1 (the presentation) THE FAR SHIPS\' COST (#17): an idle particle system - stopped, nothing alive - is stepped without a question (it walked up its node\'s parents to ask whether it was active, then did nothing: a war galley\'s 224 systems, one live, cost 0.45 ms a far frame), a playing or living one as ever; a ship\'s animators found once (her tree walked for them every frame: 0.44 ms); past NEAR_LIFE_M her rigging stepped every FAR_LIFE_EVERY frames with the time it missed - five far galleys 5.7 ms a frame, now 0.9 (mutants: the idle system asked, the walk every frame, the far stride unread, the missed time dropped)', async () => {
@@ -873,6 +902,7 @@ test('AUDIT NAV1 (the presentation) THE SHIPS\' TAGS (#14): one card within 6 de
   const b = place(h, 'merchantGalleon', [300, 0, 0]);
   place(h, 'navyGalley', [0, 0, -(NAVAL_TAG_RANGE + 100)]);
   place(h, 'pirateSloop', [NAVAL_TAG_NEAR / 2, 0, 5]);
+  knowAll(h.host);   // PIN MOVED (SPYGLASS): their colours made out - an unknown hull wears no tag
   h.host.frame(0.05);
   let tags = h.host.tags();
   assert.deepEqual(tags.map((t) => t.id), [a.id, b.id], 'in reach, past the near, nearest first');
@@ -891,12 +921,13 @@ test('AUDIT NAV1 (the presentation) THE SHIPS\' TAGS (#14): one card within 6 de
   assert.deepEqual(h.host.tags().map((t) => t.target), [true, false]);
   // going down: her tag settles with her
   a.ship.damage.apply({ hull: 1e6, sail: 0, crew: 0 }, 0);
-  h.run(3, 0.1);
+  h.run(4, 0.1);   // PIN MOVED (GALLEON, 2026-10-01): her depth off her spars as they are, the new galleon's settling slower at first
   const sunkBy = h.host.tags().find((t) => t.id === a.id);
   assert.equal(sunkBy.state, 'sinking');
   assert.ok(sunkBy.point[1] < ta.point[1] - 0.5, 'lower as she goes');
   // the cap
   for (let i = 0; i < NAVAL_TAG_MAX + 2; i++) place(h, 'merchantGalleon', [-100 - i * 40, 0, 100]);
+  knowAll(h.host);   // SPYGLASS: theirs too
   h.host.frame(0.05);
   assert.equal(h.host.tags().length, NAVAL_TAG_MAX);
 });
@@ -913,6 +944,7 @@ test('AUDIT NAV1 (the presentation) THE LOOKOUT (#14): a pirate turning on me sa
   sloop.ship.pos = [-300, 0, 300 + 150];
   brig.ship.pos = [400, 0, 0];
   const far = place(h, 'pirateSloop', [0, 0, -(SAIL_HO_RANGE + 200)]);
+  knowAll(h.host);   // PIN MOVED (SPYGLASS): their colours made out - a hull whose colours are unread is hailed by her kind (test/spyglass.test.js)
   h.run(SAIL_HO_CHECK_S * 2, 0.05);
   assert.deepEqual(hails(), ['Sail ho! A Pirate Brigantine on the starboard beam!'], 'the nearest, where she bears');
   h.run(SAIL_HO_GAP_S - 2, 0.1);
@@ -926,6 +958,7 @@ test('AUDIT NAV1 (the presentation) THE LOOKOUT (#14): a pirate turning on me sa
   assert.equal(hails()[2], 'Sail ho! A Pirate Sloop dead astern!', 'within the range: hailed');
   // a navy my notoriety turns
   const navy = place(h, 'navyGalley', [0, 0, 350]);
+  knowAll(h.host);   // SPYGLASS: hers too
   h.run(SAIL_HO_GAP_S + 1, 0.1);
   assert.equal(hails().length, 3, 'a lawful navy: no hail');
   h.host.notoriety.add(navy.ship.names.crown, NAVY_HUNTS);
@@ -970,7 +1003,8 @@ test('AUDIT NAV1 (the presentation) THE TAGS DRAWN (#14): one node a slot, moved
   assert.match(w, /const at = projectToScreen\(t\.point, w, h, proj, view, rect\);/);
   assert.match(w, /if \(shipSight\.blocked\(player\.collider, eye, t\.id, t\.point\)\) continue;/);
   assert.match(w, /drawNavalTags\(points, \{ covered, scale: enhancedHudScale\(\), reach: NAVAL_TAG_RANGE, focus: \{ x: r\.x \+ r\.w \/ 2, y: r\.y \+ r\.h \/ 2 \} \}\);/);   // SHIP-CLUTTER: and the crosshair
-  assert.match(w, /drawNavalHud\(null\); drawNavalTags\(\[\]\); drawCrewBars\(\[\]\); drawCrewLines\(\[\]\); \};/, 'the clear hides them - SHIPMATES: the crew\'s bars with them');
+  // PIN MOVED (AUDIT CAPTAIN'S SEA S1): the clear lowers the glass after them
+  assert.match(w, /drawNavalHud\(null\); drawNavalTags\(\[\]\); drawCrewBars\(\[\]\); drawCrewLines\(\[\]\); lowerGlass\(\); \};/, 'the clear hides them - SHIPMATES: the crew\'s bars with them');
   assert.match(w, /drawNavalHud\(null\); drawNavalTags\(\[\]\); \} \}/, 'the switch off hides them');
 });
 
@@ -1022,7 +1056,10 @@ test('AUDIT NAV1 (the presentation) HER HURTS SEEN, her list and her canvas (#15
   const c = place(h, 'merchantCarrack', [-300, 0, 0], { seed: 2 });
   const sails = [...c.boat.Sails];
   assert.equal(sails.length, 5);
-  const high = (n) => n.worldMatrix()[13];
+  // PIN MOVED (SHIPS-2, 2026-10-07): Mac's carrack's canvas by where it hangs set, as the galleon's (AUDIT GN2-RG4: the
+  // host's sailsByHeight - her lateen's node is at its yard's slings; her fore course's yard over her main course's,
+  // its canvas set under it)
+  const order = c.sailsByHeight, high = (n) => -order.indexOf(n);
   c.ship.damage.apply({ hull: 0, sail: c.ship.damage.maxSail - Math.floor(c.ship.damage.maxSail * 0.4), crew: 0 }, 0);   // 0.4 of her canvas left, or a hair under
   h.host.frame(0.1);
   const shown = sails.filter((n) => n.activeSelf), gone = sails.filter((n) => !n.activeSelf);
@@ -1088,13 +1125,13 @@ test('AUDIT NAV1 (the presentation) HER HURTS SEEN, her smoke and her planks (#1
   assert.ok(cut > 5, `cut at the sea as she went (${cut})`);
   assert.equal(under, 0, 'no smoke born under the sea');
   // planks off a holed hull: TIMBER_PER_HIT at her waterline where she was struck, a heavy ball one more; none off her canvas
-  const strike = async (gun, y) => {
+  const strike = async (gun, y, z = 0) => {
     const g = await sea({ hull: 2, wind: [0, 0, 0] });
     const e = place(g, 'merchantGalleon', [150, 0, 0], { yaw: 0 });
     const hits = [];
     const hit = g.host._effects.hit;
     g.host._effects.hit = (p, ...rest) => { hits.push([...p]); hit(p, ...rest); };
-    g.host._shots.fireVolley({ id: 'v1', shooter: 'me:42', launches: [{ delay: 0, p0: [150 - hullBuild(e.ship.hull).halfWidth - 3, y, 0], v0: [60, 0.5, 0], gun, index: 0 }], resolve: true });
+    g.host._shots.fireVolley({ id: 'v1', shooter: 'me:42', launches: [{ delay: 0, p0: [150 - hullBuild(e.ship.hull).halfWidth - 3, y, z], v0: [60, 0.5, 0], gun, index: 0 }], resolve: true });
     g.run(0.3);
     return { g, hits, planks: g.host._effects.drawList().filter((p) => p.kind === 'timber'), shreds: g.host._effects.drawList().filter((p) => p.kind === 'shred') };
   };
@@ -1115,7 +1152,11 @@ test('AUDIT NAV1 (the presentation) HER HURTS SEEN, her smoke and her planks (#1
   long.g.run(TIMBER_LIFE * 1.5 - 5 + 0.2, 0.5);
   assert.equal(alive().length, 0, 'gone by half again TIMBER_LIFE');
   assert.equal((await strike('heavy', 3)).planks.length, TIMBER_PER_HIT + 1, 'a heavy ball one more');
-  const rig = await strike('long', 20);
+  // PIN MOVED (GALLEON, 2026-10-01): the new galleon's main topsail amidships - its canvas 13.27 m (its foot) to 17.59 m
+  // (furled on its yard) up in her frame, its box 13.27 to 17.82 (AUDIT GALLEON-2 RG8: not "13.2 to 19"). PIN MOVED
+  // (AUDIT GALLEON R5/G9): its box is its canvas, hung forward of her main mast 0.42 to 1.44 m forward of her middle -
+  // the ball through it there; at her middle (0) a ball meets her main mast, aft of the canvas, and no box
+  const rig = await strike('long', 16, 0.9);
   assert.ok(rig.shreds.length > 0 && rig.planks.length === 0, 'through her canvas: shreds, no planks');
 });
 

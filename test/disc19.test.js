@@ -28,7 +28,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createLycanthropyCurse, liveLycanthropy, cureLycanthropy } from '../src/systems/lycanthropy.js';
+import { createLycanthropyCurse, liveLycanthropy, cureLycanthropy, morphSelf } from '../src/systems/lycanthropy.js';
 import { createVampirismCurse, liveVampirism, cureVampirism } from '../src/systems/vampirism.js';
 import { endDisease } from '../src/systems/diseases.js';
 import { LYCANTHROPY_TYPES, VAMPIRE_CLANS, INFECTION, startInfection, liveInfection } from '../src/systems/infection.js';
@@ -66,7 +66,7 @@ const reload = (p, minutes) => { const q = { isPlayer: true }; restorePlayer(q, 
 const live = (e) => liveLycanthropy(e) ?? liveVampirism(e);
 
 test('DISC19-A: a werewolf and a vampire who have lived a round come back from a load still cursed - through the next rounds offline, and through the online arrival', () => {
-  for (const make of [(p) => createLycanthropyCurse(p, LYCANTHROPY_TYPES.Werewolf, { now: T0 }), (p) => createVampirismCurse(p, VAMPIRE_CLANS.Lyrezi, { now: T0 })]) {
+  for (const make of [(p) => { const e = createLycanthropyCurse(p, LYCANTHROPY_TYPES.Werewolf, { now: T0 }); morphSelf(p, { force: true, nowMinutes: T0 }); return e; }, (p) => createVampirismCurse(p, VAMPIRE_CLANS.Lyrezi, { now: T0 })]) {   // PIN MOVED (BAL6, bible/05-Combat/Balance-Arc.md section 12): the werewolf's mods are the beast's - it changes before it lives its rounds
     setWorldMinutes(T0); resetMagicRoundMarker(null);
     const p = mortal();
     const racial = make(p).racial;
@@ -204,7 +204,7 @@ test('DISC19-C: the online exit autosave writes every slot of a living player an
   const handler = w.slice(at, w.indexOf('\n  };', at));
   assert.ok(at > 0, 'the online exit autosave was found');
   assert.ok(w.includes("\n  addEventListener('beforeunload', exitAutosave);\n"), 'and it is the page\'s end');
-  assert.match(handler, /for \(const saveName of exitAutosaveNames\(playerEntity, \{ deathUp: townTalk\.overlay instanceof DeathScreen \|\| !!modes\?\.deathUp\?\.\(\) \}\)\) save\(saveName\);/);
+  assert.match(handler, /for \(const saveName of exitAutosaveNames\(playerEntity, \{ deathUp: townTalk\.overlay instanceof DeathScreen \|\| !!modes\?\.deathUp\?\.\(\) \|\| successionOpen\(\) \}\)\) save\(saveName\);/);
   assert.ok(!handler.includes('saveKeysOfCharacter('), 'no second list of slots beside the guarded one');
 });
 
@@ -219,7 +219,9 @@ test('DISC19-C: an online page\'s death screen counts its respawn in the hint\'s
     assert.equal(ds.online, false);
     assert.equal(ds.hint, 'ENTER end   F11 load');
   });
-  assert.match(rd('src/ui/deathScreen.js'), /const hint = this\.online \? t\('death\.risingIn', 'RISING IN \{n\}   ENTER now', \{ n: this\.respawnIn \}\) : hintText\(this\.hint\);/, 'no dead key drawn online');
+  // PIN MOVED (BAL4, bible/05-Combat/Balance-Arc.md section 6): offline, a death Project Legacy will raise says Rise (riseHint)
+  // L10N4: the count and the hint in the player's language (t(), hintText) - the English hint kept as the hosts give it
+  assert.match(rd('src/ui/deathScreen.js'), /const hint = this\.online \? (?:\(this\.wild \? t\('death\.risingInWild', 'RISING IN \{n\}', \{ n: this\.respawnIn \}\) : )?t\('death\.risingIn', 'RISING IN \{n\}   ENTER now', \{ n: this\.respawnIn \}\)\)? : hintText\(this\.rises \? riseHint\(this\.hint\) : this\.hint\);/, 'no dead key drawn online');
 });
 
 // ═══ F: the watch and the town ════════════════════════════════════════════════════════════════════════════════════
@@ -329,6 +331,10 @@ test('DISC19-F: the defenders come as the player\'s allies, sent at the monster 
   const d = guards.guards.find((x) => !x.dead);
   assert.equal(guards.defenderCount(), 1);
   assert.equal(guards.dismissDefenders(), 1);
+  assert.equal(d.dead, false, 'WATCH-LEAVES: stood down, he walks off - never gone where he stands');
+  assert.equal(guards.defenderCount(), 0, 'and is no longer the town\'s answer');
+  d.ai.feet[0] = 200;   // walked out past allowVisiblePopRange
+  guards.update(0.016, FEET0, EYE0, {});
   assert.equal(d.dead, true);
   assert.ok(!d.corpse, 'walked away: no body, nothing to loot');
 });

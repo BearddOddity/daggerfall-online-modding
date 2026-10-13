@@ -72,7 +72,7 @@ function bodyFrom(src, from) {
 /** The body of a teardown declared as `destroy() {` / `dispose() {` at the start of a line. */
 function teardownBody(src, name) {
   // a method shorthand (`destroy() {`), a declaration (`function tryExit() {`)
-  // or a method with arguments (`forceExitToExterior({ cacheScene = true } = {}) {`)
+  // or a method with arguments (`forceExitToExterior({ cacheScene = true, load = false } = {}) {`)
   const re = new RegExp(`^\\s*(?:async\\s+)?(?:function\\s+)?${name}\\(`, 'm');
   const m = re.exec(src);
   assert.ok(m, `${name}() not found`);
@@ -171,6 +171,10 @@ const CONTEXTS = [
   {
     file: 'src/scenes/hostMagic.js',
     teardowns: ['destroy'],
+    declared: {
+      impactSounds: 'IMPACTFX: createSpellImpactSounds holds no handle - its sounds are registered on the shared audio engine by key (audio.registerSamples, idempotent: the engine keeps one buffer a key for the session, as it does the wind\'s and the arena\'s made sounds) and played as one-shots; the rest is a few Maps of last-played times and the heal clip\'s bytes. It goes with the engine',
+      giftGate: 'GIFT-QUIET\'s gate is a closure over a Map of a few lines\' last-said times (64 at most) - no batch, mesh, loop or listener; it goes with the engine',
+    },
     // NOT a leak and NOT resource-free: a HAND-OFF. The pool mints
     // batches and gives each one away as it is born, so the owner is
     // the list, and the list is freed. The proof is required below.

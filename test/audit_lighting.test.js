@@ -42,6 +42,9 @@ function recordingGl() {
   return { gl, calls, canvas };
 }
 const count = (calls, name) => calls.filter((c) => c[0] === name).length;
+/** CACHE-COPY: the faces of the cache copied into the live layers - one triangle each, drawn with the copy program (SC1's
+ *  blit until 2026-10-07: on Direct3D a depth blit out of a layer of an array was no copy - render/shadowPass.js _blitSlot) */
+const copies = (calls, sp) => { let n = 0, prog = null; for (const c of calls) { if (c[0] === 'useProgram') prog = c[1]; else if (c[0] === 'drawArrays' && prog === sp.programs.copy.p) n++; } return n; };
 
 /** sc1's room: a bounded static mesh (two sub-meshes), a terrain tile, a lantern at the origin; the lane, no sun. */
 function stand() {
@@ -59,7 +62,7 @@ function stand() {
     r.setPointLights(lights, new Float32Array([1, 1, 1]));
     calls.length = 0;
     r.beginFrame(I, I, lightDir, WORLD_FRAME);
-    const st = { ...sp.stats, casters: sp.casters, index: [...sp.shadowIndex], blit: count(calls, 'blitFramebuffer') };
+    const st = { ...sp.stats, casters: sp.casters, index: [...sp.shadowIndex], blit: copies(calls, sp) };
     draw();
     r.drawScreenQuad({ id: 'ui' }, { x: 0, y: 0, w: 10, h: 10 });
     return st;
@@ -70,7 +73,7 @@ const bb = (extra = {}) => ({ archive: 201, record: 1, vao: { id: 'vao-bb' }, in
 
 test('AUDIT SC1: ONE MESH AT TWO PLACES - two doors of one model are both still (each draw matched to the remembered placement nearest it), and when one swings it is the dynamic alone: the cache is redrawn once without it and the other door stays in the cache (mutants: one placement per mesh, so the second door is dynamic; the swing unseen)', () => {
   const { r, sp, room, door, tile, frame } = stand();
-  assert.equal(SHADOW_INSTANCE_MAX, 128); assert.equal(SHADOW_INSTANCE_REACH, 2); assert.equal(SHADOW_STILL_EPS, 1e-3);   // AUDIT REACH: 128, with a stale placement evicted
+  assert.equal(SHADOW_INSTANCE_MAX, 1024); assert.equal(SHADOW_INSTANCE_REACH, 2); assert.equal(SHADOW_STILL_EPS, 1e-3);   // AUDIT REACH: 128, with a stale placement evicted; PERF-INST: 1024, the placements filed by place
   let ax = 3;
   const draw = () => { r.drawMesh(room, I, null); r.drawTerrain(tile, I, {}, {}, 6.4); r.drawMesh(door, at(ax, 0, 0), null); r.drawMesh(door, at(-3, 0, 0), null); };
   frame(draw);

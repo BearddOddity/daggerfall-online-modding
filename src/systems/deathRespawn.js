@@ -25,6 +25,7 @@ import { LOCATION_TYPES, DUNGEON_TYPES, longitudeLatitudeToMapPixel } from '../f
 import { cureAllOfKind } from './effects.js';   // DEATHLOOP1
 import { maxFatigue, liveStat, STAT_KEYS_ORDER } from './statMods.js';   // AUDIT DISC19: the revival's fatigue floor; DISC24-D: its stat floor
 import { sharedClockOn, worldMinutes, skipDeadMinutes } from './worldTick.js';   // DISC28-E: the dead live no minutes
+import { SD_REALM_TEXT } from '../world/sdRealm.js';   // AUDIT SD II (L6 F4): the Shattered Hour's own waking
 
 const SAFE_KINDS = Object.freeze([
   { kind: 'temple', match: (e) => e.locationType === LOCATION_TYPES.ReligionTemple },
@@ -47,7 +48,7 @@ const SAFE_KINDS = Object.freeze([
  * - vanishingly rare, but not a throw; the caller falls back to
  * whatever it already had (see respawnOnlinePlayer's own fallback).
  */
-export function nearestSafeLocation(mapTable, mapPixelXY) {
+export function nearestSafeLocation(mapTable, mapPixelXY, accept = null) {   // WILD1: `accept(hit)` - a hit the caller turns down is no answer (the open zone's rise: a town outside the mountains)
   let best = null;
   let bestDist = Infinity;
   for (let i = 0; i < (mapTable?.length ?? 0); i++) {
@@ -58,7 +59,10 @@ export function nearestSafeLocation(mapTable, mapPixelXY) {
     const px = longitudeLatitudeToMapPixel(e.longitude, e.latitude);
     const dx = px.x - mapPixelXY.x, dz = px.y - mapPixelXY.y;
     const d2 = dx * dx + dz * dz;
-    if (d2 < bestDist) { bestDist = d2; best = { kind: found.kind, locationIndex: i, mapPixel: px }; }
+    if (d2 >= bestDist) continue;
+    const hit = { kind: found.kind, locationIndex: i, mapPixel: px };
+    if (accept && !accept(hit)) continue;
+    bestDist = d2; best = hit;
   }
   return best;
 }
@@ -72,12 +76,12 @@ export function nearestSafeLocation(mapTable, mapPixelXY) {
  * resident at a time and the one resident before put back - world/roadsProducer.js settlementsOf's sweep. Returns
  * nearestSafeLocation's shape, or null when no region carries one (no map at all).
  */
-export function nearestSafeLocationAnywhere(maps, mapPixelXY) {
+export function nearestSafeLocationAnywhere(maps, mapPixelXY, accept = null) {   // WILD1: `accept`, nearestSafeLocation's own
   const before = maps?._lastRegion ?? -1;
   let best = null;
   let bestDist = Infinity;
   for (let r = 0; r < (maps?.regionCount ?? 0); r++) {
-    const hit = nearestSafeLocation(maps.getRegion(r)?.mapTable ?? [], mapPixelXY);
+    const hit = nearestSafeLocation(maps.getRegion(r)?.mapTable ?? [], mapPixelXY, accept);
     if (!hit) continue;
     const dx = hit.mapPixel.x - mapPixelXY.x, dz = hit.mapPixel.y - mapPixelXY.y;
     const d2 = dx * dx + dz * dz;
@@ -104,6 +108,9 @@ const FLAVOR = Object.freeze({
     'You wake in the open air, the dungeon door standing behind you and no memory of the walk out.',
     'Something dragged you out before the dark could keep you. You come to just outside the entrance.',
   ],
+  // AUDIT SD II (L6 F4): a death in the Shattered Hour is the Hour's own - its words, as the gate's court casts out in
+  // its own ("You are cast out of the Burning Court.")
+  hour: [SD_REALM_TEXT.died],
 });
 
 /** One flavor line for the kind that took the player back - `roll`
@@ -195,8 +202,12 @@ export const undergroundWakeText = (kind) => WAKE_FLAVOR[kind] ?? WAKE_FLAVOR.ci
 //   are carried as `kind: 'disease'` entries (systems/infection.js),
 //   so a blanket cure here would let a player shake off an infection
 //   by dying on purpose - the cheapest cure in the game, at a
-//   graveyard, for free. Paralysis is kept for the same rate reason:
-//   it does not drain anything, and it wears off.
+//   graveyard, for free. [FIELD BUGS 2026-10-05 DEATH-HOLDS: this said
+//   "Paralysis is kept for the same rate reason: it does not drain
+//   anything, and it wears off" - and it does not wear off across a
+//   death: the death screen holds the tick and skipDeadMinutes runs no
+//   magic round, so a ghost's Paralyze woke with the player, every round
+//   left, beside the ghost. It is ended now - endDeathHolds below.]
 //
 // A revival that lands somewhere safe is the whole promise of the
 // online death. This is what makes the promise true.
@@ -210,6 +221,39 @@ export function endLethalDrains(entity) {
   const cleared = LETHAL_DRAINS.filter((k) => had.has(k));
   for (const kind of cleared) cureAllOfKind(entity, kind);
   return cleared;
+}
+
+/**
+ * FIELD BUGS 2026-10-05 DEATH-HOLDS (Discord, BrixBlox: "after dying to
+ * a ghost the paralysis effect still continued after respawning").
+ *
+ * DFU HAS NO REVIVAL, AND ITS DEATH ENDS EVERY EFFECT. PlayerEntity's
+ * SetHealth raises OnDeath at zero (PlayerEntity.cs:1199-1213),
+ * EntityEffectManager.Entity_OnDeath sets wipeAllBundles (:2163-2167)
+ * and the next Update wipes them all (:221-226, WipeAllBundles
+ * :772-779). Offline the port's death is DFU's (a load restores the
+ * save's own effects); online the revival IS the next life, and it kept
+ * whatever the killer had cast that the drains above do not name - a
+ * ghost's or a spider's Paralyze held the player frozen beside the foe
+ * that killed them, the time dead running none of its rounds
+ * (skipDeadMinutes), so it woke with every round it had.
+ *
+ * So the revival also ends what a foe holds the player BY - the
+ * paralysis, the Wraith's silence (effects.js '19,255'), and the
+ * fatigue and magicka drains (a fatigue drain defeats the fatigue floor
+ * set below and collapses the player again; a magicka drain empties the
+ * pool the next fight needs). Not a wipe: the KEPT list above stands (a
+ * disease, an infection, a stat's drain eased by liftZeroedStats), and
+ * the player's own buffs and enchantments are theirs. Answers the kinds
+ * it ended.
+ */
+export const DEATH_HOLDS = Object.freeze(['paralyze', 'silenced', 'continuousDamageFatigue', 'continuousDamageSpellPoints']);
+
+export function endDeathHolds(entity) {
+  const had = new Set((entity?.activeEffects ?? []).map((a) => a?.kind));
+  const released = DEATH_HOLDS.filter((k) => had.has(k));
+  for (const kind of released) cureAllOfKind(entity, kind);
+  return released;
 }
 
 /**
@@ -340,6 +384,8 @@ export function reviveForPlay(entity, { force = false } = {}) {
   // loop - the poison one for a poisoned character, the cold one for a
   // freezing one, and the second is what a player actually reported.
   const cleared = endLethalDrains(entity), exposure = endLethalExposure(entity);
+  // FIELD BUGS 2026-10-05 DEATH-HOLDS: ...and what the killer held them by - a paralysis woke with every round it had.
+  const released = (dead || force) ? endDeathHolds(entity) : [];
   // DISC24-D: ...and a stat held at zero, the loop Lynk reported - after
   // the drains end, so a poison's own stat damage is gone before this
   // measures what is left. On a living release too: a live 0 kills
@@ -365,5 +411,5 @@ export function reviveForPlay(entity, { force = false } = {}) {
   // it - the day block's world half and the powers and conditions, as for any minute the world ran. Offline there is
   // no such span (a death is a load).
   const skipped = (dead || force) && sharedClockOn() ? skipDeadMinutes(entity, worldMinutes()) : false;
-  return { revived: dead || force, cleared, exposure, lifted, skipped };
+  return { revived: dead || force, cleared, exposure, lifted, skipped, released };
 }

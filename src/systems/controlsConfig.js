@@ -50,6 +50,21 @@ export function createUnsavedKeybinds(store) {
 
 export const currentDict = (u) => (u.usingPrimary ? u.primary : u.secondary);
 
+/** UNSAVED-MARK (FIELD BUGS 2026-10-11, "It shows that my selected key is set ... it just didn't save"): the staged
+ *  bindings the LIVE registry does not hold yet - `{ action, primary }` for each, both dicts, in ACTIONS' order. Not a
+ *  DFU member: the pane says which of its keys a Confirm still owes (a staged key drew exactly as a saved one, on a
+ *  page whose every other row saves as it is set). A staging fresh off the registry owes none. */
+export function unsavedEdits(store, u) {
+  const out = [];
+  if (!u) return out;
+  for (const a of ACTIONS) {
+    for (const primary of [true, false]) {
+      if (((primary ? u.primary : u.secondary).get(a) ?? null) !== (getBinding(store, a, primary) ?? null)) out.push({ action: a, primary });
+    }
+  }
+  return out;
+}
+
 /** SetUnsavedBinding (:141-144) - the staged write. */
 export function setUnsavedBinding(u, action, code) {
   currentDict(u).set(action, code);

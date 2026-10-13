@@ -38,6 +38,7 @@ import { uniqueFinds, uniqueFindChance, rollLootRarity, legendariesFor, rarityEl
 // FIELD-GUN: the two the audit could not see, because every pin it
 // wrote asked about REGISTRATION and none of them picked the thing up.
 import { equipItem, getEquipSlot, getItemHands, EQUIP_SLOTS, ITEM_HANDS } from '../src/systems/equip.js';
+import { stockShopShelf, SHOP_ITEM_GROUPS } from '../src/systems/shopStock.js';   // SHOP-PELLETS: the shot sold, the gun never
 import { installThunderlockIcons, ICON_FILES } from '../src/systems/thunderlock.js';
 import { isVendorArchive, vendorRecordCount, clearVendorTextures } from '../src/systems/textureReplacement.js';
 import { inventoryItemImage } from '../src/systems/itemTemplates.js';
@@ -239,11 +240,22 @@ test('THE RAREST THING IN THE GAME: impossible below its tier, and never for sal
 
   // NOT FOR SALE, and it takes no code: a shelf is built from DFU's
   // own group enum table, and a custom template is not in it.
+  // PIN MOVED (SHOP-PELLETS, 2026-10-07, Mac: "allowing the purchase of
+  // the ammunition in stores"): the counter sells its SHOT now
+  // (shopStock.js shopPelletStack), through the pellet's one mint - and
+  // the shelf still knows nothing of the GUN, and no shelf of any shop,
+  // stocked whole, carries one.
   const shelf = readFileSync('src/systems/shopStock.js', 'utf8');
-  assert.ok(!shelf.includes('Thunderlock') && !shelf.includes('thunderlock'),
-    'the shop stock knows nothing about it');
+  assert.ok(!/createThunderlock|THUNDERLOCK_TEMPLATE|isThunderlock/.test(shelf), 'the shop stock never names the gun');
+  assert.match(shelf, /import \{ createPellets \} from '\.\/thunderlock\.js';/, 'only its shot');
   assert.ok(!GROUP_TEMPLATE_INDICES.Weapons?.includes(THUNDERLOCK_TEMPLATE),
     'and it is not in the Weapons enum a shelf draws from');
+  for (const buildingType of Object.keys(SHOP_ITEM_GROUPS).map(Number)) {
+    for (const quality of [1, 20]) {
+      const all = stockShopShelf({ buildingType, quality }, { level: 30 }, { rolls: () => 0 });
+      assert.ok(!all.some(isThunderlock), `building ${buildingType} at quality ${quality}: no gun on the shelf`);
+    }
+  }
 });
 
 test('the find adds to a list rather than promoting one, and claims its own legendary', () => {
@@ -265,7 +277,7 @@ test('the find adds to a list rather than promoting one, and claims its own lege
   // came with it, and the classic pairings stand beside them, the gun claimed from none
   assert.deepEqual(legendariesFor({ group: 'Weapons', templateIndex: 113 }).map((l) => l.name),
     ['Wyrmbane', 'Nightwhisper', "Worm's Tooth"], 'a dagger is still both of its own, and the King of Worms\' knife beside them');
-  assert.deepEqual(legendariesFor({ group: 'Weapons', templateIndex: 120 }).map((l) => l.name), ['Wyrmbane', "Ansei's Edge"]);
+  assert.deepEqual(legendariesFor({ group: 'Weapons', templateIndex: 120 }).map((l) => l.name), ['Wyrmbane', "Ansei's Edge", "Shalidor's Brand"]);   // PIN MOVED (BAL9c, bible/05-Combat/Balance-Arc.md section 15): a longsword is Shalidor's Brand's too
 });
 
 // ── THE AUDIT'S OWN PINS (2026-09-19) ───────────────────────────────
@@ -1086,7 +1098,7 @@ test('FIELD-GUN13 #3 - the weapon rides in, it does not pop', () => {
   for (const other of ['!spellArmed()', '!fpsSpellCasting.isPlayingAnim', 'equipCountdown', '!eotbHidesWeapon()', '!fpArm.active()']) {
     assert.ok(gate.includes(other), `AUDIT-FIELD F1: the gate must re-state ${other} - empty hands stay empty`);
   }
-  assert.match(src, /if \(paralyzed \|\| \(!shown\(\) && !torchOnly && !sheetOnly && !shieldRect && !gunSliding\)\) return;/);
+  assert.match(src, /if \(paralyzed \|\| \(!shown\(\) && !torchOnly && !sheetOnly && !shieldRect && !gunSliding && !armCasts\)\) return;/);   // PIN MOVED (MW-CAST1): the casting hands' leg beside the gun's
   assert.match(src, /if \(!shown\(\) && !gunSliding\) return;/);
   assert.match(src, /if \(gunSliding && !shown\(\)\) return;/,
     'and nothing below the gun’s own arm draws on a sliding frame');
@@ -1220,10 +1232,11 @@ test('FIELD-GUN17a: the shot leaves the BARREL, and the barrel is measured off t
   // ALL FOUR HOSTS hand it over - the FOUR HOSTS RULE, which this
   // weapon has paid for at every round it forgot one.
   const HOSTS = [
-    ['src/scenes/world.js', /arrows\.fire\(cam\.pos, fwd, \{ fromPlayer: true, weapon: weaponRig\.playerWeapon\.weapon, muzzle: weaponRig\.thunderlockMuzzle\(fieldOfView\(\)\) \}\)/],
-    ['src/scenes/exterior.js', /arrows\.fire\(eye, fwd, \{ fromPlayer: true, weapon: weaponRig\.playerWeapon\.weapon, muzzle: weaponRig\.thunderlockMuzzle\(fieldOfView\(\)\) \}\)/],
-    ['src/scenes/worldModes.js', /interiorArrows\.fire\(player\.eye, eyeDir\(\), \{ fromPlayer: true, weapon: interiorWeapon\.playerWeapon\.weapon, muzzle: interiorWeapon\.thunderlockMuzzle\(fieldOfView\(\)\) \}\)/],
-    ['src/scenes/dungeonContext.js', /fireArrow\(eye, lookDir, playerWeapon\.weapon, true, null, null, weaponRig\.thunderlockMuzzle\(fieldOfView\(\)\)\)/],
+    // PIN MOVED (STUCK-ARROWS): the muzzle, then whether the round was conjured (test/arrowsupply.test.js holds that word)
+    ['src/scenes/world.js', /arrows\.fire\(cam\.pos, fwd, \{ fromPlayer: true, weapon: weaponRig\.playerWeapon\.weapon, muzzle: weaponRig\.thunderlockMuzzle\(fieldOfView\(\)\), summoned: shot\.summoned \}\)/],
+    ['src/scenes/exterior.js', /arrows\.fire\(eye, fwd, \{ fromPlayer: true, weapon: weaponRig\.playerWeapon\.weapon, muzzle: weaponRig\.thunderlockMuzzle\(fieldOfView\(\)\), summoned: shot\.summoned \}\)/],
+    ['src/scenes/worldModes.js', /interiorArrows\.fire\(player\.eye, eyeDir\(\), \{ fromPlayer: true, weapon: interiorWeapon\.playerWeapon\.weapon, muzzle: interiorWeapon\.thunderlockMuzzle\(fieldOfView\(\)\), summoned: shot\.summoned \}\)/],
+    ['src/scenes/dungeonContext.js', /fireArrow\(eye, lookDir, playerWeapon\.weapon, true, null, null, weaponRig\.thunderlockMuzzle\(fieldOfView\(\)\), shot\.summoned \? \{ summoned: true \} : null\)/],
   ];
   for (const [f, re] of HOSTS) assert.match(readFileSync(f, 'utf8'), re, `${f} passes the muzzle`);
 
@@ -1499,7 +1512,7 @@ test('FIELD-GUN19: the shot leaves the barrel through the WORLD STRIP, not the c
   // for this one reader; a draw that forgot it would leave every shot
   // high again with nothing else to show for it.
   const rig = readFileSync('src/combat/weaponRig.js', 'utf8');
-  assert.match(rig, /_tlDrawn = \{[^}]*viewport: renderer\.worldViewportRect \?\? null[^}]*\}/,
+  assert.match(rig, /_tlDrawn = \{ rect: \{ \.\.\.rect, x: rx, y: ry \},[^}]*viewport: renderer\.worldViewportRect \?\? null[^}]*\}/,   // RETRO-UI: the rect measured back on the real canvas
     'drawThunderlock parks the strip the world was drawn into');
   const renderer = readFileSync('src/render/renderer.js', 'utf8');
   assert.match(renderer, /get worldViewportRect\(\)/, 'the renderer exposes the frame\'s strip');

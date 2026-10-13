@@ -116,7 +116,10 @@ import { regionPowerUpdate } from './regionPower.js';
 import { runSurvivalMinutes, clearSurvivalMods, pauseSurvival } from './survival/needs.js';   // SURV1: the needs, a world minute at a time; AUDIT SURV A: and the drains dropped when the feed stops; AUDIT SURV-TIERS: and paused while Off
 import { installSurvivalIcons } from './survival/items.js';   // SURV2: the templates register at its import; the icons here
 import { installThunderlockIcons } from './thunderlock.js';   // THUNDERLOCK: same wire - the import IS the registration (AUDIT-THUNDERLOCK F1)
-import { installSurvivalLoot } from './survival/loot.js';   // SURV2: the corpse's food
+import './ayleidStones.js';   // LOOT21: the Ayleid stones - their rows, their late finds and their uses register at its import
+import './gems.js';   // GEM2: the graded gems - their rows and the world's gem find register at its import
+import { installSurvivalLoot } from './survival/loot.js';
+import './cardSources.js';   // CARDS9: where cards come from - a foe's card at its death, the pack's Use and template, registered at its import (the Ayleid stones' wire: AUDIT-THUNDERLOCK F1)   // SURV2: the corpse's food
 import { survivalOn, corpseFoodOn } from './survival/switch.js';   // SURV2: the one switch; CORPSE-FOOD: and the body's food, the room's online
 /** :462 - `% 10080`, seven days of game minutes. */
 export const FACTION_POWER_INTERVAL_MINUTES = 10080;
@@ -925,7 +928,7 @@ function tickPlayerMinutesOnce({
   // threshold stamped a clock three days out; this is where the clock
   // runs down and the invitation quest starts - and only OUTSIDE, so
   // the letter never finds the player in a dungeon.
-  handleStartingCrimeGuildQuests(entity, { nowClassicMinutes: next, inside, online: sharedClockOn() });   // TIMEFREE: the short wait online
+  handleStartingCrimeGuildQuests(entity, { nowClassicMinutes: next, inside, online: sharedClockOn() });   // REST8: the short wait online
 
   // SURV1 - THE NEEDS, one world minute at a time over the minutes this
   // tick crossed (the same [last, now] the per-minute loop above walks),
@@ -1007,7 +1010,7 @@ export function runCalendarArms(entity, lastMinutes, nowMinutes, { rolls = Math.
   // minutes), the faction powers and the regional conditions the WORLD's (the shared day's rolls). Offline all of
   // them walk the one clock in DFU's order within a minute, exactly as before.
   const worldArms = arms !== DAY_ARMS.own, ownArms = arms !== DAY_ARMS.world;
-  const timeFree = sharedClockOn();   // TIMEFREE: online the curse's quests come on the short wait, not 38 and 84 days
+  const shortWaits = sharedClockOn();   // REST8: online the curse's quests come on the short wait, not 38 and 84 days
   for (let i = lastMinutes; i < nowMinutes; i++) {
     if (ownArms && i % NORMALIZE_INTERVAL_MINUTES === 0 && !entity.preventNormalizingReputations) {
       normalizeReputations(entity, entity.factionRep ?? null);
@@ -1060,16 +1063,17 @@ export function runCalendarArms(entity, lastMinutes, nowMinutes, { rolls = Math.
       // the vampire's P0A01L00 initiation, then the clan's own quests
       // (V2d; a no-op without a live override or a registered host).
       // LIVED1: the curse's quests are the character's - online they
-      // ride the same cadence on their own minutes.
-      if (ownArms && !timeFree) startRacialOverrideQuest(entity, false, { rolls });
+      // ride the same cadence on their own minutes. [SUPERSEDED BY REST8: online the short-wait arm below.]
+      if (ownArms && !shortWaits) startRacialOverrideQuest(entity, false, { rolls });
     }
     // :475-476, the FOURTH arm - every 84 days, the CURE quest roll
     // ($CUREVAM at (10,100)<30, $CUREWER at (1,100)<30 once).
-    if (ownArms && !timeFree && i % CURE_QUEST_INTERVAL_MINUTES === 0) {
+    if (ownArms && !shortWaits && i % CURE_QUEST_INTERVAL_MINUTES === 0) {
       startRacialOverrideQuest(entity, true, { rolls });
     }
-    // TIMEFREE: online both arms roll on the short wait, each only while it has nothing running (racialQuests.js)
-    if (ownArms && timeFree && i % ONLINE_RACIAL_INTERVAL_MINUTES === 0) {
+    // REST8 (2026-10-03, bible/06-Systems/Rest-Arc.md section 8; Mac's OPEN 12 - TIMEFREE's arm, restored): online both
+    // arms roll on the short wait, each only while it has nothing running (racialQuests.js racialArmIdle)
+    if (ownArms && shortWaits && i % ONLINE_RACIAL_INTERVAL_MINUTES === 0) {
       if (racialArmIdle(false)) startRacialOverrideQuest(entity, false, { rolls });
       if (racialArmIdle(true)) startRacialOverrideQuest(entity, true, { rolls });
     }
@@ -1263,7 +1267,7 @@ let _ownMinutes = null;
 // tick's raiseMinutes, and advanceOwnMinutes). A quest's countdowns run on the character's clock, which moves two
 // ways online: with the world while they live in it - a quest charges that by one played step a frame at most, the
 // rest is time away and forgiven (WORLD7: a hidden tab, a menu left open) - and ahead of it when they raise time, which
-// a quest charges whole, as DFU charges a RaiseTime: a three-day wait is a 72-hour rest. This count tells the two
+// a quest charges nothing (QCLOCK-WORLD - TIME3 charged it whole, as DFU charges a RaiseTime). This count tells the two
 // apart. A load moves the clock and raises nothing; a clock installed or removed starts a session and the count with
 // it; offline there is one clock, no raise to tell apart, and it reads 0.
 let _raisedMinutes = 0;
@@ -1312,6 +1316,14 @@ export const sharedWallMs = (classicMinutes) => (_sharedWall && Number.isFinite(
 // [AUDIT LIVED1b U6: OL3's `realTimeText` and `sharedRealTimeText` - a classic minute as this machine's wall-clock words
 // - went with their last reader (LIVED1 moved the room's and the loan's words to the character's clock); the gates
 // and the raids read `sharedWallMs` itself.]
+/** BANISH-SKY (bible/06-Systems/Online-Waits.md WAIT4): a span of the world's (event) clock said as the REAL time it is
+ *  online - the event clock runs on the wall whether or not the player plays ("about 30 real hours", "about 40 real
+ *  minutes"), rounded up as the nightfall words round; null offline, where the days are DFU's own words. */
+export function worldSpanRealWords(eventMinutes) {
+  if (!_sharedClock || !Number.isFinite(eventMinutes) || eventMinutes <= 0) return null;
+  const real = Math.max(1, Math.ceil(eventMinutes / ONLINE_MINUTES_PER_MS / 60000));
+  return real >= 120 ? `about ${Math.ceil(real / 60)} real hours` : `about ${real} real minute${real === 1 ? '' : 's'}`;
+}
 /** LIVED1: THE SUN IS EVERYONE'S. A single player waits out the day with a rest; online a rest moves their own clock
  *  and not the sky, so a refusal that waits on the night (the vampire's CheckFastTravel, a sun-damaged career's box)
  *  says when the world's night falls, in real minutes. Null offline, or when it is night. TIME1: the SKY's night, timed
@@ -1442,7 +1454,17 @@ export function normalizeAcross(entity, from, to) {
   if (n <= 0 || entity.preventNormalizingReputations) return 0;
   // AUDIT LIVED1b F3: at most NORMALIZE_ACROSS_MAX walks - a tampered save's -1e308 asked for ~1e300 and the load never
   // returned; a reputation is clamped to +-100 and each walk moves it one point, so no more can change anything
-  for (let k = 0; k < Math.min(n, NORMALIZE_ACROSS_MAX); k++) normalizeReputations(entity, entity.factionRep ?? null, { recoveryOnly: true });
+  const steps = Math.min(n, NORMALIZE_ACROSS_MAX);
+  for (let k = 0; k < steps; k++) normalizeReputations(entity, entity.factionRep ?? null, { recoveryOnly: true });
+  // A menu load can receive the shared clock before faction data attaches.
+  // Recover the saved columns too, so an intervening save retains the recovery.
+  // Copy them: the loaded snapshot may be reused for another restore.
+  if (!entity.factionRep && Array.isArray(entity.savedFactionRep?.rep)) {
+    entity.savedFactionRep = {
+      ...entity.savedFactionRep,
+      rep: entity.savedFactionRep.rep.map((v) => v < 0 ? Math.min(0, Math.max(-100, v + 1) + steps - 1) : v),
+    };
+  }
   return n;
 }
 

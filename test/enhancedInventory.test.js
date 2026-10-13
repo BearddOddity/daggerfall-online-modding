@@ -772,12 +772,13 @@ test('U58 + AUDIT 26: only the REMOTE list sends the click to the quest system',
   const from = src.indexOf('function itemRow(item, from');
   assert.ok(from > 0, 'the row builder is gone');
   const body = src.slice(from, src.indexOf('\nfunction ', from + 20));
-  assert.match(body, /setPlayerClicked\(\)/, 'the pane never tells the quest system');
-  assert.match(body, /from === 'remote' && item\.questItem/,
-    'the local list is sending clicks the classic window does not send');
+  // WHERE-ROBES: through the one home every remote door shares (itemTransfer.js sendQuestItemClick, driven in
+  // test/fb1004c_robes.test.js) - the side guard is still the row's
+  assert.match(body, /if \(from === 'remote'\) sendQuestItemClick\(item, deps\.getQuest \?\? null\);/,
+    'the pane never tells the quest system, or the local list is sending clicks the classic window does not send');
   // and it happens on the CLICK, before the pick - a player who looks
   // and does not take has still clicked
-  assert.ok(body.indexOf('setPlayerClicked()') < body.indexOf('picked = wasPicked'),
+  assert.ok(body.indexOf('sendQuestItemClick(') < body.indexOf('picked = wasPicked'),
     'the click reaches the quest system only after the selection changes');
 });
 
@@ -1217,7 +1218,8 @@ test('PX21c / WORLD-HOVER: the plaque names a pile without opening it, on the ta
   for (const kind of ["'loot'", "'corpse'", "'droppedLoot'"]) {
     assert.ok(ctx.slice(ctx.indexOf('lootContents(key) {'), ctx.indexOf('takeLoot(key) {')).includes(kind), `${kind} resolves`);
   }
-  assert.match(read('src/scenes/droppedLoot.js'), /const contents = \(key\) => piles\.find\(\(p\) => `droppedLoot:\$\{p\.id\}` === key/);
+  // PI1 (PIN MOVED): a key Physical Items owns is a standing item's - its pile of one - and every other is the pile's as before
+  assert.match(read('src/scenes/droppedLoot.js'), /const contents = \(key\) => \(physical\.owns\(key\) \? physical\.contents\(key\) : piles\.find\(\(p\) => `droppedLoot:\$\{p\.id\}` === key/);
   // ...and it leaves with the host that raised it.
   // ...after NT1's dead latch, which is pinned as the FIRST act of
   // destroy - the first draft put the teardown ahead of it and
@@ -1241,7 +1243,7 @@ test('PX21e: the loot window never scrolls - it grows, then widens, and its head
   assert.match(css, /\.loot-win \.remotehead \{ flex: 0 0 auto; \}/);
   assert.match(css, /\.loot-win \.remotelist \{ flex: 1; min-height: 0; overflow-y: auto;/);
   assert.match(src, /const list = el\('div', 'remotelist'\);/);
-  assert.match(src, /for \(const it of remote\.items\) list\.append\(itemRow\(it, 'remote'\)\);/);
+  assert.match(src, /for \(const it of shown\) list\.append\(itemRow\(it, 'remote'\)\);/);   // WAGON-FILTER: the rows a store's filter shows, into the same list
   assert.doesNotMatch(src, /for \(const it of remote\.items\) col\.append\(/, 'the rows left the column');
   // A LONG PILE WIDENS rather than scrolling.
   assert.match(src, /export const LOOT_ONE_COLUMN = 8;/);
@@ -1386,7 +1388,7 @@ test('IG7: a LOOT-SIDE click takes, immediately - the pick-and-confirm card was 
   // looking at a quest item in a pile counts, taking it doubly so) and
   // BEFORE the pick that would raise the card.
   const click = src.slice(src.indexOf('function itemRow('), src.indexOf('function remoteCol('));
-  const iQuest = click.indexOf('setPlayerClicked');
+  const iQuest = click.indexOf('sendQuestItemClick(');   // WHERE-ROBES: the one home
   const iTake = click.indexOf("remote.kind !== 'reward'");
   const iPick = click.indexOf('picked = wasPicked');
   assert.ok(iQuest > -1 && iQuest < iTake && iTake < iPick,
@@ -1538,7 +1540,8 @@ test('INV1: a drag equips through the one act, and never crosses a side', () => 
   // INV2 opened the set by exactly ONE - a release off the panel is the
   // TRANSFER THE SCREEN ALREADY OFFERS (`stow` is the function behind the
   // STOW_LABEL button beside the item) - and closed it again.
-  assert.deepEqual(acts, ['dropOnBody', 'reorderPack', 'slotOnHotbar', 'stow'],   // HB1: a slot on the hotbar is a target too - it moves nothing, it names the kind
+  // HAND-DRAG (2026-10-08): a weapon onto a hand's own panel - the other hand, or the hand a pack piece is worn in
+  assert.deepEqual(acts, ['dropOnBody', 'dropOnHand', 'reorderPack', 'slotOnHotbar', 'stow'],   // HB1: a slot on the hotbar is a target too - it moves nothing, it names the kind
     `a drop performs the body act, the reorder or the screen's own transfer and NOTHING else (read: ${acts.join(', ')})`);
   assert.match(release, /if \(want\?\.kind === 'body'\) dropOnBody\(d\.item\);/, 'the body is the equip target');
 
@@ -2356,7 +2359,7 @@ test('ENH-NOTICE3 (AUDIT B/F5): a refusal raised over a LOOT PILE with the pack 
       const host = dom.mk('div');
       dom.body.append(host);
       const e = hero();
-      e.goldPieces = 2000000;   // CanCarryAmount's own gate: the coin weight alone fills the load (itemTransfer.js:"nothing in the port")
+      e.goldPieces = 2000000;   // CanCarryAmount's own gate: the coin weight alone fills the load (itemTransfer.js:"const canCarry = entity")
       const pile = [mk('Claymore')];
       const view = mountEnhancedInventory(host, {
         entity: e, items: () => e.items, loot: { items: () => pile }, onExit: () => {},

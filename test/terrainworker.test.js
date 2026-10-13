@@ -241,8 +241,10 @@ test('EV7: the worker shell imports only pure modules and spells the Worker URL 
   // ROADS 19: the cache joins - pure in the sense this list enforces: it
   // touches IndexedDB only through an injectable store that answers null
   // when the API is absent, and nothing else in its closure is a global.
-  assert.deepEqual(imports, ['../formats/woodsFile.js', './roadsCache.js', './roadsProducer.js', './terrainGen.js'],
-    'the import graph is exactly the reader, the road cache, the producer and the kernel');
+  // PIN MOVED (ETHER-SEA, bible/03-World/Etheric-Sea.md): and the Etheric Sea's ground (world/ethericSea.js - pure: it
+  // imports formats/ alone)
+  assert.deepEqual(imports, ['../formats/woodsFile.js', './ethericSea.js', './roadsCache.js', './roadsProducer.js', './tamrielFrame.js', './tamrielGround.js', './tamrielLand.js', './terrainGen.js'],
+    'the import graph is exactly the reader, the road cache, the producer, the kernel, the continent\'s ground (TAMRIEL2 - pure: the authored geography and the frame) and the Etheric Sea\'s');
   const code = shell.replace(/\/\/[^\n]*/g, '').replace(/\/\*[^]*?\*\//g, '');
   assert.ok(!/\bdocument\b/.test(code) && !/new Worker/.test(code), 'no DOM, no nested workers');
   assert.ok(shell.includes('globalThis.onmessage = (ev) =>'), 'the message loop is the module');
@@ -251,7 +253,7 @@ test('EV7: the worker shell imports only pure modules and spells the Worker URL 
   // every test green
   // ROADS 3: `roads` joined `woods` as worker-owned state that rides
   // beside the spread - the job itself still crosses WHOLE.
-  assert.ok(shell.includes('generatePixelTerrain({ ...m, woods, roads })'), 'the job forwards whole');
+  assert.ok(shell.includes('generatePixelTerrain({ ...m, woods, roads, sites, climates })'), 'the job forwards whole');   // LANDFORM4/6: the worker's sites and climates beside its network
   // the client spells the constructor the way Vite's static analysis
   // bundles (eslint.config.js's RA1 note: never globalThis.Worker)
   const client = readFileSync('src/world/terrainGenClient.js', 'utf8');
@@ -269,7 +271,7 @@ test('EV7: the world host rides the client and the pinned build contracts stand'
   // last act of the build, after the GL uploads and the collider
   const bp = world.slice(world.indexOf('async function buildPixel'), world.indexOf('function restrideTerrain'));
   assert.ok(bp.lastIndexOf('built.set(key,') > bp.lastIndexOf('collider.addMesh'), 'publish follows the collider');
-  assert.ok(bp.includes('renderer.createTerrainSurface(positions, normals'), 'GL consumes the reply on this thread');
+  assert.ok(bp.includes('renderer.createTerrainSurface(carved?.positions ?? positions, carved?.normals ?? normals'), 'GL consumes the reply on this thread');   // PIN MOVED (WATER-NEXT 2): the reply's grid, carved under the water for the eye - AUDIT WATER-NEXT P1: carved by the kernel, on the worker
   // AUDIT EV F-SIM1: one build per pixel, ever in flight - the cache
   // answers a finished pixel, the in-flight map answers a flying one
   // with the SAME promise, so a teleport overlapping a pump build (or

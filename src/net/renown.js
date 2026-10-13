@@ -213,6 +213,13 @@ export const renownQuestXp = (characterLevel, renown = null) => renownRate(RENOW
  *  charged to the account's hour as a report is (AUDIT RAID R5, server-account/src/raids.js). */
 export const RENOWN_RAID_QUESTS = 3;
 export const renownRaidXp = (renown = null) => RENOWN_RAID_QUESTS * renownQuestXp(RENOWN_QUEST_LEVEL_MAX, renown);
+/** SERPENT1 (2026-10-04, Mac: "a large scale sea serpent in the ocean"): A SERPENT SLAIN - Sethrakul's kill the relay
+ *  signed for this account (net/serpentReceipt.js) - is worth RENOWN_SERPENT_QUESTS quests at the ladder's top quest
+ *  level, read no higher than the Renown allows, at the quests' rate: twice a town defended, for the Bay's rarest fight
+ *  (one every four real hours). Credited once a serpent an account, to the character that fought it, charged to the
+ *  account's hour (server-account/src/serpents.js). */
+export const RENOWN_SERPENT_QUESTS = 6;
+export const renownSerpentXp = (renown = null) => RENOWN_SERPENT_QUESTS * renownQuestXp(RENOWN_QUEST_LEVEL_MAX, renown);
 
 /** A kill's XP with the party in the room counted: `present` is how many
  *  of the party are in the room, the player included (1 is alone). `xp`
@@ -268,8 +275,14 @@ export const RENOWN_XP_HOUR_MAX = 15_000;
 export const RENOWN_TRACKS_MAX = 60;
 /** A character's name as the service keeps it for the account card - display only, bounded. */
 export const RENOWN_NAME_MAX = 32;
-/** How often the client sends what it has earned. */
+/** How often the client sends what it has earned - while its answer would say something the page cannot (SCALE4h,
+ *  net/renownTracker.js renownReportSoon: a rise, the hour's bound, a total or a room not yet said). */
 export const RENOWN_REPORT_MS = 60_000;
+/** SCALE4h (2026-10-11, the plan's "10k writes"; bible/11-Multiplayer/Scale-Arc.md SCALE4h): HOW OFTEN IT GOES
+ *  OTHERWISE. A fighter's report every minute was half the statements and half the rows a fighting player-hour wrote to
+ *  the one primary (tools/hotWritesBench.mjs), and most of its answers said nothing the page did not know: the bar draws
+ *  what is earned and not yet answered (ui/hudRenown.js, the ghost), so the answer only moves the ghost into the fill. */
+export const RENOWN_COALESCE_MS = 5 * 60_000;
 /** AUDIT RENOWN1 DATA-4/GAME-9: A REPORT'S OWN NAME - sixteen hex digits the client draws once per report and sends
  *  again, unchanged, with every retry of that same report, so a report the service took whose answer was lost is
  *  answered again rather than credited twice. */

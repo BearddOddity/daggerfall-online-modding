@@ -40,15 +40,28 @@
 // refused act's records name none. The bag's `home` says so.
 import { sharedRecord, validActionRecord } from './actionSystem.js';
 import { validLootList, LOOT_LIST_MAX } from '../systems/loot.js';
-import { unbound } from '../systems/itemBound.js';   // SS3: a bound piece in a room's container never lands
+import { peerHanded } from '../systems/peerWord.js';   // SS3: a bound piece in a room's container never lands; HACKED-GOLD: nor a letter of credit (systems/peerWord.js)
 import { mintSharedStamp } from '../net/wire.js';   // AUDIT WORLD6a B7: one stamp mint at the wire, twelve digits always
 
 /** The room's own key for a building - the SAME spelling roomKeyFor mints for the relay room (the map id unsigned,
  *  AUDIT WORLD34 A2), so the memory's `locationKey` and the room agree by construction. */
-export function interiorLocationKey(mapId, buildingKey) {
+export function interiorLocationKey(mapId, buildingKey, layout = null) {
   const id = Number.isFinite(mapId) ? mapId >>> 0 : 0;
   const key = Number.isFinite(buildingKey) ? buildingKey >>> 0 : 0;
-  return id > 0 && key > 0 ? `interior:m${id}.${key}` : null;
+  return id > 0 && key > 0 ? `interior:m${id}.${layoutRoomKey(key, layout)}` : null;
+}
+
+/** WD3 (AUDIT WD3 B3): A BUILDING'S ROOM IS ITS LAYOUT'S. A building key names a building only in one layout of its
+ *  town, so two players whose town stands in two layouts (a build from before the town mods; a pin one holds) would
+ *  share one room from two buildings - its doors, its chests, its memory - and a memory the relay kept from before the
+ *  mods would land on another building of the same key. The layout mods serving the town ride in the key's high bits
+ *  (a building key is under 2^19; the wire's room takes eight digits): Daggerfall's own town is the key as it always
+ *  was, so its rooms and their memories are untouched. */
+export const LAYOUT_ROOM_MODS = Object.freeze(['beautiful-villages', 'beautiful-cities']);
+export function layoutRoomKey(buildingKey, layout = null) {
+  let tag = 0;
+  if (typeof layout === 'string') LAYOUT_ROOM_MODS.forEach((m, i) => { if (layout.split('+').some((p) => p.split('@')[0] === m)) tag |= 1 << i; });
+  return buildingKey + tag * 0x1000000;
 }
 
 /** AUDIT WORLD6a A1: THE WIRING BAG, MINTED HERE. The interior mode built its bag with the key spelled `key` and
@@ -98,7 +111,7 @@ export function interiorLootRecords(ctx, keys, tooBig = new Set()) {
       continue;
     }
     tooBig.delete(canon);
-    out.push({ k: canon, r: unbound(t.items).map((it) => ({ ...it })), d: Number.isFinite(t.stockedDate) ? t.stockedDate : 0 });   // AUDIT SS: never a bound piece on the wire - a stone left in one before SS3 stays off the room (an older build connected beside this one would land it)
+    out.push({ k: canon, r: peerHanded(t.items).map((it) => ({ ...it })), d: Number.isFinite(t.stockedDate) ? t.stockedDate : 0 });   // AUDIT SS: never a bound piece on the wire - a stone left in one before SS3 stays off the room (an older build connected beside this one would land it); HACKED-GOLD: nor a letter of credit
   }
   return out;
 }
@@ -121,7 +134,7 @@ export function applyInteriorLoot(ctx, list, { seen = new Set(), openKey = null,
     // then restock and republish over the room (A2's secondary). And the day only ever moves FORWARD (A3): a stale
     // close from a window opened yesterday must not un-restock a shelf the new day already rolled.
     if (!Number.isFinite(rec.d) || rec.d < 0 || (today != null && rec.d > today + 1)) continue;
-    const items = unbound(validLootList(rec.r));   // SS3: a shelf or a container is the room's - a bound piece in one never lands
+    const items = peerHanded(validLootList(rec.r));   // SS3: a shelf or a container is the room's - a bound piece in one never lands; HACKED-GOLD: nor a letter of credit, a peer's gold
     // AUDIT SETS M2: a list this build cannot read (a newer game's item) - the room HAS spoken: seen, and never claimed
     // or closed over here (worldModes' interiorPublishLoot reads `unreadable`)
     if (!items) { if (unreadable && interiorLootTarget(ctx, canon)) { seen.add(canon); unreadable.add(canon); } continue; }

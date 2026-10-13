@@ -88,7 +88,7 @@ test('REALM P0.2: online, every key of a balance mod reads its shipped default -
       if (!room && !own.includes(key)) whole++;
     }
   }
-  assert.equal(whole, 48, 'forty-eight dials the room now owns beside the thirty-four it did');
+  assert.equal(whole, 64, 'sixty-four dials the room now owns beside the thirty-four it did');   // IT1: Immersive Travel's sixteen - the fares, the driver's destinations, his region lock, the captain's rules
   assert.equal(onlineWholeModKey('dynamic-skies', 'Enabled', '?online=1'), false, 'a looks mod is not the room\'s');
   assert.equal(onlineWholeModKey('roleplay-realism', 'variantNpcs', '?online=1'), false, 'who stands behind a counter is looks');
   assert.equal(onlineWholeModKey('oblivion-remaster-leveling', 'Enabled', '?online=1'), false, 'which leveling a character uses stays its own');
@@ -263,7 +263,12 @@ test('REALM P0.4: online a shop pays at most half what it asks for the same piec
   // each, the top of the range the haggle reads online since MERC-CAP, Field-Bugs-2026-09-29f) - so no skill lowers a
   // sale; flipped from P0.4's half of the seller's own ask
   const best = { mercantile: 100, personality: 100 };
-  assert.equal(calculateTradePrice(1_000, 1, loop, true, { online: true }), Math.floor(calculateTradePrice(1_000, 1, best, false, { online: false }) / 2), 'online half of what the counter asks the best haggler');
+  // PIN MOVED (MERC-SLOPE, FIELD BUGS 2026-10-08): that half is the ceiling - the best haggler's - and the loop's weak
+  // seller is paid under it, by their own offer against the best's at half its strength
+  const half1 = Math.floor(calculateTradePrice(1_000, 1, best, false, { online: false }) / 2);
+  assert.equal(calculateTradePrice(1_000, 1, best, true, { online: true }), half1, 'online the best haggler is paid half of what the counter asks them');
+  assert.equal(calculateTradePrice(1_000, 1, loop, true, { online: true }), 99, 'the loop\'s seller, under it');
+  assert.ok(calculateTradePrice(1_000, 1, loop, true, { online: true }) < half1);
   assert.ok(calculateTradePrice(1_000, 1, loop, true, { online: true }) <= buy / 2, 'and at most half of this seller\'s own ask');
   assert.equal(calculateTradePrice(1_000, 1, loop, false, { online: true }), buy, 'buying is untouched');
   for (const q of [1, 5, 10, 15, 20]) {
@@ -272,12 +277,16 @@ test('REALM P0.4: online a shop pays at most half what it asks for the same piec
         const k = { mercantile, personality };
         const off = calculateTradePrice(777, q, k, true, { online: false });
         const on = calculateTradePrice(777, q, k, true, { online: true });
-        assert.equal(on, Math.min(off, Math.floor(calculateTradePrice(777, q, best, false, { online: false }) / 2)), `q${q} m${mercantile} p${personality}`);
+        // MERC-SLOPE (its audit: an inequality here let any smaller sale through): the law, exactly
+        const half = Math.floor(calculateTradePrice(777, q, best, false, { online: false }) / 2);
+        const top = calculateTradePrice(777, q, best, true, { online: false });
+        assert.equal(on, Math.max(Math.floor(half * (0.5 + (0.5 * Math.min(off, top)) / top)), Math.min(off, half, 1)), `q${q} m${mercantile} p${personality}`);
+        assert.ok(on <= Math.min(off, half), `q${q} m${mercantile} p${personality}: under the half and Daggerfall's own offer`);
         assert.ok(on <= Math.floor(calculateTradePrice(777, q, k, false, { online: false }) / 2), `the buy-back loop stays shut: q${q} m${mercantile} p${personality}`);
       }
     }
   }
-  assert.equal(calculateTradePrice(1_000, 20, { mercantile: 0, personality: 10 }, true, { online: true }), calculateTradePrice(1_000, 20, { mercantile: 0, personality: 10 }, true, { online: false }), 'a sale under half stands');
+  assert.deepEqual([calculateTradePrice(1_000, 20, { mercantile: 0, personality: 10 }, true, { online: true }), calculateTradePrice(1_000, 20, { mercantile: 0, personality: 10 }, true, { online: false })], [187, 222], 'a weak seller at a dear counter: under Daggerfall\'s own offer');
 });
 
 test('REALM P0.4: online a pile\'s gold is divided back by the level, every key, never under one piece; offline it is the level\'s', () => {
@@ -396,10 +405,11 @@ test('REALM P0.5: a trade\'s every change to the pack is checkpointed - the good
 test('REALM P0.5 by source: the host checkpoints every slot the exit save writes, quietly, each online frame it is due and through the trade pack', () => {
   const w = src('src/scenes/world.js');
   const frame = w.slice(w.indexOf('const onlineFrame = (now, dt) => {'));
-  assert.match(frame, /_rezSeen = null;[^\n]*\n\s*if \(checkpointDue\(now, _checkpointAt\)\) onlineCheckpoint\(\);/, 'each online frame, past the seat\'s and the dead\'s returns');
-  assert.match(w, /const tradePack = checkpointedTradePack\(createTradePack\(playerEntity\), \(\) => onlineCheckpoint\(\)\);/);
+  assert.match(frame, /_rezSeen = null;[^\n]*\n\s*if \(checkpointDue\(now, _checkpointAt\)\) \{ if \(realmSession\?\.idle\) realmSession\.idle\(\(\) => onlineCheckpoint\(\)\); else onlineCheckpoint\(\); \}/, 'each online frame, past the seat\'s and the dead\'s returns (SCALE2b: a realm character\'s through the session\'s idle door, which may answer an unchanged save without a put)');
+  // PIN MOVED (OFFER-ID, FIELD BUGS 2026-10-11b): the pack is handed the realm's id stamp
+  assert.match(w, /const tradePack = checkpointedTradePack\(createTradePack\(playerEntity, \{ stampIds: stampItemIds \}\), \(\) => onlineCheckpoint\(\)\);/);
   assert.match(w, /if \(!checkpointAllowed\(\{ online: !!online, spawned: playerSpawned, seatOut: seatOut\(\), duel: !!duelMgr\?\.duel, walkWaiting: ownWalkWaiting\(playerEntity\) \}\)\) return false;/);
-  assert.match(w, /const names = exitAutosaveNames\(playerEntity, \{ deathUp: townTalk\.overlay instanceof DeathScreen \|\| !!modes\?\.deathUp\?\.\(\) \}\);\n\s*for \(const saveName of names\) \{\n\s*if \(modes\) modes\?\.quickSaveNow\(saveName, \{ quiet: true \}\);[^\n]*\n\s*else worldQuickSave\(saveName, \{ quiet: true \}\);/);
+  assert.match(w, /const names = exitAutosaveNames\(playerEntity, \{ deathUp: townTalk\.overlay instanceof DeathScreen \|\| !!modes\?\.deathUp\?\.\(\) \|\| successionOpen\(\) \}\);\n\s*for \(const saveName of names\) \{\n\s*if \(modes\) modes\?\.quickSaveNow\(saveName, \{ quiet: true \}\);[^\n]*\n\s*else worldQuickSave\(saveName, \{ quiet: true \}\);/);
   // quiet: no shot and no "Game saved." - a failure still speaks
   assert.match(w, /if \(r\.ok && !quiet\) requestScreenshot\(r\.key\);\n\s*if \(!r\.ok \|\| !quiet\) townTalk\.say\(r\.ok \? localizedText\('gameSaved', 'Game saved\.'\) : 'Save failed/);
   assert.match(w, /quickSave: \(saveName, opts\) => worldQuickSave\(saveName, opts\),/);

@@ -21,7 +21,7 @@ import { fakeDoc, fakeWin, fakeBlocks, rmb, TOWN, settle } from './decorFakes.mj
 import { GuildBook } from '../src/net/guildBook.js';
 
 const src = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
-const HALL = { mapId: 7, buildingKey: 300, region: 17, price: 20_000 };
+const HALL = { mapId: 7, buildingKey: 300, region: 17, price: 20_000, layout: null };   // AUDIT PRE-MERGE 1003 WD1: a hall says its town's layout (none: an old build's, 426)
 const piece = (over = {}) => ({ id: 'yard1', model: 41000, flat: null, pos: [8, 0, 2], rot: [0, 0, 0], scale: 1, light: null, storage: false, paid: 120, ...over });
 const LOOK = { walls: { set: 'manor', climate: 'swamp' }, door: { climate: 'desert', record: 1 } };
 
@@ -262,7 +262,7 @@ test('GUILD-YARD the keeper\'s yard decorator: a yard piece taken out says its h
 test('GUILD-YARD the world host by source: a hall its playing character keeps leaves the pixel\'s merge as an owner\'s home does, so its keeper\'s painter tries a look on it, and a hall kept in a merged pixel rebuilds it once (mutants: the keeper unasked at the build; at the refresh)', () => {
   const w = src('src/scenes/world.js');
   assert.match(w, /if \(homeRow && \(homeLook \|\| homeRow\.mine \|\| homeRow\.keeper\)\) \{/);
-  assert.match(w, /\(row\?\.look \|\| row\?\.mine \|\| row\?\.keeper\)\) merged = true;/);
+  assert.match(w, /\(\(row\?\.look && homeDecorShown\(row\)\) \|\| row\?\.mine \|\| row\?\.keeper\)\) merged = true;/);   // PIN MOVED: HOME-VOTE - a look counts only where it is shown
   const y = src('src/scenes/homeYards.js');
   assert.match(y, /if \(!home \|\| \(!pieces\?\.length && !homeOutsideKept\(home\)\)\) continue;/);
   assert.match(src('server-account/src/homes.js'), /UPDATE homes SET look = \? WHERE map_id = \? AND building_key = \? AND \$\{OWNS\}/);

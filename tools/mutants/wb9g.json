@@ -111,11 +111,12 @@
   {
     "name": "WB9g-the-gates-never-counted",
     "file": "server-account/src/accounts.js",
-    "old": "       AND (SELECT COALESCE(SUM(stones), 0) FROM gate_kills WHERE account = ?1) - insignia_spent >= ?3\n",
+    "old": "       AND ${EMBERS_EARNED_SQL} - insignia_spent >= ?3\n",
     "new": "",
     "tests": [
       "test/wb9g_insignia.test.js"
-    ]
+    ],
+    "note": "SERPENT-SET / SILVER-FINDS (PIN MOVED): the sale reads the embers' one sum (EMBERS_EARNED_SQL) - re-aimed by content."
   },
   {
     "name": "WB9g-the-spend-never-added",
@@ -165,29 +166,32 @@
   {
     "name": "WB9g-a-stored-aura-worn-unheld",
     "file": "server-account/src/titles.js",
-    "old": "  return aurasHeld(player).includes(a) ? a : undefined;",
+    "old": "  return aurasHeld(player, env).includes(a) ? a : undefined;",
     "new": "  return a;",
     "tests": [
       "test/wb9g_insignia.test.js"
-    ]
+    ],
+    "note": "AEGIS (re-aimed by content): the line now passes the config (`env`), which a list's aura is read off."
   },
   {
     "name": "WB9g-any-aura-wearable",
     "file": "server-account/src/titles.js",
-    "old": "  return aurasHeld(player).includes(aura) ? null : 'not-held';",
+    "old": "  return aurasHeld(player, env).includes(aura) ? null : 'not-held';",
     "new": "  return null;",
     "tests": [
       "test/wb9g_insignia.test.js"
-    ]
+    ],
+    "note": "AEGIS (re-aimed by content): the line now passes the config (`env`), which a list's aura is read off."
   },
   {
     "name": "WB9g-the-mint-reads-no-aura",
     "file": "server-account/src/index.js",
-    "old": "          au: auraWorn(who.player),   // WB9g: the aura worn, the title's law - absent for none\n",
+    "old": "          au: auraWorn(who.player, env),   // WB9g: the aura worn, the title's law - absent for none; AEGIS: a list's read off the config\n",
     "new": "",
     "tests": [
       "test/wb9g_insignia.test.js"
-    ]
+    ],
+    "note": "AEGIS (re-aimed by content): the line now passes the config (`env`), which a list's aura is read off."
   },
   {
     "name": "WB9g-the-answer-leaves-it-out",
@@ -238,20 +242,22 @@
   {
     "name": "WB9g-the-session-writes-no-aura",
     "file": "src/net/accountClient.js",
-    "old": "JSON.stringify({ id, name, kind, sessionId, secret, glyphs, aura })",
-    "new": "JSON.stringify({ id, name, kind, sessionId, secret, glyphs })",
+    "old": "JSON.stringify({ id, name, kind, sessionId, secret, glyphs, aura, nameAsAt })",
+    "new": "JSON.stringify({ id, name, kind, sessionId, secret, glyphs, nameAsAt })",
     "tests": [
       "test/wb9g_insignia.test.js"
-    ]
+    ],
+    "note": "NAME-AS (PIN MOVED): re-aimed by content - the session keeps the choice's stamp beside it."
   },
   {
     "name": "WB9g-a-changed-aura-never-written",
     "file": "src/net/accountClient.js",
-    "old": "&& sameGlyphs && sameAura) return false;",
-    "new": "&& sameGlyphs) return false;",
+    "old": "&& sameGlyphs && sameAura && next.nameAsAt === was.nameAsAt) return false;",
+    "new": "&& sameGlyphs && next.nameAsAt === was.nameAsAt) return false;",
     "tests": [
       "test/wb9g_insignia.test.js"
-    ]
+    ],
+    "note": "NAME-AS (PIN MOVED): re-aimed by content - the guard reads the choice's stamp too."
   },
   {
     "name": "WB9g-own-aura-any-word",
@@ -284,20 +290,22 @@
   {
     "name": "WB9g-the-memory-loses-it",
     "file": "src/net/online.js",
-    "old": "gt: p.gt ?? null, au: p.au ?? null, rb: p.rb ?? null, sub: p.sub",
-    "new": "gt: p.gt ?? null, rb: p.rb ?? null, sub: p.sub",
+    "old": "gt: p.gt ?? null, au: p.au ?? null, rb: p.rb ?? null, house: p.house ?? null, sub: p.sub",
+    "new": "gt: p.gt ?? null, rb: p.rb ?? null, house: p.house ?? null, sub: p.sub",
     "tests": [
       "test/wb9g_insignia.test.js"
-    ]
+    ],
+    "note": "LEGACY7 part two (PIN MOVED): re-aimed by content - the house rides beside it."
   },
   {
     "name": "WB9g-the-re-stood-peer-bare",
     "file": "src/net/online.js",
-    "old": "gt: knew.gt, au: knew.au, rb: knew.rb, sub: knew.sub",
-    "new": "gt: knew.gt, rb: knew.rb, sub: knew.sub",
+    "old": "gt: knew.gt, au: knew.au, rb: knew.rb, ...(knew.house ?? {}), sub: knew.sub",
+    "new": "gt: knew.gt, rb: knew.rb, ...(knew.house ?? {}), sub: knew.sub",
     "tests": [
       "test/wb9g_insignia.test.js"
-    ]
+    ],
+    "note": "LEGACY7 part two (PIN MOVED): re-aimed by content - the house rides beside it."
   },
   {
     "name": "WB9g-my-own-aura-never-adopted",
@@ -329,8 +337,8 @@
   {
     "name": "WB9g-the-client-decides-the-aura",
     "file": "src/ui/accountFlow.js",
-    "old": "      self.wardrobe = { ...(self.wardrobe ?? {}), titles: r.data.titles, title: r.data.title, glyphs: r.data.glyphs, ...glyphHalf(r.data), ...auraHalf(r.data) };\n      self.busy = false;\n      self.note = want ? t('account.flow.wearing', 'Wearing {what}.', { what: want }) : t('account.flow.auraRemoved', 'Aura removed.');",
-    "new": "      self.wardrobe = { ...self.wardrobe, aura: want };\n      self.busy = false;\n      self.note = want ? t('account.flow.wearing', 'Wearing {what}.', { what: want }) : t('account.flow.auraRemoved', 'Aura removed.');",
+    "old": "      self.wardrobe = { ...(self.wardrobe ?? {}), titles: r.data.titles, title: r.data.title, glyphs: r.data.glyphs, ...glyphHalf(r.data), ...auraHalf(r.data) };\n      self.busy = false;\n      self.note = want ? t('account.flow.wearing', 'Wearing {what}.', { what: AURA_TEXT[want] ?? want }) : t('account.flow.auraRemoved', 'Aura removed.');",
+    "new": "      self.wardrobe = { ...self.wardrobe, aura: want };\n      self.busy = false;\n      self.note = want ? t('account.flow.wearing', 'Wearing {what}.', { what: AURA_TEXT[want] ?? want }) : t('account.flow.auraRemoved', 'Aura removed.');",
     "tests": [
       "test/wb9g_insignia.test.js"
     ]
@@ -500,11 +508,12 @@
   {
     "name": "WB9g-the-flames-skipped",
     "file": "src/render/auraRing.js",
-    "old": "      gl.drawArrays(gl.TRIANGLES, 0, AURA_STEPS * 6);\n",
+    "old": "          if (!closed) gl.drawArrays(gl.TRIANGLES, 0, wings ? WING_VERTS : AURA_STEPS * 6);\n",
     "new": "",
     "tests": [
       "test/wb9g_insignia.test.js"
-    ]
+    ],
+    "note": "SERAPH-WINGS (re-aimed by content): the strip's draw now shares its line with the wings' strands."
   },
   {
     "name": "WB9g-the-band-off-the-ring",

@@ -5,20 +5,23 @@
 //
 //   /tp <place>          to a town, dungeon or other named place, anywhere in the Iliac Bay (its best match)
 //   /tp <x> <y>          to a map pixel (x 0-999, y 0-499 - the travel map's own grid)
-//   /tp @<player>        to the map pixel another player stands in (the region's travellers, and my party anywhere)
+//   /tp @<player>        to another online player's exact live position, through the authenticated hub
 //   /god [on|off]        no damage reaches me
 //   /fly [on|off]        levitation, without the spell
 //   /heal                health, fatigue and magicka full
 //   /pos                 where I stand: the map pixel, the place, native world units
 //   /staff               this list
+//   /relay <setting> <v> a relay setting, at run time - the Developer's alone (SCALE5b, net/relayCfg.js)
 //
 // WHO MAY: a player whose OWN glyphs say `dev`, `dm` or `shadowfang` - the Developer's, the Dungeon Master's and Shadow
-// Fang's (identityToken.js TITLES/GLYPHS). Every command here acts on the typer alone, so the client's own word is
-// enough; a command that reached another player would be the RELAY's question (RED1's law), and none is here.
+// Fang's (identityToken.js TITLES/GLYPHS). Commands move/change only the typer.
+// The exact-player lookup additionally requires the relay's verified staff claim.
 // Anyone else gets `unknown` - the chat's own refusal - so the commands are not advertised to them.
 //
 // Not a DFU member: DFU's GodMode / teleport console verbs are Wenzil console commands (Ledger A: the console window is
 // a departure); these ride the chat, the one text field the port has. Ledger A row (ONLINE).
+
+import { parseRelayCfgCommand } from './relayCfg.js';   // SCALE5b: /relay's words
 
 /** The glyphs that open the staff's commands. */
 export const STAFF_GLYPHS = Object.freeze(['dev', 'dm', 'shadowfang']);
@@ -26,7 +29,7 @@ export const STAFF_GLYPHS = Object.freeze(['dev', 'dm', 'shadowfang']);
 export const isStaff = (glyphs) => Array.isArray(glyphs) && glyphs.some((g) => STAFF_GLYPHS.includes(g));
 
 /** The staff's command names (lowercase). */
-export const STAFF_COMMANDS = Object.freeze(['tp', 'god', 'fly', 'heal', 'pos', 'staff']);
+export const STAFF_COMMANDS = Object.freeze(['tp', 'god', 'fly', 'heal', 'pos', 'staff', 'relay']);   // SCALE5b: `relay`, a developer's (net/relayCfg.js)
 /** The travel map's grid: MapsFile's 1000 x 500 pixels. */
 export const TP_MAP_W = 1000;
 export const TP_MAP_H = 500;
@@ -36,11 +39,12 @@ export const STAFF_HELP_LINES = Object.freeze([
   'Staff commands:',
   '/tp <place> - to a named place anywhere',
   '/tp <x> <y> - to a map pixel (x 0-999, y 0-499)',
-  '/tp @<player> - to where another player stands',
+  '/tp @<player> - to their exact live position',
   '/god [on|off] - take no damage',
   '/fly [on|off] - levitate',
   '/heal - health, fatigue and magicka full',
   '/pos - where you stand',
+  '/relay [<setting> <value>|-] - the relay\'s settings, a developer\'s alone',
 ]);
 
 const onOff = (word, was) => (word === 'on' ? true : word === 'off' ? false : word === undefined ? !was : null);
@@ -79,6 +83,7 @@ export function parseStaffCommand(text, now = {}) {
     const on = onOff(words[0]?.toLowerCase(), !!now[name]);
     return on === null ? { error: `Usage: /${name} [on|off].` } : { cmd: name, on };
   }
+  if (name === 'relay') return parseRelayCfgCommand(rest);   // SCALE5b
   if (words.length) return { error: `/${name} takes nothing after it.` };
   return { cmd: name };
 }

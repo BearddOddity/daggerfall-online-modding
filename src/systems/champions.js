@@ -7,8 +7,10 @@
 // Single named foes with visible traits (Fiery, Swift, Vampiric) and a
 // guaranteed Rare"). About one foe in fourteen of level 3 or more stands as
 // a CHAMPION with one TRAIT: twice its health and its blows a quarter
-// harder, its trait on top, its name the trait's and its own, and a Rare
-// or better ALWAYS on its body (scenes/hostCombat.js spawnEnemyLoot).
+// harder, its trait on top, its name the trait's and its own. Its loot is
+// its own roll (CHAMP-LOOT: no Rare is forced onto its body - Magic and Rare
+// at half a plain foe's, its Legendary as LOOT7 left it: systems/lootRarity.js
+// championSource).
 //
 // WHO DECIDES. A dungeon's foes are its LAYOUT's, built on every client
 // from the location (the elite's way): `markDungeonChampions` marks the
@@ -116,6 +118,7 @@ export function applyChampion(entity, traitIndex) {
   const hp = CHAMPION_HEALTH * (t.health ?? 1);
   entity.maxHealth = Math.max(1, Math.round((entity.maxHealth ?? 1) * hp));
   entity.health = entity.maxHealth;
+  entity.healthMult = (entity.healthMult ?? 1) * hp;   // TELL1: what was stood on the kind's own health (ai/tells.js kindHealth - its poise)
   entity.damageScale = (Number.isFinite(entity.damageScale) ? entity.damageScale : 1) * CHAMPION_DAMAGE * (t.damage ?? 1);
   if (t.speed && entity.stats) entity.stats.speed = Math.min(100, (entity.stats.speed ?? 50) + t.speed);
   return true;

@@ -62,13 +62,14 @@
 //   onTopicListsUpdated()      - DaggerfallUI.TalkWindow
 //                                .UpdateListboxTopic (the instant tail)
 
-import { BUILDING_TYPES, isResidence } from '../world/buildingNames.js';
-import { QUEST_MESSAGES } from './quest/quest.js';   // the message-id enum (QuestMachine.cs:260-270)
+import { BUILDING_TYPES, isResidence, OPENED_SHOP_TYPES, OPENED_SHOP_GROUPS } from '../world/buildingNames.js';   // PROF-FOUND: the shops the port opened
+import { QUEST_MESSAGES, isShelved } from './quest/quest.js';   // the message-id enum (QuestMachine.cs:260-270); QUEST-SHELF: a quest set aside
 import { NPC_CONTEXT } from '../characters/staticNpc.js';   // AUDIT 24: NPCData.context is a NUMBER
 import { localizedTable, localizedTextList } from './textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language
 import { getLocalizedFactionName } from './textManager.js';   // L10N3e: the organizations' captions, in the player's language
 import { shownPersonName } from './quest/person.js';   // L10N3e: a quest person's caption, as shown
 import { shownItemName } from './itemInfo.js';   // L10N3e: a quest thing's caption, as shown
+import { FOUND_KIND_ORDER, FOUND_TALK_GROUPS } from './portPlaces.js';   // YARDS-FOUND: the town's yards on the Where-is page - SHIPYARDS-FOUND: and a port town's places after them, one order
 
 /** ListItemType (:128-133). */
 export const LIST_ITEM_TYPE = Object.freeze({ Item: 0, ItemGroup: 1, NavigationBack: 2 });
@@ -579,6 +580,7 @@ export class TopicTree {
     this.listTopicTellMeAbout.push(newListItem({ questionType: QUESTION_TYPE.News, caption: EN.anyNews }));
     this.listTopicTellMeAbout.push(newListItem({ questionType: QUESTION_TYPE.WhereAmI, caption: EN.whereAmI }));
     for (const [questID, questInfo] of this.dictQuestInfo) {
+      if (isShelved(this.deps.getQuest?.(questID))) continue;   // QUEST-SHELF: a quest set aside offers no topic (its topics kept whole - hints, discovery - for its reclaim)
       for (const [resourceName, info] of questInfo.resourceInfo) {
         const itemQuestTopic = newListItem({});
         let captionString = '';
@@ -666,9 +668,35 @@ export class TopicTree {
         this.listTopicLocation.push(itemBuildingTypeGroup);
       }
     }
+    // PROF-FOUND (2026-10-12, Mac: "Ensure all the professions new stores are flagged on the town map and you can ask
+    // NPCs where they are"; Ledger A): the shops the port opened that C#'s skip list keeps off this page - the Furniture
+    // Store, Carpentry's workbench (world/buildingNames.js OPENED_SHOP_TYPES) - a group each after DFU's, asked as any
+    // building is (LocalBuilding). Their own variable, as the yards' below: the shared one's flow is C#'s, untouched
+    for (const buildingType of OPENED_SHOP_TYPES) {
+      const shops = this.listBuildings.filter((x) => x.buildingType === buildingType);
+      if (!shops.length) continue;
+      const shopGroup = newListItem({ type: LIST_ITEM_TYPE.ItemGroup, caption: OPENED_SHOP_GROUPS[buildingType], listChildItems: [] });
+      shopGroup.listChildItems.push(this._newBackItem());
+      for (const s of shops) shopGroup.listChildItems.push(newListItem({ questionType: QUESTION_TYPE.LocalBuilding, caption: s.name, buildingKey: s.buildingKey }));
+      this.listTopicLocation.push(shopGroup);
+    }
+    // YARDS-FOUND (2026-10-10, from play: "Ensure these locations appear when talking to NPCs"; Ledger A): the town's
+    // Stable and Wagon Yard - the port's own, rows of the directory under a key no building holds and a type no DFU
+    // group takes (systems/merchantYards.js yardDirectoryRows) - each its own group after the shops, asked and answered
+    // as a building is (LocalBuilding: the knowledge roll, "%di of here", the map's mark). Their own variable: the
+    // shared one's flow into the General section and the palace arm below is C#'s, untouched
+    for (const kind of FOUND_KIND_ORDER) {   // SHIPYARDS-FOUND: the Stables, the Wagon yards, then the port's Shipyards, Crew halls, Lighthouses and Docks
+      const yards = this.listBuildings.filter((x) => x.yard === kind);
+      if (!yards.length) continue;
+      const yardGroup = newListItem({ type: LIST_ITEM_TYPE.ItemGroup, caption: FOUND_TALK_GROUPS[kind], listChildItems: [] });
+      yardGroup.listChildItems.push(this._newBackItem());
+      for (const y of yards) yardGroup.listChildItems.push(newListItem({ questionType: QUESTION_TYPE.LocalBuilding, caption: y.name, buildingKey: y.buildingKey }));
+      this.listTopicLocation.push(yardGroup);
+    }
     // the quest-residence General section
     let alreadyCreatedGeneralSubSection = false;
     for (const [questID, questInfo] of this.dictQuestInfo) {
+      if (isShelved(this.deps.getQuest?.(questID))) continue;   // QUEST-SHELF: a quest set aside offers no topic (its topics kept whole - hints, discovery - for its reclaim)
       for (const [resourceName, info] of questInfo.resourceInfo) {
         if (info.resourceType !== QUEST_INFO_RESOURCE_TYPE.Location) continue;
         const place = info.questResource;
@@ -779,6 +807,7 @@ export class TopicTree {
   assembleTopicListPerson() {
     this.listTopicPerson = [];
     for (const [questID, questInfo] of this.dictQuestInfo) {
+      if (isShelved(this.deps.getQuest?.(questID))) continue;   // QUEST-SHELF: a quest set aside offers no topic (its topics kept whole - hints, discovery - for its reclaim)
       for (const [resourceName, info] of questInfo.resourceInfo) {
         if (info.resourceType !== QUEST_INFO_RESOURCE_TYPE.Person) continue;
         const person = info.questResource;

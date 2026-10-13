@@ -1,6 +1,8 @@
 # Revenants
 
 **Status:** shipped 2026-10-02 (`src/systems/revenant.js`, `test/revenant.test.js`).
+**Next:** `12-Enhanced-AI/Feud-Arc.md` (FEUD, proposed 2026-10-04) - memory, a weakness, the will, a last stand, a
+signature, a band, a lair, theft, festering, new deeds and loyalty. Nothing below changes until a FEUD slice ships.
 Mac: "the ability for these enemies that kill you, or a very small chance to flee at low health. These enemies can
 return at a later time stronger, with a new name, a chance of more loot and taunt the player. This is our own
 [...] system."
@@ -18,13 +20,14 @@ comes back later under a name of its own, stronger, carrying better loot, and it
 A **special** foe: an elite (`systems/eliteFoes.js`), a LOOT7 champion (`systems/champions.js`), or a revenant already.
 It must be level 3 or more (LOOT7's floor), and never the city watch, an ally, or a quest's foe
 (`revenantCandidate`). With the **Loot rarity** row off nothing here happens: no revenant is made, flees or returns.
+Online, under **Renown 10**, a character's revenants are held (RENOWN-GATE, section 39): none is made, flees or returns.
 
 Two deeds make one:
 
 | Deed | How | Seam |
 |---|---|---|
 | **Slew** | Its blow takes the player's last health (melee or an arrow) | The struck seam marks the attacker (`combat/formulas.js`), the damage door takes the mark, the hurt tells `registerPlayerBlowLanded` (`systems/sigilSetPowers.js`). Confirmed a microtask later, after `hurtPlayer` is done, so a death Stendarr's mercy (`setAvoidDeathHook`) undoes makes no revenant. |
-| **Fled** | Under 20% of its health for the first time, it wins a roll (5%; 15% for a revenant already) and runs. Out of reach before its run ends, it has escaped. | `scenes/exteriorFoes.js` update: `revenantFleeHealth` and `rollRevenantFlee`, then `ai.flee(playerFeet, 8 s)` (`characters/enemyMotor.js`). While fleeing it does nothing else. At the end of its run or 45 m off, `escapeFoe` removes it with no corpse and no kill. |
+| **Fled** | Under 20% of its health for the first time (35% for a revenant of rank 1 or 2), it wins a roll (5%; 80% for a revenant of rank 1 or 2, 15% from rank 3, where its will takes over - FLIGHT-FIRST, section 38) and runs, at twice its walk. Out of reach before its run ends, it has escaped. | `scenes/exteriorFoes.js` update: `revenantFleeHealth` and `rollRevenantFlee`, then `ai.flee(playerFeet, 8 s)` (`characters/enemyMotor.js`). While fleeing it does nothing else. At the end of its run or 45 m off, `escapeFoe` removes it with no corpse and no kill. |
 
 A kill no blow names (a spell's burn, a lingering effect's round, a poison's tick) goes to the foe whose harm last
 reached the player (**REVENANT-HARM**, `systems/harmMark.js`, a leaf):
@@ -41,7 +44,7 @@ while running, its walk still drawn. It is retired through the quest pool's own 
 revenant closes there too.
 
 **One flee law** for every pool: `revenantFleeStep` answers each frame with `start`, `run`, `escape`, `cornered` or
-nothing. A foe chased down, its run spent within 20 m (`REVENANT_ESCAPE_NEAR`), is **cornered**: it turns and fights to
+nothing. A foe chased down, its run spent within 12 m (`REVENANT_ESCAPE_NEAR`; 20 m until FLIGHT-FIRST), is **cornered**: it turns and fights to
 the end and never runs again ("Then I take you with me!"). Only out of reach does it escape. The step is asked only of a
 foe running or under the line, so nothing is made per foe per frame.
 
@@ -76,9 +79,9 @@ A record per character:
 
 - **Due** one to three days later on the character's own clock (`worldTick.ownMinutes`).
 - **Claimed by its roll**: the record is out from the roll that picks it, so no second copy stands while its stand loads. A stand that stood nobody frees it (`releaseRevenantStand`).
-- On a due revenant, an open-world encounter roll (`scenes/world.js runEncounterTick`) stands it instead, 50% of the
-  rolls. Only one is out at a time, the highest rank first. This happens before the party's group-roll gate: a revenant
-  is the player's own.
+- On a due revenant, an open-world encounter roll (`scenes/world.js runEncounterTick`) stands it instead, 40% of the
+  rolls (50% until RENOWN-GATE, section 39). Only one is out at a time, the highest rank first. This happens before the
+  party's group-roll gate: a revenant is the player's own. Online, under Renown 10, no roll stands one (section 39).
 - **Stood** by `spawnFoe(..., { revenant })` (`revenantSpawnOptions`):
   - an elite's glow again where elites stand (online), never a fresh roll;
   - its champion trait again, never a fresh roll;
@@ -112,11 +115,19 @@ Two places, merged per record by `rev`:
 A reload of an older save keeps every revenant made since, and never raises one already slain. Another character's
 revenants are its own.
 
+**FEUD's fields (RVN1, 2026-10-04).** The record carries `scars`, `learned`, `weak`, `weakKnown`, `sig`, `kin`, `lair`,
+`lairKnown`, `took`, `wrath`, `fights` and a sworn one's `companion.loyalty` - each checked by its validator when read
+back, and an older record's derived (its weakness, signature at rank 2 and up, and kin drawn on its id; its fights
+`kills + escapes + returns`; a loyalty its personality's start). The law is `systems/revenantFeud.js feudFields`
+(`bible/12-Enhanced-AI/Feud-Arc.md` section 26). The slot and the mirror also keep `lastDay` (RVN9's festering day),
+read back a whole day or none, the later of the two kept.
+
 ## 6. Online
 
 A revenant is its character's own memory. A returning one is my own foe, streamed as any: its kind, health, trait, glow
 and (**REVENANT-WIRE**) its name. The foe record's `nm` is printable and at most `REVENANT_NAME_MAX` (64) characters,
-validated in `net/wire.js validFoeRecord`; the relay is `world144`. Every puppet is called what its owner calls it.
+validated in `net/wire.js validFoeRecord`; the relay is `world153` (`world144`, then `world152`, on its branch, until
+main took both numbers). Every puppet is called what its owner calls it.
 
 ## 7. Names everywhere (FOE-TITLE)
 
@@ -149,8 +160,8 @@ The face is `ui/revenantCard.js`, on the enhanced skin only:
 
 ## 7b. The page (REVENANT-PAGE)
 
-`ui/revenantPage.js` is the **Revenants** page on the Enhanced pause menu's Stats rail, shown while revenants are made or
-any is remembered. The living come first, strongest first, each with:
+`ui/revenantPage.js` is the **Revenants** page on the Enhanced pause menu's Holdings tab (the Stats rail until HOLDINGS,
+2026-10-03), shown while revenants are made or any is remembered. The living come first, strongest first, each with:
 
 - its portrait and rank;
 - what it is;
@@ -167,14 +178,17 @@ Every number is a named constant at the top of `systems/revenant.js`:
 | Constant | Value |
 |---|---|
 | `REVENANT_MIN_LEVEL` | 3 |
+| `REVENANT_MIN_RENOWN` | 10 (online - RENOWN-GATE, section 39) |
 | `REVENANT_MAX` | 5 |
 | `REVENANT_MAX_RANK` | 5 |
-| `REVENANT_FLEE_HEALTH` | 0.2 |
-| `REVENANT_FLEE_CHANCE` / `_REVENANT` | 0.05 / 0.15 |
+| `REVENANT_FLEE_HEALTH` / `_YOUNG` | 0.2 / 0.35 (FLIGHT-FIRST: ranks 1-2) |
+| `REVENANT_FLEE_CHANCE` / `_YOUNG` / `_REVENANT` | 0.05 / 0.8 (ranks 1-2) / 0.15 (rank 3 and up) |
 | `REVENANT_FLEE_SECONDS` | 8 |
+| `REVENANT_FLEE_PACE` | 2 (its run, a share of its walk - FLIGHT-FIRST) |
+| `REVENANT_ESCAPE_NEAR` | 12 (20 until FLIGHT-FIRST) |
 | `REVENANT_ESCAPE_DISTANCE` | 45 |
 | `REVENANT_RETURN_MIN/MAX_MINUTES` | 1440 / 4320 |
-| `REVENANT_RETURN_CHANCE` | 0.5 |
+| `REVENANT_RETURN_CHANCE` | 0.4 (0.5 until RENOWN-GATE) |
 | `REVENANT_LOST_MINUTES` | 360 |
 | `REVENANT_HEALTH_PER_RANK` | 0.25 |
 | `REVENANT_DAMAGE_PER_RANK` | 0.1 |
@@ -271,6 +285,7 @@ enhanced plus UI feature."
 
 - **Sworn**: spared, it rises, gathers into a portal where it knelt, and is sworn to the player for good - it hunts
   nobody, never returns as a foe, and its record keeps its place (`companion`: with the player, away, or resting).
+  It fights as a crew companion does, the foe fighting the player's side first (ASSIST, `01-Overview/Field-Bugs-2026-10-05c.md`).
 - **The crew's own layer** (`scenes/crewAshore.js`) stands the sworn - every place, every door, the heel, the catch-up,
   health and spells carried - as a second party of the crew's shape (`systems/revenantCompanions.js revenantParty`), never
   under the naval arc's gate. Each stands at the player's level with its rank's strength (health once, its blows always),
@@ -280,7 +295,7 @@ enhanced plus UI feature."
   a hand is refused ashore when they are full ("no room at your side"), and a newly spared one waits **away**.
 - **Six** sworn at most; with six, SPARE is refused until one is released.
 - **Knocked out**, it is carried off through a portal to rest eight hours, then waits, fit again, to be called.
-- **The Companions page** (`ui/companionRoster.js`, the pause menu's Stats rail): the slot strip (who stands in each,
+- **The Companions page** (`ui/companionRoster.js`, the pause menu's Holdings tab): the slot strip (who stands in each,
   a crew hand by name, the open ones), **At your side** (portrait, rank, personality, health; Send away), **Away**
   (Call - refused, and saying why, while the slots are full or it is still hurt; its rest), **Release** asked twice.
 - **Its words**: as it arrives when called, as it is sent away or released, when it falls, now and then as it goes into
@@ -307,8 +322,16 @@ just popping in and out."
 
 The choice is the owner's (a revenant is its character's memory). The foe record carries `yd` (kneeling), `ex`
 (being executed) and `sp` (spared, rising into its portal), so every puppet kneels, burns away and goes as its owner's
-does; the hover says it is beaten (`world152`, re-recorded). A foe adopted by a peer (the owner's death) stands as
-itself - its owner's judgement goes with the owner - and a foe mid-judgement is never handed over.
+does; the hover says it is beaten (`world153`, with REVENANT-WIRE's `nm`). A foe adopted by a peer (the owner's
+death) stands as itself - its owner's judgement goes with the owner - and a foe mid-judgement is never handed over.
+
+**REVENANT-HEIR** (Discord, 2026-10-07: "I got them to Elite Level V and I thought they'd kneel but they just keeled
+over and died"): a revenant is never handed over at all. The handovers (the owner's death, a door out, OW6's walk-away;
+underground, a joiner's own frame) name an heir for every other live foe and none for one carrying a revenant
+(`exteriorFoes.js foesFrame`, `dungeonContext.js ownFrame`). Its record lives in its owner's save alone
+(`revenantById`), so an heir's copy read a plain foe: no last stand, no will, no kneel, a corpse, and the owner's record
+never told. It goes with its owner, as a watchman goes with his own. A party member's killing blow lands at the owner,
+where the record is, and brings its last stand and then its fate there (`test/revenant_fate.test.js`).
 
 ## 16. The audit (2026-10-02, Mac: "Audit everything and ensure perfection")
 
@@ -348,3 +371,326 @@ every finding fixed (`test/revenant_audit.test.js`, `tools/mutants/revenantaudit
   the burst's red flash on the hit flash's own clock; a body more gone than whole casts no shadow; the lane's edge
   decoded into its linear light; the portal's sound by its ID; the leave hand-offs wait for the foe loop (a splice under
   it skipped a foe for a frame).
+
+## 17. Memory: the ledger of wounds (FEUD RVN1, 2026-10-04)
+
+Mac: "I want to improve the revenant system to be more complex, less easy to accomplish and more detailed" - the arc is
+`bible/12-Enhanced-AI/Feud-Arc.md` (Part B). A body that may become (or already is) a revenant (`revenantCandidate`)
+keeps a **ledger** while the player fights it (`systems/feudLedger.js`, a leaf on `entity._feud`): what the player
+dealt by weapon class (`blade`, `blunt`, `axe`, `h2h`, `arrow`) and element (`fire`, `frost`, `shock`, `poison`,
+`magic`), silver apart; the staggers, the blows dodged (perfectly too), the blows at its back, a backstab; whether the
+fight began by night, and where (`street`, `building`, `dungeon`). The deed (`revenantDeed`, the one home of the kill
+and both escapes) folds it into the record's **scars** - the latest six: its leading source at 40% of the damage or
+more, else `mixed`; staggered twice, three blows dodged, three at its back, a night fight, the deed - and counts the
+fight. The page says them ("Scarred by arrows, fought by night."). What the scars teach a revenant is RVN2's.
+
+
+## 18. What it learns: adaptations (FEUD RVN2, 2026-10-04)
+
+At each deed it learns one lesson of the fight - the first of its scars that teaches something it does not hold - and
+keeps its rank's worth (three at most), the oldest forgotten (`systems/revenantFeud.js lessonOf`, `withLesson`). What it
+learned stands with it (`entity.revenant.edge`, `adaptEdge`): **Mailed**, **Hewn-hard**, **Braced**, **Unflinching** and
+**Arrow-wise** take a weapon class less (x0.6 at the least); **Fireproof**, **Rimebound**, **Grounded**, **Venom-blooded**
+and **Spell-scarred** +25 on the saving throw against their element (DFU's own Resistant - never immunity); a
+**Silver-scarred** one loses its kind's silver double; **Steadfast** a heavier poise and one blow in two iron; **Patient**
+longer tracking, more feints, wider wind-ups; **Watchful** never unaware (no backstab); **Arrow-wise** faster at range
+and closing with its charge or leap; **Relentless** faster and never culled while it hunts; **Night-stalker** comes only
+by night, its blows heavier. Nothing touches its weakness. The page lists what it learned. The law and every number:
+`bible/12-Enhanced-AI/Feud-Arc.md` section 13 and its RVN2 record.
+
+## 19. Its weakness and its will (FEUD RVN3, 2026-10-04)
+
+Each revenant hides one weakness, drawn on its id from its kind's pool (an element, a metal, a weapon class, or the
+daylight). A blow of it lands x1.5 (an element's at -50 on the saving throw; the daylight's x1.25 on every blow while the
+sky reads day), weighs twice on a wind-up, and no adaptation takes from it. The first blow of it reveals it - the
+"Weakness" word, a hiss, its card - and under half its health, unknown, it flinches from it (a hint). From rank 3 its
+will must be broken in the fight: strike its weakness, or stagger it twice (since FEUD BALANCE, section 34: stagger it
+once, or dodge one of its blows perfectly). Unbroken at the killing blow it does not
+kneel - it tears away into the smoke, an escape that ranks it up. A Disintegrate kills it outright. The page says its
+weakness as known and the will's rule. The law: `bible/12-Enhanced-AI/Feud-Arc.md` section 14 and its RVN3 record.
+
+## 20. The last stand (FEUD RVN4, 2026-10-04)
+
+From rank 3, once a fight, the blow that would kneel or kill a revenant brings it back instead - to 35%, 45% or 55% of
+its health by rank (since FEUD BALANCE, section 34: 30%, 35% or 40%) - roaring: for 1.2 seconds no blow reaches it, and (Enhanced AI on) an iron ring about its feet lands
+as the roar ends; with the switch off it stands and roars. Then phase two for the rest of the fight: heavier and quicker
+blows, more Speed, shorter wind-ups and cooldowns, chains of three, iron one in two, an ember rim and a tenth more size.
+A Disintegrate still kills. The page names it from rank 3. The law: `bible/12-Enhanced-AI/Feud-Arc.md` section 15 and its
+RVN4 record.
+
+## 21. Signature blows (FEUD RVN5, 2026-10-04)
+
+From rank 2 a revenant has one signature, drawn on its id: a blade a slam or a charge, a beast a charge or a leap, a
+brute a ring or a charge; a caster, a spectral, a small kind or a flyer the **pyre** - a disc at your feet that lands as
+a blast of its element (an atronach's and an imp's fire, a lich's frost, vermin's poison, a harpy's shock, any other's
+magic), a spell your saving throw and resistances answer. Twice its blow, its own cooldown of 12 to 18 seconds, iron
+from rank 3, drawn in its ember, its wind-up's bark deeper, and called out the first time a fight it winds it up
+("Grushnak readies Skullsplitter!"). It is named "<given>'s <noun>"; the page shows it from rank 2, and says "(with
+Enhanced AI)" with that switch off - the signature is a telegraph, and only the Enhanced AI throws one. The law:
+`bible/12-Enhanced-AI/Feud-Arc.md` section 16 and its RVN5 record.
+
+## 22. The band (FEUD RVN6, 2026-10-04)
+
+From rank 2 a returning revenant brings its kin - one at rank 2, two at rank 3, three from rank 4 - drawn on its id and
+kept on its record: an orc's orcs, the dead their own, a beast its own kind, a person its class's family (a solitary
+kind - a giant, a daedra, a lich - rides alone). They stand beside it, ordinary (never a champion, an elite or a
+revenant), never fight each other, and are named for it ("Orc of Grushnak's Warband"). When it kneels, runs, dies, is
+executed or tears away they scatter - each runs and is gone ("The warband scatters."). At a rank-5 one's last stand its
+survivors run to it, or two of its kin step out of a portal. The page lists who rides with it. The law:
+`bible/12-Enhanced-AI/Feud-Arc.md` section 17 and its RVN6 record.
+
+## 23. The hunt (FEUD RVN7, 2026-10-04 - in parts)
+
+**Its lair (RVN7a).** A revenant that wins a fight in the open world, or escapes one, goes to ground in a named
+dungeon four to ten map pixels from where it happened - the one nearest a direction drawn on its id, the dungeons the
+town boards' bounties use. With none in reach it roams. A deed underground makes that dungeon its lair, and a lair
+moved is one the player must hear of again. The page says what the player knows of it.
+
+**The rumour (RVN7b).** Ask a townsperson for news within twenty map pixels of a living revenant's lair, or in its
+lair's region, and one time in three or so the answer is of it - its kind, its name, its lair, how far and which way -
+spending that person's one answer, and the player then knows its lair. One rumour in two carries its weakness, hinted by
+its kind or, one time in three, named.
+
+**The map and the journal (RVN7c).** A lair heard of is a blood-red circle with its name on the travel maps, and a hunt
+in the quest log ("Hunt: Grushnak the Butcher" - the way there from where the player stands). Abandoning the hunt
+forgets the lair until it is heard of again.
+
+**The lair stand (RVN7d).** Enter its lair while it lives, unsworn, and is due or its lair known, and it is there - at
+the dungeon's far end, resting with its band (a first blow may be a backstab), its gold a quarter richer. Rest in its
+lair while it is due and it wakes you, standing over you. Any rest underground may be a due revenant's return. The law:
+`bible/12-Enhanced-AI/Feud-Arc.md` section 18 and its RVN7a-d records.
+
+## 24. What it takes (FEUD RVN8, 2026-10-04)
+
+Online, a revenant that kills the player takes one piece at the respawn - the equipped weapon or one of the pack's five
+most valuable pieces, never a quest item, a summoned piece, the Materials Bag, gold or a locked piece; three at most,
+after which it only gloats. The wake box says what it took. It carries what it took at every stand: kill it and it is in
+the body, execute it and it is in the pile, spare it and it hands it back ("It's yours. It always was."); let it escape
+and it keeps it. A revenant holding a piece is never forgotten to make room. The law: `bible/12-Enhanced-AI/Feud-Arc.md`
+section 19 and its RVN8 record.
+
+## 25. Festering (FEUD RVN9, 2026-10-04)
+
+A revenant left alone grows angry. Three days past the day it was due, and every three days after, it gains a wrath -
+a tenth more health and a twentieth more force a wrath when it next stands, and facing it clears them. At three wraths
+it ranks up on its own ("Grushnak grows bolder - it has waited too long."), never past rank 5. Days are the character's
+own: online the clock stands while the player is away, so nothing festers between sessions. The law:
+`bible/12-Enhanced-AI/Feud-Arc.md` section 20 and its RVN9 record.
+
+## 26. Felled and routed (FEUD RVN10, 2026-10-05)
+
+Two new deeds. **Felled**: a special foe whose blow knocks out a companion - a sworn revenant or a crew hand ashore -
+becomes a revenant (or ranks up) on the spot, the companion's name on its deed and often in its title ("Grushnak,
+Bane of Borgakh"), its card saying so. **Routed**: a special foe on me that hurt me in the last 30 s, when I get 70 m
+from it or a Recall or a teleport takes me out of its fight, after a hurt in that fight left me under half my health -
+it is gone, a revenant (or a stronger one) that has learned to be Relentless ("Who Made Ayla Run"). Never after my
+death, never by a load. The law: `bible/12-Enhanced-AI/Feud-Arc.md` section 21 and its RVN10 record.
+
+## 27. Loyalty (FEUD RVN11a, 2026-10-05)
+
+A sworn revenant's loyalty (0-100) starts by its personality and moves with how it is kept: up for a fight won at the
+player's side, each day with the player and being called back after a rest; down for each day sent away, being knocked
+out, being sent away twice in a day, and seeing one of its own kind executed. The Companions page shows it as a bar and a
+word - Devoted, Loyal, Wavering or Restless. A Devoted one strikes harder and calls a warning when a foe winds up behind
+the player ("Behind you, Ayla!"). The law: `bible/12-Enhanced-AI/Feud-Arc.md` section 22 and its RVN11a record.
+
+## 28. Desertion (FEUD RVN11b, 2026-10-05)
+
+A sworn revenant whose loyalty falls under 20 may leave - one day in seven or so. It goes through its portal, a living
+revenant again under its own rank, now called the Oathbreaker, and comes back within three days to fight. It keeps the
+more valuable half of what was in its pack (killing, executing or sparing it again returns it) and leaves the rest, and
+any gold, to the player. The law: `bible/12-Enhanced-AI/Feud-Arc.md` section 22.2 and its RVN11b record.
+
+## 29. Betrayal (FEUD RVN11c, 2026-10-05)
+
+An Unhinged, Craven or Brutal sworn revenant whose loyalty falls under 10 may turn on the player: when a blow leaves the
+player under a quarter of their health, it turns where it stands - stronger by a rank, now called the Betrayer - and
+fights. What it carried it keeps as a deserter does (kill it to take it back); the rest falls to the player. The others
+never betray; they desert. The law: `bible/12-Enhanced-AI/Feud-Arc.md` section 22.3 and its RVN11c record.
+
+## 30. Its words (FEUD RVN12a, 2026-10-05)
+
+Every revenant now has words, in its own voice, for what FEUD gave it: what it learned of the player's fighting ("I know
+your arrows now"), its signature blow by name, its last stand, the piece it took, its long wait, the companion it felled
+("Where's Borgakh, Ayla?"), the player's flight, and - sworn - its desertion, its betrayal and a Devoted one's warning.
+Its return speaks to its newest deed against the player. Beasts never speak: the narrator says what they do. The law:
+`bible/12-Enhanced-AI/Feud-Arc.md` section 23 and its RVN12a record.
+
+## 31. The page and the card (FEUD RVN12b, 2026-10-05)
+
+The Revenants page (Holdings) now shows, for each living revenant, what it learned as chips - each saying what it does
+to the player - what it took, and how far it has festered (three pips), beside its weakness, will, last stand,
+signature, band and lair; a sworn one's loyalty; and a fallen one that once tore away unbroken says so in its deeds. Its
+cards wear FEUD's edges: a last stand blood with an ember rim, a signature iron red, a theft amber, a betrayal black.
+The law: `bible/12-Enhanced-AI/Feud-Arc.md` section 24 and its RVN12b record.
+
+## 32. Online (FEUD RVN13, 2026-10-05)
+
+A revenant's adaptations, its weakness and its last stand now ride the foe stream (relay world164), so another player
+fighting your revenant hits it as you would - its learned resistances and its weakness count on their blows too - and
+sees its last stand's ember rim; a follower is named for its band on every screen. A party member's blow of its weakness
+reveals that weakness to you. What it took, its festering, its lair, the rumours and a sworn one's loyalty stay your
+character's own. The law: `bible/12-Enhanced-AI/Feud-Arc.md` section 25 and its RVN13 record.
+
+## 33. The audit (FEUD AUDIT FEUD, 2026-10-05)
+
+Everything FEUD gave the revenants was read again whole and corrected: a party member's blow of your revenant's
+weakness now really reveals it to you; a piece it took is named properly ("your Glenmoril Bow", never "your The
+Glenmoril Bow") and no line says "your arrows is"; a deserter or betrayer that comes back speaks of its leaving, not of
+what it did before it served you. A reload no longer loses a betrayer's pack, strands what it held on a record that has
+since fallen, or counts festering and loyalty days twice; a deserter never rides off with a locked piece or a quest item;
+a Resurrect or a load leaves no killer waiting to take something at a later death. A felling no longer mends a will you
+broke, nor wipes the "it killed you" card; a kneeling or vanishing foe fells and routs nobody; a companion knocked out
+cannot betray you; a foe that walked off is no fight won; a dungeon band breaks when its master runs; no lair lands on
+the Burning Court or the Arena's sand. The duel harness now fights revenants too, and measures the arc's three balance
+targets for them. The law: `bible/12-Enhanced-AI/Feud-Arc.md`, the AUDIT FEUD record.
+
+## 34. The balance (FEUD BALANCE, 2026-10-05)
+
+Measured against the arc's own targets, three of Mac's numbers were changed by Mac's call: a revenant's will (rank 3
+and up) now breaks with its weakness, ONE stagger, or ONE perfect dodge of its blow - two staggers came about one fight
+in nine, so a player who fought well rarely saw it kneel; its last stand rises to 30 / 35 / 40% of its health at ranks
+3 / 4 / 5 (from 35 / 45 / 55%), so a rank 5 is about two and a half to three times a rank 1's fight, not more; and
+dodging is promised what it really buys - the will, and the blows not taken - rather than a faster kill. Measured: a
+player who dodges perfectly makes a rank-3 kneel nine fights in ten; one who only trades blows, about one in seven. The
+law: `bible/12-Enhanced-AI/Feud-Arc.md` section 31's OPEN 22-24 and the FEUD BALANCE record.
+
+## 35. The second audit (FEUD AUDIT FEUD 2, 2026-10-05)
+
+The audit and the balance read again: a leap or a charge stopped short against a wall no longer counts as your perfect
+dodge (and breaks no will); reloading an older save no longer bleeds into a newer one, nor loses a companion's pack
+whose leaving has scrolled out of its history, nor a piece a since-forgotten revenant held; a revenant in its last stand
+keeps its fury when it fells your companion; "It hands back your Glenmoril Bow"; online, only a party member's blow that
+landed reveals a weakness (a miss did), and you no longer see a stray "Weakness" for theirs; a Recall no longer turns
+another player's dungeon foe into your revenant; no lair in the Ocean Holes. The balance was measured again with the
+duel harness made faithful to the game - every target holds: a perfect dodger makes a rank-3 kneel 19 fights in 20, a
+trader about one in eight, and a rank 5 is about two and two-thirds times a rank 1's fight. The law:
+`bible/12-Enhanced-AI/Feud-Arc.md`, the AUDIT FEUD 2 record.
+
+## 36. Its blows online (FEUD WIRE, 2026-10-05)
+
+A revenant now strikes the party members fighting it as hard as it strikes you: its rank's, its wrath's and a
+Night-stalker's night blows, its last stand's fury, and its signature blow at double weight, in its ember with its deeper
+wind-up sound - before, another player's copy of it hit with its kind's plain blows and a plain shape. Its called name
+for the signature, and its pyre, stay yours alone. Relay world165. The law: `bible/12-Enhanced-AI/Feud-Arc.md` section
+25 and the FEUD WIRE record.
+
+## 37. Its band and its flight, measured (FEUD HARNESS, 2026-10-05)
+
+The arc's balance tool now fights a revenant as the game gives it - its band about it, and its chance to run - and every
+balance target still holds: a perfect dodger makes a rank-3 kneel about nine fights in ten, a trader about one in nine,
+and a rank 5 is about two and two-thirds times a rank 1's fight. Modelling the flight found a fault: a revenant that rose
+in its last stand while running away kept running, untargeted, until its run was spent - it now turns and fights its
+last stand where it rose. The law: `bible/12-Enhanced-AI/Feud-Arc.md`, the FEUD HARNESS record.
+
+
+## 38. Flight first (FLIGHT-FIRST, 2026-10-07)
+
+Mac: "revenants often can easily be killed and recruited at rank 1 and player death advances their rank. Player death
+shouldnt be the common way of revenant growth, it should be more common for revenants to flee instead of being easily
+captured."
+
+**Measured before** (`tools/tellDuel.mjs`, a Longsword, 300 fights a rank): ranks 1 and 2 knelt in every fight. One in
+ten broke and ran, and every one of those was brought down as it ran - not one flight in the whole measure escaped, at
+any rank. So the one deed that ranked a young revenant up was killing the player. Three causes:
+
+- **Its roll**: 15% for a revenant already, at a fifth of its health - and one blow often carried it past the line
+  without a roll at all.
+- **Its run**: the flee walked it at its own walk (4.5-6 m/s), and a player runs at 8.1 m/s at Speed and Running 50. A
+  chase always caught it.
+- **A fault in the motor**: the flee kept the brain's last step (TACT2's ring, a back-step - `_tacDir`), and the walk
+  reads that step before its own way, so a foe that broke while circling ran on round the ring at the ring's pace, in
+  reach. Half of all flights ran that way.
+
+**Now**:
+
+- A revenant **under its will's rank** (ranks 1 and 2 - `revenantFeud.js WILL_RANK`; from rank 3 its will tears it away
+  at the killing blow, section 19) breaks at **35%** of its health (`REVENANT_FLEE_HEALTH_YOUNG`) on an **80%** roll
+  (`REVENANT_FLEE_CHANCE_YOUNG`). An elite or a champion not yet a revenant keeps Mac's "very small chance" (5% at a
+  fifth); a revenant from rank 3, 15% at a fifth.
+- Every run of the flee law is at **twice its walk** (`REVENANT_FLEE_PACE`; the motor's `flee(from, seconds, pace)` -
+  the watch's fright and a scattered band still walk). An Orc runs 10 m/s: faster than a player at Speed and Running 50,
+  slower than one at about 9.5 m/s and up.
+- The flee **drops the brain's step**: it runs straight away.
+- A run spent within **12 m** of the player (`REVENANT_ESCAPE_NEAR`, 20 before) is cornered; past it, it escaped. A
+  run's lead on a chaser at Speed and Running 50 is about 17 m - a flight that got away, not one run down.
+
+**Measured after** (the same, 1,000 fights a rank): rank 1 escapes in 70% of fights and kneels in 30%, rank 2 68% and
+32%; against a Dagger about 80% escape, against a Warhammer about 60% (150 fights a rank). A fast runner (Speed and Running 90) runs every flight down;
+a bow or a spell can bring it down as it runs. From rank 3 about one fight in eight now ends in a real flight.
+
+**The balance targets** (`12-Enhanced-AI/Feud-Arc.md` section 28) all hold. The will's three now read the fights its
+will decided - knelt of knelt and torn away; a flight that got away decided nothing - and a rank's weight is read off
+ranks 1 and 5 fought never running (a young revenant's flight ends most of its fights, so its time to the end is no
+measure of how hard it is to bring down): the will by its weakness 100%, by dodging 93.1%, by trading 11.5%; rank 5
+over rank 1, 2.67 trading and 2.64 dodging.
+
+Killing the player still ranks a revenant up; it is no longer nearly the only way. Pinned: `test/flightfirst.test.js`
+(6), `tools/mutants/flightfirst.json` (15 dead). PIN MOVED: `test/feudharness.test.js` - its flight and rank 5's
+rally chase as a fast runner, and a rank 3 run down is cornered (its last stand comes before a kneel mid-run);
+`test/audittell.test.js` - the flee's signature.
+
+## 39. The Renown gate (RENOWN-GATE, 2026-10-12)
+
+The owner: "I want to gate elite/revenant spawns behind renown level and also slighty reduce the spawn rate of
+revnants". Asked, the owner chose elites at Renown 5 and revenants at 10 ("Elites 5, revenants 10"), offline "Unchanged
+offline", a shared dungeon's elites "Room's pick stands", and the rate "Return chance 50% → 40%".
+
+**The door.** Renown is online's own (`Accounts-And-Cloud-Saves-Arc.md` RENOWN1: offline earns none), so the gate is
+too. `systems/sigil.js renownOpens(min)` sits beside the door every Renown-woken power reads (the sigils', the sets',
+RENOWN-LOOT's): offline it is always open; online it opens once the page's Renown reaches `min`, and never before the
+page knows it (the moments before the first token) - RENOWN-LOOT's first-stage law, nothing ahead of the Renown behind
+it. `scenes/world.js` sets the door; `scenes/exterior.js`, the offline bench, never does.
+
+**Elites at Renown 5** (`eliteFoes.js ELITE_FOE_MIN_RENOWN`, `eliteRenownOpen`). The elites a player stands as its
+own wait for it: the open world's one in twenty (`rollOverworldElite` - a street puppet reads its owner's word off
+`z`) and a search's waking dead (`searchables.js rollSearchElite`). Each draws its roll first, so the dice are the
+same held or not. A save's word on a foe stands whatever the Renown (it is never re-rolled), and a returning revenant
+stands as what it was. Not a shared dungeon's pick (`pickDungeonElites`: a normal dungeon's one in five, an Elite
+Dungeon's three or four, a Super dungeon's six). Every client builds that pick alike, and the room's memory carries no
+elite word (`net/wire.js validSharedFoe`; adding one is a relay deploy), so one client's Renown would split the room:
+a joiner's copy would take the host's x5 health off the record, with no glow and x1 blows. It stays the room's, as
+ELITE-FLOOR's class level does online (`05-Combat/Balance-Arc.md` section 10). The arena's tier champions are their
+bout's.
+
+**Revenants at Renown 10** (`revenant.js REVENANT_MIN_RENOWN`, `revenantHeld`) - an evening's play past the
+elites', so a returning elite always finds elites standing. Under it a character's revenants are HELD, and every door
+that makes, stands, spreads or marks one answers as the Loot rarity row's off does:
+
+- none is made, runs or keeps a fight's ledger (`revenantCandidate`) - a flight that could make no revenant would only
+  rob the player of a kill;
+- none returns on an encounter roll or a rest, none is at home in its lair, and none is claimed (`revenantToReturn`,
+  `revenantForLair`); a sworn one at the edge of betrayal stays sworn (`revenantBetrays`: its turning stands a hostile
+  revenant beside the player);
+- the towns say nothing of one, the person's answer unspent (`revenantRumor`); the maps mark no lair and the log holds
+  no hunt (`revenantMapMarks`, `revenantHuntEntries`);
+- none festers (RVN9, section 25): one that cannot come is not left unfought, and its held days pass uncounted, so the
+  gate's opening catches none up.
+
+What is remembered stays. The page lists every one, each **Held** - "It will not come for you before Renown 10." - with
+its lair named but promised on no map and by no town, and with none it says revenants come from Renown 10
+(`ui/revenantPage.js` comeWords, lairWords). The sworn keep their days: loyalty moves and a desertion leaves, as it
+stands nothing (a deserter's return is held like any).
+
+**The rate.** A due revenant takes 40% of the encounter rolls (`REVENANT_RETURN_CHANCE`, 0.5 before) - a fifth fewer
+returns, online and offline alike.
+
+**Offline nothing is held**: elites stand as BAL4 has them, and revenants are made, flee and come as before - at the
+new rate.
+
+**The four hosts** (rule 17e). Every gate is read inside the shared laws, so no host carries one of its own (a sweep of
+`src/scenes/` pins it):
+
+- `scenes/world.js` WIRED: its wilds' roll (the `exteriorFoes.js` pool), its graveyards' searches, its returns,
+  rumors, marks and hunts, all through the laws; it sets the door.
+- `scenes/dungeonContext.js` WIRED: a search's elite, a lair's stand, a rest's return and a flight, through the laws;
+  its layout pick the room's, untouched (the owner's choice).
+- `scenes/worldModes.js` WIRED for its dungeon mode (the same context). FLAGGED for its buildings: they roll no elite
+  (the one factory's `inLocation` defaults to a location's ground) and stand no return, and its arena stages' tier
+  champions are their bout's - nothing to gate.
+- `scenes/exterior.js` WIRED through `revenantToReturn`; its pool rolls no elite (a town's ground, as a building's),
+  and the bench never goes online, so nothing is held there.
+
+Pinned: `test/renowngate.test.js` (14); `tools/mutants/renowngate.json` (30, all dead). No pin moved; two AUDIT BAL
+records (`tools/mutants/bal.json` AUDIT-BAL-a-search-elite-anywhere and AUDIT-BAL-the-search-roll-skipped) were re-aimed
+by content at the search's roll as it now reads, and both still die.

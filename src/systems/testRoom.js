@@ -36,8 +36,12 @@ import { BOOK_TEMPLATE, createBook } from './books.js';   // EB3: books in the p
 import { BOOK_ID_TITLES } from './booksData.js';
 import { setPref } from './uiPrefs.js';   // LR3: the loot door turns the ladder on for the session
 import { setModSetting } from './modSettings.js';   // FIELD BUGS 2026-09-29 (the sea) #5: the sea door turns Come Sail Away on
-import { applyRarity, LEGENDARIES, ROLLED_TIERS, exaltLegendary } from './lootRarity.js';   // LR3: one of everything the ladder can mint; LOOT2: and an Exalted
+import { applyRarity, LEGENDARIES, ROLLED_TIERS, exaltLegendary, WARDROBE_LEGENDARIES, ARCANE_LEGENDARIES, cursePiece, SOCKET_EMPTY, GEM_IDS, socketMax, addTechniqueLine } from './lootRarity.js';   // LR3: one of everything the ladder can mint; LOOT2: and an Exalted; LOOT15: the wardrobe's; LOOT16: a curse; TECH1: a technique; BAL9c: the arcane three
+import { TECHNIQUE_IDS, TECHNIQUES, GAUNTLETS_TEMPLATE } from '../combat/techniqueRoster.js';   // TECH1: one piece a technique, to try them all
 import { AETHERIC_RECORDS, mintAetheric } from './aetheric.js';   // SET6: the Aetheric rung - Ruhn's Regalia, whole (RAID4b: and the raiding parties' three sets)
+import { mintHourlock } from './gilded.js';   // GILDED1: the top rung's one record, to be seen and fired (its shot: createPellets, below)
+import { welkyndStone, varlaStone } from './ayleidStones.js';   // LOOT21: the Ayleid stones
+import { mintGem } from './gems.js';   // GEM2: the graded gems
 import { createThunderlock, createPellets, THUNDERLOCK_TEMPLATE, PELLET_TEMPLATE } from './thunderlock.js';   // TSR-GUN: the port's own weapon, and the import IS its registration
 
 /** The prebuilt characters. `race` is the DF race key (races.js RACES
@@ -125,8 +129,8 @@ export function testEntryById(id) {
   return preset ? { preset, ride: false } : null;
 }
 
-/** TSR4: put a horse in the pack, minted the way the general store's
- *  shelf mints one (shopStock's add: mintCondition over the template's
+/** TSR4: put a horse in the pack, minted the way a shelf mints one (the
+ *  Stable's since MERCHANT-YARDS - systems/merchantYards.js yardStock) (shopStock's add: mintCondition over the template's
  *  own name and base value) - so the T window, the travel card and the
  *  pack all answer hasHorse the way they would for a bought one. Once:
  *  a pack that already carries a horse is left alone. */
@@ -247,8 +251,20 @@ export function seedTestGear(entity) {
   return added;
 }
 
+/** TECH1: the piece each technique family's sampler rides in the room - one of the family's own templates. */
+export const TECHNIQUE_TEST_BASES = Object.freeze({
+  archery: Object.freeze({ kind: 'weapon', templateIndex: WEAPONS_ENUM['Long Bow'] ?? 130, material: 1 }),
+  longBlade: Object.freeze({ kind: 'weapon', templateIndex: WEAPONS_ENUM.Longsword, material: 1 }),
+  shortBlade: Object.freeze({ kind: 'weapon', templateIndex: WEAPONS_ENUM.Dagger, material: 1 }),
+  axe: Object.freeze({ kind: 'weapon', templateIndex: WEAPONS_ENUM['Battle Axe'] ?? 127, material: 1 }),
+  blunt: Object.freeze({ kind: 'weapon', templateIndex: WEAPONS_ENUM.Mace ?? 124, material: 1 }),
+  handToHand: Object.freeze({ kind: 'armor', label: 'Steel Gauntlets', templateIndex: GAUNTLETS_TEMPLATE, material: ARMOR_MATERIAL.Steel }),
+});
+
 /** LR3: the ladder's bases - ten items across the three groups the
  *  ladder rolls, each minted the way the loot factories mint them. */
+/** GEM2: the graded gems the loot ladder's door lays beside the socketed bow - one of each grade the port adds. */
+export const TEST_GEMS = Object.freeze(['chipped-emerald', 'flawed-amber', 'flawless-ruby', 'perfect-diamond']);
 export const TEST_LOOT_BASES = Object.freeze([
   { kind: 'weapon', label: 'Steel Longsword', templateIndex: WEAPONS_ENUM.Longsword, material: 1 },
   { kind: 'weapon', label: 'Steel Dagger', templateIndex: WEAPONS_ENUM.Dagger, material: 1 },
@@ -315,15 +331,57 @@ export function seedTestLoot(entity, rolls = Math.random) {
     for (const row of TEST_LOOT_BASES) put(applyRarity(base(row), tier, rolls));
   }
   for (const rec of LEGENDARIES) put(legendaryItem(rec));
-  for (const rec of AETHERIC_RECORDS) put(mintAetheric(rec));   // SET6: the rung above, never rolled - the Warden's own set, all nine places; RAID4b: and the raids' three, a town's thanks
+  for (const rec of AETHERIC_RECORDS) put(mintAetheric(rec));   // SET6: the rung above, never rolled - the Warden's own set, all nine places; RAID4b: and the raids' three, a town's thanks; SERPENT-SET: and the Old Coil's own
   // ...and the law itself, once each: what a Rare and a Legendary look
   // like on the floor, before the Mages Guild has been paid.
   put(applyRarity(base(TEST_LOOT_BASES[0]), 'rare', rolls), { identified: false });
   if (LEGENDARIES.length) put(legendaryItem(LEGENDARIES[0]), { identified: false });
   // LOOT2 (bible/06-Systems/Loot-Arc.md section 4): and one Exalted, known - its fourth pip and its extra line's band
   if (LEGENDARIES.length) { const ex = legendaryItem(LEGENDARIES[0]); exaltLegendary(ex, rolls); put(ex); }
+  // LOOT14/LOOT15 (bible/06-Systems/Loot-II-Arc.md sections 6 and 7): THE WARDROBE - a Magic and a Rare of each of its
+  // bases, then each of the wardrobe's Legendaries on its first garment - after every draw the room made before
+  for (const t of TEST_WARDROBE_BASES) for (const tier of ['magic', 'rare']) put(applyRarity(testGarment(t), tier, rolls));
+  for (const rec of WARDROBE_LEGENDARIES) put(applyRarity(testGarment(rec.templates[0]), 'legendary', () => 0, [rec]));
+  // LOOT16 (bible/06-Systems/Loot-II-Arc.md section 8): a cursed Rare and a cursed Legendary, known - the temple's
+  // lifting tried at once - after every draw the room made before
+  { const r = applyRarity(base(TEST_LOOT_BASES[0]), 'rare', rolls); cursePiece(r, rolls); put(r); }
+  if (LEGENDARIES.length) { const l = legendaryItem(LEGENDARIES[0]); cursePiece(l, rolls); put(l); }
+  // LOOT20 (section 12): a Rare with an empty socket and a Ruby to set in it, at the Mages Guild's Reforge
+  { const s = applyRarity(base(TEST_LOOT_BASES[0]), 'rare', rolls); s.sockets = [SOCKET_EMPTY]; put(s); }   // GEM1: the socket list
+  put(mintCondition(setItemFields({ group: 'Gems', templateIndex: GEM_IDS.indexOf('ruby') })));
+  // LOOT21 (section 13): the two Ayleid stones, found at the deepest sources - here to be used
+  put(welkyndStone());
+  put(varlaStone());
+  // GILDED1 (bible/06-Systems/Gilded.md): THE HOURLOCK, the Gilded rung's one record - minted whole, as the Brass Remnant
+  // drops it - and a stack of its shot, so the toll can be heard; after every draw the room made before
+  put(mintHourlock());
+  put(createPellets(30));
+  // GEM1/GEM2 (bible/06-Systems/Gem-Sockets.md): a Rare long bow with its size's three wells, empty, and four graded gems
+  // to set in them from the pack's card - after every draw the room made before
+  { const b = applyRarity(base(TEST_LOOT_BASES[3]), 'rare', rolls); b.sockets = Array(socketMax(b)).fill(SOCKET_EMPTY); put(b); }
+  for (const id of TEST_GEMS) put(/** @type {any} */ (mintGem(id)));
+  // TRUE-CURSE (01-Overview/Field-Bugs-2026-10-10.md): a damned Legendary weapon, known - its bite at every blow tried,
+  // and the temple's refusal; after every draw the room made before
+  { const d = LEGENDARIES.find((rec) => rec.group === 'Weapons'); if (d) { const it = legendaryItem(d); cursePiece(it, rolls, { damned: true }); put(it); } }
+  // TECH1 (bible/05-Combat/Weapon-Techniques.md): THE TECHNIQUES - one Rare a technique, on a piece of its family (a Long
+  // Bow's two, a Longsword's, a Dagger's, a Battle Axe's, a Mace's, the Gauntlets' for the bare hand), its line at the
+  // band's middle, so every one can be tried on its key; after every draw the room made before
+  for (const id of TECHNIQUE_IDS) {
+    const fam = TECHNIQUES[id].families[0];
+    const piece = TECHNIQUE_TEST_BASES[fam];
+    if (!piece) continue;
+    const it = applyRarity(testItemOf(piece), 'rare', rolls);
+    if (addTechniqueLine(it, () => 0.5, { id })) put(it);
+  }
+  // BAL9c (bible/05-Combat/Balance-Arc.md section 15): THE ARCANE THREE, each on the first base its record fits (the
+  // Amulet, the Ring, the Longsword) - chosen, not rolled, after every draw the room made before
+  for (const rec of ARCANE_LEGENDARIES) put(legendaryItem(rec));
   return added;
 }
+/** LOOT14: the room's garments - a Formal Cloak and an Evening Gown, minted as a shelf mints clothing. */
+export const TEST_WARDROBE_BASES = Object.freeze([155, 195]);
+const testGarment = (templateIndex) => mintCondition({ group: templateIndex >= 182 ? 'WomensClothing' : 'MensClothing', templateIndex,
+  name: templateByIndex(templateIndex)?.name ?? 'Garment', flags: 0, variant: 0 });
 
 /** SPELLFX1 (2026-09-23): THE SORCERESS GETS MISSILES. The Mage set she
  *  starts with has nothing that flies, and the co-op spell work needs

@@ -80,7 +80,7 @@ test('the third pass: mine is the POOL\'s word - a camp pitched online under ano
   assert.ok(menus.at(-1).items.includes(CAMP_TEXT.menuPack), 'the menu offers to pack it');
   assert.deepEqual([pool.own().length, pool.wireRecords().length], [1, 1], 'it counts to the cap and rides the wire as this player\'s');
   setPref(SURVIVAL_PREF, SURVIVAL_STORED[SURVIVAL_OFF]);
-  assert.deepEqual([pool.batches(), pool.lights(), pool.targets()], [[], [], []], 'with the arc Off it is out of sight, as this player\'s own camps are');
+  assert.deepEqual([pool.batches().length, pool.lights().length, pool.targets().length], [1, 1, 2], 'ENDLESS PROVISIONS: with the arc Off it is in sight all the same - a camp is every tier\'s (the tent\'s box and the fire\'s)');
   _resetForTests();
   // a room's memory keys it by the old id: it is this player's, and stands once
   assert.equal(pool.applyOwner('pOLD', [{ i: 'pOLD:1:90', k: 0, p: [1, 0, 1], y: 0, u: 500, w: 7 }]), true);
@@ -162,7 +162,7 @@ test('the third pass: "Rest here" is the fire\'s rest - refused in words beyond 
   const said2 = [], menus = [], rested = [];
   const entity = body();
   const pool = createCamps({ renderer, ...fireStub, meshes: tentMeshes, entity, camera: () => ({ feet, yaw: 0 }), selfId: () => null, say: (l) => said2.push(l), showOverlay: (w) => menus.push(w), openRest: (rec) => rested.push(rec.id) });
-  pool.restore([{ id: 'me:1:900', kind: 'tent', pos: [0, 0, 0], yaw: 0, litUntil: 1300, wear: 0, placedAt: 900 }]);
+  pool.restore([{ id: 'me:1:900', kind: 'tent', pos: [0, 0, 0], yaw: 0, litUntil: 1300, wear: 5, placedAt: 900 }]);   // AUDIT REST F8: a tent with uses left (a worn-through one stokes no more)
   await new Promise((r) => setTimeout(r, 0));
   const restFromMenu = () => { pool.activate('camp:me:1:900', 'grab'); const m = menus.at(-1); m.onPick(m.items.indexOf(CAMP_TEXT.menuRest)); };
   restFromMenu();
@@ -184,7 +184,7 @@ test('the third pass: "Rest here" is the fire\'s rest - refused in words beyond 
   setPref(SURVIVAL_PREF, 'hard'); entity.restKind = REST_KIND.Camp; pool.tick(0);
   assert.equal(pool.camps[0].rec.litUntil, 1000 + FIRE_MINUTES, 'every tier that uses the camp tends it');
   setPref(SURVIVAL_PREF, SURVIVAL_STORED[SURVIVAL_OFF]); pool.camps[0].rec.litUntil = 1010; pool.tick(0);
-  assert.equal(pool.camps[0].rec.litUntil, 1010, 'with the arc Off nothing is tended');
+  assert.equal(pool.camps[0].rec.litUntil, 1000 + FIRE_MINUTES, 'ENDLESS PROVISIONS: with the arc Off the camp is used, so it is tended too');
   _resetForTests();
   // a kit's fire cannot be stoked, rest or no rest
   const kit = createCamps({ entity, camera: () => ({ feet: [0, 0, 1], yaw: 0 }), selfId: () => null });
@@ -470,8 +470,9 @@ test('CORPSE-FOOD (Mac: "It needs to be accessible with people with it on"): onl
   }
   // ...and the dungeon calls it on the stream's first death and on an arrival's body that came without the room's list
   const dc = read('src/scenes/dungeonContext.js');
-  assert.match(dc, /if \(r\.d === 1 && !f\.dead\) \{ addCorpseFood\(f\.entity, \{ luck: liveStat\(playerEntity, 'luck'\) \}\); stampWonWeapons\(f\.entity\.items, f\._fightN \?\? 1\); \}[^\n]*\n\s*if \(r\.d === 1\) \{ if \(!f\.dead\)/, 'the stream\'s death: the joiner\'s copy rolls its own');
-  assert.match(dc, /if \(wire && sf\.dead && !f\.dead && sf\.items == null\) \{ addCorpseFood\(f\.entity, \{ luck: liveStat\(playerEntity, 'luck'\) \}\);/, 'an arrival\'s body without the room\'s list: its own roll, food and all');
+  // PIN MOVED (AUDIT CARDS-6 A3): and its card, drawn before the cap
+  assert.match(dc, /if \(r\.d === 1 && !f\.dead\) \{ rollCorpseKit\(f\.entity, \{ luck: liveStat\(playerEntity, 'luck'\) \}\); addCorpseFood\(f\.entity, \{ luck: liveStat\(playerEntity, 'luck'\) \}\); stampWonWeapons\(f\.entity\.items, f\._fightN \?\? 1\); dropFoeCard\(f\.entity\); capFoeLoot\(f\.entity\); \}[^\n]*\n\s*if \(r\.d === 1\) \{ if \(!f\.dead\)/, 'the stream\'s death: the joiner\'s copy rolls its own');
+  assert.match(dc, /if \(wire && sf\.dead && !f\.dead && sf\.items == null\) \{ rollCorpseKit\(f\.entity, \{ luck: liveStat\(playerEntity, 'luck'\) \}\); addCorpseFood\(f\.entity, \{ luck: liveStat\(playerEntity, 'luck'\) \}\);/, 'an arrival\'s body without the room\'s list: its own roll, food and all');
 });
 
 test('CORPSE-FOOD, mounted: the dungeon\'s own `applyFoeRecord` rolls a joiner\'s copy of the body its food on the stream\'s first word of the death - once, and never for a foe the word keeps alive', async () => {
@@ -489,7 +490,9 @@ test('CORPSE-FOOD, mounted: the dungeon\'s own `applyFoeRecord` rolls a joiner\'
   })(ast);
   assert.ok(fn, 'dungeonContext.js has applyFoeRecord');
   const { stampWonWeapons } = await import('../src/systems/lootRarity.js');   // SIGIL1: the stream's death marks the copy's weapons too (offline: nothing)
-  const state = { validFoeRecord, addCorpseFood, stampWonWeapons, liveStat: () => 50, playerEntity: {}, foes: [], _layoutFoes: 1, _retyping: new Set(), retypeFoe: async () => false, console, renownFoeDied, reportPlayerKill };   // RENOWN1: the stream's death asks whether I fought it
+  const { rollCorpseKit, capFoeLoot } = await import('../src/systems/foeLootCap.js');   // KIT-ROLL: and its kit (a bear wears none: nothing rolled); AUDIT 625 L5: and its cap (a bear has none)
+  const { dropFoeCard } = await import('../src/systems/cardSources.js');   // PIN MOVED (AUDIT CARDS-6 A3): and its card (a bear has none)
+  const state = { validFoeRecord, addCorpseFood, stampWonWeapons, rollCorpseKit, dropFoeCard, capFoeLoot, liveStat: () => 50, playerEntity: {}, foes: [], _layoutFoes: 1, _retyping: new Set(), retypeFoe: async () => false, console, renownFoeDied, reportPlayerKill };   // RENOWN1: the stream's death asks whether I fought it
   const scope = new Proxy(state, { has: (t, k) => k !== '__s', get: (t, k) => (k === Symbol.unscopables ? undefined : (k in t ? t[k] : globalThis[k])) });
   const { applyFoeRecord } = new Function('__s', `with (__s) { const setFoeDead = (f, d) => { f.dead = !!d; }; ${fn} return { applyFoeRecord }; }`)(scope);
   const bear = { mobileType: MOBILE_TYPES.GrizzlyBear, dead: false, entity: { mobileType: MOBILE_TYPES.GrizzlyBear, basics: { affinity: 'Animal' }, health: 5, items: [] }, ai: { feet: [0, 0, 0], yaw: 0, moving: false, isHostile: true } };

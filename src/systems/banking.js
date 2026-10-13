@@ -40,6 +40,7 @@
 import { CRIMES } from './court.js';
 import { BUILDING_TYPES, isResidence } from '../world/buildingNames.js';   // H1: the houses-for-sale filter
 import { isOnlinePage } from './onlineLane.js';   // EMPIRE-BANK: online, the Empire lends a tenth
+import { stampLayout, layoutStampOfMapId, recordStands } from './layoutPins.js';   // WD3: a deed keeps the layout its town was bought in
 import { GOLD_PIECE_WEIGHT_KG, letterOfCredit } from './inventory.js';
 import {
   DAYS_PER_YEAR, DAYS_PER_MONTH, MINUTES_PER_DAY,
@@ -176,8 +177,17 @@ export const ownsHouse = (houses, regionIndex) => (houses?.[regionIndex]?.buildi
 export const ownedHouseKey = (houses, regionIndex) => houses?.[regionIndex]?.buildingKey ?? 0;
 export function isHouseOwned(houses, regionIndex, buildingKey) {
   if (!(buildingKey > 0)) return false;          // :142 - key 0 is "no building"
-  return ownedHouseKey(houses, regionIndex) === buildingKey;
+  return ownedHouseKey(houses, regionIndex) === buildingKey && deedStands(houses?.[regionIndex]);
 }
+/**
+ * WD3 (AUDIT WD3 H1): A DEED NAMES ITS BUILDING ONLY IN THE LAYOUT IT WAS BOUGHT IN. Where its town stands in another
+ * now (offline, a town mod's pack that could not be loaded for it - Replace Game Artwork off, the network; online, a
+ * deed that came through customs from before the mods, which no home of the service's pins) the key names a
+ * stranger's house, a shop, a temple or nothing, so the deed SLEEPS: no building is the player's by it - its door, its
+ * cupboards, its bed, its furniture, its sale - until its town stands in its layout again. A deed whose town the host
+ * cannot place stands as Daggerfall always read it.
+ */
+export const deedStands = (slot) => recordStands(slot);
 
 /**
  * AllocateHouseToPlayer (:429-448). Writing the slot is a quarter of
@@ -200,6 +210,7 @@ export function allocateHouseToPlayer(houses, regionIndex, { buildingKey, mapId,
   slot.mapId = mapId;
   slot.buildingKey = buildingKey;
   delete slot.crossed;   // RESTORE: a house bought is the buyer's own, whatever crossed customs in this slot before
+  stampLayout(slot, layoutStampOfMapId(mapId));   // WD3: the layout the town stands in, which a load keeps it in (systems/layoutPins.js)
   discoverBuilding?.(buildingKey, `${playerName}'s residence`);
   addPermanentScene?.(mapId, buildingKey);
   // L10N3e: the deed names its region as shown - GetLocalizedRegionName
@@ -264,14 +275,15 @@ export function purchaseHouse(accounts, houses, regionIndex, house, player, {
  *  the building and zeroed the slot - the deed destroyed for nothing.
  *  `found` is GetBuildingSummary's bool; it defaults TRUE so a caller
  *  that has already resolved the building need not say so twice. */
-export function sellHouse(accounts, houses, regionIndex, { meshRadius = 0, found = true, online = isOnlinePage() } = {}, {
+export function sellHouse(accounts, houses, regionIndex, { meshRadius = 0, found = true, online = isOnlinePage(), price = houseSellPrice(meshRadius) } = {}, {
   removePermanentScene = null, undiscoverBuilding = null,
 } = {}) {
   const slot = houses[regionIndex];
   if (!(slot.buildingKey > 0)) return { kind: 'none' };
   if (online && slot.crossed) return { kind: 'crossed' };   // RESTORE: what came through customs is never bought back online
   if (!found) return { kind: 'none' };   // :454-456 falls to :464 - the miss arm has no effects at all
-  const price = houseSellPrice(meshRadius);
+  // AUDIT HOME-PRICE C1: `price` is GetHouseSellPrice's own unless the caller names another - online the host names the
+  // deed share of the house's online price (scenes/worldModes.js deedSellPrice)
   accounts[goldRegion(accounts, regionIndex, online)].accountGold += price;   // EMPIRE-ACCOUNT: online, into the Empire's account
   removePermanentScene?.(slot.mapId, slot.buildingKey);
   undiscoverBuilding?.(slot.buildingKey);
@@ -319,6 +331,7 @@ export const shipCameraDist = (ship) => (ship >= 0 ? SHIP_CAMERA_DIST[ship] : 0)
  * mapId/buildingKey0 pair (:103-110).
  */
 export function assignShipToPlayer(player, shipType, { addPermanentScene = null } = {}) {
+  if (player.ownedShip !== shipType) delete player.boatCabinLink;
   player.ownedShip = shipType;
   delete player.shipCrossed;   // RESTORE: a ship bought is the buyer's own, whatever crossed customs before it
   if (shipType !== SHIP_TYPES.None) addPermanentScene?.(shipType);
@@ -328,7 +341,7 @@ export function assignShipToPlayer(player, shipType, { addPermanentScene = null 
 /** ResetShip (:128) - `ownedShip = ShipType.None` and nothing else: the
  *  permanent scenes stay listed, as they do in DFU. WA1: Warm Ashes -
  *  Ships takes back the ship it lends with this. */
-export function resetShip(player) { player.ownedShip = SHIP_TYPES.None; delete player.shipCrossed; }
+export function resetShip(player) { player.ownedShip = SHIP_TYPES.None; delete player.boatCabinLink; delete player.shipCrossed; }
 
 /**
  * PurchaseShip (:467-486). The ladder is PurchaseHouse's, with one
@@ -368,7 +381,7 @@ export function sellShip(accounts, regionIndex, player, { removePermanentScene =
   const price = shipSellPrice(ship);
   accounts[goldRegion(accounts, regionIndex, online)].accountGold += price;   // EMPIRE-ACCOUNT: online, into the Empire's account
   removePermanentScene?.(ship);
-  player.ownedShip = SHIP_TYPES.None;
+  player.ownedShip = SHIP_TYPES.None; delete player.boatCabinLink;
   delete player.shipCrossed;
   return { kind: 'sold', price };
 }
@@ -392,11 +405,19 @@ export function sellShip(accounts, regionIndex, player, { removePermanentScene =
  * which is what that expression was reaching for. Recorded in Ledger A.
  */
 export const MAX_HOUSES_FOR_SALE = 20;
-export function housesForSale(buildings, { mapId = 0, month = 0, isActiveQuestBuilding = null } = {}) {
+export function housesForSale(buildings, { mapId = 0, month = 0, isActiveQuestBuilding = null, stands = null, owned = null } = {}) {
   const maxForSale = Math.min(Math.floor(buildings.length / 10), MAX_HOUSES_FOR_SALE);
   const forSale = [];
   const candidates = [];
   for (const b of buildings) {
+    // WD3 (AUDIT WD3 H2): a building with no model of its own stands nowhere and has no door - two of Beautiful Cities'
+    // House2 (DABOOKBL02 13, DAGENRBL03 4) - and is never sold (priced at 0, entered by nobody). Every house of
+    // Daggerfall's own stands on its model, so no classic market changes.
+    if (stands && !stands(b)) continue;
+    // FIELD BUGS 2026-10-04d KNIGHT-HOUSE: nor a building that is someone's already - online, a player's home or a deed the
+    // account service holds (another knight's house) - which Daggerfall, with one player, never had to leave out: a
+    // Seneschal handed it on as a knight's house (its hold refused), and the market listed it beside the free ones
+    if (owned?.(b)) continue;
     if (b.buildingType === BUILDING_TYPES.HouseForSale) forSale.push(b);
     else if (isResidence(b.buildingType) && !(isActiveQuestBuilding?.(b) ?? false)) candidates.push(b);
   }
@@ -527,7 +548,7 @@ export function registerMaxBankLoan(fn) { _maxLoanOverride = typeof fn === 'func
  *  is (DFU's level x 50,000, or Roleplay & Realism's per-level choice, which the lane keeps on online), rounded down.
  *  The interest and the year to repay are the classic ones; offline the law is untouched. A departure (Port-Ledger A). */
 export const EMPIRE_LOAN_DIVISOR = 10;
-export const calculateMaxBankLoan = (level, online = isOnlinePage()) => {   // SHIP-CREDIT: `online` a caller's own word, as borrowDecision's
+export const calculateMaxBankLoan = (level, online = isOnlinePage()) => {
   const cap = _maxLoanOverride?.(level) ?? level * LOAN_MAX_PER_LEVEL;
   return online ? Math.floor(cap / EMPIRE_LOAN_DIVISOR) : cap;
 };
@@ -899,45 +920,6 @@ export function borrowDecision(accounts, regionIndex, { online = isOnlinePage() 
   const empire = online ? empireRefusal(accounts) : null;
   if (empire) return { kind: 'refuse', ...empire };
   return { kind: 'input', transactionType: TRANSACTION_TYPE.Borrowing_loan };
-}
-
-/**
- * SHIP-CREDIT (2026-10-01, Mac: "make ship prices more reasonable and provide more accessibility options to acquiring";
- * his pick, "Buy on credit - Pay part now; the bank lends you the rest under Daggerfall's own loan rules") - A BOAT
- * BOUGHT ON CREDIT at a shop's counter (the shelf's Come Sail Away deed or parts). The purse pays what it holds - at
- * least CREDIT_DOWN_SHARE of the price - and the bank of the shop's region lends the rest under BorrowLoan's own law:
- * borrowDecision's refusals (a loan or a default standing there; online the Empire's one loan a character), the loan
- * LOAN_MINIMUM at least (a shortfall under it borrows the minimum and the purse pays the less) and CalculateMaxBankLoan
- * at most, repaid with its 10% within LOAN_REPAY_MINUTES - LoanChecker's reminders and default as for any loan. The
- * lent gold goes to the shop: never into the account (`takeCredit`).
- */
-export const CREDIT_DOWN_SHARE = 0.2;
-/**
- * SHIP-CREDIT: what a purchase of `price` with `purse` in hand can be on credit - `{ kind: 'none' }` (the purse pays
- * it), `{ kind: 'credit', loan, pay, owed }` (the purse pays `pay`, the bank lends `loan`, `owed` repaid), or
- * `{ kind: 'refuse', result, ... }` - borrowDecision's refusal (with `empireRegion` online), NOT_ENOUGH_GOLD with the
- * `down` payment the purse lacks, or LOAN_REQUEST_TOO_HIGH with the `max` the bank lends.
- */
-export function creditDecision(accounts, regionIndex, { price = 0, purse = 0, level = 1, online = isOnlinePage() } = {}) {
-  mustValidate(accounts, regionIndex);
-  const cost = Math.max(0, Math.trunc(price)), have = Math.max(0, Math.trunc(purse));
-  if (have >= cost) return { kind: 'none' };
-  const gate = borrowDecision(accounts, regionIndex, { online });
-  if (gate.kind === 'refuse') return { ...gate };
-  const down = Math.ceil(cost * CREDIT_DOWN_SHARE);
-  if (have < down) return { kind: 'refuse', result: TRANSACTION_RESULT.NOT_ENOUGH_GOLD, down };
-  const loan = Math.max(LOAN_MINIMUM, cost - have);
-  const max = calculateMaxBankLoan(level, online);
-  if (loan > max) return { kind: 'refuse', result: TRANSACTION_RESULT.LOAN_REQUEST_TOO_HIGH, max };
-  return { kind: 'credit', loan, pay: cost - loan, owed: calculateBankLoanRepayment(loan) };
-}
-/** SHIP-CREDIT: the loan a credit purchase takes - BorrowLoan's debt and its year (:542-556), with no gold into the
- *  account: the bank paid the shop. */
-export function takeCredit(accounts, regionIndex, loan, { nowMinutes = 0 } = {}) {
-  mustValidate(accounts, regionIndex);
-  const account = accounts[regionIndex];
-  account.loanTotal += calculateBankLoanRepayment(loan);
-  account.loanDueDate = nowMinutes + LOAN_REPAY_MINUTES;
 }
 
 /** BuyHouseButton (:417-436) and BuyShipButton (:453-464). Both refuse

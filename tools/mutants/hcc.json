@@ -74,8 +74,8 @@
   {
     "name": "HCC-mount-distances-wagon-only",
     "file": "src/systems/horseCartLaw.js",
-    "old": "  isWithinHorizontalDistance(player, wagon, WAGON_INVENTORY_DISTANCE) && isWithinHorizontalDistance(player, horse, HORSE_MENU_MOUNT_DISTANCE) && isWithinHorizontalDistance(horse, wagon, HORSE_WAGON_HITCH_DISTANCE);",
-    "new": "  isWithinHorizontalDistance(player, wagon, WAGON_INVENTORY_DISTANCE) && isWithinHorizontalDistance(player, horse, HORSE_MENU_MOUNT_DISTANCE);",
+    "old": "&& isWithinHorizontalDistance(horse, nearest ? nearest(horse) : wagon, HORSE_WAGON_HITCH_DISTANCE);",
+    "new": ";",
     "tests": [
       "test/hcc_law.test.js"
     ]
@@ -291,8 +291,8 @@
   {
     "name": "HCC-mirror-never",
     "file": "src/scenes/horseCartPool.js",
-    "old": "    b.size = { w: view.flip ? -HORSE_BILLBOARD_WIDTH : HORSE_BILLBOARD_WIDTH, h };",
-    "new": "    b.size = { w: HORSE_BILLBOARD_WIDTH, h };",
+    "old": "    b.size = { w: (view.flip ? -HORSE_BILLBOARD_WIDTH : HORSE_BILLBOARD_WIDTH) * g, h: h * g };",
+    "new": "    b.size = { w: HORSE_BILLBOARD_WIDTH * g, h: h * g };",
     "tests": [
       "test/hcc_pool.test.js"
     ]
@@ -401,8 +401,8 @@
   {
     "name": "HCC-summon-indoors",
     "file": "src/systems/horseCart.js",
-    "old": "    if (pee().isPlayerInside() || tm().isOnShip()) { say(HCC_TEXT.summonOutdoorsOnly); return; }",
-    "new": "    if (tm().isOnShip()) { say(HCC_TEXT.summonOutdoorsOnly); return; }",
+    "old": "    if (pee().isPlayerInside() || tm().isOnShip()) return { ok: false, text: HCC_TEXT.summonOutdoorsOnly };",
+    "new": "    if (tm().isOnShip()) return { ok: false, text: HCC_TEXT.summonOutdoorsOnly };",
     "tests": [
       "test/hcc_runtime.test.js"
     ]
@@ -410,17 +410,18 @@
   {
     "name": "HCC-fast-travel-never-relocates",
     "file": "src/systems/horseCart.js",
-    "old": "    fastTravelFollowingSuspended = true; pendingFastTravelHorseRelocation = true;\n  }\n  function convertFollowingTransportToWaitAtDeparture() {",
-    "new": "    fastTravelFollowingSuspended = false; pendingFastTravelHorseRelocation = false;\n  }\n  function convertFollowingTransportToWaitAtDeparture() {",
+    "old": "    fastTravelFollowingSuspended = true; pendingFastTravelHorseRelocation = true;\n  }\n  /** WAGONS2 (FINAL AUDIT): WHETHER THE WAGON GOES",
+    "new": "    fastTravelFollowingSuspended = false; pendingFastTravelHorseRelocation = false;\n  }\n  /** WAGONS2 (FINAL AUDIT): WHETHER THE WAGON GOES",
     "tests": [
       "test/hcc_runtime.test.js"
-    ]
+    ],
+    "note": "WAGONS2 (FINAL AUDIT, PIN MOVED): re-aimed by content - wagonGoesOnJourney stands between handlePostFastTravel and the departure's conversion now."
   },
   {
-    "name": "HCC-rebase-forgets-trail",
+    "name": "HCC-rebase-forgets-hitch",
     "file": "src/systems/horseCart.js",
-    "old": "    trail.offset(d); hitchedWagonPath.offset(d); horseFollower.offset(d);",
-    "new": "    hitchedWagonPath.offset(d); horseFollower.offset(d);",
+    "old": "    hitch.offset(d); if (hitchSeed) hitchSeed = vadd(hitchSeed, d); horseFollower.offset(d);",
+    "new": "    if (hitchSeed) hitchSeed = vadd(hitchSeed, d); horseFollower.offset(d);",
     "tests": [
       "test/hcc_runtime.test.js"
     ]
@@ -437,7 +438,7 @@
   {
     "name": "HCC-hitch-offset-dropped",
     "file": "src/systems/horseCart.js",
-    "old": "      pos = vadd(vadd(pos, vscale(horizontalRight(fwd), HITCHED_HORSE_LOCAL_X)), vscale(fwd, HITCHED_HORSE_LOCAL_Z));",
+    "old": "      pos = vadd(vadd(pos, vscale(horizontalRight(fwd), HITCHED_HORSE_LOCAL_X)), vscale(fwd, hitchZ()));",
     "new": "      pos = vadd(pos, vscale(horizontalRight(fwd), HITCHED_HORSE_LOCAL_X));",
     "tests": [
       "test/hcc_runtime.test.js"
@@ -626,8 +627,8 @@
   {
     "name": "AUDIT-HCC-H3-modData-dropped",
     "file": "src/systems/save.js",
-    "old": "smallerDungeonsState: snap.smallerDungeonsState ?? 0, modData: snap.modData ?? null, terrainScale: snap.terrainScale ?? null };",
-    "new": "smallerDungeonsState: snap.smallerDungeonsState ?? 0, modData: null, terrainScale: snap.terrainScale ?? null };",
+    "old": "smallerDungeonsState: snap.smallerDungeonsState ?? 0, modData: snap.modData ?? null, terrainScale:",
+    "new": "smallerDungeonsState: snap.smallerDungeonsState ?? 0, modData: null, terrainScale:",
     "tests": [
       "test/audit_hcc.test.js"
     ]

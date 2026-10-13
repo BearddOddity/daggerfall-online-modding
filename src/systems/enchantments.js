@@ -63,6 +63,9 @@ import { applyDressStanding } from './clothingStanding.js';   // DRESS1 (2026-09
 import { ENCHANTMENT_TYPES } from '../formats/magicDef.js';
 import { SOCIAL_GROUP_COUNT } from '../formats/factionFile.js';   // AUDIT 63 F6: PlayerEntity.cs:128-129 sizes reactionMods at socialGroupCount = 11
 import { regenBarred } from './courtRules.js';   // WBX6: the Burning Court keeps no regeneration
+import { ITEM_TEMPLATES, templateByIndex, mendOrder, mintCondition, TRANSPORT_HORSE, TRANSPORT_SMALL_CART } from './itemTemplates.js';   // MEND-WORN: the mend order's one home, and the smith's refusal
+import { WEAPONS, WEAPON_CONDITION_POOL } from '../characters/weapons.js';   // MEND-WORN: a pool weapon's tick is the classic Dagger's share
+import { repoolWeapon } from './conditionRepair.js';   // MEND-WORN: a weapon on its row's pool moves before a mend on the pool, as before a wear
 export { ENCHANTMENT_TYPES };
 
 /** EnchantmentSettings.ClassicType (DaggerfallUnityItem.cs:1316-1320).
@@ -85,6 +88,7 @@ export const PAYLOAD = Object.freeze({
 // at the arm that spends it).
 export const REGEN_PER_ROUNDS = 4;            // RegensHealth.cs:25 (VampiricEffect.cs:27 shares the value)
 export const CONDITION_PER_ROUNDS = 4;        // RepairsObjects.cs:25 / ItemDeteriorates.cs:29
+export const CONDITION_AMOUNT = 1;            // RepairsObjects.cs:26 (MEND-WORN: a pool weapon's is POOL_WEAPON_MEND)
 export const DAMAGE_PER_ROUNDS = 4;           // UserTakesDamage.cs:27
 export const TIME_LEECH_PER_ROUNDS = 4;       // HealthLeech.cs:27
 export const LEECH_CAST_AMOUNT = 16;          // HealthLeech.cs:29
@@ -160,7 +164,7 @@ export const isEnchantedItem = (item) => !!itemEnchantments(item);
 // ported" - and M4's catalogue is that sum's missing half, so it
 // closed here and stays closed: legacyEnchantmentValue (:222-238) is
 // the sum, over VALUE_COUNTS_BELOW (:179), spellEnchantPtCost (:214)
-// and the SoulBound/CastWhen arms, and systems/loot.js:"else if (magicItem.group === 1)" prices
+// and the SoulBound/CastWhen arms, and systems/loot.js:"value: legacyEnchantmentValue" prices
 // every minted legacy item through it.
 //
 // THE BOUND IS THE ENUM'S OWN ORDER (:604-605): only
@@ -283,11 +287,40 @@ export function assignHeldSpell(record, entity, item, { ctx = null, nowMinutes =
   // Cast-When-Held power stands BESIDE its first. The remove-first half is RerollItemEffects' own, ONCE per item
   // (:2012-2021 - enchantmentMagicRound below); stripped per ROW, each power took the one before it off.
   _fx.applySpell?.(record, entity.level ?? 1, entity, ctx?.sinks ?? {}, ctx?.rolls ?? Math.random, { entity }, { bypassSavingThrows: true, heldItem: item });
-  if (!recast) {
+  if (!recast && !ctx?.heldEquipFree) {
     const skillOf = ctx?.castingSkillOf ?? ((sk) => skillValue(entity, sk));
-    enchantLowerCondition(item, classicCastingCost(record, skillOf), entity, ctx);
+    const bill = heldEquipBill(item, classicCastingCost(record, skillOf));
+    if (bill > 0) enchantLowerCondition(item, bill, entity, ctx);
   }
   item.timeEffectsLastRerolled = nowMinutes;
+}
+
+/** HELD-REWEAR (FIELD BUGS 2026-10-09f, BigOOF: "My 'Cast on held' gear is breaking sometimes IMMEDIATELY when
+ *  re-equipping ... I swapped something out with an amulet and it auto-broke the other one"; a DEPARTURE, Port-Ledger A).
+ *  DFU bills a Cast-When-Held spell's whole casting cost in condition at EVERY equip (CastWhenHeld.cs
+ *  InstantiateSpellBundle) - a hundred-odd points on an 800-point amulet - so a piece swapped on and off (the hotbar's
+ *  wear slots, a ring traded for an amulet and back) was spent by the swapping, and one whose bill passed what it had
+ *  left broke the moment it went on, repaired or not. Two laws now: */
+/** (1) A piece re-worn within REROLL_MINIMUM_HOURS of its spell's last casting (`timeEffectsLastRerolled`, the stamp
+ *  every equip and reroll writes) pays nothing: its spell is still fresh, the clock DFU itself recasts it by. */
+export function heldEquipIsFree(item, nowMinutes) {
+  const at = item?.timeEffectsLastRerolled;
+  if (!Number.isFinite(at) || !Number.isFinite(nowMinutes)) return false;
+  const since = nowMinutes - at;
+  return since >= 0 && since < REROLL_MINIMUM_HOURS * MINUTES_PER_HOUR;
+}
+/** (2) The equip bill never breaks the piece: it stops at 1 condition. What wears a held piece out is its wear while
+ *  worn (the MagicRound arm, 1 every 4 rounds), as DFU's own comment says it should "die of use".
+ *  (3) LEGEND-HELD (FIELD BUGS 2026-10-11b, Boar: "Equipping legendary shield Aegis of Dawn damage it by 1/3 of its
+ *  durability"; Mac: "I dont care about DFU parity"; a DEPARTURE, Port-Ledger A): a Legendary's equip bills nothing -
+ *  its held spell is its record's (the Loot arc's), and the Aegis's Spell Resistance cost a leather buckler a third of
+ *  its life the first time it went on. Its wear while worn is (2)'s, unmoved. */
+export function heldEquipBill(item, cost) {
+  // the condition lowerCondition will lower: minted, and a weapon on its row's pool moved to the one pool first
+  if (item && Object.isExtensible(item)) { mintCondition(item); repoolWeapon(item); }
+  if (item?.rarity === 'legendary') return 0;   // LEGEND-HELD
+  const left = Number.isFinite(item?.currentCondition) ? item.currentCondition : Infinity;
+  return Math.max(0, Math.min(cost, left - 1));
 }
 
 function instantiateHeldSpell({ param, entity, item, ctx, nowMinutes }, recast) {
@@ -322,6 +355,44 @@ export function mobileAffinityMatches(mobileType, paramType) {
     || (paramType === AFFINITY_PARAM.Daedra && affinity === 'Daedra')
     || (paramType === AFFINITY_PARAM.Humanoid && affinity === 'Human')
     || (paramType === AFFINITY_PARAM.Animals && affinity === 'Animal');
+}
+
+// ---- MEND-WORN: what a Repairs Objects tick mends -------------------
+// MEND-WORN (2026-10-07, Mac: "Now we just gotta fix the 'repairs objects' not working"). DFU mends the FIRST damaged
+// piece in the whole pack, in the pack's order, by a point (RepairsObjects.cs:86-101 - 6846029b4, 2022: "RepairsObjects
+// should repair all items in inventory"; its loop before walked the equip table, which the class's own comment records
+// as classic's: "Only equipped items will receive repairs"). The port's default pack is Roleplay & Realism's - its kit
+// worn to 30-75%, loot and shelves at 20-75% with the books among them - beside the port's own pieces that keep their
+// uses in their condition (a tent's nights, a campfire's fuel). So every tick went to the oldest worn thing carried and
+// nothing the player wore was seen to mend; and WEAPON-POOL's pools (1,600 to 12,800) left a weapon a point a tick, a
+// 32nd of what a dagger had. The departures (Port-Ledger A, MEND-WORN): the mend order below, nothing a smith will not
+// repair, and a pool weapon's tick.
+
+/** MEND-WORN: what one tick mends on a weapon whose condition is WEAPON-POOL's pool (Mac, asked: "Weapons as a classic
+ *  dagger") - the share a classic Dagger's point was of its row (Daggerfall's Dagger, 50), on the pool: 1,600 / 50 =
+ *  32, iron 2% a tick and Daedric 0.25%, so no weapon type mends slower than it did. A magic item's or an artifact's
+ *  condition is its uses, not the pool (loot.js), and keeps DFU's point, as every other piece does. */
+export const POOL_WEAPON_MEND = Math.round(WEAPON_CONDITION_POOL / ITEM_TEMPLATES[WEAPONS.Dagger].hitPoints);
+const mendsOnPool = (it) => it.group === 'Weapons' && !it.magic && !it.artifact;
+
+/** MEND-WORN: THE PIECE A REPAIRS OBJECTS TICK MENDS in `items` (the pack), or null. Among the pieces below their
+ *  condition that a repair may touch, the mend order's first (itemTemplates.js mendOrder, the repair kit's: WORN first,
+ *  then the pack, each the lowest share left first, ties in the pack's order). Never what a smith refuses as not
+ *  repairable (repairService.js repairRefusal) - DFU's own flag on the quiver it mints at 0 and on the lights, whose
+ *  condition is their fuel (Arrow, Torch, Lantern, Candle, Holy Candle), and the port's on the Dwemer Pellet, a
+ *  campfire's nights and the rest items' doses (AUDIT REST II H7). RepairsObjects.cs reads no such flag, so a lit
+ *  torch first in the pack was refuelled as it burned. An enchanted piece only under AllowMagicRepairs
+ *  (RepairsObjects.cs:93). */
+export function repairsObjectsTarget(items, { allowMagicRepairs = false } = {}) {
+  let best = null;
+  for (const it of Array.isArray(items) ? items : []) {
+    if (!it || !Number.isFinite(it.currentCondition) || !Number.isFinite(it.maxCondition) || !(it.currentCondition < it.maxCondition)) continue;
+    if (templateByIndex(it.templateIndex)?.isNotRepairable) continue;
+    if (isEnchantedItem(it) && !allowMagicRepairs) continue;
+    if (it.templateIndex === TRANSPORT_SMALL_CART || it.templateIndex === TRANSPORT_HORSE) continue;   // AUDIT WAGONS4: a wagon's condition is its upkeep - a Wagon Yard's or a kit's, never a held enchantment's (DFU's wagon never wore)
+    if (!best || mendOrder(it, best) < 0) best = it;
+  }
+  return best;
 }
 
 // ---- the payload registry -------------------------------------------
@@ -471,21 +542,21 @@ const REGISTRY = new Map([
     flags: PAYLOAD.Held,
     constant({ param, mods }) { mods.weightAllowanceMult = Math.max(mods.weightAllowanceMult, param === 1 ? 0.5 : 0.25); },
   }],
-  /** RepairsObjects.cs - MagicRound, player only: every 4 rounds +1
-   *  condition on the FIRST damaged item found, skipping enchanted
-   *  items unless the AllowMagicRepairs setting says otherwise; one
-   *  item per tick (the C# returns inside the loop). */
+  /** RepairsObjects.cs - MagicRound, player only: every 4 rounds ONE
+   *  piece mends (the C# returns inside its loop). MEND-WORN: the
+   *  piece is repairsObjectsTarget's - what is worn first, the most
+   *  worn first - by POOL_WEAPON_MEND on a pool weapon and DFU's
+   *  point on the rest, never past its condition; a weapon still on
+   *  its row's pool moves to the one pool first, as it does before a
+   *  wear (equip.js lowerCondition). */
   [T.RepairsObjects, {
     flags: PAYLOAD.Held,   // RepairsObjects.cs:35
     magicRound({ round, entity, ctx }) {
       if (!entity.isPlayer || round % CONDITION_PER_ROUNDS !== 0) return;
-      for (const it of entity.items ?? []) {
-        if (it && it.currentCondition != null && it.maxCondition != null && it.currentCondition < it.maxCondition) {
-          if (isEnchantedItem(it) && !(ctx?.allowMagicRepairs ?? false)) continue;
-          it.currentCondition += 1;
-          return;
-        }
-      }
+      const it = repairsObjectsTarget(entity.items, { allowMagicRepairs: ctx?.allowMagicRepairs ?? false });
+      if (!it) return;
+      repoolWeapon(it);
+      it.currentCondition = Math.min(it.maxCondition, it.currentCondition + (mendsOnPool(it) ? POOL_WEAPON_MEND : CONDITION_AMOUNT));
     },
   }],
   /** AbsorbsSpells.cs - Held constant: IsAbsorbingSpells. */
@@ -546,8 +617,18 @@ const REGISTRY = new Map([
    *  the owner's own pack. */
   [T.SoulBound, {
     flags: PAYLOAD.Enchanted | PAYLOAD.Breaks,
-    enchanted({ param, entity, collection }) { _fx.removeFilledTrap?.(collection ?? entity?.items, param); },
-    breaks({ param, ctx }) { if (param >= 0) ctx?.spawnFoe?.(param); },
+    enchanted({ param, entity, collection, item }) {
+      // Only a newly consumed soul may rearm an existing binding; repairing the item cannot.
+      if (_fx.removeFilledTrap?.(collection ?? entity?.items, param)) delete item.soulBoundReleased;
+    },
+    breaks({ param, item, ctx }) {
+      if (!(param >= 0) || item.soulBoundReleased) return;
+      // Magic repairs keep the item. Consume its release BEFORE calling the host: repeated wear, reentrant
+      // callbacks and later repair/break cycles must not spawn the same soul again. The item field survives
+      // saves and transfers. Other enchantments and non-Soulbound items keep their existing break behavior.
+      item.soulBoundReleased = true;
+      ctx?.spawnFoe?.(param);
+    },
   }],
   /** ItemDeteriorates.cs - MagicRound: -1 condition every 4 rounds.
    *  Params (:112-117) are AllTheTime = 0, InSunlight = 1,
@@ -981,7 +1062,11 @@ setEnchantmentHooks({
   // unmounted host equips at minute 0, the headless charter.
   onItemEquipped: (entity, item) => {
     if (!isEnchantedItem(item)) return;
-    doItemEnchantmentPayloads(PAYLOAD.Equipped | PAYLOAD.Held, item, { entity, nowMinutes: mergeCtx(null)?.now?.() ?? 0 });
+    const nowMinutes = mergeCtx(null)?.now?.() ?? 0;
+    // HELD-REWEAR: decided ONCE for the piece, before its first held power restamps the clock - an item with two
+    // Cast-When-Held powers is billed for both or for neither
+    const ctx = heldEquipIsFree(item, nowMinutes) ? { heldEquipFree: true } : null;
+    doItemEnchantmentPayloads(PAYLOAD.Equipped | PAYLOAD.Held, item, { entity, nowMinutes, ctx });
   },
   onItemUnequipped: (entity, item) => {
     if (!isEnchantedItem(item)) return;

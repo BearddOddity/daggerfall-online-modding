@@ -29,12 +29,13 @@
 // omits it too) - estimates recompute per refresh.
 
 import { calculateCost } from './shopStock.js';
-import { templateByIndex } from './itemTemplates.js';
+import { templateByIndex, TRANSPORT_HORSE, TRANSPORT_SMALL_CART } from './itemTemplates.js';
 import { isEnchantedItem } from './enchantments.js';
 import { MINUTES_PER_DAY, MINUTES_PER_HOUR } from './gameDate.js';
 import { getBool } from './settings.js';   // RRI2: InstantRepairs picks the mod's repair factor
 import { conditionBasedPricesOn, conditionRepairCostBase } from './rriRealism.js';   // RRI2: the CalculateItemRepairCost override
 import { localizedText } from './textManager.js';   // L10N3d: the refusal, the interrupt box, the label
+import { stampLayout, layoutStampOfMapId, recordStands } from './layoutPins.js';   // WD3: a ticket names the smith's town and its layout
 
 /** CalculateItemRepairCost (:1901-1922): free at full condition; ten
  *  percent of the item's base value floored at 1, through the shop's
@@ -79,15 +80,23 @@ export function calculateItemRepairTime(condition, max) {
 // ---- ItemRepairData's state machine over the plain record ----------
 
 export const isBeingRepaired = (item) => item?.repairData != null;
-export const isBeingRepairedAt = (item, buildingKey) => isBeingRepaired(item) && item.repairData.buildingKey === buildingKey;
+/** WD3 (AUDIT WD3 S5): a ticket whose town now stands in another layout than it was left in names another building by
+ *  its key - the job is handed over at ANY smith of its town (`mapId`, the shop asking), never lost, and never at a
+ *  stranger's counter that only shares the key. */
+export const isBeingRepairedAt = (item, buildingKey, mapId = null) => isBeingRepaired(item)
+  && (recordStands(item.repairData) ? item.repairData.buildingKey === buildingKey : mapId != null && item.repairData.mapId === mapId);
 export const repairTimeDone = (item) => (item.repairData?.timeStarted ?? 0) + (item.repairData?.repairTime ?? 0);
 export const isRepairFinished = (item, nowMinutes) => isBeingRepaired(item) && repairTimeDone(item) <= nowMinutes;
 
 /** LeaveForRepair (:59-67): idempotent - an item already in repair
- *  keeps its stamp. */
-export function leaveForRepair(item, buildingKey, repairTime, nowMinutes) {
+ *  keeps its stamp. WD3: `mapId`, the smith's town, rides beside the key
+ *  with the layout it stands in - a building key names a building only in
+ *  its town's layout (systems/layoutPins.js); a ticket without one (from
+ *  before, or a caller that has no town) holds no town. */
+export function leaveForRepair(item, buildingKey, repairTime, nowMinutes, mapId = 0) {
   if (isBeingRepaired(item)) return;
   item.repairData = { buildingKey, timeStarted: nowMinutes, repairTime };
+  if (mapId) stampLayout(Object.assign(item.repairData, { mapId }), layoutStampOfMapId(mapId));
 }
 
 /** Collect (:69-76): the record leaves whole (the port's absent
@@ -117,7 +126,11 @@ export const INTERRUPT_REPAIR_TEXT = "Take back that item before it's repaired?"
  *  player's language - every skin reads these. */
 export const cannotBeRepairedText = () => localizedText('cannotBeRepaired', CANNOT_BE_REPAIRED_TEXT);
 export const interruptRepairText = () => localizedText('interruptRepair', INTERRUPT_REPAIR_TEXT);
+/** WAGONS4: a smith's word on a horse or a wagon - the port's own (a wagon left at a smith's counter left the pack for
+ *  days, and the horse and wagon the mod stood in the world with it): a Wagon Yard mends wagons (systems/wagonUpkeep.js). */
+export const TRANSPORT_CANNOT_BE_REPAIRED_TEXT = 'A smith mends no horse and no wagon. A town\u2019s Wagon Yard mends wagons.';
 export function repairRefusal(item, { allowMagicRepairs = false } = {}) {
+  if (item?.templateIndex === TRANSPORT_HORSE || item?.templateIndex === TRANSPORT_SMALL_CART) return 'transport';   // WAGONS4: never left at a smith
   if (isEnchantedItem(item) && !allowMagicRepairs) return 'magic';
   if (templateByIndex(item.templateIndex)?.isNotRepairable) return 'notRepairable';
   if ((item.currentCondition ?? 0) === (item.maxCondition ?? 0)) return 'undamaged';
@@ -137,7 +150,7 @@ export function repairRefusal(item, { allowMagicRepairs = false } = {}) {
  * whole pass (:516). Returns Map(item -> minutes) of the pass's
  * answer for every unfinished item.
  */
-export function updateRepairTimes(items, { commit = false, nowMinutes = 0, buildingKey = 0, instantRepairs = false } = {}) {
+export function updateRepairTimes(items, { commit = false, nowMinutes = 0, buildingKey = 0, mapId = 0, instantRepairs = false } = {}) {
   const out = new Map();
   if (instantRepairs) return out;
   let totalRepairTime = 0, longestRepairTime = 0;
@@ -148,7 +161,7 @@ export function updateRepairTimes(items, { commit = false, nowMinutes = 0, build
     if (repairDone) continue;
     if (isBeingRepaired(item)) previous.set(item, item.repairData.repairTime);
     const repairTime = calculateItemRepairTime(item.currentCondition, item.maxCondition);
-    if (commit && !isBeingRepaired(item)) leaveForRepair(item, buildingKey, repairTime, nowMinutes);
+    if (commit && !isBeingRepaired(item)) leaveForRepair(item, buildingKey, repairTime, nowMinutes, mapId);
     totalRepairTime += repairTime;
     if (repairTime > longestRepairTime) { longestRepairTime = repairTime; itemLongestTime = item; }
     if (commit) item.repairData.repairTime = repairTime;
@@ -171,10 +184,10 @@ export function updateRepairTimes(items, { commit = false, nowMinutes = 0, build
  *  the shop lists only jobs it holds ITSELF, and a FINISHED job's
  *  condition restores to max right in the filter pass, DFU's own
  *  side effect. */
-export function repairJobsAt(entity, buildingKey, nowMinutes) {
+export function repairJobsAt(entity, buildingKey, nowMinutes, mapId = null) {
   const out = [];
   for (const item of entity.otherItems ?? []) {
-    if (!isBeingRepaired(item) || isBeingRepairedAt(item, buildingKey)) out.push(item);
+    if (!isBeingRepaired(item) || isBeingRepairedAt(item, buildingKey, mapId)) out.push(item);
     if (isRepairFinished(item, nowMinutes)) item.currentCondition = item.maxCondition;
   }
   return out;

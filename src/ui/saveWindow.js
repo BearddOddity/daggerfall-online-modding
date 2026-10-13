@@ -485,8 +485,8 @@ export class SaveWindow {
     this._shot = null;
   }
 
-  /** The overlay slots dispose what they replace - the shot texture
-   *  leaves with the window. */
+  /** Both stack pops and overlay disposal release the owned screenshot. */
+  onPop() { this._dropShot(); }
   dispose() { this._dropShot(); }
 
   click(vx, vy) {

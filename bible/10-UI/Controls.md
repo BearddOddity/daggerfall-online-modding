@@ -46,7 +46,9 @@ THE KEYBINDING STANDARD records every departure from DFU's table.
    its runtime does (AUDIT PRE-MERGE 0928 U7, `modSettings.js` latchModLoaded). No gameplay code reads a bound key by its raw code except the reservations the
    sweep in `test/kb1_keybinds.test.js` names with their reasons (the back-button latch, Alt's preventDefault, the
    travel panel's help, a talk window's confirm alias, the developer fly-cam).
-6. **Tests hold it, and old saves come forward.** The file carries `version: 2`. A version-1 file is carried once:
+6. **Tests hold it, and old saves come forward.** The file carries `version: 3` (MODE-WHEEL: a version-2 file lets
+   Left Alt go where it still holds Sneak, so the mode wheel lands there - Ledger A's CROUCH-SNEAK + MODE-WHEEL row).
+   A version-1 file is carried once:
    (1) E, Backquote and Left Ctrl are let go where they still hold DFU's old defaults (AbortSpell, the console,
    Slide), and the two hidden actions let go of any key; (2) the standard's defaults land on every key the player's
    own file left free; (3) a mod key the player SAVED is carried into its action onto a key still free after that (a
@@ -54,6 +56,13 @@ THE KEYBINDING STANDARD records every departure from DFU's table.
    takes a key from another action. What could not be carried - an action whose new key the player's own file
    already spends, a mod's old key another action now holds - is TOLD to the player on the HUD once a scene stands
    (`controlsConfig.js keybindCarryNotes`, `notify.js hudTextWhenShown`), a mod's line only while it is on.
+
+## Crouch is sneak; the mode wheel (CROUCH-SNEAK + MODE-WHEEL, 2026-10-08)
+
+- **C crouches AND sneaks.** Crouched is sneaking: the crouched-sneak speed and the stealth half-speed gate ride the
+  crouch toggle (`player/motor.js`). `Sneak` ships unbound - bind it for DFU's held slow walk without the crouch.
+- **Hold Left Alt for the mode wheel.** Flick the mouse toward Talk (up), Grab (right), Steal (down) or Info (left)
+  and let go (`ui/modeWheel.js`). F1-F4 ship unbound and still set a mode once bound. A pad's NextMode is unchanged.
 
 ## Mac's four calls (2026-09-23)
 
@@ -69,6 +78,8 @@ THE KEYBINDING STANDARD records every departure from DFU's table.
 - **DFU's dead rows: build two, hide two.** `CenterView` (Home) levels the view through the look filter;
   `PrintScreen` (F8) saves the game canvas as a PNG (`ui/screenshot.js`, routed by the hosts like every world
   action, so an automap's own F8 - its third background - stays the automap's) - DFU binds both and reads neither.
+  LOAD1 (2026-10-05): the same PNG is also kept in the menu's Screenshots gallery (`systems/shotGallery.js`), where
+  the loading screens stand on it; the download is the player's switch on that pane (`10-UI/Loading-Screens.md`).
   `ToggleConsole` and `Slide` ship unbound and off the page, freeing `` ` `` and Left Ctrl. The dungeon's
   diagnostics readout, a raw F8 that answered only while F8 was unbound, is the `DebugOverlay` action, unbound.
 
@@ -95,8 +106,9 @@ CSA-G (2026-09-27) reads the last three - one for Mac's read. IncreaseTimeScale 
 of the Beholder's `AutoPerspective`, so the registry's `BoatTimeScaleUp` ships on the keypad's star beside it
 (`NumpadMultiply`; a player who wants the mod's plus can share it with AutoPerspective - law 3's third answer - and at
 the helm both then answer). `BoatTimeScaleDown` and `BoatTimeScaleReset` keep the mod's keypad minus and enter, which
-nothing else holds. The three answer only at the helm, where the mod's sailing arm reads them. The mod's plus, minus
-and enter stay its `shipped` values.
+nothing else holds. The three answer only at the helm, where the mod's sailing arm reads them - and online only with
+why (HELM-TIME-ONLINE, 2026-10-04, Mac: "Remove the time dial from ships online": "Online, time at sea keeps the
+world's pace."; `03-World/Come-Sail-Away.md`). The mod's plus, minus and enter stay its `shipped` values.
 
 CSA-I (2026-09-27): the position reading's map reads raw keys of its own, and only while it is up - the number row's
 1 to 8 for the marker colour, the left and right mouse buttons, Left Shift held for the thin lines, and Escape's
@@ -107,7 +119,8 @@ number row is not the quick slots there, nor Escape the pause menu.
 CSA-L (2026-09-28, a player's ask: "instead of an overuse of keybinds, is there a way we can instead develop enhanced
 plus UI elements?"): on Enhanced Plus the nine are also a HELM PANEL under the compass (`ui/enhancedHelm.js`) - Raise
 or Stow sails, the square sails alone where the modifier's chord would raise them, the trim while it is the player's
-(held), Light or Douse lanterns, the time scale's minus, one and plus, the position reading and Leave the helm - each
+(held), Light or Douse lanterns, the time scale's minus, one and plus (offline: HELM-TIME-ONLINE draws no dial online,
+and the d-pad's left and right then step nothing, held they only trim), the position reading and Leave the helm - each
 button pressing the SAME registry action its key presses, through the mod's own input seam, so the keys stay, and a
 button presses with no key bound. The mouse clicks it while the pointer is free (`FreeMouse`, Y); a finger taps it;
 and at the helm a pad's bare d-pad is the helm's (up the sails, held the square sails; down the lanterns, held leave
@@ -119,10 +132,14 @@ HELM-KEYS (2026-09-29, the player: "Arrow keys should not only control your ship
 sails. I also want to find a way to make the ship controls more intuitive instead of a bunch of buttons and key
 binds") - THE ARROWS ARE THE HELM (DECLARED, the Port-Ledger's HELM-KEYS row):
 
-- **Up and down make and take in sail** - `BoatSailUp` (More sail) and `BoatSailDown` (Less sail), the port's own two
-  steps through the mod's own sail states (`systems/comeSailAway.js MoreSail, LessSail`): stowed, raised; and where the
-  square sails are the player's own (the assist's AutoStowSquareSails off, a hull with both kinds) all her canvas, the
-  fore-and-aft alone, none. A step with nowhere to go says so. End still toggles, the brackets still trim.
+- **Up and down, W and S: one ladder** (HELM-LADDER, 2026-10-04, from the field: "WASD and Arrow keys should function
+  the same when controlling") - `MoveForwards` or `BoatSailUp` climbs a rung a press, `MoveBackwards` or `BoatSailDown`
+  comes down one (`systems/comeSailAway.js ladderUp, ladderDown`): the oars backing water, at rest, pulling ahead, then
+  her sails and, where the square sails are the player's own (the assist's AutoStowSquareSails off, a hull with both
+  kinds), all her canvas - More sail and Less sail's steps above the oars. The oars keep their rung with no key held. A
+  step with nowhere to go says so. End still toggles all her canvas, the brackets still trim - under the mod's own
+  helm (AUDIT SHIPS A6/D1, 2026-10-06: under the Responsive one her trim is the helm's own, every sail drawing at its
+  crest - SAIL-FREE - so the brackets move nothing there and the panel and the pad offer no trim).
 - **Left and right steer**: at a helm DFU's `TurnLeft` and `TurnRight` - the arrows - are the RUDDER's, as A and D are
   (`inputActions.js HELM_RUDDER_ACTIONS`, read through the mod's own input seam, its rudder's swing too), and the
   keyboard look does not turn the view with them there. One action, one meaning - a turn - read by whoever the hands
@@ -132,14 +149,17 @@ binds") - THE ARROWS ARE THE HELM (DECLARED, the Port-Ledger's HELM-KEYS row):
   onto the partner's own key (a player's own rebind of the arrow is never shared onto) and, on a saved file, only
   while More sail is keyless and not unbound on purpose. The two are never live together: a helm's hands are on the
   wheel, and the professions read no choice there (`world.js`). The down arrow was free.
-- **The helm panel teaches them**: its line under the name is the helm's hand at a glance - the sails on the arrows,
-  the rudder on the turn keys, as bound now - and its sails' button presses More and Less sail, so its hint is the
-  arrow. IN IRONS (her sails up, her bow within IRONS_TELL_DEG of the wind's eye, her way through the water under
-  IRONS_TELL_WAY - never the sea's current: AUDIT NAV2 F15) the helm is told once how she comes out - under the Classic
-  helm strike sail and row her round, under the Responsive one put the helm over first (AUDIT NAV2 F18) - and the
-  panel's line says it, with the keys, while it lasts. AUDIT NAV2 F17: while an Overworld journey holds the helm (the
-  travel view up) the panel is covered and the arrows' More sail and Less sail, and the sail toggle, stand down - the
-  journey sets her sails, and the turn keys were already the view's there.
+- **K is the glass's aboard** (SPYGLASS, 2026-10-11, a DEFAULT SHARE beside Travel Options' `FollowPaths`): one press
+  raises the captain's spyglass to the eye while standing on a deck or at a helm, the next lowers it; the wheel turns
+  its magnification (x2 to x8). Ashore K is the road's and the glass answers nothing; aboard the road's follow is read
+  nowhere - a deck has no road. `03-World/Captains-Sea.md` has what the glass makes out.
+- **The helm panel teaches them**: its line under the name is the helm's hand at a glance - her oars and her sails on
+  W, S and the arrows, the rudder on A, D and the turn keys, as bound now - and its sails' button is the toggle (End). IN IRONS (her sails up, her bow within IRONS_TELL_DEG of the wind's eye, her way ahead through the water under
+  IRONS_TELL_WAY - sternway counts, never the sea's current: AUDIT NAV2 F15) the helm is told once how she comes out -
+  strike sail and row her round - and the panel's line says it, with the keys, while it lasts: the Classic helm's alone,
+  the Responsive one's canvas driving her up into the wind's eye (SAIL-FREE, `03-World/Come-Sail-Away.md`). AUDIT NAV2 F17: while an Overworld journey holds
+  the helm (the travel view up) the panel is covered and the arrows' More sail and Less sail, and the sail toggle, stand
+  down - the journey sets her sails, and the turn keys were already the view's there.
 
 ## The sea fight at the helm (NAV-H, 2026-09-28 - for Mac's read)
 
@@ -163,6 +183,37 @@ The readout names the player's own bindings in the Controls page's own words (`c
 (CSA-L's helm panel reads its hints the same way), and on a finger's screen the hints are taps and drags - hold and
 drag to aim, lift to fire, a tap to board (the host's one activation arm), Crouch the touch table's press. The helm
 panel's buttons and the pad's d-pad at the helm are Come Sail Away's nine and nothing of the guns'.
+
+## The saddle panel (STEED-UI, 2026-10-11 - for Mac's read)
+
+The owner, after horse care and wagon upkeep (`06-Systems/Horse-Care.md`, `06-Systems/Wagon-Upkeep.md`): "Proper UI
+elements for the horse + wagon/cart (Enhanced plus)". CSA-L's answer for the helm is the answer for the saddle: on
+Enhanced Plus, astride a horse or on a wagon's bench outdoors, a SADDLE PANEL stands under the compass where the helm
+stands (`ui/enhancedSaddle.js` - the two are never up together), the helm's kind of thing: the HUD's, not a window -
+it pauses nothing, and a window over the HUD, the HUD toggled off, a pause or a journey (the travel view, Travel
+Options' bar) hides it. It spends NO key of its own and adds no binding.
+
+- **What it reads** (`systems/upkeepRuntime.js saddle`, never written): its title the rider's - "Riding <name>" or
+  "Driving the <wagon>" - with the gait (Standing, Walking, Galloping, Trotting, Rolling - HORSE-WALK, 2026-10-12: a
+  horse under horse care walks, and gallops on the run; Trotting is DFU's one pace, horse care off,
+  `06-Systems/Horse-Care.md` THE WALK) and the pace in km/h, smoothed off
+  the motor's odometer (a placement or a carry never counted); the horse's Breath a bar while ridden (Winded in
+  words); its Hunger a chip with the hours its food has left - on a bench the TEAM's, its hungriest horse's (a
+  Caravan's second horse starving drags the team's Strength as its lead would); its Bond a bar to the next word; the
+  wagon's state and share of whole, and its load against its limit. The line under the title says what the horse
+  needs first (winded, starving, a wagon failing), else the gallop's key while ridden and, while the look holds the
+  mouse, how to free it (`FreeMouse`, Y).
+- **Every button is a door that already stands** (`scenes/saddleHost.js`, one glue for `world.js` and `exterior.js`):
+  Feed oats and Apple are the Stable page's acts, to the horse the panel shows hungry; Repair kit is the kit's Use
+  (where a kit would mend); Cargo is a press on the wagon (`systems/horseCart.js openWagonCargo` - the load opened
+  with the wagon chosen, where Horse Cart and Cargo's own reach allows); Stable opens the Holdings page; View is the
+  view key's toggle (`TogglePerspective`, shown only where it would turn - `player/mwView.js
+  mwViewCanTogglePerspective`); Dismount (or Climb down) is `HorseMount`'s own handler, the classic transport's foot
+  with the mod off. A button whose door has a key bound names it; one that cannot act now is dark with its reason on
+  its tooltip (no oats, full, out of reach); one that can never act is not shown.
+- **The mouse** clicks it while the pointer is free; **a finger** taps it (44 px, the helm's own place clear of the
+  stick and the corner); **a pad** keeps its d-pad for the quick slots (a rider's potions are on it) and presses the
+  panel with its cursor (PADPLUS1). The classic skin keeps the grip bar's breath and the keys.
 
 ## AUDIT KB1 (2026-09-24, Mac: "Audit this before we merge")
 
@@ -204,6 +255,18 @@ hold - so a common herb, a body and the net's haul could not be played there. No
 - **The prompts**: with a pad in hand the professions' prompts and lines name its button (B, LT, Circle) - the sea's
   readout's law (AUDIT NAV1); else the key.
 
+## SHIFT-STOW - Shift in the pack (2026-10-04, Mac: "shift click to deposit items (like materials) needs to be a thing")
+
+Law 2's: Shift is the pack's own modifier, not a registry action. It is read the way the classic window reads Control
+(CM5) - a state from its down edge to its up edge - and, on both skins, off the pointer itself (`shiftKey` on the
+click, the classic window's hover). Shift and the LEFT button on a pack item put the whole stack into the player's own
+store beside it - the wagon, their storage, and (enhanced) the Materials Bag - in any action mode, with no how-many
+popup; Control's popup is DFU's and stays as it was. The ground, a corpse, a container and a reward tray keep the
+plain click. A right click stays the mode swap. The classic window's latch is per key (one Shift let go while the
+other is held is still Shift), is never trusted across the page losing the keyboard, and a held Shift's repeated down
+edge answers no box (AUDIT SHIFT-STOW). Shift is also Run's default key: holding Run while clicking a pack item beside
+the wagon deposits it. Port-Ledger A, SHIFT AND A CLICK STOW THE WHOLE STACK.
+
 ## The defaults
 
 Generated from `ACTION_GROUPS` and the two default tables; the enhanced pane draws exactly these groups. Held so by `test/audit0928_input.test.js` (AUDIT PRE-MERGE 0928 D2: the Come Sail Away table had shown two of its nine rows).
@@ -223,10 +286,10 @@ Generated from `ACTION_GROUPS` and the two default tables; the enhanced pane dra
 | `CenterView` | HOME |  | Centre the view |
 | `TogglePerspective` | MOUSE4 |  | First / third person |
 | `Jump` | SPACE | `JoystickButton5` | Jump |
-| `Crouch` | C | `JoystickButton4` | Crouch |
+| `Crouch` | C | `JoystickButton4` | Crouch and sneak |
 | `Run` | LSHIFT | `JoystickButton8` | Run |
 | `AutoRun` | MIDDLE CLICK |  | Auto run |
-| `Sneak` | LALT |  | Sneak |
+| `Sneak` | (unbound) |  | Sneak (held, no crouch) |
 | `WalkMode` | (unbound) |  | Walk mode on / off |
 | `FloatUp` | PG UP |  | Float up (levitate, swim) |
 | `FloatDown` | PG DN |  | Float down (levitate, swim) |
@@ -238,6 +301,7 @@ Generated from `ACTION_GROUPS` and the two default tables; the enhanced pane dra
 | `ReadyWeapon` | Z | `JoystickButton9` | Ready or sheathe weapon |
 | `SwingWeapon` | RIGHT CLICK | `JoystickAxis10Button0` | Swing weapon |
 | `SwitchHand` | H |  | Switch hand |
+| `WeaponTechnique` | MOUSE3 |  | Weapon technique (hold to aim) |
 
 ### Magic
 
@@ -254,10 +318,11 @@ Generated from `ACTION_GROUPS` and the two default tables; the enhanced pane dra
 |---|---|---|---|
 | `ActivateCenterObject` | LEFT CLICK |  | Activate (mouse) |
 | `Interact` | E | `JoystickButton1` | Interact |
-| `StealMode` | F1 |  | Steal mode |
-| `GrabMode` | F2 |  | Grab mode |
-| `InfoMode` | F3 |  | Info mode |
-| `TalkMode` | F4 |  | Talk mode |
+| `ModeWheel` | LALT |  | Mode wheel (hold, flick, release) |
+| `StealMode` | (unbound) |  | Steal mode |
+| `GrabMode` | (unbound) |  | Grab mode |
+| `InfoMode` | (unbound) |  | Info mode |
+| `TalkMode` | (unbound) |  | Talk mode |
 | `QuickLootAll` | P |  | Take everything |
 | `QuickLootOpen` | J |  | Open the container |
 | `Transport` | T |  | Transport |
@@ -351,6 +416,8 @@ Generated from `ACTION_GROUPS` and the two default tables; the enhanced pane dra
 | `HorseMount` | , |  | Mount or dismount |
 | `HorseSummon` | . |  | Summon horse and wagon |
 
+On Enhanced Plus the saddle panel's Dismount is `HorseMount`'s own handler, and names its key (STEED-UI, above).
+
 ### Come Sail Away (drawn, and answering, while `come-sail-away` is on)
 
 | Action | Key | Pad | What it does |
@@ -366,6 +433,13 @@ Generated from `ACTION_GROUPS` and the two default tables; the enhanced pane dra
 | `BoatTimeScaleUp` | KPADMULTIPLY |  | Speed time up at the helm |
 | `BoatTimeScaleDown` | KPADSUBTRACT |  | Slow time down at the helm |
 | `BoatTimeScaleReset` | KPADENTER |  | Put time back to normal at the helm |
+| `Spyglass` | K |  | Raise or lower the spyglass (aboard) |
+
+### Project Legacy (drawn, and answering, while `project-legacy` is on)
+
+| Action | Key | Pad | What it does |
+|---|---|---|---|
+| `LegacyFamily` | KPADDIVIDE |  | Family tree |
 
 
 Not on the page: `ToggleConsole` and `Slide` (HIDDEN_ACTIONS). The classic grid still draws DFU's thirty-eight
@@ -403,3 +477,18 @@ buttons on its fixed art, Slide's among them, unbound.
   post-processing) and the Transport window's letters - F, H, C, S behind the Transport key - read off the shortcut
   table, as words and keys with no buttons. A mod's own keys are named on its Features tile too, read-only, with one
   press through to this page.
+- **A key a Confirm still owes says so** (UNSAVED-MARK, FIELD BUGS 2026-10-11, `01-Overview/Field-Bugs-2026-10-11.md`:
+  "It shows that my selected key is set ... it just didn't save"): its row is edged in brass and says "Not saved yet -
+  press Confirm."; the head counts what Confirm owes and lights it (`controlsConfig.js` `unsavedEdits`). The how-to is
+  the page's first card, scrolled away; the sticky head is the law's line and its buttons, and on Settings it sticks
+  UNDER the sticky toolbar at the toolbar's measured height (`enhancedMenu.js` `stickUnderToolbar`) - it had stood
+  behind it, and on a phone over the row just bound. Leaving still drops what was staged.
+
+## PAD-BINDS and PAD-ARRANGE (FIELD BUGS 2026-10-04e)
+
+The Controller bindings window (Enhanced Plus) has an Overworld and a Quick dial row, and both are d-pad tap or hold
+choices while the crossbar is in force - the Overworld on no key at all is the host's own door (`padAction`, the
+Overworld's alone). Under a window LT raises the hotbar to be arranged: A takes a slot in hand and puts it down on the
+press's click (a swap or a move), Y clears one; with the pad in hand "Add to hotbar" puts the new entry in hand and
+asks for a slot - A on it, or a bumper and the slot's own button on the crossbar (LB + X places too, never the quick
+act); on the row of ten the bumpers stay the tabs'. The mouse taking the hands back lets go of the hand. The record: `01-Overview/Field-Bugs-2026-10-04e.md`.

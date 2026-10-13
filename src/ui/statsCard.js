@@ -15,6 +15,7 @@ import { dollArmour, overallArmour, tenth, PART_NAMES } from './armourCard.js';
 import { SKILL_NAMES, SKILLS } from '../systems/skills.js';
 import { itemLongName } from '../systems/itemInfo.js';
 import { PIXEL_STACK } from './pixelifyFive.js';   // the Enhanced Plus face: Pixelify Sans, its 5 from Silkscreen
+import { savingChance, elementalResistanceChance, ELEMENTS, EFFECT_FLAGS } from '../systems/spellcast.js';   // STATS-RESIST: the saving throw's own law
 import { t, localizedText } from '../systems/textManager.js';   // L10N4: the card's words in the player's language; the attributes are DFU's own
 
 const FLIP_MS = 900;
@@ -120,7 +121,7 @@ export function buildStatsPage(entity, repaint, opts = {}) {
       : t('stats.critical.sub', '+{hit} to hit', { hit: s.crit.hitBonus }),
     s.crit.kind === 'damage'
       ? t('stats.critical.tipDamage', 'Critical Strike roll: a success adds to your chance to hit and multiplies the blow.')
-      : t('stats.critical.tip', 'Critical Strike roll: a success adds to your chance to hit (Daggerfall\u2019s own critical).'), 4),
+      : t('stats.critical.tip', 'Critical Strike roll: a success adds to your chance to hit (the original game\u2019s own critical).'), 4),
     tile(t('stats.backstab', 'Backstab'), pct(s.backstab.chance), s.backstab.chance
       ? t('stats.backstab.sub', '\u00d7{mult} from behind', { mult: s.backstab.multiplier }) : t('stats.backstab.needsSkill', 'needs skill 2+'),
     t('stats.backstab.tip', 'When the foe faces away: your Backstabbing skill is the chance the blow does triple damage, and it adds to your chance to hit.'), 5),
@@ -179,8 +180,23 @@ export function buildStatsPage(entity, repaint, opts = {}) {
   def.append(row(localizedText('health', 'Health'), `${Math.round(s.derived.health)} / ${Math.round(s.derived.maxHealth)}`));
   page.append(def);
 
+  // STATS-RESIST (the owner: "Resistances on the stat screen please"): each kind of harm's chance to be shrugged off -
+  // the saving throw's own chance before its roll (systems/spellcast.js savingChance: race, career, biography, worn
+  // affixes and Willpower), and over it any Resist effect running now, which turns the harm away whole first
+  const rs = section('Resistances', 10);
+  const pillsR = el('div', 'sf-pills sf-res');
+  for (const r of resistanceRows(entity)) {
+    const pl = el('span', `sf-pill${r.immune ? ' imm' : r.total >= 60 ? ' up' : r.total <= 25 ? ' down' : ''}`);
+    pl.append(el('i', null, r.label), el('b', null, r.immune ? 'Immune' : `${r.total}%`));
+    pl.title = r.immune ? `${r.label}: immune` : `${r.label}: ${r.save}% to resist${r.ward ? `, and a ${r.ward}% ward that turns it away whole first` : ''}`;
+    pillsR.append(pl);
+  }
+  rs.append(pillsR);
+  rs.title = 'Your chance to shrug each harm off: race, career, biography, what you wear and your Willpower (one point a ten).';
+  page.append(rs);
+
   // attributes
-  const at = section(t('stats.attributes', 'Attributes'), 10);
+  const at = section(t('stats.attributes', 'Attributes'), 11);
   const grid = el('div', 'sf-attrs');
   s.attributes.forEach((a) => {
     const c = el('div', 'sf-attr');
@@ -194,18 +210,34 @@ export function buildStatsPage(entity, repaint, opts = {}) {
   page.append(at);
 
   // skills
-  const sk = section(t('stats.skills', 'Skills in play'), 11);
+  const sk = section(t('stats.skills', 'Skills in play'), 12);
   sk.append(row(skillName, `${s.skill}%`), row(SKILL_NAMES[SKILLS.CriticalStrike], `${s.crit.skill}%`), row(SKILL_NAMES[SKILLS.Backstabbing], `${s.backstab.skill}%`), row(SKILL_NAMES[SKILLS.Dodging], `${s.dodging}%`));
   page.append(sk);
 
   const foot = el('p', 'sf-foot sf-rise', s.core === 'overhaul'
     ? t('stats.rules.overhaul', 'Rules: Physical Combat And Armor Overhaul. Damage is before the foe\u2019s armour reduces it.')
-    : t('stats.rules.classic', 'Rules: Daggerfall\u2019s classic combat formulas. Damage is before any armour effects.'));
-  foot.style.setProperty('--i', '12');
+    : t('stats.rules.classic', 'Rules: the original game\u2019s combat formulas. Damage is before any armour effects.'));
+  foot.style.setProperty('--i', '13');
   page.append(foot);
   return page;
 }
 function safeName(item) { try { return itemLongName(item); } catch { return item?.name ?? ''; } }
+/** STATS-RESIST: the seven harms a saving throw is asked against, each `{ label, save, ward, total, immune }` - `total`
+ *  the chance it is turned away at all (the ward first, then the throw). */
+export const RESIST_ROWS = Object.freeze([
+  ['Fire', ELEMENTS.Fire, EFFECT_FLAGS.Fire], ['Frost', ELEMENTS.Frost, EFFECT_FLAGS.Frost], ['Shock', ELEMENTS.Shock, EFFECT_FLAGS.Shock],
+  ['Magic', ELEMENTS.Magic, EFFECT_FLAGS.Magic], ['Poison', ELEMENTS.DiseaseOrPoison, EFFECT_FLAGS.Poison],
+  ['Disease', ELEMENTS.DiseaseOrPoison, EFFECT_FLAGS.Disease], ['Paralysis', ELEMENTS.Magic, EFFECT_FLAGS.Paralysis],
+]);
+export function resistanceRows(entity) {
+  return RESIST_ROWS.map(([label, element, flag]) => {
+    let sc = { immune: false, chance: 50 };
+    try { sc = savingChance(element, flag, entity); } catch { /* a half-built character: the base */ }
+    const ward = Math.max(0, Math.min(100, Math.round(elementalResistanceChance(entity, element) || 0)));
+    const total = sc.immune ? 100 : Math.round(100 - (100 - ward) * (1 - sc.chance / 100));
+    return { label, save: sc.chance, ward, total, immune: sc.immune || ward >= 100 };
+  });
+}
 
 // ── the card ────────────────────────────────────────────────────
 /**
@@ -265,6 +297,9 @@ export function statFlip(front, entity, usingRightHand = () => true) {
 
 // ── the dress ───────────────────────────────────────────────────
 export const STATS_CARD_CSS = `
+.sf-res .sf-pill.imm b { color: #8fd18a; }
+.sf-res .sf-pill.up b { color: #d9c27a; }
+.sf-res .sf-pill.down b { color: #e08a72; }
 /* STATS-CARD, dressed as Enhanced Plus. PAINT is the stone-and-brass kit's: every part has a ROLE in ui/enhancedFrame.js
    (the back is a panel, Stats / Paperdoll a button, the headline tiles and the armour pills chips, the foe chips tiles,
    each section a well with an engraved head, each line a rule), so all six Plus themes - Stone's grit and marble

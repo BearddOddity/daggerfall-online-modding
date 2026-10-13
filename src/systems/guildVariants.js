@@ -28,6 +28,7 @@ import { SKILLS } from './skills.js';
 import { GUILDS, activeMemberships } from './guilds.js';   // TP1: GuildManager's Memberships.Values
 import { GUILD_GROUPS } from '../formats/factionFile.js';
 import { localizedText, localizedStrings, localizedTable, splitTextList } from './textManager.js';   // L10N3d
+import { DIVINES, ORDERS } from './guildFactions.js';   // CHAP1: the leaf the Roll reads on the service
 
 /** The two variant-keyed rank lists, from DFU's Internal_Strings
  *  ("templeRanks" / "knightlyOrderRanks"), each held as the table holds
@@ -44,17 +45,9 @@ export const KNIGHTLY_RANK_TITLES = Object.freeze(splitTextList(KNIGHTLY_RANKS))
  *  group's one English list itself. */
 const shownRankTitles = (text, en, titles) => (text === en ? titles : splitTextList(text));
 
-/** Temple.Divines (:49-59) - value = factionId. */
-export const DIVINES = Object.freeze({
-  Akatosh: 26, Arkay: 21, Dibella: 29, Julianos: 27,
-  Kynareth: 35, Mara: 24, Stendarr: 33, Zenithar: 22,
-});
-
-/** KnightlyOrder.Orders (:49-61) - value = factionId. */
-export const ORDERS = Object.freeze({
-  Horn: 411, Dragon: 368, Flame: 410, Hawk: 417, Owl: 413,
-  Rose: 409, Wheel: 415, Candle: 408, Raven: 414, Scarab: 416,
-});
+/** Temple.Divines (:49-59) and KnightlyOrder.Orders (:49-61) - value = factionId. CHAP1: their one home is the leaf
+ *  guildFactions.js, which the account service's graph reaches; handed on here, where every caller reads them. */
+export { DIVINES, ORDERS };
 
 /** Temple guildSkills (:144-231), per divine. These are the RANK
  *  law's input; the (longer) training lists are a services concern. */

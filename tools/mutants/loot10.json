@@ -47,8 +47,8 @@
   {
     "name": "LOOT10-quiet-ignored",
     "file": "src/systems/lootCodex.js",
-    "old": "  if (!quiet) {\n",
-    "new": "  if (true) {\n",
+    "old": "  if (!quiet && !presentCodexFind(item, key.kind)) {\n",
+    "new": "  if (true && !presentCodexFind(item, key.kind)) {\n",
     "tests": [
       "test/loot10_codex.test.js"
     ]
@@ -110,7 +110,7 @@
   {
     "name": "LOOT10-record-keeps-the-unknown",
     "file": "src/systems/lootCodex.js",
-    "old": "      if (kind === 'legendary' ? !legendaryById(id) : !aethericById(id)) continue;\n",
+    "old": "      if (!RECORD_OF[kind](id)) continue;\n",
     "new": "\n",
     "tests": [
       "test/loot10_codex.test.js"
@@ -128,7 +128,7 @@
   {
     "name": "LOOT10-save-forgets",
     "file": "src/systems/lootCodex.js",
-    "old": "  getSaveData: () => ({ legendary: { ..._codex.legendary }, aetheric: { ..._codex.aetheric } }),",
+    "old": "  getSaveData: () => ({ legendary: { ..._codex.legendary }, aetheric: { ..._codex.aetheric }, gilded: { ..._codex.gilded } }),",
     "new": "  getSaveData: () => empty(),",
     "tests": [
       "test/loot10_codex.test.js"
@@ -182,20 +182,22 @@
   {
     "name": "LOOT10-imprint-any-group",
     "file": "src/systems/lootCodex.js",
-    "old": "  ? allLegendaries().filter((r) => r.group === item.group && foundDay('legendary', r.id) != null && powerFits(item, powerOf(r.id)))",
+    "old": "  ? allLegendaries().filter((r) => recordFitsGroup(r, item) && foundDay('legendary', r.id) != null && powerFits(item, powerOf(r.id)))",
     "new": "  ? allLegendaries().filter((r) => foundDay('legendary', r.id) != null && powerFits(item, powerOf(r.id)))",
     "tests": [
       "test/loot10_codex.test.js"
-    ]
+    ],
+    "note": "LOOT15 (RE-AIMED BY CONTENT): a record's group is read through recordFitsGroup now - the wardrobe's six land on either cut of clothing (bible/06-Systems/Loot-II-Arc.md section 7); the law it pins unmoved."
   },
   {
     "name": "LOOT10-imprint-unfound",
     "file": "src/systems/lootCodex.js",
-    "old": "  ? allLegendaries().filter((r) => r.group === item.group && foundDay('legendary', r.id) != null && powerFits(item, powerOf(r.id)))",
-    "new": "  ? allLegendaries().filter((r) => r.group === item.group && powerFits(item, powerOf(r.id)))",
+    "old": "  ? allLegendaries().filter((r) => recordFitsGroup(r, item) && foundDay('legendary', r.id) != null && powerFits(item, powerOf(r.id)))",
+    "new": "  ? allLegendaries().filter((r) => recordFitsGroup(r, item) && powerFits(item, powerOf(r.id)))",
     "tests": [
       "test/loot10_codex.test.js"
-    ]
+    ],
+    "note": "LOOT15 (RE-AIMED BY CONTENT): a record's group is read through recordFitsGroup now - the wardrobe's six land on either cut of clothing (bible/06-Systems/Loot-II-Arc.md section 7); the law it pins unmoved."
   },
   {
     "name": "LOOT10-imprint-unknown",
@@ -290,11 +292,12 @@
   {
     "name": "LOOT10-wire-another-group",
     "file": "src/systems/lootRarity.js",
-    "old": "legendaryById(item.imprint)?.group === item.group && powerFits(item, powerOf(item.imprint))",
+    "old": "recordFitsGroup(legendaryById(item.imprint), item) && powerFits(item, powerOf(item.imprint))",
     "new": "!!legendaryById(item.imprint) && powerFits(item, powerOf(item.imprint))",
     "tests": [
       "test/loot10_codex.test.js"
-    ]
+    ],
+    "note": "LOOT15 (RE-AIMED BY CONTENT): a record's group is read through recordFitsGroup now - the wardrobe's six land on either cut of clothing (bible/06-Systems/Loot-II-Arc.md section 7); the law it pins unmoved."
   },
   {
     "name": "LOOT10-wire-on-a-magic",
@@ -317,8 +320,8 @@
   {
     "name": "LOOT10-power-sleeps",
     "file": "src/systems/lootPowers.js",
-    "old": "it?.rarity === 'rare' ? it.imprint : null]",
-    "new": "null]",
+    "old": "it?.rarity === 'rare' ? it.imprint : null, it?.rarity",
+    "new": "null, it?.rarity",
     "tests": [
       "test/loot10_codex.test.js"
     ]

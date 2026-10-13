@@ -27,6 +27,8 @@
 // Pure JSON in, JSON out - no module state read.
 
 import { QUEST_OWN_SECOND_KEYS, QUEST_WORLD_SECOND_KEYS, shiftQuestStamps, markOwnClock } from './quest/questStamps.js';
+import { LEGACY_VENDOR } from './legacy/family.js';
+import { skyOfEventLaw, eventOfSkyLaw } from './skyCalendar.js';   // AUDIT WAITS B1: a banishment's days are the sky's calendar's
 
 /** AUDIT LIVED1b F3 (S4): a save's clock - classic minutes, an unsigned count below 2^31 (4,000 years of the calendar;
  *  DFU's is a uint) - or null for anything else. The doors and the load (save.js restorePlayer) read the envelope's
@@ -64,7 +66,24 @@ function rebaseWorldStamps(copy, delta, days, { questOwn = false } = {}) {
     if (c && Number.isFinite(c.litUntil)) c.litUntil += delta;
     if (c && Number.isFinite(c.placedAt)) c.placedAt += delta;
   }
+  // AUDIT REST III D1: A HELD BOUNTY'S DAY is the world's online (bountyHost.js reads the shared clock) and the
+  // character's offline, so it moves with the lane as a camp's fire does - Bring online lapsed every bounty a ledger of
+  // this build held on its first online tick, kills and all (AUDIT REST II Q3's re-stamp is the older ledgers' alone,
+  // and the world runs months ahead of a new offline calendar); and the minute each was paid, which a mate's clear is
+  // read against (bountyClearPays). Never below the calendar's start.
+  const ledger = copy.modData?.[BOUNTY_RECORD_VENDOR];
+  for (const h of Array.isArray(ledger?.held) ? ledger.held : []) if (h && Number.isFinite(h.takenAt)) h.takenAt = Math.max(0, h.takenAt + delta);
+  const paidAt = ledger?.paidAt && typeof ledger.paidAt === 'object' ? ledger.paidAt : {};
+  for (const k of Object.keys(paidAt)) if (Number.isSafeInteger(paidAt[k])) paidAt[k] = Math.max(0, paidAt[k] + delta);
   if (days) {
+    // AUDIT CAPTAIN'S SEA L4: the captain's ledger's days are the world's online and the one clock's offline - a legend
+    // ended, a strand gathered, the day's dealing - so they move by the days between the clocks, as a shelf's stock day
+    // does (a copy taken offline found a legend sunk for months, "gone down today", and a strand bare as long)
+    const cap = copy.modData?.[CAPTAIN_RECORD_VENDOR];
+    for (const map of [cap?.ether?.legends, cap?.ether?.harvested]) {
+      if (map && typeof map === 'object') for (const k of Object.keys(map)) if (Number.isFinite(map[k])) map[k] += days;
+    }
+    if (cap?.dealt && typeof cap.dealt === 'object' && Number.isFinite(cap.dealt.day)) cap.dealt.day += days;
     for (const scene of copy.sceneCache?.scenes ?? []) {
       for (const c of scene?.lootContainers ?? []) {
         if (!c || typeof c !== 'object') continue;
@@ -77,6 +96,21 @@ function rebaseWorldStamps(copy, delta, days, { questOwn = false } = {}) {
 }
 const daysBetween = (to, from) => Math.floor(Math.floor(to) / 1440) - Math.floor(Math.floor(from) / 1440);
 
+/** AUDIT WAITS B1 (BANISH-SKY, bible/06-Systems/Online-Waits.md WAIT4): A BANISHMENT'S END crosses a door as the days
+ *  the player was told. Online it is a stamp on the event clock whose days are the sky's calendar (standing.js
+ *  banishmentEnd); offline it is a stamp on the one clock, which is the calendar. Neither door moved it - REP3 came
+ *  after LIVED1's doors - so carried offline a term stood as far off as the world ran ahead of the character (a
+ *  character two hundred days behind read 215 days left), and carried online it was read against the world's calendar -
+ *  lifted at once for a character behind the world, held too long for one ahead of it. `toEnd` maps an end across; a
+ *  term not yet stamped (AUDIT REP F2) stays so, and the first trusted read gives it its thirty days. The sky's law is
+ *  read as the law has it (skyCalendar.js skyOfEventLaw / eventOfSkyLaw): an online save's stamps were taken under it,
+ *  whatever this page has installed. */
+function moveBanishments(copy, toEnd) {
+  for (const r of Array.isArray(copy.regionConditions) ? copy.regionConditions : []) {
+    if (r && typeof r === 'object' && Number.isFinite(r.b)) r.b = toEnd(r.b);
+  }
+}
+
 /** AUDIT LIVED1b R1 (A2, O3, S3): World Events - Raiding Parties' record (raidingParties.js RAIDING_PARTIES_VENDOR) is the
  *  SHARED day's roll online - its `lastSelectedDay` and every raid's day and minutes on the world's clock - and the mod
  *  rolls only on a LATER day offline: a copy a hundred and fifty days behind the world met no raid until its calendar
@@ -84,10 +118,26 @@ const daysBetween = (to, from) => Math.floor(Math.floor(to) / 1440) - Math.floor
  *  (the load hands a mod with no record its new one - modSaveData.js restoreModSaveRecords) and rolls its own. */
 export const RAID_RECORD_VENDOR = 'world-events-raiding-parties';
 
+/** AUDIT LEGACY II H1: A COPY BETWEEN THE LANES IS A NEW CHARACTER, AND A NEW CHARACTER IS OF NO HOUSE YET. Project
+ *  Legacy's record (`modData.ProjectLegacy`) names the people of a line by their character ids; carried across, the
+ *  copy (a new id) played as the ORIGINAL's person - its tolls aged them, its death or retirement wrote them dead in
+ *  the store both lanes share in one browser, and the remains' purses came into the realm uncounted by customs. The
+ *  copy founds its own house on its first load (legacyHost.js found). Both doors drop it, whatever the clocks say. */
+function dropLineage(copy) {
+  if (copy.modData && typeof copy.modData === 'object') delete copy.modData[LEGACY_VENDOR];
+}
+/** AUDIT REST III D1: the bounty board's record (bountyBoard.js BOUNTY_VENDOR - pinned equal, test/auditrest3.test.js;
+ *  this module stays off the board's graph, as it does off the raid mod's). */
+export const BOUNTY_RECORD_VENDOR = 'bountyBoard';
+/** AUDIT CAPTAIN'S SEA L4: the captain's ledger's record (captainLedger.js CAPTAIN_SAVE_VENDOR - pinned equal,
+ *  test/auditcaptsea.test.js; this module stays off the ledger's graph as it does off the board's). */
+export const CAPTAIN_RECORD_VENDOR = 'Captain';
+
 /** The copy an offline slot keeps: the world's stamps rebased onto the character's clock, `worldMinutes` dropped. */
 export function offlineCopyOf(snap) {
   const copy = JSON.parse(JSON.stringify(snap ?? null));
   if (!copy || typeof copy !== 'object') return copy;
+  dropLineage(copy);
   const own = saneSaveClock(copy.classicMinutes), world = saneSaveClock(copy.worldMinutes);
   delete copy.worldMinutes;
   delete copy.joinFresh;
@@ -95,6 +145,8 @@ export function offlineCopyOf(snap) {
   if (own === null || world === null) return copy;
   if (copy.modData && typeof copy.modData === 'object') delete copy.modData[RAID_RECORD_VENDOR];   // AUDIT LIVED1b R1
   rebaseWorldStamps(copy, Math.floor(own) - Math.floor(world), daysBetween(own, world), { questOwn: 'legacy' });   // classic minutes: the character's clock less the world's
+  // AUDIT WAITS B1: the sky's days a banishment has left become days of the one clock
+  moveBanishments(copy, (b) => Math.floor(own) + (skyOfEventLaw(b) - skyOfEventLaw(Math.floor(world))));
   if (copy.quest) markOwnClock(copy.quest, Math.floor(own) * 60);   // TIME3: every countdown is on the character's clock now
   return copy;
 }
@@ -107,7 +159,9 @@ export function offlineCopyOf(snap) {
  *  distance from the offline calendar to the world's as time away. */
 export function onlineCopyOf(snap, worldNow) {
   const copy = JSON.parse(JSON.stringify(snap ?? null));
-  if (!copy || typeof copy !== 'object' || !Number.isFinite(worldNow)) return copy;
+  if (!copy || typeof copy !== 'object') return copy;
+  dropLineage(copy);
+  if (!Number.isFinite(worldNow)) return copy;
   const own = saneSaveClock(copy.classicMinutes);
   copy.worldMinutes = Math.floor(worldNow);
   // AUDIT LIVED1b P2: ...and that is the minute THIS machine's clock said at the click - the menu has no relay to
@@ -117,6 +171,8 @@ export function onlineCopyOf(snap, worldNow) {
   copy.joinFresh = true;
   if (own === null) return copy;
   rebaseWorldStamps(copy, Math.floor(worldNow) - Math.floor(own), daysBetween(worldNow, own));   // TIME3: the countdowns stay - the one clock is the character's
+  // AUDIT WAITS B1: the one clock's days a banishment has left become the sky's, from the world's minute now
+  moveBanishments(copy, (b) => eventOfSkyLaw(skyOfEventLaw(Math.floor(worldNow)) + (b - Math.floor(own))));
   if (copy.quest) markOwnClock(copy.quest, Math.floor(own) * 60);
   return copy;
 }

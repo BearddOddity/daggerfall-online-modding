@@ -1,7 +1,7 @@
 [
   {
     "name": "NAV1-the-old-wind-curve",
-    "file": "src/systems/naval/navalAI.js",
+    "file": "src/systems/helmWay.js",
     "old": "export const windShare = (windLen) => clamp(windLen / WIND_RATED, WIND_SHARE[0], WIND_SHARE[1]);",
     "new": "export const windShare = (windLen) => clamp(0.55 + 0.3 * windLen, 0.4, 1.3);",
     "tests": [
@@ -290,8 +290,8 @@
   {
     "name": "NAV1-no-disengage-hysteresis",
     "file": "src/systems/naval/navalAI.js",
-    "old": "      if (dist < (held ? see * DISENGAGE : see) && rank < enemyD) { enemy = c; enemyD = rank; }",
-    "new": "      if (dist < see && rank < enemyD) { enemy = c; enemyD = rank; }",
+    "old": "    if (dist < (held ? see * DISENGAGE : see) && hostile(ship, c, world) && !((ship.spare.get(c.id) ?? -Infinity) > ship.clock)) {",
+    "new": "    if (dist < see && hostile(ship, c, world) && !((ship.spare.get(c.id) ?? -Infinity) > ship.clock)) {",
     "tests": [
       "test/navaudit_captains.test.js"
     ]
@@ -569,8 +569,8 @@
   {
     "name": "NAV1C-sweeps-unsailable",
     "file": "src/systems/naval/navalAI.js",
-    "old": "  return { want: headingTo(ship.pos, aim), goal: aim, sails, sweeps, sailable: sweeps > 0 };",
-    "new": "  return { want: headingTo(ship.pos, aim), goal: aim, sails, sweeps };",
+    "old": "  return { want: headingTo(ship.pos, aim), goal: aim, sails, sweeps, sailable: sweeps > 0, berthing };",
+    "new": "  return { want: headingTo(ship.pos, aim), goal: aim, sails, sweeps, berthing };",
     "tests": [
       "test/navaudit_captains.test.js"
     ]

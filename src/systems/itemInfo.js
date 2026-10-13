@@ -21,6 +21,10 @@
 // line at all. MiscItems is four special templates before its
 // default. The final `default:` arm catches potions (a filled glass
 // bottle) before falling back to the misc record.
+import { wagonItemName } from './wagonKinds.js';   // WAGONS1: the Open Wagon's and the Caravan's names
+import { horseBornStats, bondTier, STEED_STATS, STEED_STAT_TEXT } from './steedCare.js';   // STEED1: a horse's nature on its card
+import { isOatsItem, isWagonKitItem } from './upkeepItemRows.js';   // STEED1/WAGONS4: what the two are for
+import { KIT_MEND, WAGON_KIT_CEILING } from './wagonUpkeep.js';
 import { unitWeightInKg } from './inventory.js';   // AUDIT 23 (items-8)
 import { enemyDisplayName } from '../characters/enemyBasics.js';   // X5: %hs, the trapped soul's name
 import { itemIsIdentified } from './tradeModes.js';   // X7: the DERIVED identified state
@@ -39,12 +43,16 @@ import { potionRecipeByKey } from './potions.js';   // IM1: %po's producer (GetP
 import { bookTitle } from './books.js';   // IM1: GetBookTitle's legacy-data arm
 import { dfRandPick } from '../formats/textRsc.js';   // ROAD-A7: GetRandomTokens' dfRand draw
 import { hasArtifactEffect, hasArtifactSubtype, ARTIFACTS } from './artifactEffects.js';
+import { isRestItem, restItemLines } from './restItems.js'; import { isPortalStone, portalStoneLines } from './portalStone.js';   // REST6: the seven's cards; PORTAL1: and the Portal Stone's
+import { maskText } from '../net/nameFilter.js';   // TEXT-F1: a name a player typed, its words starred
+import { isWalletItem, WALLET_CARD_LINES } from './walletItem.js';   // WALLET1: the wallet's card
+import { isIliacCard, isCardBinder, iliacCardName, iliacCardLines, BINDER_CARD_LINES, isCardPack, CARD_PACK_LINES } from './iliacItems.js';   // CARDS8: a card's name and lines, the binder's
 import { isSurvivalItem, isCampingEquipment, isCampfireKit, isSkillet } from './survival/items.js';   // SURV5: the survival items' own info box
 import { isFood, foodOf, foodStage, foodSatiety, isWaterskin, waterIn, WATERSKIN_CAPACITY_KG, STAGE_WORDS } from './survival/food.js';   // ROAD-U: the identity DFU reads off the item's own record
 import { localizedText, localizedTable, formatText } from './textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language
 import { getLocalizedItemName, getLocalizedMagicItemName, getLocalizedEnemyName } from './textManager.js';   // L10N3e: the names of things, by their own ids
 import { getMagicItemTemplates } from './loot.js';   // L10N3e: the MAGIC.DEF template a magic item's name came from
-import { makerName, PROVENANCE_RE } from '../net/recipeLaw.js';   // AUDIT 30 C7: a maker's mark as the law writes it
+import { makerMark, PROVENANCE_RE } from '../net/recipeLaw.js';   // AUDIT 30 C7: a maker's mark as the law writes it
 
 /** The thirteen ids GetItemInfo names as constants (:750-762). */
 export const INFO_TEXT = Object.freeze({
@@ -546,15 +554,35 @@ const shownSoulName = (soul) => getLocalizedEnemyName(soul, enemyDisplayName(sou
  *  template's own name. A name the item was given since - a made item's,
  *  a quest's, a mod's prefix - shows as it stands, and so does a magic
  *  item's before MAGIC.DEF is registered. A missing name answers as it
- *  is (undefined), for the callers' own fallbacks. */
+ *  is (undefined), for the callers' own fallbacks.
+ *
+ *  TEXT-F1 (2026-10-07, Mac: "Any human input elements need filtering"): AN ITEM'S OWN NAME AS IT MAY BE SHOWN. A name
+ *  a player gave a piece (the Item Maker's - DFU's own window, untouched) travels with it to every holder, every shelf
+ *  and every market, so its words are starred as a chat line's (net/nameFilter.js maskText) wherever it is named; a
+ *  game's own name reads through unchanged (every name the port carries - the pin's), so the starring comes first and
+ *  the lookup above still finds the template's or MAGIC.DEF's name. */
 export function shownItemName(item) {
-  const name = item?.name;
-  if (name == null) return name;
+  const raw = item?.name;
+  if (raw == null) return raw;
+  const name = maskedItemName(String(raw));
   const t = templateByIndex(item.templateIndex);
   if (t && name === t.name) return getLocalizedItemName(t.index, name);
   const artifact = !!item.artifact;
   const m = (getMagicItemTemplates() ?? []).find((mt) => mt?.name === name && (mt.type !== 0) === artifact);
   return m ? getLocalizedMagicItemName(m.index, name) : name;
+}
+
+/** TEXT-F1: a name's words starred (maskText), remembered a few hundred at a time - a pack names the same pieces every
+ *  draw. The starring is the name's alone, so it is kept by the name; the lookup by language and template is not. */
+const _shownNames = new Map();
+function maskedItemName(name) {
+  let shown = _shownNames.get(name);
+  if (shown === undefined) {
+    if (_shownNames.size >= 512) _shownNames.clear();
+    shown = maskText(name);
+    _shownNames.set(name, shown);
+  }
+  return shown;
 }
 
 /** ResolveItemName (ItemHelper.cs:263-291). The item's own shortName
@@ -566,10 +594,13 @@ export function shownItemName(item) {
  *  keeps its %it and takes the pack's template name into it, as DFU's. */
 export function resolveItemName(item) {
   const templateName = templateText(templateByIndex(item?.templateIndex));
+  const wagon = wagonItemName(item);   // WAGONS1: a marked wagon says its kind (systems/wagonKinds.js) - its row keeps the Small Cart's ItemName
+  if (wagon) return wagon;
   if (!itemIsIdentified(item)) return templateName;
   const short = shownItemName(item) ?? templateName;
   if (item?.artifact) return short;
   if (item?.group === 'Books') return bookTitle(item?.message ?? -1) ?? short;
+  if (isIliacCard(item)) return iliacCardName(item);   // CARDS8: "Card: Rat" - the catalog's, never stored (a split mints a fresh record)
   return templateName ? short.replaceAll('%it', () => templateName) : short;
 }
 
@@ -611,9 +642,19 @@ export function itemLongName(item, opts) {
  *  Bottle", a plant lost its (northern), a soul trap its soul, a quest
  *  letter its signoff. `material` is '' when the long name carries
  *  no prefix. */
-export function itemNameParts(item, { getQuest = null, differentiatePlantIngredients = true } = {}) {
+export function itemNameParts(item, opts = {}) {
+  const parts = namePartsOf(item, opts);
+  // AUDIT LEGACY H9: A PROJECT LEGACY HEIRLOOM CARRIES ITS HOUSE before the whole long name - "Hlaalu's Dwarven
+  // Longsword", the maker's mark's shape (PROF3) - or after it for a house named for its seat ("Dwarven Longsword of the
+  // house of Daggerfall"). Unidentified, the house is as unknown as the rest (systems/legacy/heirloom.js).
+  const house = item?.heirloom?.house;
+  if (typeof house !== 'string' || !house || !itemIsIdentified(item)) return parts;
+  const whole = parts.material ? `${parts.material} ${parts.name}` : parts.name;
+  return { name: house.startsWith('of ') ? `${whole} of the house ${house}` : `${house}'s ${whole}`, material: '' };
+}
+function namePartsOf(item, { getQuest = null, differentiatePlantIngredients = true } = {}) {
   const base = resolveItemName(item);
-  if (!itemIsIdentified(item) || item?.artifact || item?.legendary || item?.aetheric) return { name: base, material: '' };   // LR2: a Legendary is named like an artifact - no material prefix; SET6: an Aetheric piece too ("Ruhn's Gatecleaver", never "Daedric Ruhn's...")
+  if (!itemIsIdentified(item) || item?.artifact || item?.legendary || item?.aetheric || item?.gilded) return { name: base, material: '' };   // LR2: a Legendary is named like an artifact - no material prefix; SET6: an Aetheric piece too ("Ruhn's Gatecleaver", never "Daedric Ruhn's...")
   if (differentiatePlantIngredients) {
     if (item?.group === 'PlantIngredients1' && item.templateIndex < 18) return { name: formatText(localizedText('ingredientFormatString', '{0} {1}'), base, localizedText('northern', '(northern)')), material: '' };
     if (item?.group === 'PlantIngredients2' && item.templateIndex < 18) return { name: formatText(localizedText('ingredientFormatString', '{0} {1}'), base, localizedText('southern', '(southern)')), material: '' };
@@ -625,7 +666,7 @@ export function itemNameParts(item, { getQuest = null, differentiatePlantIngredi
   // Longsword", the mark before the material, one name; PROF4: and a Master Joiner's furniture at any quality (`marked`)
   // AUDIT 30 C7: only a mark the law would write (a peer's, the wire's or an old save's text is not a name), on a piece
   // with a real provenance - the tooltip's and DECOR's own tests
-  if ((item?.quality === 4 || item?.marked === true) && typeof item.maker === 'string' && item.maker && makerName(item.maker) === item.maker
+  if ((item?.quality === 4 || item?.marked === true) && typeof item.maker === 'string' && item.maker && makerMark(item.maker) === item.maker
     && typeof item.provenance === 'string' && PROVENANCE_RE.test(item.provenance)) return { name: `${item.maker}'s ${material ? `${material} ` : ''}${base}`, material: '' };
   // PROF12: a Potent potion (an alchemy station's brew, net/alchemyLaw.js) is named so (9.3: "+25% magnitude, named so")
   if (isPotion(item)) return { name: `${Number.isInteger(item.potent) && item.potent > 0 ? 'Potent ' : ''}${potionMacroName(item) ?? base}`, material };
@@ -749,14 +790,23 @@ export const getBookAuthor = (id) => _bookAuthors.get(id) ?? null;
  *  skin's water, the gear's uses. Built tokens in the box's own row shape. */
 export function survivalInfoTokens(item) {
   const t = templateByIndex(item?.templateIndex);
-  const out = [{ text: item?.name ?? t?.name ?? '', center: true }, { text: `Weight: ${unitWeightInKg(item).toFixed(2)} kilograms`, center: true }];
+  const out = [{ text: isIliacCard(item) ? iliacCardName(item) : shownItemName(item) ?? t?.name ?? '', center: true }, { text: `Weight: ${unitWeightInKg(item).toFixed(2)} kilograms`, center: true }];   // CARDS8: a card's name is its catalog's
   if (isFood(item)) {
     const s = foodStage(item);
     out.push({ text: `Nourishes for ${foodSatiety(item)} minutes${s > 0 ? ` (${STAGE_WORDS[s].toLowerCase()})` : ''}`, center: true });
     if (foodOf(item)?.raw) out.push({ text: 'Raw - cook it at a fire.', center: true });
   } else if (isWaterskin(item)) out.push({ text: `Water: ${waterIn(item).toFixed(1)} of ${WATERSKIN_CAPACITY_KG.toFixed(1)} kg`, center: true });
-  else if (isCampingEquipment(item) || isCampfireKit(item)) out.push({ text: `${item.currentCondition ?? 0} use${item.currentCondition === 1 ? '' : 's'} left`, center: true });
+  else if (isCampingEquipment(item)) out.push({ text: `${item.currentCondition ?? 0} use${item.currentCondition === 1 ? '' : 's'} left`, center: true });
+  else if (isCampfireKit(item)) out.push({ text: `${item.currentCondition ?? 0} night${item.currentCondition === 1 ? '' : 's'} of fuel`, center: true });   // REST2: a night its owner sleeps at it spends one
   else if (isSkillet(item)) out.push({ text: 'Cooking at a campfire goes twice as fast.', center: true });
+  else if (isRestItem(item)) for (const text of restItemLines(item)) out.push({ text, center: true });   // REST6
+  else if (isPortalStone(item)) for (const text of portalStoneLines()) out.push({ text, center: true });   // PORTAL1
+  else if (isWalletItem(item)) for (const text of WALLET_CARD_LINES) out.push({ text, center: true });   // WALLET1
+  else if (isIliacCard(item)) for (const text of iliacCardLines(item)) out.push({ text, center: true });   // CARDS8
+  else if (isCardBinder(item)) for (const text of BINDER_CARD_LINES) out.push({ text, center: true });   // CARDS8
+  else if (isCardPack(item)) for (const text of CARD_PACK_LINES) out.push({ text, center: true });   // CARDS9: the sealed pack
+  else if (isOatsItem(item)) out.push({ text: 'A day\u2019s food for a horse. Use it to feed the horse you ride.', center: true });   // STEED1
+  else if (isWagonKitItem(item)) out.push({ text: `Mends ${Math.round(KIT_MEND * 100)}% of a wagon, to ${Math.round(WAGON_KIT_CEILING * 100)}% at most - an hour's work.`, center: true });   // WAGONS4
   return out;
 }
 
@@ -767,7 +817,8 @@ export function itemInfoRows(item, rows, macros = {}) {
   // same shape - GetItemInfo's MiscItems switch (:793-794) hands back
   // BUILT tokens rather than a record id, so both bypass `rows(id)`.
   if (isPotionRecipe(item)) record = potionRecipeTokens();
-  if (isSurvivalItem(item)) record = survivalInfoTokens(item);   // SURV5: built tokens, like the recipe's - the custom rows have no TEXT.RSC record
+  if (isSurvivalItem(item) || isRestItem(item)) record = survivalInfoTokens(item);
+  if (isPortalStone(item) || isWalletItem(item) || isIliacCard(item) || isCardBinder(item) || isCardPack(item)) record = survivalInfoTokens(item);   // AUDIT CARDS-6 A5: and the sealed pack's (CARD_PACK_LINES had no gate to show them); CARDS8: and a card's and the binder's   // PORTAL1: the stone's card, built the same way; WALLET1: and the wallet's   // SURV5: built tokens, like the recipe's - the custom rows have no TEXT.RSC record
   if (!painting && item?.group === 'Paintings' && _paintFile) {
     // ROAD-A7: every one of the painting reads is GetRandomTokens with
     // dfRand TRUE (InitPaintingInfo :65 and the four macro readers
@@ -904,9 +955,14 @@ export function itemStatRows(item) {
   // arrow, a helm or shield under HelmAndShieldMaterialDisplay - so the
   // panel never names a metal the pack withholds; push drops an empty.
   push('Material', itemNameParts(item).material);
-  const survival = isSurvivalItem(item);
+  const survival = isSurvivalItem(item) || isRestItem(item) || isPortalStone(item) || isWalletItem(item) || isIliacCard(item) || isCardBinder(item) || isCardPack(item) || isOatsItem(item) || isWagonKitItem(item);   // STEED1/WAGONS4: the oats' and the kit's lines   // AUDIT CARDS-6 A5: and the pack's; CARDS8   // REST6: the seven's lines too; PORTAL1: and the Portal Stone's; WALLET1: and the wallet's
   if (survival) for (const t of survivalInfoTokens(item).slice(2)) push('', t.text);
   else if ((item.maxCondition ?? 0) > 0) push('Condition', `${conditionWord(item)} (${conditionPercentage(item)}%)`);
+  // STEED1: a horse's nature - its four stats as it was born (a Stable's horses say theirs before they are bought), and
+  // its bond with its owner where it has one (the care's stats as they stand are the Stable page's)
+  const born = horseBornStats(item);
+  if (born) for (const k of STEED_STATS) push(STEED_STAT_TEXT[k], String(born[k]));
+  if (born && Number.isInteger(item.horseBond) && item.horseBond > 0) push('Bond', `${bondTier(item.horseBond / 10)} (${Math.floor(item.horseBond / 10)})`);
   // The weight is the STACK's, as `weightString` has it and as the
   // rows above it are - a player looking at ×20 arrows is deciding
   // about twenty arrows.

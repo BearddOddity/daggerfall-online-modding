@@ -133,7 +133,7 @@ test('WB9f the floor in the ray: each resting piece a target in the loot piles\'
   assert.equal(h.p.targets().length, 0, 'in the air: nothing to press');
   h.run(4000);
   const list = spoilsList(99, 8), t0 = h.p.targets(), s = h.p.state().pieces;
-  assert.equal(t0.length, 5, 'all five at rest');
+  assert.equal(t0.length, list.length, 'all at rest'); assert.equal(list.length, 6, 'GEM2 (PIN MOVED): three pieces, the Warden\'s gem, the ember and the gold');
   assert.equal(h.p.targets(), t0, 'one list, refilled');
   const t = [...t0];
   t.forEach((x, i) => {
@@ -146,7 +146,7 @@ test('WB9f the floor in the ray: each resting piece a target in the loot piles\'
   });
   assert.ok(ITEMISED_KEYS.includes(SPOIL_KEY) && !ITEMISED_KEYS.includes(SPOIL_GOLD_KEY));
   assert.equal(h.p.pick(t[1].key), true);
-  assert.deepEqual(h.p.targets().map((x) => x.key), [t[0].key, t[2].key, t[3].key, t[4].key], 'a taken piece is no target');
+  assert.deepEqual(h.p.targets().map((x) => x.key), t.filter((_, i) => i !== 1).map((x) => x.key), 'a taken piece is no target');
 });
 
 test('WB9f inspected and pressed: a piece\'s word is its own name and its tier, the gold its sum; the plaque lists the one item; the press takes it into the pack and says so - once (GATE-UX: and nothing else does); a key for a piece in the air, a taken one or another kind answers nothing (mutants: the name without its tier; the press that never takes; the press taking twice; the walk-over back)', () => {
@@ -190,7 +190,7 @@ test('WB9f each landing told: the floor says each piece\'s rest once, where it l
   h.p.spew({ day: 703, seed: 5, level: 4, at: [0, 3.1, 0], bearing: 0 });
   h.run(5000);
   const list = spoilsList(5, 4), s = h.p.state().pieces;
-  assert.equal(log.length, 5, 'once a piece');
+  assert.equal(log.length, list.length, 'once a piece');
   for (const e of log) {
     const i = s.findIndex((q) => q.pos[0] === e.pos[0] && q.pos[2] === e.pos[2]);
     assert.ok(i >= 0, 'where it lies');
@@ -247,15 +247,16 @@ test('WB9f the seams, by source: the court stands the spoils and their words whe
   assert.match(wm, /ctx\.addActivationNamer\(\(key\) => \(typeof key === 'string' && key\.startsWith\('spoil'\) \? host\.spoilName\?\.\(key\) \?\? null : null\)\);/);
   const press = wm.indexOf("if (key.startsWith('spoil')) { quickLootSpend(); host.takeSpoil?.(key); return true; }");   // AUDIT WB9 (spoils F2): the armed key spent on it
   assert.ok(press > 0, 'the press rung');
-  assert.ok(press > wm.indexOf('if (_pick.distance > _pick.reach) { setMidScreenText(TOO_FAR_AWAY_TEXT); return true; }', press - 2000), 'after the reach is judged');
+  assert.ok(press > wm.indexOf('if (_pick.distance > _pick.reach) { setMidScreenText(tooFarAwayText()); return true; }', press - 2000), 'after the reach is judged');
   assert.ok(press < wm.indexOf("if (key.startsWith('loot:') || key.startsWith('corpse:')", press), 'before the loot rung');
   assert.match(wm, /spoilContents: \(key\) => host\.spoilContents\?\.\(key\) \?\? null,/);
   assert.match(read('src/scenes/dungeonContext.js'), /if \(kind === 'spoil'\) return opts\.spoilContents\?\.\(key\) \?\? null;/);
   const w = read('src/scenes/world.js');
-  assert.match(w, /spoilTargets: \(\) => spoilsPool\?\.targets\(\) \?\? null,/);
-  assert.match(w, /spoilName: \(key\) => spoilsPool\?\.nameOf\(key\) \?\? null,/);
-  assert.match(w, /spoilContents: \(key\) => spoilsPool\?\.contentsOf\(key\) \?\? null,/);
-  assert.match(w, /takeSpoil: \(key\) => !!spoilsPool\?\.pick\(key\),/);
+  assert.match(w, /spoilTargets: \(\) => floorPool\(\)\?\.targets\(\) \?\? null,/);   // SD9e: the floor of the place I stand in - the court's, or the Hour's (PIN MOVED)
+  assert.match(w, /spoilName: \(key\) => floorPool\(\)\?\.nameOf\(key\) \?\? null,/);
+  assert.match(w, /spoilContents: \(key\) => floorPool\(\)\?\.contentsOf\(key\) \?\? null,/);
+  assert.match(w, /takeSpoil: \(key\) => !!floorPool\(\)\?\.pick\(key\),/);
+  assert.match(w, /const floorPool = \(\) => \(modes\?\.sdRealmSlot\?\.\(\) != null \? sdSpoilsPool : spoilsPool\);/, 'the court\'s pool anywhere but the Hour');
   assert.match(w, /itemName: \(item\) => lootPileName\(\[item\]\),/);
   const gc = read('src/scenes/gateCourt.js');
   assert.match(gc, /spoils\?\.frame\(onSpoilRest\);/);

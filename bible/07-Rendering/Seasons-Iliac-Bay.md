@@ -99,7 +99,9 @@ mod is inert.
   level at every distance while the classic flats keep their chain
   (`uploadTexture(..., { mips: false, variant: '' })`: the un-mipped
   upload keeps the plain batch key, which only the item icons had
-  re-keyed to `#ui` before).
+  re-keyed to `#ui` before). One site uploads it for every host - the
+  town's pixels, a location's flats, a yard's tree - `world/naturePicture.js`
+  (AUDIT 05b A12).
 - **The refresh.** DFU's `RefreshLoadedNatureBatches` re-applies every
   batch in place, which is free. This host bakes its batches, so the
   refresh is answered with the same destroy-and-requeue sweep
@@ -216,8 +218,9 @@ uploads as-is with `UNPACK_FLIP_Y_WEBGL` off (`renderer.js:"if (!this.charQuadPr
 (`renderer.js:"Textures are bottom-up"`). The seasonal record arrived in PNG raster
 order instead - `decodeTexture2D` flips Unity's bottom-up rows to
 top-down for its own consumers, and the loose arm is a canvas
-`getImageData` - and `world.js:"return person;".."},"` / `exterior.js:"const img = sib.texture.image"` handed that
-straight to `uploadTexture`. So a seasonal flat drew mirrored against
+`getImageData` - and `world.js:"const { sib, proto"` / `exterior.js` handed that
+straight to `uploadTexture` (the one upload site is `naturePicture.js:"renderer.uploadTexture"`
+now - AUDIT 05b A12). So a seasonal flat drew mirrored against
 the classic flat uploaded five lines later in the same batch loop. In
 DFU there is nothing to reconcile: the mod's asset is a Unity
 `Texture2D` and so is every texture `TextureReader` builds from
@@ -285,7 +288,7 @@ falsified.** The reader's header read "TOP ROW FIRST (Unity stores its
 rows bottom-up; **every consumer here wants the raster order a PNG
 decodes to**)". After F26 that parenthetical is false: the reader has
 exactly one consumer in `src/`
-(`seasonsIliacBayAssets.js:"const base = file.slice"`, `toColor32Order(tex.rgba())` - the helper itself moved to `formats/color32Order.js` at ROAD-H H4, where the M-TEX door takes it too) and it
+(`seasonsIliacBayAssets.js` line 196, `toColor32Order(tex.rgba())` - the helper itself moved to `formats/color32Order.js` at ROAD-H H4, where the M-TEX door takes it too) and it
 reverses every row straight back, so the composition is the identity
 on every `TextureFormat` arm. The comment was left claiming the
 opposite of what the delta did - the same class of defect F27 corrects

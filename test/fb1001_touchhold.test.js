@@ -132,9 +132,12 @@ test('TOUCH-HOLD pad: on the classic layer B is Interact in the world - a fresh 
       const down = events.filter((e) => e.type === 'keydown').map((e) => e.code);
       pad.buttons[1] = { pressed: false, value: 0 }; gp.tick(1 / 60);
       gp.dispose();
-      assert.ok(down.includes('JoystickButton1'), `B's code pressed (${overlay ? 'a window' : 'the world'}): ${down}`);
-      if (overlay) assert.ok(down.includes(getBinding(store, 'Escape')), `in a window B is Back: ${down}`);
-      else assert.ok(!down.includes(getBinding(store, 'Escape')), `in the world B is no Back: ${down}`);
+      const up = events.filter((e) => e.type === 'keyup').map((e) => e.code);
+      const expected = overlay ? getBinding(store, 'Escape') : 'JoystickButton1';
+      // A window owns one Back gesture: raw B plus Escape advances two classic text messages.
+      // In the world the original B code still holds Interact; release belongs to the same owner.
+      assert.deepEqual(down, [expected], `one B owner (${overlay ? 'a window' : 'the world'})`);
+      assert.deepEqual(up, [expected], 'the same owner receives exactly one release');
     }
   } finally {
     if (hadWindow) globalThis.window = prevWindow; else delete globalThis.window;
@@ -200,7 +203,7 @@ function stage({ online = true, open = true } = {}) {
   registerPlayerKillListener('touchhold-test', (e) => { stamps.stamp(e); });
   const foes = [];
   const book = {
-    state: { open: true, today: {}, hunt: { hides: 0, high: 0 }, caps: { harvests: 60, stores: 5000, hides: 30 } },
+    state: { open: true, today: {}, hunt: { hides: 0, high: 0 }, caps: { stores: 5000 } },
     stale: () => false, refresh: async () => ({ ok: true }), pixel: () => null, askPixels: async () => [], pump: () => {},
     dungeon: () => null, askDungeon: async () => false, held: () => 0, taken: () => false, counting: () => false,
     track: () => ({ rank: 100, specs: { 50: null, 100: null } }),

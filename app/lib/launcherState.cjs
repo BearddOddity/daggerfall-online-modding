@@ -375,19 +375,29 @@ const isPlaceholder = (t) => /^fixes and improvements\.?$/i.test(String(t).trim(
  * The news, from the releases API's list: every published app-v release,
  * newest first, as { version, date, text } - the text its patch notes.
  * What the shell keeps in news.json and shows while the next list is
- * asked for.
+ * asked for. REL8: and `update`, the player's update number, where the
+ * release's name says one (`Update 0.0.1` - release-desktop.yml names it
+ * so); the installer's version stays what is compared.
  *
- * @param {Array<{ tag_name?: string, body?: string, published_at?: string, draft?: boolean, prerelease?: boolean }>} releases
- * @returns {Array<{ version: string, date: string, text: string }>}
+ * @param {Array<{ tag_name?: string, name?: string, body?: string, published_at?: string, draft?: boolean, prerelease?: boolean }>} releases
+ * @returns {Array<{ version: string, date: string, text: string, update?: string }>}
  */
 function newsFrom(releases) {
   if (!Array.isArray(releases)) return [];
   return releases
     .filter((r) => r && !r.draft && !r.prerelease)
-    .map((r) => ({ v: parseReleaseTag(r.tag_name), date: typeof r.published_at === 'string' ? r.published_at : '', text: playerNotes(r.body) }))
+    .map((r) => ({ v: parseReleaseTag(r.tag_name), date: typeof r.published_at === 'string' ? r.published_at : '', text: playerNotes(r.body), update: updateOfName(r.name) }))
     .filter((r) => r.v)
     .sort((a, b) => cmpV(b.v, a.v))
-    .map((r) => ({ version: r.v.join('.'), date: r.date, text: r.text }));
+    .map((r) => ({ version: r.v.join('.'), date: r.date, text: r.text, ...(r.update ? { update: r.update } : {}) }));
+}
+
+/** REL8: a release's name that is a player's update - `Update 0.0.1` - and its number; anything else names none. */
+const UPDATE_NAME_RE = /^Update (\d+\.\d+\.\d+)$/;
+/** REL8: an update number as news.json keeps one. */
+const UPDATE_NUMBER_RE = /^\d+\.\d+\.\d+$/;
+function updateOfName(name) {
+  return UPDATE_NAME_RE.exec(String(name ?? '').trim())?.[1] ?? null;
 }
 
 /** news.json as it was written - or as a hand, a crash or an older build
@@ -396,7 +406,7 @@ function cachedNews(json) {
   const items = Array.isArray(json?.items) ? json.items : [];
   return items
     .filter((n) => n && parseVersion(n.version) && typeof n.text === 'string')
-    .map((n) => ({ version: String(n.version).trim(), date: typeof n.date === 'string' ? n.date : '', text: n.text }))
+    .map((n) => ({ version: String(n.version).trim(), date: typeof n.date === 'string' ? n.date : '', text: n.text, ...(UPDATE_NUMBER_RE.test(n.update) ? { update: n.update } : {}) }))
     .sort((a, b) => cmpV(parseVersion(b.version), parseVersion(a.version)));
 }
 
@@ -427,7 +437,7 @@ function newsView(s) {
   const items = s.news.items
     .map((n) => ({ n, v: parseVersion(n?.version) }))
     .filter((x) => x.v)
-    .map(({ n, v }) => ({ version: v.join('.'), date: dateLabel(n.date), text: String(n.text ?? ''), badge: badge(v) }));
+    .map(({ n, v }) => ({ version: v.join('.'), date: dateLabel(n.date), text: String(n.text ?? ''), badge: badge(v), ...(UPDATE_NUMBER_RE.test(n.update) ? { update: n.update } : {}) }));
   const said = items.filter((n) => n.badge || (n.text && !isPlaceholder(n.text)));
   const list = (said.length ? said : items.slice(0, 1)).slice(0, NEWS_MAX);
   return { items: list, note: list.length ? '' : NEWS_NOTE[s.news.status] ?? '' };
@@ -482,7 +492,7 @@ function setupView(st, platform) {
     const sv = st.saved;
     return {
       title: sv.unreadable ? 'Your Daggerfall folder cannot be reached' : 'Your Daggerfall folder is not whole',
-      detail: `Daggerfall Online plays from ${sv.dir}, which ${sv.unreadable ? 'cannot be read right now - is its drive connected?'
+      detail: `DFO Online plays from ${sv.dir}, which ${sv.unreadable ? 'cannot be read right now - is its drive connected?'
         : sv.missing ? `has no ${sv.missing.join(', ')}.` : 'holds no Daggerfall files any more.'}${st.found.length ? ' Daggerfall is also here:' : ''}`,
       found,
       actions: [{ id: 'retry-saved', label: 'Try again', primary: !st.found.length }, { ...choose, primary: false }, skip],
@@ -491,7 +501,7 @@ function setupView(st, platform) {
   if (st.status === 'found') {
     return {
       title: st.found.length === 1 ? 'Found your Daggerfall files' : 'Found Daggerfall on this computer',
-      detail: 'Daggerfall Online plays from the original game\'s ARENA2 folder. Nothing is copied or uploaded - it is read where it is.',
+      detail: 'DFO Online plays from the original game\'s ARENA2 folder. Nothing is copied or uploaded - it is read where it is.',
       found,
       actions: [choose, skip],
     };
@@ -503,14 +513,14 @@ function setupView(st, platform) {
     if (platform === 'darwin') {
       return {
         title: 'Where is Daggerfall?',
-        detail: `${still}Daggerfall Online plays from the original game's ARENA2 folder. The Elder Scrolls II: Daggerfall has been free since 2009 - on a Mac, get DaggerfallGameFiles.zip, unpack it, and choose the arena2 folder inside.`,
+        detail: `${still}DFO Online plays from the original game's ARENA2 folder. The Elder Scrolls II: Daggerfall has been free since 2009 - on a Mac, get DaggerfallGameFiles.zip, unpack it, and choose the arena2 folder inside.`,
         found,
         actions: [choose, zip, skip],
       };
     }
     return {
       title: 'Where is Daggerfall?',
-      detail: `${still}Daggerfall Online plays from the original game's ARENA2 folder. The Elder Scrolls II: Daggerfall has been free since 2009 - get it from Steam or GOG, then choose its ARENA2 folder.`,
+      detail: `${still}DFO Online plays from the original game's ARENA2 folder. The Elder Scrolls II: Daggerfall has been free since 2009 - get it from Steam or GOG, then choose its ARENA2 folder.`,
       found,
       actions: [choose, { id: 'open', arg: 'steam', label: 'Get it on Steam' }, { id: 'open', arg: 'gog', label: 'Get it on GOG' }, skip],
     };
@@ -548,16 +558,16 @@ function viewOf(s) {
   };
   if (v.panel === 'setup') v.setup = setupView(st, s.platform);
   if (s.launch) {
-    v.status = 'Starting Daggerfall Online';
+    v.status = 'Starting DFO Online';
     v.busy = true;
   } else if (u.status === 'installing') {
     v.progress = { percent: 100, label: 'Downloaded' };
     if (!SETUP_DONE.has(st.status)) {
       v.status = `v${u.version} is ready to install`;
-      v.detail = 'It installs once your game files are set - then Daggerfall Online reopens by itself.';
+      v.detail = 'It installs once your game files are set - then DFO Online reopens by itself.';
     } else {
       v.status = `Installing v${u.version}`;
-      v.detail = 'Daggerfall Online closes and reopens by itself in a few seconds. Your saves, settings and game files stay where they are.';
+      v.detail = 'DFO Online closes and reopens by itself in a few seconds. Your saves, settings and game files stay where they are.';
       v.busy = true;
     }
   } else if (u.status === 'downloading') {
@@ -600,8 +610,26 @@ function viewOf(s) {
   return v;
 }
 
+/** DA12 (2026-10-08, Mac: "some game managers, like PlayNite, don't reconigze the launcher as a game and also I
+ *  can't control the Launcher with a controller"): THE SWITCH PAST THE FRONT DOOR. A copy started with `--play`
+ *  goes straight into the game - for a game manager or a couch (Playnite, Steam's Big Picture), which start a
+ *  game and watch its process, and read an install-and-reopen before play as the game having quit. Updates are
+ *  the game's then, as they always were after Play: checked at launch and hourly, told on the HUD, installed at
+ *  quit or from File > Restart to Update. What the launcher must still ASK is still asked: with no game files
+ *  chosen (the first run) the launcher opens as it would, and a saved folder is judged first (null: the
+ *  launcher, whose card says what is wrong with it). Answers the folder to judge, '' for the game's own
+ *  picker (chosen once, kept), or null for the launcher. */
+const PLAY_SWITCH = '--play';
+function directPlay(argv, cfg) {
+  if (!Array.isArray(argv) || !argv.includes(PLAY_SWITCH)) return null;
+  if (typeof cfg?.arena2Path === 'string' && cfg.arena2Path) return cfg.arena2Path;
+  if (cfg?.arena2InGame === true) return '';
+  return null;
+}
+
 module.exports = {
   CHECK_TIMEOUT_MS, RECHECK_MS, NEWS_MAX, INSTALL_NOTICE_MS, INSTALL_GIVEUP_MS, DOWNLOAD_STALL_MS, DETECT_DEADLINE_MS, JUDGE_DEADLINE_MS,
-  PICK_DEADLINE_MS, SOURCE_LABEL, installAttemptFor,
+  PICK_DEADLINE_MS, SOURCE_LABEL, PLAY_SWITCH, installAttemptFor, directPlay,
   initialState, reduce, nextStep, viewOf, canPlay, justUpdated, dateLabel, playerNotes, newsFrom, cachedNews, notArena2Detail,
+  UPDATE_NAME_RE, updateOfName,
 };

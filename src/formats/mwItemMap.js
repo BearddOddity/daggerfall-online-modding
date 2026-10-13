@@ -45,7 +45,8 @@
 
 import { WEAPONS, WEAPON_MATERIALS } from '../characters/weapons.js';
 import { OWN_MW_MODELS } from '../characters/ownWeaponModels.js';   // FIELD-GUN-MW2: the weapons Morrowind does not have
-import { OWN_MW_ARMOR, ownArmorModelFor } from '../characters/ownArmorModels.js';   // MW-BRIG1: the armour Morrowind does not have
+import { OWN_MW_ARMOR, ownArmorModelFor, ownArmorParts } from '../characters/ownArmorModels.js';   // MW-BRIG1: the armour Morrowind does not have; MW-STEEL1: and its styles
+import { CLOAK_NAMES, CLOAK_PAINTINGS, cloakModel, ownCloakFor } from '../characters/ownClothingModels.js';   // MW-CLOAK1: and the clothing
 import { ARMOR_MATERIAL } from '../systems/armorMaterials.js';
 import { ARMOR_ENUM } from '../combat/enemyEquipment.js';
 import templates from '../characters/itemTemplates.json' with { type: 'json' };
@@ -104,6 +105,8 @@ export const DF_CLOTHING_ROWS = Object.freeze({
   'Plain Robes': { type: MW_CLOTHING_TYPE.Robe, reserve: 'robe' },
   'Priest Robes': { type: MW_CLOTHING_TYPE.Robe, reserve: 'robe' },
   'Priestess Robes': { type: MW_CLOTHING_TYPE.Robe, reserve: 'robe' },
+  // MW-CLOAK1: a cloak is WORN as the port's own (ownClothingModels.js, composeWornArmor) - the robe row is the item's
+  // icon's record now, nothing on the body
   'Casual Cloak': { type: MW_CLOTHING_TYPE.Robe, reserve: 'robe' },
   'Formal Cloak': { type: MW_CLOTHING_TYPE.Robe, reserve: 'robe' },
   'Dwynnen Surcoat': { type: MW_CLOTHING_TYPE.Robe, reserve: 'robe' },
@@ -205,20 +208,53 @@ export const DECLARED_SPRITE_WEAPONS = Object.freeze({
 
 const matName = (table, v) => Object.entries(table).find(([, x]) => x === v)?.[0] ?? null;
 
+/** MW-STEEL1: every mesh an own model can wear, every style's, in its table's order. */
+const ownModelsOf = (own) => [...new Set([own.parts, ...Object.values(own.styles ?? {})].flat().map((p) => p.model))];
+
+/** MWNPC17: a CLOT record's rung on Morrowind's own clothing ladder, by its id's prefix (common_, expensive_,
+ *  extravagant_, exquisite_ - characters/wardrobe.js CLOTHING_TIERS), or -1 for an id that names none (a mod's own). */
+export function clothingTierOf(id) {
+  const m = /^(common|expensive|extravagant|exquisite)_/i.exec(String(id ?? ''));
+  return m ? ['common', 'expensive', 'extravagant', 'exquisite'].indexOf(m[1].toLowerCase()) : -1;
+}
+/** MWNPC17: how many of a dye's nearest garments a person's `pick` chooses among - near enough that a red shirt is
+ *  still red, wide enough that two red shirts are two shirts. */
+export const CLOTH_PICK_NEAREST = 3;
+/** AUDIT MWNPC16-18 C F2: and only those whose colour is within this of the nearest's - its distance times
+ *  CLOTH_PICK_BAND[0] plus CLOTH_PICK_BAND[1] (RGB units): on a thin rung (retail's extravagant and exquisite hold one
+ *  to three of a type) the three nearest were the whole rung, so a red dye drew a blue shirt as often as a red one. */
+export const CLOTH_PICK_BAND = Object.freeze([1.5, 32]);
+
 /** Resolve one DF garment against the CLOT records: BY TYPE, id-sorted,
  *  enchanted excluded - and on retail the id sort puts common_ ahead of
  *  expensive_ and its betters, so the street clothes win, which is the
- *  right wardrobe for a derived outfit. Null-honest. */
-export function mwClothingRecord(clothes, name, { dye = null, colourOf = null } = {}) {
+ *  right wardrobe for a derived outfit. Null-honest.
+ *  MWNPC17: `tier` (0..3) a person's rung - the pool narrowed to its records (the nearest rung that has any, the lower
+ *  first; a pool with no rung at all - a mod's ids - kept whole); `pick` (a uint) a person's choice - among the
+ *  CLOTH_PICK_NEAREST nearest the dye that lie within CLOTH_PICK_BAND of the nearest, where colours are measured, else
+ *  among the pool. Neither, the resolution it
+ *  always was: a player's garment, every peer's. */
+export function mwClothingRecord(clothes, name, { dye = null, colourOf = null, tier = null, pick = null } = {}) {
   const row = DF_CLOTHING_ROWS[name];
   if (!row) return { record: null, row: null, note: `"${name}" is not a garment row` };
   // WEREWOLF1: never the werewolf's robe - its parts are the wolf's body, not a garment (OpenMW hides it from the
   // inventory, class.cpp), and a dark Daggerfall robe measured nearest its fur would have dressed a person in it.
   // AUDIT C2: and never a record with no ground mesh - the reader keeps one for its parts (the robe may carry no MODL),
   // and a garment the item icon cannot draw is none of a Daggerfall item's
-  const pool = (clothes ?? []).filter((c) => c.type === row.type && !c.enchanted && c.id !== WEREWOLF_ROBE_ID && c.model)
+  let pool = (clothes ?? []).filter((c) => c.type === row.type && !c.enchanted && c.id !== WEREWOLF_ROBE_ID && c.model)
     .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   if (!pool.length) return { record: null, row, note: `no MW clothing of type ${row.type} in these archives - the classic sprite stands` };
+  const picking = Number.isInteger(pick) && pick >= 0;
+  if (Number.isInteger(tier) && tier >= 0 && tier <= 3) {
+    // MWNPC17: the person's rung, else the nearest that has a record - one down before one up (a noble in fine
+    // clothes rather than a beggar in silk)
+    for (const d of [0, -1, 1, -2, 2, -3, 3]) {
+      const t = tier + d;
+      if (t < 0 || t > 3) continue;
+      const rung = pool.filter((c) => clothingTierOf(c.id) === t);
+      if (rung.length) { pool = rung; break; }
+    }
+  }
   // MW-D37: THE DYE PICKS THE GARMENT. Daggerfall dyes a shirt one of
   // ten colours; Morrowind ships several shirts of one type in
   // different colours. When a colour sampler is on hand (the build's,
@@ -229,14 +265,27 @@ export function mwClothingRecord(clothes, name, { dye = null, colourOf = null } 
   const want = dye != null ? DF_CLOTHING_DYE_RGB[dye | 0] : null;
   if (want && typeof colourOf === 'function') {
     let best = null; let bestD = Infinity;
+    /** @type {{ c: any, d: number }[]} */
+    const near = [];
     for (const c of pool) {
       const rgb = colourOf(c);
       if (!rgb) continue;
       const d = Math.hypot(rgb[0] - want[0], rgb[1] - want[1], rgb[2] - want[2]);
+      if (picking) near.push({ c, d });
       if (d < bestD) { bestD = d; best = c; }
+    }
+    if (picking && near.length) {
+      // MWNPC17: the nearest few by colour, then the pool's own order for a tie - one of them the person's
+      near.sort((a, b) => a.d - b.d || (a.c.id < b.c.id ? -1 : a.c.id > b.c.id ? 1 : 0));
+      const band = near[0].d * CLOTH_PICK_BAND[0] + CLOTH_PICK_BAND[1];
+      let k = Math.min(CLOTH_PICK_NEAREST, near.length);
+      while (k > 1 && near[k - 1].d > band) k--;   // AUDIT MWNPC16-18 C F2: the dye's colour, not merely the nearest few
+      const chosen = near[pick % k];
+      return { record: chosen.c, row, note: `picked by dye (distance ${Math.round(chosen.d)}, ${pick % k + 1} of the ${k} nearest)` };
     }
     if (best) return { record: best, row, note: `resolved by dye (distance ${Math.round(bestD)})` };
   }
+  if (picking) return { record: pool[pick % pool.length], row, note: `picked (${pick % pool.length + 1} of ${pool.length})` };   // MWNPC17
   return { record: pool[0], row, note: 'resolved' };
 }
 
@@ -332,6 +381,9 @@ export function itemMapCoverage() {
   for (const [aName, tmpl] of Object.entries(ARMOR_ENUM)) {
     for (const [mName, m] of Object.entries(ARMOR_MATERIAL)) {
       if (m === ARMOR_MATERIAL.None) continue;
+      // MW-STEEL1: a classic piece the port dresses in its own model answers with the port's meshes, every style's
+      const own = OWN_MW_ARMOR.find((a) => a.templateIndex === tmpl && a.material === m);
+      if (own) { out.push({ kind: 'own', item: aName, material: mName, via: 'armor', own: 'ownArmorModels', index: tmpl, model: ownModelsOf(own).join(' + ') }); continue; }
       const hasRow = tmpl in DF_ARMOR_ROWS;
       const hasMat = mName in DF_TO_MW_ARMOR_MATERIAL;
       if (hasRow && hasMat) out.push({ kind: 'mapped', item: aName, material: mName, via: 'armor' });
@@ -353,7 +405,7 @@ export function itemMapCoverage() {
       // MW-BRIG1: a template and material the port dresses in its own model - still a row of the mod's space, and
       // one that answers with the port's meshes rather than a retail record
       const own = OWN_MW_ARMOR.find((a) => a.templateIndex === Number(index) && a.material === m);
-      if (own) { out.push({ kind: 'own', item: `template ${index}`, material: mName, via: 'mod armor', own: 'ownArmorModels', index: Number(index), model: own.parts.map((p) => p.model).join(' + ') }); continue; }
+      if (own) { out.push({ kind: 'own', item: `template ${index}`, material: mName, via: 'mod armor', own: 'ownArmorModels', index: Number(index), model: ownModelsOf(own).join(' + ') }); continue; }
       const ok = !!MOD_ARMOR_ROWS[index] && mName in DF_TO_MW_ARMOR_MATERIAL;
       out.push({ kind: ok ? 'mapped' : 'UNMAPPED', item: `template ${index}`, material: mName, via: 'mod armor' });
     }
@@ -364,6 +416,8 @@ export function itemMapCoverage() {
   // wardrobe has no dye channel, so every colour of a Short Shirt
   // wears the one shirt the type resolves to.
   for (const [idx, name] of Object.entries(CLOTHING_NAME)) {
+    // MW-CLOAK1: a cloak answers with the port's own meshes, every dye's
+    if (CLOAK_NAMES.includes(name)) { out.push({ kind: 'own', item: `${name} (${idx})`, material: 'any dye', via: 'clothing', own: 'ownClothingModels', index: Number(idx), model: CLOAK_PAINTINGS.map(cloakModel).join(' + ') }); continue; }
     if (name in DF_CLOTHING_ROWS) out.push({ kind: 'mapped', item: `${name} (${idx})`, material: 'any dye', via: 'clothing' });
     else out.push({ kind: 'UNMAPPED', item: `${name} (${idx})`, material: 'any dye' });
   }
@@ -387,6 +441,16 @@ export function mwItemReport(armorRecords, { weapons = null, clothes = null, col
   for (const [aName, tmpl] of Object.entries(ARMOR_ENUM)) {
     for (const mName of Object.keys(DF_TO_MW_ARMOR_MATERIAL)) {
       if (mName === 'Chain2') continue;   // one report line for chain
+      // MW-STEEL1: a piece the port dresses itself names its own meshes - the archives are not asked
+      const own = ownArmorModelFor({ templateIndex: tmpl, material: ARMOR_MATERIAL[mName] });
+      if (own) {
+        rows.push({
+          family: 'armor', item: `${mName} ${aName.replaceAll('_', ' ')}`, found: ownModelsOf(own),
+          note: 'the port\'s own model (characters/ownArmorModels.js) - no record of the archives is asked',
+          dfColour: hex(DF_MATERIAL_RGB[mName]), mwColour: null,
+        });
+        continue;
+      }
       const res = mwArmorRecords(armorRecords, tmpl, ARMOR_MATERIAL[mName]);
       rows.push({
         family: 'armor',
@@ -422,10 +486,19 @@ export function mwItemReport(armorRecords, { weapons = null, clothes = null, col
   if (clothes) {
     for (const [name, row] of Object.entries(DF_CLOTHING_ROWS)) {
       for (let dye = 0; dye < DF_CLOTHING_DYE_RGB.length; dye++) {
+        const dyeName = ['Blue', 'Grey', 'Red', 'Dark Brown', 'Purple', 'Light Brown', 'White', 'Aquamarine', 'Yellow', 'Green'][dye];
+        // MW-CLOAK1: a cloak wears the port's own painting - the archives are not asked
+        const cloak = ownCloakFor({ kind: 'clothing', name, dye });
+        if (cloak) {
+          rows.push({ family: 'clothing', item: `${dyeName} ${name}`, found: [cloak.model],
+            note: `the port's own cloak (characters/ownClothingModels.js), the ${cloak.painting.replace('_', ' ')} painting - no record of the archives is asked`,
+            dfColour: hex(DF_CLOTHING_DYE_RGB[dye]), mwColour: null, reserve: null });
+          continue;
+        }
         const res = mwClothingRecord(clothes, name, { dye, colourOf });
         rows.push({
           family: 'clothing',
-          item: `${['Blue', 'Grey', 'Red', 'Dark Brown', 'Purple', 'Light Brown', 'White', 'Aquamarine', 'Yellow', 'Green'][dye]} ${name}`,
+          item: `${dyeName} ${name}`,
           found: res.record ? [res.record.id] : [],
           note: res.note,
           dfColour: hex(DF_CLOTHING_DYE_RGB[dye]),
@@ -520,12 +593,13 @@ export function dfWornArmor(slots, EQUIP_SLOTS, ARMOR_ENUM) {
  * COMPOSE the worn armor onto the body's part rows. Pure: takes the
  * player's pieces, the parsed ARMO records, the BODY pool, and the
  * sex; answers what to ADD (part meshes on their sided bones), what
- * to SHADOW (skin slots or single sides the armor hides), and NOTES
- * for everything that keeps its sprite instead. Never throws: a
+ * to SHADOW (skin slots or single sides the armor hides - `shadows`
+ * the third person's, `fpShadows` the first person's, MW-FIT1), and
+ * NOTES for everything that keeps its sprite instead. Never throws: a
  * missing record, an unknown INDX, a ref with no id for this sex -
  * each is a note, the skin stands, the law is never-traps.
  */
-export function composeWornArmor({ pieces, armors, clothes, bodyPool, female = false, colourOf = null }) {
+export function composeWornArmor({ pieces, armors, clothes, bodyPool, female = false, colourOf = null, helmStyle = undefined }) {   // MW-STEEL1: helmStyle, the Steel Helm switch (undefined: the default style)
   const notes = [];
   const bodyById = new Map((bodyPool ?? []).map((b) => [String(b.id || '').toLowerCase(), b]));
   // ── THE PRIORITY LAW (Audit 30's recording, now consumed) ────────
@@ -541,14 +615,17 @@ export function composeWornArmor({ pieces, armors, clothes, bodyPool, female = f
   // a skirt RESERVES its slot list at its priority - occupation
   // without a mesh - hiding the skin and any lesser garment there,
   // refs or no refs.
-  const slots = Array.from({ length: ARMO_PART.length }, () => ({ prio: 1, add: null, shadow: false }));
-  const claim = (part, prio, add) => {
+  // MW-FIT1: `under` - the part a `hides` occupation lies under (an own model's), so the first person, which draws
+  // only the arm-bone parts (fpWornAdds), keeps the skin a part it does not draw would hide (`fpShadows`, below)
+  const slots = Array.from({ length: ARMO_PART.length }, () => ({ prio: 1, add: null, shadow: false, under: null }));
+  const claim = (part, prio, add, under = null) => {
     const slot = slots[part];
     if (!slot || prio <= slot.prio) return;
-    slot.prio = prio; slot.add = add; slot.shadow = true;
+    slot.prio = prio; slot.add = add; slot.shadow = true; slot.under = under;
   };
   const ordered = [...(pieces ?? [])].sort((a, b) => wornOrder(a) - wornOrder(b));
   let hairHidden = 0;
+  let cloakAdd = null; let cloakName = null;   // MW-CLOAK1: the cloak, which no slot holds
   for (const piece of ordered) {
     // WEREWOLF1: A CLOT RECORD HANDED IN WHOLE - the one garment no Daggerfall item names, the werewolf's robe
     // (MechanicsManager::setWerewolf equips "werewolfrobe" in Slot_Robe, mechanicsmanagerimp.cpp:1896-1901). It is
@@ -573,7 +650,17 @@ export function composeWornArmor({ pieces, armors, clothes, bodyPool, female = f
     }
     if (piece.kind === 'clothing') {
       const name = piece.name ?? CLOTHING_NAME[piece.templateIndex];
-      const res = mwClothingRecord(clothes, name, { dye: piece.dye ?? null, colourOf });
+      // MW-CLOAK1: A CLOAK IS THE PORT'S OWN (characters/ownClothingModels.js) - one skinned mesh hung down the back,
+      // claiming NO slot and reserving none: the armour and the clothes under it stay drawn. Daggerfall wears two
+      // (Cloak1, Cloak2); one cloak is drawn, the first, and the second says so - two of one mesh would be one.
+      const cloak = ownCloakFor({ ...piece, name });
+      if (cloak) {
+        if (cloakAdd) { notes.push(`${name}: a second cloak - the first (${cloakName}) is the one drawn`); continue; }
+        cloakAdd = { slot: `cloak (${cloak.id})`, partName: 'cloak', bones: [], model: cloak.model, recordId: cloak.id, piece };
+        cloakName = name;
+        continue;
+      }
+      const res = mwClothingRecord(clothes, name, { dye: piece.dye ?? null, colourOf, tier: piece.tier ?? null, pick: piece.pick ?? null });   // MWNPC17: a person's rung and pick (characters/wardrobe.js)
       if (!res.record) { notes.push(`${name ?? piece.templateIndex}: ${res.note}`); continue; }
       const base = res.row.reserve === 'robe' ? 11 : res.row.reserve === 'skirt' ? 3 : 0;
       const prio = ((base + 1) << 1) + 0;
@@ -587,10 +674,15 @@ export function composeWornArmor({ pieces, armors, clothes, bodyPool, female = f
     // armour's priority, part by part, as composeRefs claims a record's.
     const own = ownArmorModelFor(piece);
     if (own) {
-      for (const p of own.parts) {
+      for (const p of ownArmorParts(own, { helmStyle })) {   // MW-STEEL1: the style the Steel Helm switch asks for
         const at = ARMO_PART.findIndex((r) => r.name === p.part);
         const row = ARMO_PART[at];
-        claim(at, prio, { slot: `${row.name} (${own.id})`, partName: row.name, bones: row.bones, model: p.model, recordId: own.id, piece, skinFrom: own.skinFrom, fitTo: own.fitTo ?? null });   // MW-BRIG2: skinned from the body under it; MW-BRIG3: fitted onto the part it hides
+        const add = { slot: `${row.name} (${own.id})`, partName: row.name, bones: row.bones, model: p.model, recordId: own.id, piece,
+          ...(own.skinFrom ? { skinFrom: own.skinFrom, fitTo: own.fitTo ?? null } : {}) };   // MW-BRIG2: skinned from the body under it; MW-BRIG3: fitted onto the part it hides. MW-STEEL4: a model shipped skinned (the steel plate) carries neither - its mesh is bound as a retail part's is
+        claim(at, prio, add);
+        // MW-STEEL1: what the part covers beyond its own slot is OCCUPIED with no mesh (reserveIndividualPart), so its
+        // skin is not drawn under the plate - at the armour's priority, the law's own gate. MW-FIT1: under that part
+        for (const h of p.hides ?? []) claim(ARMO_PART.findIndex((r) => r.name === h), prio, null, add);
       }
       continue;
     }
@@ -628,21 +720,28 @@ export function composeWornArmor({ pieces, armors, clothes, bodyPool, female = f
   if (hairHidden) claim(1, hairHidden, null);
   const adds = [];
   const shadows = new Set();
+  const fpShadows = new Set();
   for (let i2 = 0; i2 < slots.length; i2++) {
     if (!slots[i2].shadow) continue;
     if (slots[i2].add) adds.push(slots[i2].add);
     const key = ARMO_PART[i2].shadows;
     if (key) shadows.add(key);
+    // MW-FIT1: A PART THE FIRST PERSON DOES NOT DRAW HIDES NOTHING FROM IT. A pauldron sleeves the upper arm, but it
+    // hangs on the clavicle and the first person draws the arm-bone parts alone - so there the upper arm under it is
+    // the skin's, not a hole. Every other occupation is the third person's and the first person's alike.
+    if (key && !(slots[i2].under && !fpWornAdds([slots[i2].under]).length)) fpShadows.add(key);
   }
-  return { adds, shadows: [...shadows], notes };
+  if (cloakAdd) adds.push(cloakAdd);
+  return { adds, shadows: [...shadows], fpShadows: [...fpShadows], notes };
 }
 
 /** NUDE-FLATS, THE MORROWIND BODY'S HALF: DFU's upper weld (PaperDollRenderer.BlitBody's `!IsUpperClothed()`, the
  *  classic doll's in ui/paperDoll.js) for the one body that would be bare. Morrowind's own female chest is bare where
  *  its groin wears underwear, so a woman whose composition leaves the chest skin showing wears the plainest shirt
  *  while Show Nudity is off - resolved as a worn Short Shirt is (mwClothingRecord with no dye: the id-sorted first,
- *  retail's common_shirt_01). A man, and a chest anything already covers - a shirt, a dress, a cloak's robe, a
- *  cuirass - compose as they always did. `show` is Show Nudity (ChildGuard/PlayerNudity). */
+ *  retail's common_shirt_01). A man, and a chest anything already covers - a shirt, a dress, a robe, a
+ *  cuirass - compose as they always did; a cloak hangs down the back and covers none of it (MW-CLOAK1). `show` is
+ *  Show Nudity (ChildGuard/PlayerNudity). */
 export const MODESTY_SHIRT = Object.freeze({ kind: 'clothing', name: 'Short Shirt' });
 export function composeWornModest(args, show) {
   const worn = composeWornArmor(args);

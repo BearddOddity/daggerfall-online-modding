@@ -583,13 +583,16 @@ test('SIB1: both climate hosts take the cache\'s answer for a flat, and the stre
   const exterior = read('src/scenes/exterior.js');
   for (const [name, src] of [['world.js', world], ['exterior.js', exterior]]) {
     assert.match(src, /new SeasonHelper\(\{/, `${name} builds the helper`);
-    assert.match(src, /seasons\??\.lookup\(archive, record\)/, `${name} asks the cache per flat`);
+    // AUDIT 05b A12: through the one choice every host makes (world/naturePicture.js - test/naturepicture.test.js)
+    assert.match(src, /await naturePicture\(\{ door: lowPolyTrees, seasons[^}]*\}, t, archive, record\)/, `${name} asks the cache per flat, through the one choice`);
     assert.match(src, /renderer\.createBillboardBatch\(archive, rkey, sib\.size, centers\)/, `${name} draws the seasonal record at the mod's size`);
-    assert.match(src, /renderer\.uploadTexture\(archive, rkey, img, \{ mips: false, variant: '' \}\);/, `${name} uploads it WITHOUT a mip chain under the plain batch key (AUDIT 61: the mod's atlas is mipChain:false, Point)`);
     assert.match(src, /modSetting\('seasons-iliac-bay', 'Enabled'\)/, `${name} honours the switch`);
     assert.match(src, /await seasonsInstalled\(\)/, `${name} is inert without the player's copy`);
     assert.match(src, /seasonValue\(dateFromClassicMinutes\(/, `${name} reads DFU's four-valued season`);
   }
+  const seam = read('src/world/naturePicture.js');
+  assert.match(seam, /seasons\?\.lookup\?\.\(archive, record\)/, 'the one choice asks the cache per flat');
+  assert.match(seam, /renderer\.uploadTexture\(archive, key, sib\.texture\.image, \{ mips: false, variant: '' \}\);/, 'and uploads the season\'s picture WITHOUT a mip chain under the install\'s key (AUDIT 61: the mod\'s atlas is mipChain:false, Point)');
   // the streaming host: the five subscriptions, in the seams they belong to
   assert.match(world, /seasons\.onLoad\(\)/, 'SaveLoadManager.OnLoad at boot');
   assert.match(world, /seasons\.onTerrainInstantiated\(\)/, 'DaggerfallTerrain.OnInstantiateTerrain per pixel');
@@ -620,7 +623,8 @@ test('SIB1: both climate hosts take the cache\'s answer for a flat, and the stre
   assert.match(ds, /textureStoreKey\(f, deps\)/, 'the texture pick decides every file through the one exported decision');
   assert.match(ds, /storeAssets\(TEXTURE_STORE, keyed\.map\(\(\[f\]\) => f\), \(\) => true, \(f\) => keyOf\.get\(f\)\)/, 'and storeAssets does not re-decide on the basename');
   assert.match(ds, /setSeasonsSources\(names, loadTextureFile\)/, 'and registers them');
-  assert.match(read('src/scenes/shared.js'), /setSeasonsSources\(names, loadTextureFile\)/, 'the boot registers them on the same seam');
+  // PIN MOVED (AUDIT VE R2): the boot's registration is the store's one - the call above, reached from the seam
+  assert.match(read('src/scenes/shared.js'), /const textures = registerTextureStore\(\)/, 'the boot registers them on the same seam');
   // the switch and the credit
   assert.equal(MOD_SETTINGS['seasons-iliac-bay'].keys.Enabled.default, true);
   const row = CREDITS.mods.find((m) => m.title === 'Seasons of the Iliac Bay');
@@ -656,11 +660,11 @@ test('SIB2: the bundle is the mod by its MANIFEST, not by one guessed file name;
   // the events per caller: the travel popup's arm raises OnPostFastTravel (+ OnUpdateTerrainsEnd), a quickload and the
   // classic import raise OnLoad, every other teleport raises neither (their terrains' OnInstantiateTerrain is the mod\'s word)
   const world = read('src/scenes/world.js');
-  assert.match(world, /async function _teleportToPixel\(px, py, localPos = null, \{ grounded = false, arriveMinutes = null, reposition = REPOSITION\.None, travelStart = null, modEvent = null \} = \{\}\)/);
+  assert.match(world, /async function _teleportToPixel\(px, py, localPos = null, \{ grounded = false, arriveMinutes = null, reposition = REPOSITION\.None, travelStart = null, modEvent = null, resolveArrival = null \} = \{\}\)/);
   assert.match(world, /if \(seasonsActive && modEvent === 'travel'\) await seasons\.onPostFastTravel\(\)/);
   assert.match(world, /if \(seasonsActive && modEvent === 'load'\) await seasons\.onLoad\(\)/);
   assert.match(world, /if \(seasonsActive && modEvent === 'travel'\) seasons\.onUpdateTerrainsEnd\(\);/);
-  assert.match(world, /reposition: REPOSITION\.DirectionFromStartMarker,\s*\n\s*travelStart, modEvent: 'travel' \}\);/, 'fastTravelTo: the travel (AUDIT 64 F18: DFU\'s own method for it)');
+  assert.match(world, /reposition: REPOSITION\.DirectionFromStartMarker,\s*\n\s*travelStart, modEvent: 'travel',\s+resolveArrival:/, 'fastTravelTo: the travel (AUDIT 64 F18: DFU\'s own method for it)');
   assert.match(world, /await _teleportToPixel\(w\.pixel\.x, w\.pixel\.y, null, \{ modEvent: 'load' \}\);/, 'the quickload: a load');
   assert.match(world, /await _teleportToPixel\(px\.x, px\.y, null, \{ modEvent: 'load' \}\);/, 'the classic import: a load');
   assert.match(world, /await _teleportToPixel\(pixel\.x, pixel\.y, null, \{ modEvent: 'load' \}\);/, 'MAC6 #1: the dungeon save\'s load: a load too');
@@ -671,6 +675,9 @@ test('SIB2: the bundle is the mod by its MANIFEST, not by one guessed file name;
   // quickload's is. Named here rather than merely counted, because the
   // count alone is what this line is guarding.
   assert.match(world, /await _teleportToPixel\(wake\.mapPixel\.x, wake\.mapPixel\.y, null, \{ modEvent: 'load', reposition: REPOSITION\.RandomStartMarker \}\);/, 'the online underground wake: a load');
-  assert.equal((world.match(/modEvent: '(travel|load)'/g) || []).length, 5, 'and no other caller names an event');
+  // PIN MOVED (ETHER-CROSSING, bible/03-World/Etheric-Sea.md): the crossing to and from the Etheric Sea is a voyage of
+  // days - a travel, OnPostFastTravel and all
+  assert.match(world, /await _teleportToPixel\(to\.px, to\.py, null, \{\n\s+arriveMinutes: sharedClockOn\(\) \? skyMinutes\(\) : worldMinutes\(\) \+ minutes,\n\s+modEvent: 'travel',/, 'the crossing: a travel');
+  assert.equal((world.match(/modEvent: '(travel|load)'/g) || []).length, 6, 'and no other caller names an event');
   assert.equal((world.match(/seasons\.onLoad\(\)/g) || []).length, 2, 'boot and the teleport core - the two loads');
 });

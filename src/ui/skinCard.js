@@ -82,7 +82,7 @@ export function wornSkin() {
 /** SKIN2: the on-foot picker's two shelves - the mod's own sets, then Daggerfall's classes. */
 export const FOOT_GROUPS = Object.freeze([
   Object.freeze({ label: 'Eye of the Beholder', from: 0, to: EOTB_FOOT_SET_COUNT }),
-  Object.freeze({ label: 'Daggerfall classes', from: EOTB_FOOT_SET_COUNT, to: Infinity }),
+  Object.freeze({ label: 'Original classes', from: EOTB_FOOT_SET_COUNT, to: Infinity }),
 ]);
 
 /**

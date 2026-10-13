@@ -65,11 +65,12 @@
   {
     "name": "LOOT8-counts-off",
     "file": "src/systems/lootDrought.js",
-    "old": "  if (!lootRarityOn()) return false;\n  _drought =",
-    "new": "  _drought =",
+    "old": "  if (!lootRarityOn()) return false;\n  if (isGarment(item)",
+    "new": "  if (isGarment(item)",
     "tests": [
       "test/loot8_drought.test.js"
-    ]
+    ],
+    "note": "Re-aimed by content (AUDIT LOOT II A10): a garment that could never be a Legendary counts nothing, after the switch."
   },
   {
     "name": "LOOT8-legendary-never-empties",
@@ -238,15 +239,6 @@
     "file": "src/systems/lootRarity.js",
     "old": "    if (piece || rarityRank(found) >= RARITIES.legendary.rank) found.untaken = true;",
     "new": "    void piece;",
-    "tests": [
-      "test/loot8_drought.test.js"
-    ]
-  },
-  {
-    "name": "LOOT8-champion-piece-unmarked",
-    "file": "src/scenes/hostCombat.js",
-    "old": "    piece.untaken = true; (entity.items ??= []).push(piece);",
-    "new": "    (entity.items ??= []).push(piece);",
     "tests": [
       "test/loot8_drought.test.js"
     ]

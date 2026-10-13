@@ -95,7 +95,7 @@ test('AUDIT 58 (f3/input): chargen’s R rerolls from the keyboard, as the scree
   f.input(overlayAction({ key: 'R' }));
   assert.equal(rolls, 2, 'shifted too');
   f.input('reroll');
-  assert.equal(rolls, 3, "the bare name stays for chargenArt.js:1486's mouse rect");
+  assert.equal(rolls, 3, 'the bare name stays for the mouse rect at chargenArt.js:"if (inRect(RECTS.reroll))"');
   assert.match(src('ui/chargen.js'), /line\('\+\/- assign {3}R reroll {3}ENTER when pool 0', 10, dim\);/);
   assert.match(src('ui/chargen.js'), /else if \(action === 'reroll' \|\| action === 'char:r' \|\| action === 'char:R'\) this\.reroll\(\);/);
   assert.match(src('ui/charsheet.js'), /else if \(action === 'minus' \|\| action === 'char:-'\)/);

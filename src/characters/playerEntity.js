@@ -112,8 +112,28 @@ export function setDeathPresenter(fn) {
  *  door below consulted the saves, the shield and AvoidDeath on the transition, once. False (nothing asked) alive. */
 export function presentPlayerDeath(entity = playerEntity) {
   if (!(entity.health <= 0)) return false;
+  hearDeath(entity);
   _deathPresenter?.(entity);
   return true;
+}
+
+// AUDIT LEGACY (2026-10-05): THE DEATH'S LISTENERS - DFU's `PlayerEntity.OnDeath` event, which mods subscribe to (Project
+// Legacy's HandlePlayerDeath did). The presenter is ONE host's screen; a listener is a system that must know the death
+// THE MOMENT IT IS DECIDED, before any screen, mode exit or reload can intervene - Project Legacy records a permadeath
+// and pays Arkay's toll here (scenes/legacyHost.js onDeath), so an F11 under the screen or a closed tab cannot undo it.
+// Heard on the door's transition and on the DEATH-KEPT re-ask alike, so a death raised around the door is heard too;
+// a listener is therefore idempotent per death (the host's own latch). Keyed, so a host that mounts twice replaces.
+const _deathListeners = new Map();
+
+/** Hear every death of the player as it is decided: `fn(entity)`. A null `fn` removes `key`. */
+export function setDeathListener(key, fn) {
+  if (fn) _deathListeners.set(key, fn);
+  else _deathListeners.delete(key);
+}
+function hearDeath(entity) {
+  for (const [key, fn] of _deathListeners) {
+    try { fn(entity); } catch (e) { console.error(`[death] the ${key} listener failed:`, e?.message ?? e); }   // a listener never keeps the screen from rising
+  }
 }
 
 // AUDIT 26 F117: GuildManager.AvoidDeath, consulted by SetHealth at
@@ -230,7 +250,8 @@ export const duelSpare = (entity) => { _duelFell?.(entity); };
 //   - a DAMAGE MODIFIER: `fn(entity, dmg) -> dmg`, over the damage before the shield pool (Malacath's Unbroken halves);
 //   - a DEATH SAVE: `fn(entity, dmg) -> boolean`, asked when the damage would take a live player to zero - one that
 //     answers true leaves them at 1 instead, before the guild's avoid-death is asked (Malacath's Unbroken itself);
-//   - a HURT LISTENER: `fn(entity, { dmg, before, after })`, told after the damage lands (Ruhn's Wrath of the Warden).
+//   - a HURT LISTENER: `fn(entity, { dmg, before, after })`, told after the damage lands (Ruhn's Wrath of the Warden) -
+//     AUDIT 625 P1: and `saved: true` when a death save turned it aside, a killing blow told as what it did (to 1).
 // NONE of them is asked on a SetHealth(0) door (`bypassShield`: drowning and the exhaustion collapse mean death, not
 // damage) or on a duel's own blow (`spare`: the duel's floor is its law), and a veto or a shield that takes the whole
 // blow leaves them all untold.
@@ -253,6 +274,11 @@ function tellDoorOpen(entity) {
 /** A foe's blow at me came to nothing before any door was called (a shared foe's, weighed to nothing for the party
  *  beside me - partyScale.js partyFoeHits): the door's word on it all the same. */
 export function playerBlowCameToNothing(entity) { tellDoorOpen(entity); }
+// FULL-GUARD (FIELD BUGS 2026-10-11b): WHETHER THE HURT IN HAND IS A FOE'S BLOW. The one law of what a blow is stays the set
+// powers' (sigilSetPowers.js pendingPlayerBlow - the formula's struck tail's mark, taken as the door opened), handed in
+// here so this leaf imports none of it; until it is, no hurt is a blow.
+let _foeBlow = () => false;
+export function setFoeBlowProbe(fn) { _foeBlow = typeof fn === 'function' ? fn : () => false; }
 /** The damage through every registered modifier, in registration order - a modifier that throws is skipped. */
 export function playerDamageMods(entity, dmg) {
   let d = dmg;
@@ -266,8 +292,25 @@ function playerDeathSaved(entity, dmg) {
   for (const fn of _deathSaves.values()) { try { if (fn(entity, dmg) === true) return true; } catch { /* as above */ } }
   return false;
 }
-function tellHurt(entity, dmg, before, after) {
-  for (const fn of _hurtListeners.values()) { try { fn(entity, { dmg, before, after }); } catch { /* as above */ } }
+function tellHurt(entity, dmg, before, after, saved = false) {
+  const hurt = saved ? { dmg, before, after, saved: true } : { dmg, before, after };   // AUDIT 625 P1: a death turned aside says so
+  for (const fn of _hurtListeners.values()) { try { fn(entity, hurt); } catch { /* as above */ } }
+}
+
+/**
+ * INT9 (AUDIT): A DEATH ANOTHER'S WORD DECIDED - the open zone's referee's fall (net/wildRef.js): no withholding, no guild's
+ * AvoidDeath, no death save - the referee called it, and its drop follows it whatever this machine says (hurtPlayer's
+ * doors turned it aside, and the fallen stood up with a fall already called on it). OnDeath's subscribers and the
+ * presenter, as the transition always tells them. Answers whether it was a death.
+ * @param {any} entity
+ */
+export function forcePlayerDeath(entity) {
+  if (!((entity?.health ?? 0) > 0)) return false;
+  entity.health = 0;
+  surfacePlayer();
+  hearDeath(entity);
+  _deathPresenter?.(entity);
+  return true;
 }
 
 /**
@@ -275,7 +318,8 @@ function tellHurt(entity, dmg, before, after) {
  * leaves them at ONE instead, and `spare(entity)` is told (the duel's law: the side that falls says so and has lost);
  * the avoid-death hook and the death presenter are never reached, because nobody died. Only the duel's own doors pass
  * it (a strike resolved from the opponent, the opponent's spell and its damage over time); anything else - a wolf in
- * the ring - kills as it always has.
+ * the ring - kills as it always has. AUDIT SD III (F10): and the Hour's own costs (scenes/world.js sdCastBack, the void;
+ * sdHallHeard, the Orrery's lash) - a setback with one life a Hollow, never the death that ends it.
  */
 export function hurtPlayer(entity, dmg, { bypassShield = false, spare = null } = {}) {
   tellDoorOpen(entity);   // AUDIT FINAL F10: first - whatever the door says below, this call is its word
@@ -309,13 +353,24 @@ export function hurtPlayer(entity, dmg, { bypassShield = false, spare = null } =
     try { spare(entity); } catch { /* the duel's word is not the blow's problem */ }
     return false;
   }
+  // FULL-GUARD (FIELD BUGS 2026-10-11b, YeetMaster64: "I get one hit killed several times a day"; Mac: "No kill from full
+  // health"): a foe's one blow never takes a player at full health to dead - it leaves them at 1, told as what it took,
+  // and no death save is spent on it. A blow is the struck tail's mark (setFoeBlowProbe): a fall, a poison's round, a
+  // spell, a trap or a world boss's strike is none, and the next blow at 1 kills as it always has.
+  if (portSays && wasAlive && entity.health - dmg < 1 && entity.health >= (entity.maxHealth ?? Infinity) && _foeBlow()) {
+    const was = entity.health;
+    entity.health = 1;
+    surfacePlayer();
+    tellHurt(entity, was - 1, was, 1);
+    return false;
+  }
   // SET2: THE DEATH SAVE - damage that would take a live player to zero is asked of the registered saves first; one
   // that takes it leaves them at 1, and the blow is told as what it did (the health it took, down to 1).
   if (portSays && wasAlive && entity.health - dmg < 1 && playerDeathSaved(entity, dmg)) {
     const was = entity.health;
     entity.health = 1;
     surfacePlayer();
-    tellHurt(entity, was - 1, was, 1);
+    tellHurt(entity, was - 1, was, 1, true);
     return false;
   }
   const before = entity.health;
@@ -337,6 +392,7 @@ export function hurtPlayer(entity, dmg, { bypassShield = false, spare = null } =
       surfacePlayer();
       return false;
     }
+    hearDeath(entity);   // AUDIT LEGACY: OnDeath's subscribers, before the screen
     _deathPresenter?.(entity);
     return true;
   }

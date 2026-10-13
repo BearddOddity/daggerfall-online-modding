@@ -159,6 +159,8 @@ test('FB0929: a defender on the look ray stays the swing - the townsperson behin
   assert.deepEqual(await guards.resolveCivilianHit(w, EYE0, FWD0, FEET0, [townsperson], { onMurder: () => { murders++; }, inViewFn: inView }), { spared: true }, 'the swing stops on the defender (AUDIT 29g: said as stopped, not as met-nobody)');
   assert.deepEqual([struck, murders, p.crimeCommitted], [[], 0, 0], 'nobody behind him is murdered');
   guards.dismissDefenders();
+  d.ai.feet[2] = 200; guards.update(0.016, FEET0, EYE0);   // WATCH-LEAVES: stood down, he walks off and is gone once past allowVisiblePopRange
+  assert.equal(d.dead, true);
   assert.deepEqual(await guards.resolveCivilianHit(w, EYE0, FWD0, FEET0, [townsperson], { onMurder: () => { murders++; }, inViewFn: inView }), { crime: 'murder' }, 'nobody in front: the townsperson is the only body there (DFU\'s own fallback)');
   assert.deepEqual([struck, murders, p.crimeCommitted], [['townsperson'], 1, 5]);
 });
@@ -259,9 +261,9 @@ test('RAID-GUARDS-NPC: while a raid is on, the town\'s walkers take none of the 
     const body = src.slice(src.indexOf('{\n', at) + 1, src.indexOf("}).catch((e) => console.error('[civil]', e));", at));
     const tail = (r) => {
       const d = { bashed: 0, whoosh: 0, surfaced: 0, tallied: 0 };
-      new Function('r', 'modes', 'audio', 'surfacePlayer', 'tallySwingSkills', 'swingSoundFor', 'weaponRig', 'playerEntity', 'cam', 'lookFwd', 'eye', 'fwd', body)(
+      new Function('r', 'modes', 'audio', 'surfacePlayer', 'tallySwingSkills', 'swingSoundFor', 'weaponRig', 'playerEntity', 'cam', 'lookFwd', 'eye', 'fwd', 'livingStrikeRoad', body)(
         r, { attemptExteriorDoorBash: () => { d.bashed++; return true; } }, { playOneShot: () => { d.whoosh++; } }, () => { d.surfaced++; }, () => { d.tallied++; },
-        () => 'swing', { playerWeapon: {} }, {}, { pos: [0, 0, 0] }, [0, 0, 1], [0, 0, 0], [0, 0, 1]);
+        () => 'swing', { playerWeapon: {} }, {}, { pos: [0, 0, 0] }, [0, 0, 1], [0, 0, 0], [0, 0, 1], () => false);   // LW7: world.js offers a swing that met nobody to the road's travellers first - none here
       return d;
     };
     assert.ok(body.includes(`attemptExteriorDoorBash?.(${doorArgs})`));

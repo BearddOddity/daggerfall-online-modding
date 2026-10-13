@@ -35,6 +35,7 @@ const NAMED = {
   'src/systems/enchantmentCatalogue.js': 2,
   'src/systems/itemInfo.js': 4,
   'src/systems/loot.js': 1,
+  'src/systems/notebook.js': 2,   // L10N5: a header's place drawn again in the language of the load
   'src/systems/npcSession.js': 2,
   'src/systems/quest/foe.js': 1,
   'src/systems/quest/person.js': 5,

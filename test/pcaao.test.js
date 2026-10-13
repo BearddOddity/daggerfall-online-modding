@@ -113,7 +113,9 @@ test('PCO1: the hit\'s helpers - armour, adrenaline, stat diffs, skills, adjustm
   const critter = mkPlayer({ skills: skillsAll(90) });
   assert.equal(pcaaoSkillsToHit(critter, dodger, fixed(0.1), modsOf({ criticalStrikesIncreaseDamage: false })), -25 + 30, 'without the module: the player rolls crit/3 (30) for +crit/3');
   const critMon = monster(0); critMon.skills = skillsAll(90);
-  assert.equal(pcaaoSkillsToHit(critMon, dodger, fixed(0.5), modsOf({ criticalStrikesIncreaseDamage: false })), -25 + 9, 'a monster rolls crit for +crit/10');
+  // PIN MOVED (BAL2, bible/05-Combat/Balance-Arc.md section 4): one roll for every striker - a monster rolls the player's crit/3 for +crit/3
+  assert.equal(pcaaoSkillsToHit(critMon, dodger, fixed(0.29), modsOf({ criticalStrikesIncreaseDamage: false })), -25 + 30, 'a monster rolls crit/3 (30) for +crit/3, as the player does');
+  assert.equal(pcaaoSkillsToHit(critMon, dodger, fixed(0.3), modsOf({ criticalStrikesIncreaseDamage: false })), -25, 'and misses it over');
   assert.equal(pcaaoAdjustmentsToHit(mkPlayer({ biographyAvoidHitMod: 5 })), -55);
   assert.equal(pcaaoAdjustmentsToHit(mon), 0, 'a monster: +50 - 50');
   assert.equal(pcaaoAdjustmentsToHit(cls), -50);
@@ -156,8 +158,9 @@ test('PCO1: CriticalStrikeHandler - luck bends the divisor, the clamp is discard
   assert.equal(pcaaoCriticalStrike(plain, fixed(0.24)), true, '50 luck: 100 / 4 = 25%');
   assert.equal(pcaaoCriticalStrike(plain, fixed(0.25)), false);
   const mon = monster(0); mon.skills = skillsAll(90); mon.stats = stats({ luck: 100 });
-  assert.equal(pcaaoCriticalStrike(mon, fixed(0.29)), true, 'a monster: 90 / (5 - 2) = 30%');
-  assert.equal(pcaaoCriticalStrike(mon, fixed(0.3)), false);
+  // PIN MOVED (BAL2, bible/05-Combat/Balance-Arc.md section 4): a monster rolls the player's divisor
+  assert.equal(pcaaoCriticalStrike(mon, fixed(0.44)), true, 'a monster: 90 / (4 - 2) = 45%, as the player');
+  assert.equal(pcaaoCriticalStrike(mon, fixed(0.45)), false);
 });
 
 test('PCO1: the mod\'s GetBonusOrPenaltyByEnemyType - willpower\'s random bonus, the level\'s penalty, the career\'s bits', () => {
@@ -491,7 +494,7 @@ test('PCO1: the seams - the Mods pane entry, the credit, the vendor folder, worl
   const pw = rd('src/combat/playerWeapon.js');
   // AUDIT 68 S08-bow-draw-time-wallclock: the draw is the machine's held ticks (GetAnimTime), written at every
   // release - the behaviour is pinned in audit68_combat_bf.test.js; here only that the three bow doors read it
-  assert.equal((pw.match(/this\.lastDrawMs = this\._bowAnimTimeMs\(\);/g) || []).length, 3, 'the drawn release, the instant shot and the touch button');
+  assert.equal((pw.match(/this\.lastDrawMs = this\._bowAnimTimeMs\(\);/g) || []).length, 4, 'the drawn release, the instant shot, the touch button and a technique\'s loose');   // PIN MOVED (TECH1): techniqueStrike, a Volley's or a Piercing Shot's StrikeDown, writes it as the instant shot does
   assert.match(rd('src/combat/arrowFlight.js'), /weaponAnimTime: playerWeapon\?\.lastDrawMs \?\? 0,/, 'the arrow hands it to the formula');
   assert.match(rd('src/combat/formulas.js'), /const core = _overrides\.get\('calculateAttackDamage'\);/, 'the core is the registry\'s');
   assert.match(rd('src/systems/equip.js'), /if \(removeFrom\) \{ const i = removeFrom\.indexOf\(item\); if \(i >= 0\) removeFrom\.splice\(i, 1\); \}/, 'LowerCondition\'s removeFromCollectionWhenBreaks');

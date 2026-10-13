@@ -47,11 +47,12 @@
   {
     "name": "ONESEAT-own-socket-counted",
     "file": "server/src/index.js",
-    "old": "b.id && b.id !== id && b.sub === sub && !this._dead",
-    "new": "b.id && b.sub === sub && !this._dead",
+    "old": "b?.id && b.id !== id && b.sub === sub && !this._dead",
+    "new": "b?.id && b.sub === sub && !this._dead",
     "tests": [
       "test/oneseat.test.js"
-    ]
+    ],
+    "note": "SCALE5a (re-aimed by content): ONE-SEAT's other tabs read off the subject index (`_otherTabsOf`)."
   },
   {
     "name": "ONESEAT-claim-dropped-at-door",
@@ -218,11 +219,12 @@
   {
     "name": "ONESEAT-renown-in-any-tab",
     "file": "src/scenes/world.js",
-    "old": "    earning: () => !!online && !seatOut(),",
-    "new": "    earning: () => !!online,",
+    "old": "    earning: () => !!online && !seatOut() && _renownCapHour !== renownHour(),",
+    "new": "    earning: () => !!online && _renownCapHour !== renownHour(),",
     "tests": [
       "test/oneseat.test.js"
-    ]
+    ],
+    "note": "SCALE4h (re-aimed by content): a spent hour's clause beside it."
   },
   {
     "name": "ONESEAT-take-no-claim",
@@ -254,8 +256,8 @@
   {
     "name": "ONESEAT-hidden-tab-lingers",
     "file": "src/scenes/world.js",
-    "old": "      link.onSuperseded = () => seatLostNow();",
-    "new": "      link.onSuperseded = () => {};",
+    "old": "      link.onSuperseded = () => seatLostNow();\n      if (tab.room === SOCIAL_ROOM) link.onEvent",
+    "new": "      link.onSuperseded = () => {};\n      if (tab.room === SOCIAL_ROOM) link.onEvent",
     "tests": [
       "test/oneseat.test.js"
     ]
@@ -290,8 +292,8 @@
   {
     "name": "ONESEAT-leave-closes-first",
     "file": "src/scenes/world.js",
-    "old": "    online?.supersede();\n    for (const link of chatLinks?.values?.() ?? []) link.supersede();\n    travellerBook.clear();",
-    "new": "    for (const link of chatLinks?.values?.() ?? []) link.supersede();\n    travellerBook.clear();",
+    "old": "    online?.supersede();\n    for (const link of chatLinks?.values?.() ?? []) link.supersede();\n    // AUDIT PRE-MERGE 1003 O9",
+    "new": "    for (const link of chatLinks?.values?.() ?? []) link.supersede();\n    // AUDIT PRE-MERGE 1003 O9",
     "tests": [
       "test/oneseat.test.js"
     ]
@@ -299,20 +301,22 @@
   {
     "name": "ONESEAT-R1-moved-seat-swept",
     "file": "server/src/index.js",
-    "old": "      if (!others.length && !carried) {",
-    "new": "      if (!others.length) {",
+    "old": "      if (!others.length && !carried && !this._swept) {",
+    "new": "      if (!others.length && !this._swept) {",
     "tests": [
       "test/oneseat.test.js"
-    ]
+    ],
+    "note": "SCALE5b (re-aimed by content): beside the drain's marker (`_swept`)."
   },
   {
     "name": "ONESEAT-R1-drain-never-swept",
     "file": "server/src/index.js",
-    "old": "      if (!others.length && !carried) {",
+    "old": "      if (!others.length && !carried && !this._swept) {",
     "new": "      if (false) {",
     "tests": [
       "test/oneseat.test.js"
-    ]
+    ],
+    "note": "SCALE5b (re-aimed by content): beside the drain's marker (`_swept`)."
   },
   {
     "name": "ONESEAT-R1-reconnect-not-carried",
@@ -425,8 +429,8 @@
   {
     "name": "ONESEAT-H6-duel-kept",
     "file": "src/scenes/world.js",
-    "old": "    try { duelLeaveNow(); } catch { /* no duel built, none to end */ }\n    online?.supersede();",
-    "new": "    online?.supersede();",
+    "old": "    try { duelLeaveNow(); } catch { /* no duel built, none to end */ }\n    staffTeleportClient?.cancel();\n    cabinLink.close();\n    online?.supersede();",
+    "new": "    staffTeleportClient?.cancel();\n    cabinLink.close();\n    online?.supersede();",
     "tests": [
       "test/oneseat.test.js"
     ]
@@ -524,8 +528,8 @@
   {
     "name": "ONESEAT-C5-hub-link-alone",
     "file": "src/scenes/world.js",
-    "old": "      link.onSuperseded = () => seatLostNow();",
-    "new": "      if (tab.room === SOCIAL_ROOM) link.onSuperseded = () => seatLostNow();",
+    "old": "      link.onSuperseded = () => seatLostNow();\n      if (tab.room === SOCIAL_ROOM) link.onEvent",
+    "new": "      if (tab.room === SOCIAL_ROOM) link.onSuperseded = () => seatLostNow();\n      if (tab.room === SOCIAL_ROOM) link.onEvent",
     "tests": [
       "test/oneseat.test.js"
     ]

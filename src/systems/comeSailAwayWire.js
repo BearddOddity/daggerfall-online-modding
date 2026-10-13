@@ -21,8 +21,16 @@
 // them from the word's arrival (scenes/comeSailAwayPeers.js). A moored fleet says no `m` at all, so the record a
 // reader of the older build reads - which knows `b` alone - is unchanged, and a new reader of an old record leads
 // nothing.
+//
+// HOLDINGS (2026-10-03, Mac: "This also introduces the ability to change your ship name for others to see" -
+// bible/03-World/Holdings.md): A NAMED BOAT SAYS HER NAME. `n`, beside `b` as `m` is - a name for each of `b`'s, '' for
+// one her captain never named - and only while one of them has one, so an unnamed fleet's record is the older build's
+// to the letter. A reader takes each name through the ledger's own law (systems/fleet.js shipNameVerdict: printable,
+// SHIP_NAME_MAX, the name filter every player's name passes); a name it refuses reads as none. A bad `n` never drops the
+// boats - a name is a thing to read, not a thing to stand on - and an older reader ignores the key.
 import { POSE_BOUND, POSE_Y_BOUND } from '../net/wire.js';
 import { HULL_NAMES, HULL_VARIANT_COUNTS } from './comeSailAwayBoat.js';
+import { shipNameVerdict, SHIP_NAME_MAX } from './fleet.js';
 
 /** The boats one word carries - a player's shore holds few, and a frame's size is the room's. */
 export const CSA_WIRE_BOATS_MAX = 8;
@@ -30,9 +38,15 @@ export const CSA_WIRE_BOATS_MAX = 8;
 export const CSA_WIRE_VARIANTS = 10;
 /** The sails a hull's bits can name (the Carrack's are the most). */
 export const CSA_WIRE_SAILS_MAX = 16;
-/** CSA-K: a way and a turn past these are no boat's - the Handling dials' tenfold on the fastest hull at the thirtyfold
- *  time scale stays well inside them (natives a second, degrees a second). */
-export const CSA_WIRE_SPEED_MAX = 64 * 1024;
+/** CSA-K: a way and a turn past these are no boat's (natives a second, degrees a second) - AUDIT 2 XA6 (2026-10-06): the
+ *  way sized from its real ceiling, SAIL-FREE's fastest (a Carrack on her quarter in the sea's strongest wind with her
+ *  Rigging at its best, 43.6 m/s) at the Handling dials' tenfold and the world's fastest time scale (timeScale.js
+ *  MAX_TIME_SCALE, a road journey's x100), in natives (SCENE_MAP_RATIO 40): 1.74M a second. It was 64k (that tenfold on
+ *  HELM-WAY's fastest at the thirtyfold scale) - 27.3 m/s of way at an open journey's x60 - and every reader dropped a
+ *  storm galleon's word whole, her boats gone from every screen and her passengers left on a frozen hull. The writer
+ *  holds her word to both (csaWireRecord), so no honest word is dropped for its way. The turn: an oar's 20 degrees a
+ *  second at that tenfold and x100 is 20,000. */
+export const CSA_WIRE_SPEED_MAX = 2 * 1024 * 1024;
 export const CSA_WIRE_TURN_MAX = 36000;
 const r2 = (v) => Math.round(v * 100) / 100;
 const r4 = (v) => Math.round(v * 10000) / 10000;
@@ -44,13 +58,13 @@ const int = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
  * My word: the boats as they stand, in scene units - `[{ hull, variant, position, rotation, sails, helm, light,
  * velocity?, turn? }]` (sails a bit per raised sail in the boat's own order; CSA-K: the velocity in scene units and the
  * turn in degrees, each a real second's) - and `toWire` converting a scene point to the wire frame.
- * @returns {{ b: number[][], m?: number[][] } | null} null when none stands (the reader drops mine); `m` only while
- *   a boat is under way
+ * @returns {{ b: number[][], m?: number[][], u?: number[], n?: string[] } | null} null when none stands (the reader drops mine);
+ *   `m` only while a boat is under way; `u` only while one carries her number; HOLDINGS: `n` only while one is named
  */
 export function csaWireRecord(view, toWire = (p) => p) {
   if (!Array.isArray(view)) return null;
-  const b = [], m = [];
-  let underWay = false;
+  const b = [], m = [], n = [], u = [];
+  let underWay = false, named = false;
   for (const v of view) {
     if (b.length >= CSA_WIRE_BOATS_MAX) break;
     if (!v || !int(v.hull, 0, HULL_NAMES.length - 1) || !finite3(v.position) || !Array.isArray(v.rotation) || v.rotation.length !== 4) continue;
@@ -61,21 +75,30 @@ export function csaWireRecord(view, toWire = (p) => p) {
     const vel = finite3(v.velocity) ? v.velocity : null;
     const at = vel ? toWire([v.position[0] + vel[0], v.position[1] + vel[1], v.position[2] + vel[2]]) : p;
     const way = [r2(at[0] - p[0]), r2(at[2] - p[2]), Number.isFinite(v.turn) ? r2(v.turn) : 0];
+    // AUDIT 2 XA6: held to the door's bounds, her way's bearing kept - a word past them every reader drops whole
+    const sp = Math.hypot(way[0], way[1]);
+    if (sp > CSA_WIRE_SPEED_MAX) { const k = (CSA_WIRE_SPEED_MAX * 0.999) / sp; way[0] = r2(way[0] * k); way[1] = r2(way[1] * k); }
+    way[2] = Math.max(-CSA_WIRE_TURN_MAX, Math.min(CSA_WIRE_TURN_MAX, way[2]));
     if (way[0] || way[1] || way[2]) underWay = true;
     m.push(way);
+    const name = typeof v.name === 'string' ? shipNameVerdict(v.name) : null;   // HOLDINGS: her name, as the ledger keeps it
+    n.push(name?.ok ? name.name : '');
+    if (name?.ok && name.name) named = true;
+    u.push(Number.isSafeInteger(v.uid) && v.uid > 0 ? v.uid : 0);
   }
   if (!b.length) return null;
-  return underWay ? { b, m } : { b };
+  return { b, ...(underWay ? { m } : {}), ...(u.some(Boolean) ? { u } : {}), ...(named ? { n } : {}) };   // HOLDINGS: `n` only while one is named
 }
 
 /**
  * A peer's word through the door: shape, a known hull and variant, bounds, a unit quaternion, the sail bits and two
  * flags. Anything else is null - the record is dropped whole.
- * @returns {{ boats: { hull:number, variant:number, position:number[], rotation:number[], sails:number, helm:boolean, light:boolean }[] } | null}
+ * @returns {{ boats: { hull:number, variant:number, position:number[], rotation:number[], sails:number, helm:boolean, light:boolean }[], cabin?:boolean } | null}
  */
 export function validCsaRecord(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw) || !Array.isArray(raw.b)) return null;
-  if (raw.b.length < 1 || raw.b.length > CSA_WIRE_BOATS_MAX) return null;
+  if ((raw.b.length < 1 && raw.cabin !== 1) || raw.b.length > CSA_WIRE_BOATS_MAX) return null;
+  if (raw.u !== undefined && (!Array.isArray(raw.u) || raw.u.length !== raw.b.length || raw.u.some((u) => !Number.isSafeInteger(u) || u < 0) || new Set(raw.u.filter(Boolean)).size !== raw.u.filter(Boolean).length)) return null;
   // CSA-K: the way, when it is said, is a place for each boat - its two speeds and its turn, finite and a boat's
   const m = raw.m;
   if (m !== undefined) {
@@ -99,11 +122,26 @@ export function validCsaRecord(raw) {
     if ((w[10] !== 0 && w[10] !== 1) || (w[11] !== 0 && w[11] !== 1)) return null;
     const boat = { hull: w[0], variant: w[1], position: p, rotation: q.map((v) => v / len), sails: w[9], helm: w[10] === 1, light: w[11] === 1 };
     if (m !== undefined) { const way = m[boats.length]; boat.velocity = [way[0], 0, way[1]]; boat.turn = way[2]; }   // CSA-K
+    const name = shipNameOf(raw.n, raw.b.length, boats.length);   // HOLDINGS: hers, where she has one - an unnamed boat's shape the older one
+    if (name) boat.name = name;
+    if (raw.u?.[boats.length]) boat.uid = raw.u[boats.length];
     boats.push(boat);
   }
-  return { boats };
+  // A cabin keeps its owner's fleet on the exterior stream; only the player is below deck.
+  if (raw.cabin !== undefined && raw.cabin !== 1) return null;
+  if (raw.cabin === 1 && boats.some((b) => b.helm || b.velocity?.some((v) => v !== 0) || b.turn)) return null;
+  return { boats, ...(raw.cabin === 1 ? { cabin: true } : {}) };
+}
+/** HOLDINGS: the name `n` gives the boat at `i` - read through the ledger's law (a name it refuses, '') - or '' for an `n`
+ *  that is not a name for each boat. Never a reason to drop the record. */
+function shipNameOf(n, count, i) {
+  if (!Array.isArray(n) || n.length !== count) return '';
+  const raw = n[i];
+  if (typeof raw !== 'string' || raw.length > SHIP_NAME_MAX * 4) return '';
+  const v = shipNameVerdict(raw);
+  return v.ok ? v.name : '';
 }
 
 /** A change key, so a frame carries the record only when the word moved (the full frame always does). CSA-K: the way
  *  is in it, so a boat brought up short is said at once (its readers stop leading it). */
-export const csaRecordKey = (rec) => (rec ? JSON.stringify(rec.m ? [rec.b, rec.m] : rec.b) : '');
+export const csaRecordKey = (rec) => (rec ? JSON.stringify(rec.u || rec.cabin || rec.n ? [rec.b, rec.m ?? null, rec.u ?? null, rec.cabin ?? null, rec.n ?? null] : rec.m ? [rec.b, rec.m] : rec.b) : '');   // HOLDINGS: a renamed boat is said at once

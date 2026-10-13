@@ -170,6 +170,7 @@ import { GRAPH_ROOT, ACCUM_ROOT_NAMES } from './mwSkin.js';
 import { transferSkin, sourceSkin, fitLift, liftBatch } from './mwSkinTransfer.js';   // MW-BRIG2: a worn model skinned from the body under it; MW-BRIG3: and fitted onto it
 import { getTextKeyTime, animVelocity } from './mwAnim.js';
 import { mat33Mul } from './mwNifMesh.js';   // AUDIT 68 S11-affine-dup: the one row-major 3x3 product
+import { batchMoves, posePartBatch, nodeAffineAt, nodeClockAt, clockFor } from './mwPartClock.js';   // MW-BOW1: a part's own clock
 import { applyClimbRig } from '../combat/climbRig.js';   // CLIMB6: the climb's pose on the rig's own bones
 
 /** The four parts allowed to fall back to a third-person mesh when the
@@ -182,13 +183,14 @@ export const ARM_PARTS = Object.freeze(['hand', 'wrist', 'forearm', 'upperarm'])
 // per-kind extractors and extractArmRecords (one pass, every kind)
 // cannot disagree - they call the same function on the same bytes.
 function readBodyPart(bytes, rec) {
-  const e = { id: '', model: '', race: '', part: -1, female: false, playable: true, skin: false };
+  const e = { id: '', model: '', race: '', part: -1, female: false, playable: true, skin: false, vampire: false };
   for (const sub of subrecords(bytes, rec)) {
     if (sub.name === 'NAME') e.id = zstr(bytes, sub.start, sub.len);
     else if (sub.name === 'MODL') e.model = zstr(bytes, sub.start, sub.len).replace(/\\/g, '/').toLowerCase();
     else if (sub.name === 'FNAM') e.race = zstr(bytes, sub.start, sub.len).toLowerCase();
     else if (sub.name === 'BYDT' && sub.len >= 4) {
       e.part = bytes[sub.start];
+      e.vampire = bytes[sub.start + 1] !== 0;   // MWNPC14: BYDT's second byte, the vampire flag (getVampireHead reads it)
       const flags = bytes[sub.start + 2];
       e.female = (flags & 1) !== 0;            // BPF_Female = 1
       e.playable = (flags & 2) === 0;          // BPF_NotPlayable = 2
@@ -928,6 +930,35 @@ function readWeapon(bytes, rec) {
   return e.id && e.model ? e : null;
 }
 
+/** MWNPC9: a CREA record's FLAG bits (OpenMW components/esm3/loadcrea.hpp `enum Flags`, at openmw-0.48.0; the
+ *  reader keeps the low byte, `mFlags = flags & 0xFF` - loadcrea.cpp). */
+export const CREA_FLAG = Object.freeze({ Bipedal: 0x01, Respawn: 0x02, Weapon: 0x04, Base: 0x08, Swims: 0x10, Flies: 0x20, Walks: 0x40, Essential: 0x80 });
+
+/** MWNPC9: the CREA records - what a creature's body is built from: its id, its model (MODL, the path as the WEAP
+ *  reader keeps one), its name, its flags (FLAG's low byte) and its scale (XSCL, 1 when absent - loadcrea.cpp). */
+function readCreature(bytes, rec) {
+  const e = { id: '', model: '', name: '', flags: 0, scale: 1 };
+  for (const sub of subrecords(bytes, rec)) {
+    if (sub.name === 'NAME') e.id = zstr(bytes, sub.start, sub.len).toLowerCase();
+    else if (sub.name === 'MODL') e.model = zstr(bytes, sub.start, sub.len).replace(/\\/g, '/').toLowerCase();
+    else if (sub.name === 'FNAM') e.name = zstr(bytes, sub.start, sub.len);
+    else if (sub.name === 'FLAG' && sub.len >= 4) e.flags = new DataView(bytes.buffer, bytes.byteOffset + sub.start, 4).getInt32(0, true) & 0xff;
+    else if (sub.name === 'XSCL' && sub.len >= 4) e.scale = new DataView(bytes.buffer, bytes.byteOffset + sub.start, 4).getFloat32(0, true);
+  }
+  return e.id && e.model ? e : null;
+}
+
+/** MWNPC9: the CREA records, one walk (extractArmRecords' `creatures`, by the same reader). */
+export function creatureRecords(bytes) {
+  const out = [];
+  for (const rec of walkEsm(bytes)) {
+    if (rec.type !== 'CREA') continue;
+    const e = readCreature(bytes, rec);
+    if (e) out.push(e);
+  }
+  return out;
+}
+
 export function weaponRecords(bytes) {
   const out = [];
   for (const rec of walkEsm(bytes)) {
@@ -965,6 +996,73 @@ function readLight(bytes, rec) {
     }
   }
   return e.id && e.model ? e : null;
+}
+
+/**
+ * MW-SPELLFX1: A MAGIC EFFECT (MGEF - components/esm3/loadmgef.cpp MagicEffect::load): INDX the effect's index; MEDT its
+ * 36 bytes - school, base cost, flags, red, green, blue, size, speed, size cap; then, in any order, the icon and the
+ * particle texture, four sounds, the four visuals by id (CVFX casting, BVFX bolt, HVFX hit, AVFX area) and the
+ * description. The effects layer reads the colour, the speed, the flags' NegativeLight, the particle texture and the
+ * visuals (formats/mwSpellFx.js); nothing else is kept. The legacy format's own rule on the flags (only the three
+ * modifiable bits are the file's) stands: the hard-coded rest is not read here, so it is not stored.
+ */
+function readMagicEffect(bytes, rec) {
+  const e = { index: -1, school: 0, flags: 0, color: [255, 255, 255], speed: 1, particle: '', casting: '', bolt: '', hit: '', area: '' };
+  for (const sub of subrecords(bytes, rec)) {
+    const dv = () => new DataView(bytes.buffer, bytes.byteOffset + sub.start, sub.len);
+    if (sub.name === 'INDX' && sub.len >= 4) e.index = dv().getInt32(0, true);
+    else if (sub.name === 'MEDT') {
+      if (sub.len < 36) continue;   // refused, not read past
+      const d = dv();
+      e.school = d.getInt32(0, true);
+      e.flags = d.getInt32(8, true) & (0x200 | 0x400 | 0x800);   // AllowSpellmaking | AllowEnchanting | NegativeLight
+      e.color = [d.getInt32(12, true), d.getInt32(16, true), d.getInt32(20, true)];
+      e.speed = d.getFloat32(28, true);
+    } else if (sub.name === 'PTEX') e.particle = zstr(bytes, sub.start, sub.len);
+    else if (sub.name === 'CVFX') e.casting = zstr(bytes, sub.start, sub.len).toLowerCase();
+    else if (sub.name === 'BVFX') e.bolt = zstr(bytes, sub.start, sub.len).toLowerCase();
+    else if (sub.name === 'HVFX') e.hit = zstr(bytes, sub.start, sub.len).toLowerCase();
+    else if (sub.name === 'AVFX') e.area = zstr(bytes, sub.start, sub.len).toLowerCase();
+  }
+  return e.index >= 0 && e.index < 256 ? e : null;
+}
+
+export function magicEffectRecords(bytes) {
+  const out = [];
+  for (const rec of walkEsm(bytes)) {
+    if (rec.type !== 'MGEF') continue;
+    const e = readMagicEffect(bytes, rec);
+    if (e) out.push(e);
+  }
+  return out;
+}
+
+/** MW-SPELLFX1: a STAT's id and mesh - kept for the statics an effect is drawn with: every id that begins VFX_ (each
+ *  visual the masters' MGEFs name, OpenMW's VFX_Default* and VFX_Hands among them) and any other id an MGEF in the
+ *  SAME file names. A mod's MGEF naming a non-VFX_ static of another file is not found - recorded. */
+function readStatic(bytes, rec) {
+  const e = { id: '', model: '' };
+  for (const sub of subrecords(bytes, rec)) {
+    if (sub.name === 'NAME') e.id = zstr(bytes, sub.start, sub.len).toLowerCase();
+    else if (sub.name === 'MODL') e.model = zstr(bytes, sub.start, sub.len).replace(/\\/g, '/').toLowerCase();
+  }
+  return e.id && e.model ? e : null;
+}
+export const VFX_STATIC_PREFIX = 'vfx_';
+/** The statics kept, out of a file's STATs (`byId`, last record of an id wins) and the ids its MGEFs name. */
+function vfxStatics(byId, effects) {
+  const named = new Set(effects.flatMap((m) => [m.casting, m.bolt, m.hit, m.area]).filter(Boolean));
+  return [...byId.values()].filter((e) => e.id.startsWith(VFX_STATIC_PREFIX) || named.has(e.id));
+}
+
+export function vfxStaticRecords(bytes) {
+  const byId = new Map();
+  const effects = [];
+  for (const rec of walkEsm(bytes)) {
+    if (rec.type === 'STAT') { const e = readStatic(bytes, rec); if (e) byId.set(e.id, e); }
+    else if (rec.type === 'MGEF') { const m = readMagicEffect(bytes, rec); if (m) effects.push(m); }
+  }
+  return vfxStatics(byId, effects);
 }
 
 export function lightRecords(bytes) {
@@ -1217,7 +1315,7 @@ export const ARM_GMST_IDS = Object.freeze([GMST_SNEAK_DELTA]);
 /** MW-LOAD: the SHAPE of extractArmRecords' answer. Bumped whenever a
  *  reader above changes what it returns, so a derived set written by
  *  an older build is refused and re-extracted rather than read wrong. */
-export const ARM_RECORDS_VERSION = 3;   // MW-D51: + the LIGH records (a set without them is re-extracted); WEREWOLF1 (AUDIT C2): a CLOT with parts and no MODL is kept
+export const ARM_RECORDS_VERSION = 6;   // MWNPC14: + the BODY vampire flag (a set without it is re-extracted); MW-D51: + the LIGH records (a set without them is re-extracted); WEREWOLF1 (AUDIT C2): a CLOT with parts and no MODL is kept; MW-SPELLFX1: + the MGEF records and the VFX statics; MWNPC9: + the CREA records
 
 /**
  * MW-LOAD: EVERY record the arm build reads, in ONE pass of the master.
@@ -1239,8 +1337,9 @@ export const ARM_RECORDS_VERSION = 3;   // MW-D51: + the LIGH records (a set wit
  */
 export function extractArmRecords(bytes, { gmst = ARM_GMST_IDS } = {}) {
   const want = new Set(gmst.map((id) => String(id).toLowerCase()));
-  const out = { version: ARM_RECORDS_VERSION, parts: [], races: [], armors: [], clothes: [], weapons: [], lights: [], gmst: {} };
+  const out = { version: ARM_RECORDS_VERSION, parts: [], races: [], armors: [], clothes: [], weapons: [], lights: [], magicEffects: [], statics: [], creatures: [], gmst: {} };
   const races = new Map();
+  const statics = new Map();   // MW-SPELLFX1: every STAT, until the file's MGEFs have said which they name
   for (const rec of walkEsm(bytes)) {
     switch (rec.type) {
       case 'BODY': out.parts.push(readBodyPart(bytes, rec)); break;
@@ -1248,7 +1347,10 @@ export function extractArmRecords(bytes, { gmst = ARM_GMST_IDS } = {}) {
       case 'ARMO': { const e = readArmor(bytes, rec); if (e) out.armors.push(e); break; }
       case 'CLOT': { const e = readClothing(bytes, rec); if (e) out.clothes.push(e); break; }
       case 'WEAP': { const e = readWeapon(bytes, rec); if (e) out.weapons.push(e); break; }
+      case 'CREA': { const e = readCreature(bytes, rec); if (e) out.creatures.push(e); break; }   // MWNPC9
       case 'LIGH': { const e = readLight(bytes, rec); if (e) out.lights.push(e); break; }   // MW-D51
+      case 'MGEF': { const e = readMagicEffect(bytes, rec); if (e) out.magicEffects.push(e); break; }   // MW-SPELLFX1
+      case 'STAT': { const e = readStatic(bytes, rec); if (e) statics.set(e.id, e); break; }   // MW-SPELLFX1
       case 'GMST': {
         const g = readGmst(bytes, rec);
         if (want.has(g.name) && !Object.hasOwn(out.gmst, g.name)) out.gmst[g.name] = g.value;
@@ -1258,6 +1360,7 @@ export function extractArmRecords(bytes, { gmst = ARM_GMST_IDS } = {}) {
     }
   }
   out.races = [...races.entries()];
+  out.statics = vfxStatics(statics, out.magicEffects);   // MW-SPELLFX1: the VFX_ family and whatever this file's MGEFs name
   return out;
 }
 
@@ -1266,7 +1369,7 @@ export function extractArmRecords(bytes, { gmst = ARM_GMST_IDS } = {}) {
  *  a torn one, answers false and is re-extracted. */
 export function isArmRecords(r) {
   return !!r && typeof r === 'object' && r.version === ARM_RECORDS_VERSION
-    && ['parts', 'races', 'armors', 'clothes', 'weapons', 'lights'].every((k) => Array.isArray(r[k]))
+    && ['parts', 'races', 'armors', 'clothes', 'weapons', 'lights', 'magicEffects', 'statics', 'creatures'].every((k) => Array.isArray(r[k]))
     && !!r.gmst && typeof r.gmst === 'object';
 }
 
@@ -1396,7 +1499,7 @@ export const MOD_WEAPON_TO_MW = Object.freeze({
   514: MW_WEAPON_TYPE.BluntOneHand,   // Light Flail
 });
 
-export function pickWeaponRecord(records, type, material = null, { has = null } = {}) {
+export function pickWeaponRecord(records, type, material = null, { has = null, shape = null } = {}) {
   // AUDIT MW-A F3: id-sorted, for the face's own reason (D27) - file
   // order is a property of the LOAD, and `ofType[0]` handed a player
   // whichever record their archive arrangement listed first. Sorted,
@@ -1426,8 +1529,8 @@ export function pickWeaponRecord(records, type, material = null, { has = null } 
   const ofType = present.length ? present : sorted;
   const chain = material ? DF_TO_MW_MATERIAL[material] : null;
   for (const want of (Array.isArray(chain) ? chain : chain ? [chain] : [])) {
-    const hit = ofType.find((r) => r.id.includes(want));
-    if (hit) return hit;
+    const matches = ofType.filter((r) => r.id.includes(want));
+    if (matches.length) return (shape && matches.find((r) => r.id.replace(/[^a-z]/g, '').endsWith(shape))) || matches[0];
   }
   return ofType[0];
 }
@@ -1582,7 +1685,7 @@ export function werewolfHeadRows(parts) {
   ];
 }
 
-export function playerBodyRows(parts, race, female, { beast = false, faceIndex = 0, faceTable = FACE_TABLE, faceMatch = null } = {}) {
+export function playerBodyRows(parts, race, female, { beast = false, faceIndex = 0, faceTable = FACE_TABLE, faceMatch = null, vampire = false, walk = null } = {}) {   // MWNPC14: `vampire` the race's vampire head; MWNPC17: `walk` an NPC's { head, hair }
   const want = String(race || '').toLowerCase();
   // MW-D32: the sweep slots resolve through getBodyParts-whole
   // (npcanimation.cpp:1167-1297 - LAST proper match wins, male-for-
@@ -1637,7 +1740,14 @@ export function playerBodyRows(parts, race, female, { beast = false, faceIndex =
     const sorted = slot === 'head' ? pools.heads : pools.hairs;
     let chosen = null;
     let how = null;
-    if (sorted.length) {
+    // MWNPC17: AN NPC'S OWN - its head and its hair walked each on its own off its seed (characters/wardrobe.js
+    // npcFaceOf), over the same pools in the same order: no portrait is theirs to match, and the face index named one
+    // pair of ten where a race carries its heads times its hairs
+    const step = walk ? walk[slot] : null;
+    if (sorted.length && Number.isInteger(step) && step >= 0) {
+      chosen = sorted[step % sorted.length];
+      how = 'walked for an NPC';
+    } else if (sorted.length) {
       const wantId = curated ? String(curated[slot] || '').toLowerCase() : '';
       chosen = byId(sorted, wantId);
       how = chosen ? 'curated' : null;
@@ -1660,7 +1770,24 @@ export function playerBodyRows(parts, race, female, { beast = false, faceIndex =
       counts: { all: forSlot.length },
     });
   }
+  // MWNPC14: A VAMPIRE'S FACE - the race's vampire head over the one walked (npcanimation.cpp updateNpcBase: the head
+  // model is getVampireHead's when there is one, the hair the actor's own); none for the race and the face stands
+  const vamp = vampire ? vampireHeadRecord(parts, race, female) : null;
+  if (vamp) {
+    const row = rows.find((r) => r.slot === 'head');
+    if (row) { row.record = vamp; row.verdict = 'third-person record found, a vampire\'s (getVampireHead)'; }
+  }
   return rows;
+}
+
+/** MWNPC14: getVampireHead (npcanimation.cpp, 0.48.0): the BODY record that is a vampire's, a skin, a head, of the sex
+ *  and the race (ignoring case) - the LAST in load order of those, as the reference's mapping overwrites; NotPlayable
+ *  is no bar (Morrowind's vampire heads are never offered at chargen). Null when the race has none. */
+export function vampireHeadRecord(parts, race, female) {
+  const want = String(race || '').toLowerCase();
+  let out = null;
+  for (const p of parts ?? []) if (p.vampire && p.skin && p.slot === 'head' && p.female === !!female && p.race === want && !p.firstPerson) out = p;
+  return out;
 }
 
 /** MW-D2: IS THIS MESH SKINNED, OR RIGID?
@@ -1953,16 +2080,28 @@ export function checkRequiredBones(report) {
  * rather than a second copy of the same arithmetic - which is what lets
  * the result be re-posed at all.
  */
-export async function assembleFirstPersonArm({ skeletonBytes, parts, boneSources = [] }) {
+/** The readers an assembly carries (`fns`), resolved once so its per-frame calls are synchronous. MWNPC9: one home,
+ *  the arm's and the creature's. */
+async function assemblyFns(parseNif) {
   const mod = {};
+  ({ parseNif: mod.parseNif } = await import('./mwNifFile.js'));
+  // MWNPC3: a caller's parse - fpArm.js's parseNifOnce, so a mesh one body parsed is the next body's parse. A parsed
+  // NIF is never written after its read (flattenNif copies every array it transforms, and a skin's bones are fresh
+  // objects over the parse's read-only lists), so one parse serves every assembly that binds it.
+  if (parseNif) mod.parseNif = parseNif;
+  ({ buildSkeleton: mod.buildSkeleton, poseSkeleton: mod.poseSkeleton,
+    skeletonSpaceMatrices: mod.skelMats, skinBatch: mod.skinBatch,
+    accumRootRef: mod.accumRootRef, trackBinding: mod.trackBinding,
+    injectSkeletonNodes: mod.injectSkeletonNodes } = await import('./mwSkin.js'));
+  ({ bindPart: mod.bindPart, attachmentTransform: mod.attachmentTransform, bindCreatureModel: mod.bindCreatureModel } = await import('./mwCharacter.js'));
+  ({ PART_BONES: mod.PART_BONES } = await import('./mwNpc.js'));
+  return mod;
+}
+
+export async function assembleFirstPersonArm({ skeletonBytes, parts, boneSources = [], parseNif = null }) {
+  let mod;
   try {
-    ({ parseNif: mod.parseNif } = await import('./mwNifFile.js'));
-    ({ buildSkeleton: mod.buildSkeleton, poseSkeleton: mod.poseSkeleton,
-      skeletonSpaceMatrices: mod.skelMats, skinBatch: mod.skinBatch,
-      accumRootRef: mod.accumRootRef, trackBinding: mod.trackBinding,
-      injectSkeletonNodes: mod.injectSkeletonNodes } = await import('./mwSkin.js'));
-    ({ bindPart: mod.bindPart, attachmentTransform: mod.attachmentTransform } = await import('./mwCharacter.js'));
-    ({ PART_BONES: mod.PART_BONES } = await import('./mwNpc.js'));
+    mod = await assemblyFns(parseNif);
   } catch (err) {
     return { ok: false, error: `readers unavailable: ${err.message}` };
   }
@@ -2007,6 +2146,61 @@ export async function assembleFirstPersonArm({ skeletonBytes, parts, boneSources
   // THE REST POSE IS NOW "pose at t=0 with no tracks" - one home, and the
   // MW-D5/D6 pins keep seeing byte-identical numbers because they are the
   // same arithmetic, called once instead of inlined.
+  return pieces.length ? poseAssembly(assembly) : assembly;
+}
+
+/**
+ * MWNPC9 (bible/04-Characters/Morrowind-NPCs.md section 14): A CREATURE, ASSEMBLED. Its model is its skeleton and its
+ * body at once (one parse: the skeleton's refs ARE the shapes' parent refs), bound by mwCharacter.js
+ * bindCreatureModel - the skinned shapes by their bones, each rigid shape riding its own node through the inverse of
+ * that node's rest. The pieces are the arm's own shape (slot 'creature'), so the pose, the GPU skin, the upload and the
+ * sprite tile take them as they take a body's; no part rule applies - nothing is worn, mirrored or offset.
+ */
+export async function assembleCreature({ modelBytes, parseNif = null }) {
+  let mod;
+  try {
+    mod = await assemblyFns(parseNif);
+  } catch (err) {
+    return { ok: false, error: `readers unavailable: ${err.message}` };
+  }
+  let nif, skeleton;
+  try {
+    nif = mod.parseNif(modelBytes);
+    skeleton = mod.buildSkeleton(nif);
+  } catch (err) {
+    return { ok: false, stage: 'skeleton', error: err.message };
+  }
+  const notes = [];
+  let bound;
+  try {
+    bound = mod.bindCreatureModel(skeleton, nif);
+  } catch (err) {
+    return { ok: false, stage: 'assembly', error: err.message };
+  }
+  if (bound.missingBones.length) notes.push(`creature: its skin names no node ${bound.missingBones.map((b) => `"${b}"`).join(', ')} - those influences are skipped (rule 40)`);
+  const pieces = [];
+  // AUDIT MW-NPC (MW-SMOOTH): a creature lit by its own normals, as a person's parts are - a skinned piece's posed by
+  // skinBatch, a rigid one's turned by its pre-transform once here and placed with its vertices each pose
+  for (const batch of bound.skinned) {
+    pieces.push({ slot: 'creature', bone: null, kind: 'skinned', mirrored: false, batch, source: null, attachRef: null,
+      uvs: batch.uvs || null, colors: batch.colors || null, material: batch.material || null,
+      positions: new Float32Array(batch.positions.length), indices: batch.indices, normals: posedNormals(batch) });
+  }
+  for (const { batch, attachRef, pre } of bound.rigid) {
+    const normals = posedNormals(batch);
+    pieces.push({ slot: 'creature', bone: null, kind: 'rigid', mirrored: false, tag: null, hang: null,
+      batch: null, source: applyPre(batch.positions, pre), attachRef, boneOffset: null,
+      uvs: batch.uvs || null, colors: batch.colors || null, material: batch.material || null, shape: batch.name || null,
+      positions: new Float32Array(batch.positions.length), indices: batch.indices,
+      sourceNormals: normals ? applyPreNormals(batch.normals, pre) : null, normals });
+  }
+  const effects = bound.effects.map(({ desc, attachRef, pre }) => ({ slot: 'creature', bone: null, mirrored: false, tag: null, hang: null,
+    attachRef, boneOffset: null, pre, desc, material: desc.material }));
+  const assembly = {
+    ok: pieces.length > 0, pieces, effects, notes, skeleton, fns: mod, bounds: null, injected: [],
+    dropped: bound.dropped,   // the Tri Bip shapes left out
+    error: pieces.length ? null : 'the creature model has no shape to draw',
+  };
   return pieces.length ? poseAssembly(assembly) : assembly;
 }
 
@@ -2117,7 +2311,7 @@ export function bindPartsInto(assembly, parts) {
         // MW-D7: the piece KEEPS its batch, and `positions` is its own
         // buffer - never an alias of batch.positions, which poseAssembly
         // reads every frame. Aliasing them is the runaway the viewer
-        // documents at mwViewer.js:"if (attachedMeshes.length) {".."}".
+        // documents at mwViewer.js:"Skinned batches are".
         pieces.push({ slot: part.slot, bone, kind: 'skinned', mirrored: false,
           batch, source: null, attachRef: null,
           // MW-D11: the UVs and the material ride WITH the piece. They
@@ -2125,7 +2319,8 @@ export function bindPartsInto(assembly, parts) {
           // entirely for a rigid one (which keeps only its positions), so
           // the texture a Morrowind mesh names never reached the draw.
           uvs: batch.uvs || null, colors: batch.colors || null, material: batch.material || null,
-          positions: new Float32Array(batch.positions.length), indices: batch.indices });
+          positions: new Float32Array(batch.positions.length), indices: batch.indices,
+          normals: posedNormals(batch) });   // MW-SMOOTH: the mesh's own normals, skinned with it
         if (nameless) namelessHere = true;
       }
       tookNameless = tookNameless || namelessHere;
@@ -2163,6 +2358,7 @@ export function bindPartsInto(assembly, parts) {
         const nodeName = nodeRef != null && skeleton.nodes.has(nodeRef) ? skeleton.nodes.get(nodeRef).name : (bone || '');
         const mirror = nodeName.includes('Left');
         for (const batch of bound.attached) {
+          const normals = posedNormals(batch);   // MW-SMOOTH
           pieces.push({ slot: part.slot, bone, kind: 'rigid', mirrored: mirror, tag: part.tag ?? null,   // WS1: a part's own tag (the quiver slot's index)
             hang: part.hang ?? null,   // HT-WAIST: a part that HANGS from its bone (hangAffine) rather than riding it
             // MW-D16: a part instanced under a node INSIDE another part's
@@ -2233,7 +2429,17 @@ export function bindPartsInto(assembly, parts) {
                 : (bound.boneOffset || null),
             uvs: batch.uvs || null, colors: batch.colors || null, material: batch.material || null,
             shape: batch.name || null,   // SHADOW-FANG (AUDIT F2): the shape's own name - a skinned piece keeps its batch, a rigid one only this (an eye names itself)
-            positions: new Float32Array(batch.positions.length), indices: batch.indices });
+            // MW-BOW1: the file and the batch's chain, for a part whose own controllers move it on the weapon clock
+            // (formats/mwPartClock.js posePartBatch) - the weapon's slots alone, so no other part keeps its parsed
+            // file alive; and, for a part instanced under a node of ANOTHER file (the arrow under the bow's
+            // ArrowBone), that file and node with the part's own vertices before the node's chain - so the node can
+            // move it. Nothing is copied: references to what the walk already made.
+            clip: WEAPON_CLOCK_SLOTS.has(part.slot) ? { nif, batch } : null,
+            preClip: part.preClip ? { ...part.preClip, local: batch.positions, localNormals: batch.normals ?? null } : null,
+            positions: new Float32Array(batch.positions.length), indices: batch.indices,
+            // MW-SMOOTH: the mesh's own normals, turned as its vertices are - the pre-transform once, here, and the
+            // bone and the mirror each frame (placeNormalsAtBone)
+            sourceNormals: normals ? applyPreNormals(batch.normals, part.preTransform) : null, normals });
         }
         // MAC-Q: THE PART'S PARTICLE SYSTEMS ride the same placement its
         // rigid shapes do - the bone, the mirror, rule 14's offset and the
@@ -2456,8 +2662,49 @@ export function applyFirstPersonNeck(skeleton, pose, rootRef, skelMats, pitch, a
   return true;
 }
 
+/** MW-BOW1: the slots whose own controllers run on the WEAPON clock - the weapon's (PRT_Weapon takes
+ *  mWeaponAnimationTime, npcanimation.cpp) and the arrow instanced under a node of it. Every other part's controllers
+ *  run on the lower body's clock in the reference, which this port does not drive. */
+export const WEAPON_CLOCK_SLOTS = Object.freeze(new Set(['weapon', 'arrow']));
+
+/**
+ * MW-BOW1: THE WEAPON MOVES ON ITS OWN CLOCK. Before a pose, every rigid weapon piece whose file's controllers move
+ * it is re-posed at `value` (the weapon group's playhead, from the group's start for a ranged weapon -
+ * WeaponAnimationTime), and the arrow under the bow's ArrowBone takes the node where the clock has it - the arrow
+ * drawn to the string and loosed off it, as the mesh carries it. `frameTime` is an AutoPlay node's clock. A file with
+ * nothing that moves keeps its rest pose untouched. Written in place: a rigid piece's source is its own bind's
+ * flattened copy, and the pose reads the file's own vertices (`batch.local`), never it. Answers how many pieces moved.
+ */
+export function posePartClocks(assembly, value, { frameTime = value, slots = WEAPON_CLOCK_SLOTS } = {}) {
+  let moved = 0;
+  for (const p of assembly.pieces ?? []) {
+    if (p.kind !== 'rigid' || !slots.has(p.slot)) continue;
+    // AUDIT MW-NPC: a part whose clock reads the time it was last posed at stands where that pose put it - an idle or a
+    // sheathed bow's clock holds still (WeaponAnimationTime answers its group's playhead, or 0), so it is neither posed
+    // again nor counted, and a GPU body re-streams nothing for it
+    if (p.preClip) {
+      const t = nodeClockAt(p.preClip.nif, p.preClip.node, value, frameTime);
+      if (t === null || t === p._clockAt) continue;
+      const pre = nodeAffineAt(p.preClip.nif, p.preClip.node, t);
+      writePre(p.preClip.local, pre, p.source);
+      if (p.sourceNormals && p.preClip.localNormals) writePreNormals(p.preClip.localNormals, pre, p.sourceNormals);
+      p._clockAt = t;
+      p.sourceGen = (p.sourceGen | 0) + 1;   // MWNPC1: the GPU stream re-streams this piece's corners (mwGpuSkin.js restreamMovedRows)
+      moved++;
+    } else if (p.clip && batchMoves(p.clip.nif, p.clip.batch)) {
+      const t = clockFor(p.clip.batch.animFlags | 0, value, frameTime);
+      if (t === p._clockAt) continue;
+      posePartBatch(p.clip.nif, p.clip.batch, t, p.source, p.sourceNormals);
+      p._clockAt = t;
+      p.sourceGen = (p.sourceGen | 0) + 1;
+      moved++;
+    }
+  }
+  return moved;
+}
+
 export function poseAssembly(assembly, { tracks = null, sampleTrack = null,
-  time = 0, accumRoot = null, neckPitch = 0, neckAim = 0, neckOffset = null, climb = null } = {}) {
+  time = 0, accumRoot = null, neckPitch = 0, neckAim = 0, neckOffset = null, climb = null, skin = true } = {}) {
   const { fns, skeleton, pieces } = assembly;
   if (!fns || !skeleton) return assembly;
   const pose = fns.poseSkeleton(skeleton, tracks, sampleTrack, time, { accumRoot });
@@ -2474,12 +2721,29 @@ export function poseAssembly(assembly, { tracks = null, sampleTrack = null,
   // own bones (combat/climbRig.js) in the same graph space, before any piece is placed on it
   assembly.climbFit = climb ? applyClimbRig(skeleton, pose, GRAPH_ROOT, fns.skelMats, climb) : null;
   const mats = fns.skelMats(skeleton, pose, GRAPH_ROOT);
+  // MWNPC1: `skin: false` - THE GPU SKIN'S POSE. The skeleton is posed and
+  // its matrices kept exactly as below, and the pieces are NOT: the vertex
+  // shader blends them from the palette (mwGpuSkin.js writeSkinPalette), so
+  // their CPU positions and the fold over them are left as they stood, and
+  // `cpuSkinned` says so - the palette's own boxes stand in for the fold.
+  assembly.cpuSkinned = skin !== false;
+  if (!assembly.cpuSkinned) {
+    assembly.pose = pose;
+    assembly.mats = mats;
+    assembly.time = time;
+    // AUDIT MW-CLOAK x MWNPC1: the stowed gear goes with the cloak on this pose too - the follow reads the cloak where
+    // the pose puts it and hands each turned piece's placement to the palette (formats/mwCloakFit.js applyCloakFollow)
+    if (assembly.afterPose) assembly.afterPose(assembly);
+    return assembly;
+  }
   for (const p of pieces) {
     if (p.kind === 'skinned') {
-      fns.skinBatch(p.batch, skeleton, pose, mats, p.positions, null);
+      fns.skinBatch(p.batch, skeleton, pose, mats, p.positions, p.normals ?? null);   // MW-SMOOTH: and its normals
     } else {
       const at = fns.attachmentTransform(mats, p.attachRef);
-      placeAtBone(p.source, p.hang ? hangAffine(at, p.hang) : at, p.mirrored, p.positions, p.boneOffset);   // HT-WAIST
+      const placed = p.hang ? hangAffine(at, p.hang) : at;   // HT-WAIST
+      placeAtBone(p.source, placed, p.mirrored, p.positions, p.boneOffset);
+      if (p.normals && p.sourceNormals) placeNormalsAtBone(p.sourceNormals, placed, p.mirrored, p.normals);   // MW-SMOOTH
     }
   }
   assembly.pose = pose;
@@ -2487,6 +2751,9 @@ export function poseAssembly(assembly, { tracks = null, sampleTrack = null,
   // camera node's translation without re-posing the skeleton.
   assembly.mats = mats;
   assembly.time = time;
+  // AUDIT MW-CLOAK: what the assembly's owner places after every piece is posed - the stowed gear that goes with the
+  // cloak (formats/mwCloakFit.js followCloak), which reads the cloak where this pose just put it
+  if (assembly.afterPose) assembly.afterPose(assembly);
   assembly.bounds = pieces.length ? foldPieceBounds(pieces) : null;   // PR-BOW1b: and each piece's own box, in the same walk
   return assembly;
 }
@@ -2666,7 +2933,8 @@ function bindSkinnedFromBody(assembly, part, bones) {
       pieces.push({ slot: part.slot, bone: bones[0] ?? null, kind: 'skinned', mirrored: false,
         batch, source: null, attachRef: null,
         uvs: batch.uvs || null, colors: null, material: batch.material || null,
-        positions: new Float32Array(batch.positions.length), indices: batch.indices });
+        positions: new Float32Array(batch.positions.length), indices: batch.indices,
+        normals: posedNormals(batch) });   // MW-SMOOTH: the garment's own normals, carried through its transferred skin
     }
   }
 }
@@ -2725,6 +2993,69 @@ export function placeAtBone(positions, at, mirror, out = new Float32Array(positi
     out[v] = at.a[0] * x + at.a[1] * y + at.a[2] * z + at.t[0];
     out[v + 1] = at.a[3] * x + at.a[4] * y + at.a[5] * z + at.t[1];
     out[v + 2] = at.a[6] * x + at.a[7] * y + at.a[8] * z + at.t[2];
+  }
+  return out;
+}
+
+/**
+ * MW-SMOOTH (2026-10-09, Mac: "Can we also enable smooth shading for the morrowind models?"): A RIGID PART'S NORMALS,
+ * PLACED AS ITS VERTICES ARE (placeAtBone) - mirrored with them (rule 13's X negated: a reflection takes a normal to
+ * the reflected surface's normal, so no flip follows) and turned by the bone. Rule 14's offset is a translation and
+ * leaves a normal alone. Renormalised, so a bone's uniform scale does not dim the light.
+ */
+export function placeNormalsAtBone(normals, at, mirror, out = new Float32Array(normals.length)) {
+  const a = at.a;
+  for (let v = 0; v < normals.length; v += 3) {
+    const x = mirror ? -normals[v] : normals[v];
+    const y = normals[v + 1];
+    const z = normals[v + 2];
+    const nx = a[0] * x + a[1] * y + a[2] * z;
+    const ny = a[3] * x + a[4] * y + a[5] * z;
+    const nz = a[6] * x + a[7] * y + a[8] * z;
+    const len = Math.hypot(nx, ny, nz) || 1;
+    out[v] = nx / len; out[v + 1] = ny / len; out[v + 2] = nz / len;
+  }
+  return out;
+}
+
+/** MW-SMOOTH: the posed-normal buffer a piece of this batch carries - one normal per vertex, or null for a mesh that
+ *  authored none (packFpArm then lights it by its faces, as every mesh was before). */
+function posedNormals(batch) {
+  return batch.normals && batch.normals.length === batch.positions.length ? new Float32Array(batch.normals.length) : null;
+}
+
+/** MW-SMOOTH: a part's pre-transform (MW-D16) applied to its normals - turned, never moved. */
+/** MW-BOW1: applyPre into a buffer the piece owns - the per-frame form. */
+function writePre(positions, pre, out) {
+  for (let v = 0; v + 2 < positions.length && v + 2 < out.length; v += 3) {
+    const x = positions[v]; const y = positions[v + 1]; const z = positions[v + 2];
+    out[v] = pre.a[0] * x + pre.a[1] * y + pre.a[2] * z + pre.t[0];
+    out[v + 1] = pre.a[3] * x + pre.a[4] * y + pre.a[5] * z + pre.t[1];
+    out[v + 2] = pre.a[6] * x + pre.a[7] * y + pre.a[8] * z + pre.t[2];
+  }
+}
+/** MW-BOW1: applyPreNormals into a buffer the piece owns. */
+function writePreNormals(normals, pre, out) {
+  for (let v = 0; v + 2 < normals.length && v + 2 < out.length; v += 3) {
+    const x = normals[v]; const y = normals[v + 1]; const z = normals[v + 2];
+    const nx = pre.a[0] * x + pre.a[1] * y + pre.a[2] * z;
+    const ny = pre.a[3] * x + pre.a[4] * y + pre.a[5] * z;
+    const nz = pre.a[6] * x + pre.a[7] * y + pre.a[8] * z;
+    const len = Math.hypot(nx, ny, nz) || 1;
+    out[v] = nx / len; out[v + 1] = ny / len; out[v + 2] = nz / len;
+  }
+}
+
+function applyPreNormals(normals, pre) {
+  if (!pre) return normals;
+  const out = new Float32Array(normals.length);
+  for (let v = 0; v < normals.length; v += 3) {
+    const x = normals[v]; const y = normals[v + 1]; const z = normals[v + 2];
+    const nx = pre.a[0] * x + pre.a[1] * y + pre.a[2] * z;
+    const ny = pre.a[3] * x + pre.a[4] * y + pre.a[5] * z;
+    const nz = pre.a[6] * x + pre.a[7] * y + pre.a[8] * z;
+    const len = Math.hypot(nx, ny, nz) || 1;
+    out[v] = nx / len; out[v + 1] = ny / len; out[v + 2] = nz / len;
   }
   return out;
 }
@@ -2813,6 +3144,13 @@ export const TP_BASE_MODEL = 'meshes/xbase_anim.nif';
  *  no "x" is inserted (animation.cpp:651-654). */
 export function tpAnimSources(skeletonPath, exists, { werewolf = false } = {}) {
   return animSourcesFor(werewolf ? null : TP_BASE_MODEL, skeletonPath, exists);
+}
+
+/** MWNPC9: A CREATURE'S SOURCES (creatureanimation.cpp, CreatureAnimation's constructor): xbase_anim first for a
+ *  BIPEDAL one (`mFlags & Bipedal`), then the model's own .kf - the model being the actor path rule 18 corrected,
+ *  the "x" variant, so `xrat.nif` sources `xrat.kf`. Same push order and existence filter as the NPC's. */
+export function creatureAnimSources(modelPath, exists, { bipedal = false } = {}) {
+  return animSourcesFor(bipedal ? TP_BASE_MODEL : null, modelPath, exists);
 }
 
 /** WEREWOLF1: A WEREWOLF HAS ONE SOURCE, ITS OWN. updateNpcBase leaves the
@@ -3020,4 +3358,13 @@ export function clipUnionBounds(assembly, poseAt, times) {
     } : { ...b };
   }
   return acc;
+}
+
+/** Preserve the item's shape within an animation class, after material and archive
+ * availability. An absent equivalent keeps the existing fallback. Retail uses Wakizashi
+ * in record IDs, while Daggerfall's template enum spells it Wakazashi. */
+export function dfWeaponShape(item, weaponsTable) {
+  if (!item || item.werecreatureClaws) return null;
+  const name = Object.keys(weaponsTable ?? {}).find((key) => weaponsTable[key] === item.templateIndex);
+  return name ? name.toLowerCase().replace(/[^a-z]/g, '').replace('wakazashi', 'wakizashi') : null;
 }

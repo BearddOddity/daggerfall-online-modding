@@ -12,6 +12,7 @@ import { calculateTradePrice, essentialPrice } from './shopStock.js';   // ESSEN
 import { dayOfYear } from './gameDate.js';
 import { interiorSceneName, addPermanentScene, removePermanentScene } from './sceneCache.js';   // P1: the rented room's own scene
 import { localizedText, localizedStrings } from './textManager.js';   // L10N3d: the tavern's words
+import { stampLayout, layoutStampOfMapId, recordStands } from './layoutPins.js';   // WD3: a room keeps the layout its inn was rented in
 
 /** The TEXT.RSC records the window speaks (:37-41). */
 export const TOO_MANY_DAYS_ID = 16;
@@ -118,8 +119,12 @@ export function removeExpiredRooms(rooms, nowMinutes, sceneCache = null) {
 }
 
 /** GetRentedRoom (:158): this inn's room, by map AND building. */
-export const findRentedRoom = (rooms, mapId, buildingKey) =>
-  rooms.find((r) => r.mapId === mapId && r.buildingKey === buildingKey) ?? null;
+export const findRentedRoom = (rooms, mapId, buildingKey, inn = true) =>
+  rooms.find((r) => r.mapId === mapId && r.buildingKey === buildingKey && recordStands(r))
+  // WD3 (AUDIT WD3 S5): a room rented in another layout of this town - its inn's key names another building now - is
+  // honoured at an INN of the town (`inn`: the building asking is one), never lost and never a stranger's bed by the
+  // key alone
+  ?? (inn ? rooms.find((r) => r.mapId === mapId && !recordStands(r)) : null) ?? null;
 
 /** The days a live rental still has to run (:180-185), floored at 0 -
  *  DFU clamps a negative rather than letting an expired room CREDIT
@@ -165,8 +170,12 @@ export function rentRoom(rooms, { room, days, nowMinutes, mapId, buildingKey, na
   if (sceneCache) {
     addPermanentScene(sceneCache, interiorSceneName(mapId ?? room?.mapId, buildingKey ?? room?.buildingKey));
   }
+  // AUDIT REST II P6 (bible/06-Systems/Rest-Arc.md section 5, OPEN 10): online a room counts NIGHTS - the days rented,
+  // and an extension's days on top (restAct.js spendRoomNight spends them; the expiry is still the days lived, DFU's).
+  // Offline nothing reads the count: DFU's rest window counts the hours down, as it always has.
   if (room) {
     room.expiryMinutes += 24 * 60 * days;
+    if (Number.isFinite(room.nights)) room.nights += days;   // an old save's room (no count) reads its nights off its hours at its next night
     return room;
   }
   const fresh = {
@@ -175,7 +184,9 @@ export function rentRoom(rooms, { room, days, nowMinutes, mapId, buildingKey, na
     buildingKey,
     allocatedBedIndex: Math.floor(rolls() * Math.max(1, bedCount)),
     expiryMinutes: nowMinutes + 24 * 60 * days,
+    nights: days,
   };
+  stampLayout(fresh, layoutStampOfMapId(mapId));   // WD3: the inn's town's layout (systems/layoutPins.js)
   rooms.push(fresh);
   return fresh;
 }

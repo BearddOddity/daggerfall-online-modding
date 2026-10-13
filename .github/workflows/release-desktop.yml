@@ -93,6 +93,7 @@ jobs:
     outputs:
       tag: ${{ steps.reltag.outputs.tag }}
       version: ${{ steps.reltag.outputs.version }}
+      update: ${{ steps.reltag.outputs.update }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -116,8 +117,16 @@ jobs:
             exit 1
           fi
           VERSION="${TAG#app-v}"
+          # REL8: the player's update number - derived here, where the history is whole, and read by every job below
+          # (the legs' clones are depth 1); digits only, or none
+          UPDATE=$(node scripts/updateNumber.mjs)
+          if [ -n "$UPDATE" ] && ! [[ "$UPDATE" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::the update number must be <major>.<minor>.<patch>, digits only"
+            exit 1
+          fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "update=$UPDATE" >> "$GITHUB_OUTPUT"
           echo "release tag: '${TAG:-<none - artifacts only>}'"
 
   gate:
@@ -145,6 +154,14 @@ jobs:
       # No signing identities exist; without this electron-builder
       # hunts for one on macOS and fails the build looking.
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      # REL9: the site build outgrew V8's default heap on the Mac leg. The
+      # default is sized off the runner's memory - macos-latest has 7GB and
+      # stopped at ~2GB, ubuntu/windows have 16GB and passed - so from
+      # app-v0.1.8020 on every Mac leg died in `vite build` (JavaScript heap
+      # out of memory), the publish job (REL4: only when the whole matrix
+      # passed) never ran, and no copy had an update to take. 4GB on every
+      # leg: what the 16GB legs already had, inside the Mac runner's 7GB.
+      NODE_OPTIONS: --max-old-space-size=4096
     steps:
       - uses: actions/checkout@v4
         with:
@@ -158,6 +175,8 @@ jobs:
         run: npm ci
 
       - name: Build the site
+        env:
+          DFO_UPDATE: ${{ needs.version.outputs.update }}   # REL8: the version job's number, stamped into the game this leg packs
         run: npm run build
 
       - name: Install shell dependencies
@@ -254,6 +273,13 @@ jobs:
           path: release
           merge-multiple: true
 
+      # BR5: a copy built before the rename asks for its download by the
+      # name it was built with (app/lib/downloads.cjs LEGACY_DOWNLOAD_FILES),
+      # so each download is published under that name too - none meets a
+      # dead link. No manifest names them; an updater reads the new name.
+      - name: Copies under the names older copies ask for
+        run: node scripts/desktopRelease.mjs alias release
+
       # REL5: every download the site links and every manifest an updater
       # reads, by the names app/lib/downloads.cjs promises - a set short
       # of any one publishes nothing.
@@ -314,7 +340,9 @@ jobs:
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ needs.version.outputs.tag }}
-          name: ${{ needs.version.outputs.tag }}
+          # REL8: the release is the player's update by name (the launcher's news reads it); the tag keeps the
+          # installer's number, which the updater compares
+          name: ${{ needs.version.outputs.update != '' && format('Update {0}', needs.version.outputs.update) || needs.version.outputs.tag }}
           target_commitish: ${{ github.sha }}
           draft: true
           body_path: release-notes.md

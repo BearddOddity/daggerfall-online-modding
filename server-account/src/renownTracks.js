@@ -73,6 +73,12 @@ export async function renownTracksOf({ db }, playerId, limit = RENOWN_CARD_TRACK
   return (r?.results ?? []).map((t) => ({ character: t.char_id, name: t.name ?? null, xp: int(t.xp), level: renownForXp(int(t.xp)), updatedAt: int(t.updated_at) }));
 }
 
+/** AUDIT LEGACY III O5: THE TRACKS AN ACCOUNT HOLDS against RENOWN_TRACKS_MAX - its living characters' (and any of no
+ *  realm), never a tombstone's: a Bloodline's fallen or a retired elder keeps its track, its Renown the line's story,
+ *  but holds no place a living character's would take. Every door that founds a track asks it (`p` the player's
+ *  placeholder in that statement). */
+export const renownHeldSql = (/** @type {string} */ p) => `(SELECT COUNT(*) FROM renown_tracks t WHERE t.player = ${p} AND NOT EXISTS (SELECT 1 FROM realm_characters r WHERE r.id = t.char_id AND r.player = ${p} AND r.dead_at IS NOT NULL))`;
+
 /**
  * A REPORT: `player` (the session's row, never the body's word) says its
  * `character` earned `xp`, under the report id `rid` (null from a client
@@ -122,7 +128,11 @@ export async function reportRenownXp({ db, nowS }, player, { character, xp, name
   const track = 'SELECT xp FROM renown_tracks WHERE player = ?1 AND char_id = ?2';
   // A REPEAT is a report whose id the track last took; REFUSED a new character past the bound. Either wants nothing.
   const repeat = `(?8 IS NOT NULL AND EXISTS (SELECT 1 FROM renown_tracks WHERE player = ?1 AND char_id = ?2 AND last_rid = ?8))`;
-  const refused = `(NOT EXISTS (${track}) AND (SELECT COUNT(*) FROM renown_tracks WHERE player = ?1) >= ?7)`;
+  // AUDIT LEGACY III O5: the bound counts the LIVING's tracks - a tombstone's (a Bloodline's fallen, an elder retired) is
+  // kept, its Renown the line's story, but holds no place a living character's would take: a line's sixty-first played
+  // member earned no Renown at all
+  const held = renownHeldSql('?1');
+  const refused = `(NOT EXISTS (${track}) AND ${held} >= ?7)`;
   // WHAT THE TRACK CAN STILL TAKE, read inside the transaction: a track near the cap asks the hour only for that
   const want = `CASE WHEN ${repeat} OR ${refused} THEN 0 ELSE MIN(?3, MAX(0, ?4 - COALESCE((${track}), 0))) END`;
   // WHAT THE HOUR HAS LEFT: the open window's remainder, or a whole window for an hour that has not been counted yet.
@@ -138,7 +148,7 @@ export async function reportRenownXp({ db, nowS }, player, { character, xp, name
          renown_hour_xp = CASE WHEN renown_hour >= ?6 THEN renown_hour_xp + ${credit} ELSE ${credit} END,
          renown_hour = MAX(renown_hour, ?6)
        WHERE id = ?1
-       RETURNING renown_last_credit AS credit, (${track}) AS before, ${repeat} AS repeat, ${refused} AS refused`,
+       RETURNING renown_last_credit AS credit, (${track}) AS before, ${repeat} AS repeat, ${refused} AS refused, renown_hour_xp AS hour_xp`,
     ).bind(player.id, character, xp, RENOWN_XP_MAX, RENOWN_XP_HOUR_MAX, hour, RENOWN_TRACKS_MAX, id),
     // A TRACK THAT EXISTS grows by the credit (never past the cap's total) and is the character last played.
     db.prepare(
@@ -153,7 +163,7 @@ export async function reportRenownXp({ db, nowS }, player, { character, xp, name
        SELECT ?1, ?2, ?3, renown_last_credit, ?4, ?5, ?5 FROM players
        WHERE id = ?1 AND renown_last_credit > 0
          AND NOT EXISTS (SELECT 1 FROM renown_tracks WHERE player = ?1 AND char_id = ?2)
-         AND (SELECT COUNT(*) FROM renown_tracks WHERE player = ?1) < ?6`,
+         AND ${held} < ?6`,
     ).bind(player.id, character, renownNameOf(name), id, nowS, RENOWN_TRACKS_MAX),
     db.prepare(track).bind(player.id, character),
   ]);
@@ -167,8 +177,12 @@ export async function reportRenownXp({ db, nowS }, player, { character, xp, name
   // `rose` against the total this report found, inside the same transaction - so two reports never both say so.
   // `max` when the track now holds the cap's total: nothing more is earned, and the client says so rather than
   // reading a credit of nothing as the hour's bound.
+  // SCALE4h: and what the open hour still takes - RETURNING reads the row as it now stands, this report's credit spent -
+  // so the page reports at the minute's pace as the bound nears and at its own slower one otherwise (net/renownTracker.js
+  // renownReportSoon)
+  const hourLeft = Math.max(0, RENOWN_XP_HOUR_MAX - int(d.hour_xp));
   return {
-    character, xp: total, level, credited, rose: level > renownForXp(before),
+    character, xp: total, level, credited, rose: level > renownForXp(before), room: hourLeft,
     ...(total >= RENOWN_XP_MAX ? { max: true } : {}),
     ...(Number(d.repeat) === 1 ? { repeat: true } : {}),
   };

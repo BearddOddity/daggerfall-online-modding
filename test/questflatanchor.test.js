@@ -61,7 +61,7 @@ test('questflatanchor: a DUNGEON quest flat drops half a height, a BUILDING one 
     'and the dungeon stand is');
   // The shift is the same one the scene's own static flats take.
   const d = rd('src/scenes/dungeonContext.js');
-  assert.match(d, /const based = centers\.map\(\(\[x, y, z\]\) => \[x, y - size\.h \/ 2, z\]\);/,
+  assert.match(d, /const based = centers\.map\(\(p\) => Object\.assign\(\[p\[0\], p\[1\] - size\.h \/ 2, p\[2\]\], \{ noCover: !!p\.noCover \}\)\);/,
     "the dungeon's RDB flats shift by the same half height - a quest flat in the same scene cannot differ");
 });
 
@@ -78,7 +78,7 @@ test('questflatanchor: AlignBillboardToGround runs on the NPC stand, distance 4,
   assert.match(s, /if \(Number\.isFinite\(drop\)\) by = \(origin - drop\) \+ size\.h \* 0\.02;/);
   // ...and the ray is the NPC arm's ALONE - an item never reaches it.
   assert.match(s, /if \(isItem\) \{/, 'the two laws are split by resource');
-  assert.equal((s.match(/standQuestFlat\(t\.worldTextureArchive[^\n]*true\)/g) ?? []).length, 1);
+  assert.equal((s.match(/standQuestFlat\(t\.worldTextureArchive[^\n]*, null, null, true[,)]/g) ?? []).length, 1);   // QUEST-MARKERS: the building's backstop rides after it
   assert.equal((s.match(/standDungeonQuestFlat\(t\.worldTextureArchive[^\n]*true\)/g) ?? []).length, 1);
   // No floor within 4 -> C# returns without moving anything. The
   // guard, not a fallback, is what expresses that.

@@ -229,7 +229,10 @@ test('PERF-EXT10 (the review): the shadow record writes every batch\'s fractiona
  *  drawElements under a billboard program - the main pass's (classic or the lane's) or the shadow replay's - the held
  *  uSize and uOrigin must be the drawn batch's own. Returns how many draws it checked. */
 function assertEveryFlatDrawSeesItsOwn(calls, programs, batches) {
-  const byVao = new Map(batches.map((b) => [b.vao, b]));
+  // PIN MOVED (PERF-ARENA): a still batch draws a RANGE of its arena's indices - the draw is named by the VAO and the
+  // offset together (many batches share one VAO now)
+  const byVao = new Map();
+  for (const b of batches) { if (!byVao.has(b.vao)) byVao.set(b.vao, new Map()); byVao.get(b.vao).set(b._ibOff | 0, b); }
   const held = new Map();
   let cur = null, vao = null, checked = 0;
   const bad = [];
@@ -237,8 +240,8 @@ function assertEveryFlatDrawSeesItsOwn(calls, programs, batches) {
     if (c[0] === 'useProgram') { cur = c[1]; if (!held.has(cur)) held.set(cur, new Map()); }
     else if (c[0] === 'uniform2f' || c[0] === 'uniform3f') held.get(cur)?.set(c[1], c.slice(2));
     else if (c[0] === 'bindVertexArray') vao = c[1];
-    else if (c[0] === 'drawElements' && programs.includes(cur) && byVao.has(vao)) {
-      const b = byVao.get(vao), u = held.get(cur), o = b.origin || [0, 0, 0];
+    else if (c[0] === 'drawElements' && programs.includes(cur) && byVao.get(vao)?.has(c[4] | 0)) {
+      const b = byVao.get(vao).get(c[4] | 0), u = held.get(cur), o = b.origin || [0, 0, 0];
       checked++;
       const size = u.get('uSize'), origin = u.get('uOrigin');
       if (!size || size[0] !== b.size.w || size[1] !== b.size.h) bad.push(`${b.archive}_${b.record}: drew with uSize ${size} for ${b.size.w},${b.size.h}`);
@@ -356,7 +359,7 @@ test('PERF-EXT11: no flat ever draws with a stale size or origin - GL walked as 
 
 test('PERF-EXT12: the streaming host asks the far-flat rule POSITIONALLY - no `{ ring, height, animated }` built for every flat batch of every pixel in sight or reach, every frame (the base: an object literal at the call); nothing in src/ builds one for it', () => {
   const w = rd('src/scenes/world.js');
-  assert.match(w, /if \(!farFlatVisibleAt\(ring, b\.size\?\.h \?\? 0, b\.frame != null\)\) continue;/, 'the pixel walk\'s call');
+  assert.match(w, /if \(!farFlatVisibleAt\(ring, b\.farH \?\? b\.size\?\.h \?\? 0, b\.frame != null\)\) continue;/, 'the pixel walk\'s call (LPT1: a far picture\'s batch hands its flat\'s own height - AUDIT LPT B1)');
   assert.match(w, /import \{ farFlatVisibleAt \} from '\.\.\/world\/flatDistance\.js'/);
   const objectCalls = [];
   const walk = (d) => { for (const e of readdirSync(join(ROOT, d))) { const p = `${d}/${e}`; if (statSync(join(ROOT, p)).isDirectory()) walk(p); else if (p.endsWith('.js') && /(?<!function )farFlatVisible\(\s*\{/.test(rd(p))) objectCalls.push(p); } };
@@ -444,7 +447,9 @@ function waterScene(lane) {
   const arrays = [null, arrA, arrA, arrB, arrB, arrB, arrA, arrA, arrB, arrA];
   const rows = arrays.map((arr, i) => {
     const m = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, i * 819.2, 0, 0, 1]);
-    return [r.createWaterSurface(r.createTerrainSurface(P, N, IX), IX), m, arr, { id: `tilemap${i}` }];
+    // AUDIT WATER-NEXT m9: the sheets the hosts mint (createWaterSheet) - a bed's own buffers on the odd rows, the
+    // terrain's position buffer and the constant depth on the even
+    return [i % 2 ? r.createWaterSheet(IX, { positions: P, depths: new Float32Array([0, 1.5, 2, 4]) }) : r.createWaterSheet(IX, { terrain: r.createTerrainSurface(P, N, IX) }), m, arr, { id: `tilemap${i}` }];
   });
   r.setLighting(new Float32Array([0.3, 0.3, 0.35]), 0.8, new Float32Array([1, 0.9, 0.8]));
   const lights = new Float32Array(20 * 4); for (let i = 0; i < 20; i++) lights.set([i, 3, -i, 12], i * 4);
@@ -455,7 +460,7 @@ function waterScene(lane) {
   return { H, r, rows, wu };
 }
 
-test('PERF-EXT13: every visible pixel\'s water in ONE call - ten water pixels through drawWaterSurfaces upload uView, uProj, uTime, uLift, uSunScale and uOpacity ONCE each, set the polygon offset once, and uModel ten times, in at most 150 GL calls (the base: no list at all, and the one-surface path 70 a pixel)', () => {
+test('PERF-EXT13: every visible pixel\'s water in ONE call - ten water pixels through drawWaterSurfaces upload uView, uProj, uTime, uLift, uSunScale and uSwell ONCE each, set the polygon offset once, and uModel ten times, in at most 150 GL calls (the base: no list at all, and the one-surface path 70 a pixel)', () => {
   assert.equal(typeof Renderer.prototype.drawWaterSurfaces, 'function', 'the list door exists');
   for (const lane of [false, true]) {
     const { H, r, rows, wu } = waterScene(lane);
@@ -463,7 +468,7 @@ test('PERF-EXT13: every visible pixel\'s water in ONE call - ten water pixels th
     r.drawWaterSurfaces(rows, rows.length, 6.4, wu);
     const n = (k) => H.byName[k] ?? 0;
     for (const u of ['uView', 'uProj']) assert.equal(n(`uniformMatrix4fv:${u}`), 1, `${lane ? 'lane' : 'classic'}: ${u} once`);
-    for (const u of ['uTime', 'uLift', 'uSunScale', 'uOpacity']) assert.equal(n(`uniform1f:${u}`), 1, `${lane ? 'lane' : 'classic'}: ${u} once`);
+    for (const u of ['uTime', 'uLift', 'uSunScale', 'uSwell']) assert.equal(n(`uniform1f:${u}`), 1, `${lane ? 'lane' : 'classic'}: ${u} once`);   // PIN MOVED (WATER-NEXT 2): the one opacity is gone, the swell is the frame's
     assert.equal(n('polygonOffset'), 1, 'the offset once');
     assert.equal(n('uniformMatrix4fv:uModel'), 10, 'a matrix a pixel');
     assert.equal(H.draws.length, 10, 'a draw a pixel');
@@ -476,7 +481,7 @@ test('PERF-EXT13: every visible pixel\'s water in ONE call - ten water pixels th
   }
   // and the host hands them over so: collected in the walk, ONE call after it, none inside it
   const w = rd('src/scenes/world.js');
-  const pass = w.slice(w.indexOf('    if (waterOn) {\n      const wu = waterUniforms('), w.indexOf('renderer.drawBillboards(allBatches, camRight, UP_Y);'));
+  const pass = w.slice(w.indexOf('    if (waterOn) {\n      stirRipples(dt, now);   // WATER-NEXT 4\n      const wu = _waterU = waterUniforms('), w.indexOf('renderer.drawBillboards(allBatches, camRight, UP_Y);'));
   assert.equal((pass.match(/renderer\.drawWaterSurfaces\(/g) || []).length, 1, 'one list call a frame');
   assert.doesNotMatch(pass, /renderer\.drawWaterSurface\(/, 'no pixel draws its own');
   assert.match(pass, /for \(const p of built\.values\(\)\) \{[\s\S]*?\}\s*\n\s*renderer\.drawWaterSurfaces\(_waterRows, n, 6\.4, wu\);/, 'after the walk, not in it');

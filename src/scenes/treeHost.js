@@ -27,7 +27,7 @@
 // ═══════════════════════════════════════════════════════════════════
 import { trees, nodeKey, WOOD_TABLES } from '../net/nodeLaw.js';
 import { FELLED } from '../ai/cover.js';   // AUDIT TACT B1: a felled tree is no cover
-import { tierOpen, TIER_RANKS, woodAxeBand, chopsFor, storesFullIn, GROUND_WHERE, GROUND_WHERE_WORDS } from '../net/professionLaw.js';
+import { tierOpen, TIER_RANKS, woodAxeBand, chopsFor, storesFullIn, goneIn, fullWordsIn, GROUND_WHERE, GROUND_WHERE_WORDS } from '../net/professionLaw.js';
 import { createChopAct } from '../systems/chopAct.js';
 import { FT } from '../systems/foragingLaw.js';
 import { foragingActRefusal, foragingToolIn, actChecksRefusal } from '../systems/foragingInstall.js';
@@ -96,6 +96,10 @@ export function standTrees({ px, py, day, climate, confirmed = false, forest = n
   return out;
 }
 
+/** LPT1 (bible/07-Rendering/Low-Poly-Trees.md): counts every sinking and standing of a wood's flats, so the near set of
+ *  3D trees (systems/lowPolyTreesAssets.js `frame`'s `stamp`) is gathered again the frame a tree goes or comes back. */
+export const FOREST_STAMP = { n: 0 };
+
 /**
  * THE FELLED TREES SUNK: each forest group's flats rewritten in place, the felled ones' below the ground by their height
  * and a metre, the rest where they grew - so a day's turn stands yesterday's felled trees again.
@@ -118,19 +122,20 @@ export function sinkFelled(forest, sunk, renderer) {
     if (n === 0 && had === 0) continue;   // nothing felled here, then or now: the batch as it was built
     renderer.moveBillboardBatch(g.batch, centers);
     g.sunkN = n;
+    FOREST_STAMP.n++;   // LPT1: a tree felled or stood again - the near 3D trees are gathered anew
   }
 }
 
-/** A tree's plan: what E does at it, or what it needs (a rank short: the rank, `needsRank` - VEIN-NEED). */
-export function treePlan({ node, taken, counting, rank, axe, storesFull, today, cap, lumberjack = false }) {
+/** A tree's plan: what E does at it, or what it needs (a rank short: the rank, `needsRank` - VEIN-NEED). CAP-OFF: no day's
+ *  cap - a tree is felled once a character a day, and that is the whole of the day's bound. */
+export function treePlan({ node, taken, counting, rank, axe, storesFull, lumberjack = false, fullWords = 'Stores full' }) {   // BAG1: `fullWords` the book's
   const name = materialLabel(node.material).replace(/ Log$/, '');
   const verb = `Chop ${name}`;
   const rankWord = `Logging ${rank} - ${chopsFor(node.tier, lumberjack)} chops`;   // AUDIT 30 A8: a Lumberjack's two fewer, as the act counts them
   if (taken || counting) return { harvest: 'logs', verb, rest: 'felled today', ready: false };
   if (!tierOpen(rank, node.tier)) return { harvest: 'logs', verb, rest: `needs Logging ${TIER_RANKS[node.tier - 1]}`, ready: false, needsRank: TIER_RANKS[node.tier - 1] };
   if (!axe) return { harvest: 'logs', verb, rest: 'needs a Wood-Axe', ready: false };
-  if (today >= cap) return { harvest: 'logs', verb, rest: `Logging done for today (${cap})`, ready: false };
-  if (storesFull(node.material)) return { harvest: 'logs', verb, rest: `Stores full - ${materialLabel(node.material)}`, ready: false };
+  if (storesFull(node.material)) return { harvest: 'logs', verb, rest: `${fullWords} - ${materialLabel(node.material)}`, ready: false };
   return { harvest: 'logs', verb, rest: rankWord, ready: true };
 }
 
@@ -142,9 +147,11 @@ export function treePlan({ node, taken, counting, rank, axe, storesFull, today, 
  * @returns {import('./gatherHost.js').GatherKind}
  */
 export function treeKind({ book, renderer = null, flatBatchAabb = null, getTexture = null, billboardSize = null, uploadRecord = null }) {
-  /** the falls under way and the logs lying: `{ entry, batch, t, logs? }` */
+  /** the falls under way and the logs lying: `{ entry, batch, t, key }` - AUDIT GATHER-SPEED G2: each its node's key */
   const falls = [];
   const logsLying = [];
+  /** AUDIT GATHER-SPEED G2: the keys a refusal took a fall back from before its logs were laid - they never lie */
+  const unlaid = new Set();
   /** AUDIT 30 A11: the pixels torn down - a fall's logs whose texture came after its pixel went are never laid (an
    *  entry's batch list outlives it, so it could not say so). */
   const torn = new WeakSet();
@@ -156,26 +163,28 @@ export function treeKind({ book, renderer = null, flatBatchAabb = null, getTextu
   return {
     id: 'tree',
     professions: Object.freeze(['logging']),
-    nodesOf({ px, py, day, info, confirmed, entry }) {
-      return standTrees({ px, py, day, climate: info.climate, confirmed, forest: entry.forest ?? null, rocks: entry.rocks ?? [] });   // NODE-CLEAR
+    nodesOf({ px, py, day, info, confirmed, entry, near }) {
+      return standTrees({ px, py, day, climate: info.climate, confirmed, forest: entry.forest ?? null, rocks: [...(entry.rocks ?? []), ...(near ?? [])] });   // NODE-CLEAR; ROCK-NEAR
     },
     /** A standing tree is the forest's own flat: the node adds none. */
     flatsOf: () => [],
     /** A felled tree's stump, where the archive has one. */
     goneFlatsOf(n, entry) {
       const f = entry?.forest;
-      if (!f || !STUMP_ARCHIVES.includes(f.base)) return [];
-      return [{ archive: f.archive, record: STUMP_RECORD, scale: 1, centers: [n.local] }];
+      if (!f) return [];
+      const base = n.flat?.base ?? f.base, archive = n.flat?.archive ?? f.archive;   // ECOTONE1: a border tree's own climate's stump
+      if (!STUMP_ARCHIVES.includes(base)) return [];
+      return [{ archive, record: STUMP_RECORD, scale: 1, centers: [n.local] }];
     },
     /** The pixel's felled trees sunk in their batches (and yesterday's stood again). */
     stood(entry, nodes) {
       const f = entry?.forest;
       if (!f?.groups || !renderer) return;
-      const sunk = new Set(nodes.filter((n) => book.taken(n.key, 'logs')).map((n) => `${n.flat.group}#${n.flat.i}`));
+      const sunk = new Set(nodes.filter((n) => goneIn(book, n.key, 'logs')).map((n) => `${n.flat.group}#${n.flat.i}`));   // GATHER-SPEED: or being counted
       sinkFelled(f, sunk, renderer);
     },
-    gone: (n) => book.taken(n.key, 'logs'),
-    mark: (n) => (book.taken(n.key, 'logs') ? null : TREE_MARK),   // NODE-MARKS: a standing tree; a felled one's stump none
+    gone: (n) => goneIn(book, n.key, 'logs'),
+    mark: (n) => (goneIn(book, n.key, 'logs') ? null : TREE_MARK),   // NODE-MARKS: a standing tree; a felled one's stump none
     tools: Object.freeze([FT.WoodAxe]),   // TOOL-USE: the Wood-Axe's Use at a tree is E there
     where: () => actChecksRefusal(GROUND_WHERE, GROUND_WHERE_WORDS),   // SETTLE-SAID
     /** PROF-MENU: the menu's title - the tree its wood is. */
@@ -184,8 +193,7 @@ export function treeKind({ book, renderer = null, flatBatchAabb = null, getTextu
       const plan = treePlan({
         node: n, taken: book.taken(n.key, 'logs'), counting: book.counting(n.key, 'logs'), rank: rank('logging'),
         lumberjack: specs?.('logging')?.[50] === 'lumberjack',
-        axe: !!foragingToolIn(entity, FT.WoodAxe), storesFull: (key) => storesFullIn(book, key),   // STORES-ROOM: every origin, as the service counts
-        today: book.state.today?.logging ?? 0, cap: book.state.caps?.harvests ?? 60,
+        axe: !!foragingToolIn(entity, FT.WoodAxe), storesFull: (key) => storesFullIn(book, key), fullWords: fullWordsIn(book),   // STORES-ROOM: every origin, as the service counts
       });
       return { ...plan, profession: 'logging' };
     },
@@ -199,11 +207,13 @@ export function treeKind({ book, renderer = null, flatBatchAabb = null, getTextu
           gentle: getPref('gentleActs') === true,
         }),
         harvest: plan.harvest, tool: foragingToolIn(entity, FT.WoodAxe), profession: 'logging', label: '',
+        material: n.material,   // AUDIT BAG1 B4: the logs the tree is, for the held count
         hand: (a) => (a.tool ? { ...AXE_HAND, ...axeHandFrame(a.act.swing) } : null),
       };
     },
-    /** THE FALL, on the service's answer: the tree's own picture tips away from the player (`from`, world; `tr` the
-     *  pixel's translation) and is gone once flat; the logs lie at its foot. */
+    /** THE FALL, as the act ends (GATHER-SPEED - it waited on the service's answer; scenes/gatherHost.js fallNow): the
+     *  tree's own picture tips away from the player (`from`, world; `tr` the pixel's translation) and is gone once flat;
+     *  the logs lie at its foot. */
     async felled(n, { entry, from, tr }) {
       const f = entry?.forest;
       const g = f?.groups?.get(n.flat.group);
@@ -213,13 +223,13 @@ export function treeKind({ book, renderer = null, flatBatchAabb = null, getTextu
       let dx = c[0] + tr[0] - from[0], dz = c[2] + tr[2] - from[2];
       const l = Math.hypot(dx, dz);
       if (l < 1e-6) { dx = 0; dz = 1; } else { dx /= l; dz /= l; }
-      const b = renderer.createBillboardBatch(g.batch.archive, g.batch.record, g.size, [c]);
+      const b = renderer.createBillboardBatch(g.batch.archive, g.batch.record, g.size, [c], g.scales ? { scales: [g.scales[n.flat.i]] } : undefined);   // LPT1: a low-poly tree falls as its far picture, at its own size
       const reach = Math.max(g.size.w, g.size.h);
       b._box = [c[0] - reach, c[1] - 1, c[2] - reach, c[0] + reach, c[1] + g.size.h, c[2] + reach];
       b.noShadow = true;
       b.tip = [dx, dz, 0];
       entry.batches.push(b);
-      falls.push({ entry, batch: b, t: 0 });
+      falls.push({ entry, batch: b, t: 0, key: n.key });
       if (LOGS_ARCHIVES.includes(f.base) && getTexture && billboardSize) {
         const t = await getTexture(f.archive);
         if (!t || LOGS_RECORD >= t.recordCount || torn.has(entry)) return;
@@ -229,7 +239,8 @@ export function treeKind({ book, renderer = null, flatBatchAabb = null, getTextu
         const logs = renderer.createBillboardBatch(f.archive, LOGS_RECORD, size, [at]);
         logs._box = flatBatchAabb ? flatBatchAabb([at], size) : [at[0] - size.w, at[1], at[2] - size.w, at[0] + size.w, at[1] + size.h, at[2] + size.w];
         entry.batches.push(logs);
-        logsLying.push({ entry, batch: logs, at });
+        if (unlaid.delete(n.key)) { drop(entry, logs); return; }   // AUDIT GATHER-SPEED G2: refused while its texture came
+        logsLying.push({ entry, batch: logs, at, key: n.key });
       }
     },
     /** Every frame: the falls tip, each gone once it lies flat; the logs are taken when walked over. */
@@ -247,6 +258,16 @@ export function treeKind({ book, renderer = null, flatBatchAabb = null, getTextu
         if (!tr) { logsLying.splice(i, 1); continue; }
         if (Math.hypot(lg.at[0] + tr[0] - feet[0], lg.at[2] + tr[2] - feet[2]) <= LOGS_TAKE_M) { drop(lg.entry, lg.batch); logsLying.splice(i, 1); }
       }
+    },
+    /** AUDIT GATHER-SPEED G2: A FELL REFUSED - the fall is the act's end's now (scenes/gatherHost.js fallNow), so a
+     *  harvest the service refuses, or a kept one let go, stands its tree again: its falling picture and its logs go
+     *  with it, never a tree standing over its own fall. */
+    refused(key) {
+      if (typeof key !== 'string') return;
+      let fell = false, laid = false;
+      for (let i = falls.length - 1; i >= 0; i--) if (falls[i].key === key) { drop(falls[i].entry, falls[i].batch); falls.splice(i, 1); fell = true; }
+      for (let i = logsLying.length - 1; i >= 0; i--) if (logsLying[i].key === key) { drop(logsLying[i].entry, logsLying[i].batch); logsLying.splice(i, 1); laid = true; }
+      if (fell && !laid) unlaid.add(key);   // its logs' texture still under way: laid, they go at once
     },
     /** A pixel torn down: its falls and logs went with its batches. */
     dropped(entry) {

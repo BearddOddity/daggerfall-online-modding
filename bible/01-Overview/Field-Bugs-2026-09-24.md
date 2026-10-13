@@ -982,8 +982,8 @@ rider layer ran first and drew a person on a horse (112382 + the rider's
 set), where the player saw their beast.
 
 The wire was never at fault. `wb` goes out on its edge (`wire.js:"|| (a.lh | 0) !=="`),
-through the door (`:1051`) and the easing (`online.js:"ar: to.ar ?? 0,   //"`), from the sender
-at `world.js:"AUDIT WORLD C1: the"`.
+through the door (`:1287`) and the easing (`online.js:"...(to.wb ? { wb: to.wb } : {})"`), from the sender
+at `world.js:"=> { try { return modSetting('eye-of-the-beholder', 'Graphics.OnHorse')"`.
 
 **Fix.** `peerRiders.js` takes a peer whose pose says `wb`, as it takes a
 rider:
@@ -1001,10 +1001,10 @@ The hand-off is RIDE's: `isRiding` is true only once the art is up, so while
 it loads or has failed, and in a build without it, DISC12's enemy sprite
 still stands for them. A beast is never nothing.
 
-The modal passes (`worldModes.js:"for (const d of dungeonCtx.drawList)"` the dungeon, `worldModes.js:"feeds it, ticks it"` the interior)
+The modal passes (`worldModes.js:"...dungeonCtx.campBatches"` the dungeon, `worldModes.js:"// ONLINE1: the peers on the interior's"` the interior)
 draw only `host.extraBillboards`. That was `remotePlayers.batches()` alone,
 so a beast drawn by the rider layer would have been nothing indoors and
-underground. It hands over both layers' batches now (`world.js:"rect: worldViewportRect"`). A
+underground. It hands over both layers' batches now (`world.js:"PARTY-REST19: shared"`). A
 rider never reaches those passes: a door dismounts. The eye the layer turns
 its sprites to (`cam.pos`) is live in every mode, because worldModes shares
 world.js's `cam` and sets it each modal frame.
@@ -1067,17 +1067,17 @@ the scene the picture takes in:
   three), so gear moves neither coordinate.
 - The box is folded only over the ranges the pass draws (`fpArm.js:"export function visibleRangeBounds"`
   `visibleRangeBounds`), off a box kept per range (`fpArm.js:"export function foldRangeBoxes"`
-  `foldRangeBoxes`, refolded at every upload, `:2808`).
+  `foldRangeBoxes`, refolded at every upload, `:3090`).
 
 **Hosts.** Every Morrowind body in the port goes through `drawThird`. The
-local player's goes through `mwView.mwViewDrawBody` (`mwView.js:"eotbCamera.onNewGame".."}"`,
-`:339`), which four files call: `world.js:"onClose: () => droppedLoot.releaseEmptied(),   //"`, `exterior.js:"WOD4: what withPlayerLights"`,
-`worldModes.js:"BASE it hands the"` and `worldModes.js:"(MaterialReader.cs:933-935)"` (the dungeon and the interior passes),
-and `dungeon.js:"ctx.candleLight?.(),"`. `dungeonContext.js`, the fourth motor host, builds
+local player's goes through `mwView.mwViewDrawBody` (`mwView.js:"export function mwViewDrawBody"`,
+`:463`), which four files call: `world.js:"{ proj, view, eye:"`, `exterior.js:"{ proj, view, eye"`,
+`worldModes.js:"renderer.everyLightCasts();   // LA-SHADOW3".."mwViewDrawBody(canvas, { proj, view, eye: mwv.eye, feet: player.bodyFeetAt(), yaw: player.bodyYawFor(cam.yaw), viewYaw: cam.yaw });   // MW-D24; DISC18: the body at the capsule's own feet, not the camera's smoothed ones"` and `worldModes.js:"if (!overlayHeld) interiorCtx.automapTick?.(dt, cam.pos, fwd)".."mwViewDrawBody(canvas, { proj, view, eye: mwv.eye, feet: player.bodyFeetAt(), yaw: player.bodyYawFor(cam.yaw), viewYaw: cam.yaw });   // MW-D24; DISC18: the body at the capsule's own feet, not the camera's smoothed ones"` (the dungeon and the interior passes),
+and `dungeon.js:"if (walkMode) mwViewDrawBody"`. `dungeonContext.js`, the fourth motor host, builds
 the dungeon for those hosts and draws no body of its own. The other players'
 bodies go through `peerBodies.js:"{ proj, view, eye, feet"` (`PeerBodies.draw`, and INVIS-LOOK's `drawVeiled`, by `_drawBodies`). The open world
-calls it at `world.js:"this branch used"`, and the modal passes reach it through
-`host.drawPeerBodies` (`worldModes.js:"cap drops a far court's"`, `worldModes.js:"CheckForNewlyDiscoveredMeshes"`). The fix therefore
+calls it at `world.js:"drawPeerBodies(proj, view, mwv.eye, tvf ? tvFace : null)"`, and the modal passes reach it through
+`host.drawPeerBodies` (`worldModes.js:"renderer.everyLightCasts();   // LA-SHADOW3".."host.drawPeerBodies?.({ proj, view, eye: mwv.eye });   // MWBODY1: the others' bodies, after the player's own"`, `worldModes.js:"if (!overlayHeld) interiorCtx.automapTick?.(dt, cam.pos, fwd)".."host.drawPeerBodies?.({ proj, view, eye: mwv.eye });   // MWBODY1: the others' bodies, after the player's own"`). The fix therefore
 sits in one place and reaches every host.
 
 The pins are `test/prbow1_bow.test.js`: seven tests, all failing on the

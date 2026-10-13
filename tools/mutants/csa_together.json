@@ -11,11 +11,12 @@
   {
     "name": "CSAK-wire-m-always",
     "file": "src/systems/comeSailAwayWire.js",
-    "old": "return underWay ? { b, m } : { b };",
-    "new": "return { b, m };",
+    "old": "return { b, ...(underWay ? { m } : {}), ...(u.some(Boolean) ? { u } : {}), ...(named ? { n } : {}) };",
+    "new": "return { b, m, ...(u.some(Boolean) ? { u } : {}), ...(named ? { n } : {}) };",
     "tests": [
       "test/csa_together.test.js"
-    ]
+    ],
+    "note": "TOUGHER-SHIPS + HOLDINGS' merge of main's #574 (PIN MOVED): re-aimed by content - the record carries HOLDINGS' names (`n`) beside the uids."
   },
   {
     "name": "CSAK-wire-way-not-converted",
@@ -83,12 +84,13 @@
   {
     "name": "CSAK-wire-key-no-way",
     "file": "src/systems/comeSailAwayWire.js",
-    "old": "export const csaRecordKey = (rec) => (rec ? JSON.stringify(rec.m ? [rec.b, rec.m] : rec.b) : '');",
-    "new": "export const csaRecordKey = (rec) => (rec ? JSON.stringify(rec.b) : '');",
+    "old": "export const csaRecordKey = (rec) => (rec ? JSON.stringify(rec.u || rec.cabin || rec.n ? [rec.b, rec.m ?? null, rec.u ?? null, rec.cabin ?? null, rec.n ?? null] : rec.m ? [rec.b, rec.m] : rec.b) : '');",
+    "new": "export const csaRecordKey = (rec) => (rec ? JSON.stringify(rec.u || rec.cabin || rec.n ? [rec.b, null, rec.u ?? null, rec.cabin ?? null, rec.n ?? null] : rec.b) : '');",
     "tests": [
       "test/csa_together.test.js",
       "test/csa_online.test.js"
-    ]
+    ],
+    "note": "TOUGHER-SHIPS + HOLDINGS' merge of main's #574 (PIN MOVED): re-aimed by content - the key says HOLDINGS' names (`n`) beside the uids and the cabin."
   },
   {
     "name": "CSAK-peers-grow-step",
@@ -156,8 +158,8 @@
   {
     "name": "CSAK-peers-peek-late",
     "file": "src/scenes/comeSailAwayPeers.js",
-    "old": "const p = nextPose(s, l.boats[i], l.toScene, dt, l.age + Math.max(0, dt));",
-    "new": "const p = nextPose(s, l.boats[i], l.toScene, dt, l.age);",
+    "old": "const p = nextPose(s, w, l.toScene, dt, l.age + Math.max(0, dt));",
+    "new": "const p = nextPose(s, w, l.toScene, dt, l.age);",
     "tests": [
       "test/csa_together.test.js"
     ]
@@ -174,8 +176,8 @@
   {
     "name": "CSAK-peers-snap-threshold",
     "file": "src/scenes/comeSailAwayPeers.js",
-    "old": "> CSA_PEER_SNAP_M * CSA_PEER_SNAP_M;",
-    "new": "> CSA_PEER_SNAP_M * CSA_PEER_SNAP_M * 100;",
+    "old": "(target[2] - shown[2]) ** 2 > snap * snap;",
+    "new": "(target[2] - shown[2]) ** 2 > snap * snap * 100;",
     "tests": [
       "test/csa_together.test.js"
     ]
@@ -724,8 +726,8 @@
   {
     "name": "CSAL-pad-tap-after-hold",
     "file": "src/ui/gamepadInput.js",
-    "old": "          if (!st.fired) hooks.helm?.gesture?.(dir, 'tap');",
-    "new": "          if (st.fired || !st.fired) hooks.helm?.gesture?.(dir, 'tap');",
+    "old": "          if (!st.fired) { if (glassTap) fireDpad('Spyglass', code); else hooks.helm?.gesture?.(dir, 'tap'); }",
+    "new": "          if (st.fired || !st.fired) { if (glassTap) fireDpad('Spyglass', code); else hooks.helm?.gesture?.(dir, 'tap'); }",
     "tests": [
       "test/csa_together.test.js"
     ]
@@ -834,6 +836,24 @@
     "file": "src/scenes/world.js",
     "old": "if (!csaRuntime || !csaOn() || !isEnhancedPlus() || typeof document === 'undefined' || !walkMode) {",
     "new": "if (!csaRuntime || !csaOn() || typeof document === 'undefined' || !walkMode) {",
+    "tests": [
+      "test/csa_together.test.js"
+    ]
+  },
+  {
+    "name": "FB1009-peek-unnamed-place",
+    "file": "src/scenes/comeSailAwayPeers.js",
+    "old": "if (!w || w.hull !== s.hull) return null;",
+    "new": "if (w.hull !== s.hull) return null;",
+    "tests": [
+      "test/csa_together.test.js"
+    ]
+  },
+  {
+    "name": "FB1009-peek-other-hull",
+    "file": "src/scenes/comeSailAwayPeers.js",
+    "old": "if (!w || w.hull !== s.hull) return null;",
+    "new": "if (!w) return null;",
     "tests": [
       "test/csa_together.test.js"
     ]

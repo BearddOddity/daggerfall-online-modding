@@ -197,7 +197,7 @@ test('REALM P1.3 by source: the boot joins before any save is read, never a slot
   assert.match(w, /const bootSnap = \(\) => \(bootSnapRead === undefined \? [^\n]*\n\s*if \(realmBoot\) \{ bootSnapRead = realmBoot\.snap; realmBoot\.snap = null; \}/, 'the realm\'s save is the boot\'s one parse (AUDIT MW-EARLY F3) - and the join\'s answer lets it go, so the door\'s release is the last hold');
   assert.match(w, /const onlineOn = params\.has\('online'\) && !realmNew;/, 'a character being born joins no relay');
   assert.match(w, /if \(realmSession\) setRealmSaveSink\(\(snap\) => \{[\s\S]{0,160}?realmSession\.checkpoint\(realmSaveWithHeld\(snap, holding\), realmSummaryOf\(playerEntity\)\)/, 'every save of a realm character is its checkpoint (and, landed, it clears the spoils it held - below; AUDIT RESCUE-SAVE A1: the save names them, so the next join adopts rather than hands them)');
-  assert.match(w, /if \(realmSession\) return realmCheckpoint\(\);/, 'the periodic checkpoint is the realm\'s, once');
+  assert.match(w, /if \(realmSession\) return realmCheckpoint\((?:\{ sink \})?\);/, 'the periodic checkpoint is the realm\'s, once');   // AUDIT PRE-MERGE 1003 O10: the caller's sink handed through (onlineCheckpointLanded)
   assert.match(w, /if \(realmSession\) return;   \/\/ the realm's: no slot/, 'the page going writes no local slot');
   // AUDIT REALM2 C2: the leave as the page GOES (pagehide), never before the unload guard is answered; C7: the Exit's
   // last checkpoint behind a duel's end and P0.5's gate (test/auditrealm2_client.test.js mounts both)
@@ -205,9 +205,15 @@ test('REALM P1.3 by source: the boot joins before any save is read, never a slot
   assert.match(w, /setBeforeTitleExit\(async \(\) => \{ if \(!realmSession\.lost\) \{ try \{ duelLeaveNow\(\); \} catch \{ \/\* no duel was built: nothing to end \*\/ \} onlineCheckpoint\(\); await Promise\.race\(\[realmSession\.leave\(\), new Promise\(\(r\) => \{ setTimeout\(r, REALM_EXIT_WAIT_MS\); \}\)\]\); \} \}\);/, 'the last checkpoint and the leave, five seconds at most');
   assert.match(w, /function realmLost\(why\) \{\s*\n\s*setRealmNotice\(globalThis\.sessionStorage, realmRefusalText\(why\)\);\s*\n\s*exitToTitleMenu\(\);/);
   assert.match(w, /if \(realmNew\) realmBirth\(\)/, 'born after chargen');
+  // PIN MOVED (LEGACY7): the make and the first save are realmCreateLegacy's and realmFirstSave's (Project Legacy's
+  // founder born as the person of its line) - the birth calls them in the same order
   const birth = w.slice(w.indexOf('async function realmBirth()'));
-  const order = ['realmCreate(io,', 'playerEntity.characterId = made.data.id;', 'realmPut(io, made.data.id, { lease: made.data.lease, seq: 1,', 'location.replace(`${location.pathname}${realmBootSearch(location.search, made.data.id, BOOT_DOOR_KEYS)}`);'].map((t) => birth.indexOf(t));
-  assert.ok(order.every((at, i) => at > 0 && (i === 0 || at > order[i - 1])), 'made, the realm\'s id, saved at 1, then booted from the realm');
+  const order = ['const made = await realmCreateLegacy(io);', 'const put = await realmFirstSave(io, made);', 'location.replace(`${location.pathname}${realmBootSearch(location.search, made.data.id, BOOT_DOOR_KEYS)}`);'].map((t) => birth.indexOf(t));
+  assert.ok(order.every((at, i) => at > 0 && (i === 0 || at > order[i - 1])), 'made, saved at 1, then booted from the realm');
+  const make = w.slice(w.indexOf('async function realmCreateLegacy(io)'));
+  const made = ['made = await realmCreate(io,', 'playerEntity.characterId = made.data.id;', 'legacyHost?.rebind(was, made.data.id);'].map((t) => make.indexOf(t));
+  assert.ok(made.every((at, i) => at > 0 && (i === 0 || at > made[i - 1])), 'made, then the realm\'s id - in the entity and the family\'s record');
+  assert.match(w.slice(w.indexOf('async function realmFirstSave(io, made)')), /^async function realmFirstSave\(io, made\) \{[\s\S]*?return realmPut\(io, made\.data\.id, \{ lease: made\.data\.lease, seq: 1,/, 'saved at 1');
   for (const f of ['src/scenes/world.js', 'src/scenes/dungeonContext.js']) {
     assert.match(src(f), /const into = sink \?\? realmSaveSink\(\);[^\n]*\n\s*if \(into\) \{ const said = into\(snap\); if \(!quiet\) sayRealmSave\(said, [^\n]*\); return true; \}[^\n]*\n\s*const r = saveSlot\(/, `${f}: a realm character's save never reaches a slot (AUDIT REALM2 C2: its word the realm's answer)`);
   }

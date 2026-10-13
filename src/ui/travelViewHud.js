@@ -35,11 +35,22 @@ import { titleBadge, glyphBadges, cssRgba, GLYPH_STROKE, GLYPH_EDGE_W } from './
 import { PIXEL_STACK } from './pixelifyFive.js';   // AUDIT NAMES N1-4: the in-play name face
 import { renownText } from '../net/renown.js';
 import { guildTagText } from '../net/guildLaw.js';
-import { ribbonColours, heraldryOf, heraldryColourOf } from '../net/heraldryLaw.js';   // AUDIT-SEATS: a Season's banner ribbon, under the name here too; AUDIT HERALDRY H4: the tag's frame
+import { ribbonColours, heraldryOf, heraldryColourOf, heraldryKey } from '../net/heraldryLaw.js';   // AUDIT-SEATS: a Season's banner ribbon, under the name here too; AUDIT HERALDRY H4: the tag's frame
 import { drawShield } from './heraldryArt.js';   // AUDIT HERALDRY H4: the guild's shield, in its tag's frame, on the canvas
 import { TV_FILTER_GROUPS, TV_FILTER_TEXT, travelViewFilters, toggleTravelViewFilter, onTravelViewFilters, markShown, countGroups } from '../systems/travelViewFilters.js';   // OW-FILTER
+import { TV_WHO_GROUPS, TV_WHO_TEXT, TV_KIN_COLORS, travelViewWho, toggleTravelViewWho, cycleTravelViewRenown, cycleTravelViewNodeKm } from '../systems/travelViewFilters.js';   // OW-WHO / OW-NODE-KM / OW-KIN
+import { wheelPath } from './carriageWheel.js';   // OW-HUBS: a carriage town's wheel on its dot
+import { placeTip, readTip, tipKey, SEAT_TIP_TEXT_MAX } from './eventMapMarks.js';   // SEAT-TIP: the held map's card, at the pointer here too
 import { tickHudLayout } from './hudLayout.js';   // HUD-MOVE: the Overworld's block and the travel bar move too
 import { travelPathMode, setTravelPathMode, onTravelPathMode, TRAVEL_PATH_MODES, TRAVEL_PATH_TEXT } from '../systems/travelPathMode.js';   // OW-PATH: the Roads / Free switch
+import { buildPaceControls } from './travelPaceControls.js';   // PACE-DIALS: the travel speed dials, journey or none
+import {
+  WAYPOINT_KINDS, WAYPOINT_TEXT, listWaypoints, followedWaypointIds, setWaypointFollowed, waypointKindsShown, toggleWaypointKind,
+  onWaypoints, waypointCss,
+} from '../systems/mapWaypoints.js';   // WAYPOINTS: the switches, the followed list and its dropdown
+import { paintWaypointFlag, flagBox } from './waypointFlags.js';   // WAYPOINTS: the small flags
+import { closeWaypointMenu } from './waypointMenu.js';   // WAYPOINTS: the Overworld's menu goes down with the view
+import { appStorage } from '../systems/appStorage.js';   // WAYPOINTS: the filter block's folded state, kept on the device
 
 export const TRAVEL_VIEW_HUD_ID = 'travel-view';
 /** The name on the screen (the code's is TRAVEL VIEW: "overworld" is the streaming world's own word in the tree). */
@@ -158,6 +169,36 @@ export function routePath(points, w = Infinity, h = Infinity) {
   return d.trim();
 }
 
+/** OW-DOTS-EVEN: the route's widths at the feet (px) - enhancedStyle.js .tview-route-casing's and .tview-route-line's,
+ *  pinned equal; a smaller dot's pair is these times its size (the frame's `routeDotSizes`). */
+export const ROUTE_CASING_W = 7, ROUTE_LINE_W = 4;
+/** OW-DOTS-EVEN: a path pair a dot size - every rim under every dot - made the first frame that hands the sizes. */
+function dotPairsFor(sizes) {
+  const route = parts?.route;
+  if (!route || !Array.isArray(sizes) || !sizes.length) return null;
+  if (parts.dotPairs?.length === sizes.length) return parts.dotPairs;
+  const doc = route.ownerDocument;
+  const mk = (cls, w) => { const n = doc.createElementNS(SVG_NS, 'path'); n.setAttribute('class', cls); n.style.strokeWidth = `${w}px`; return n; };
+  const pairs = sizes.map((z) => ({ casing: mk('tview-route-casing', +(ROUTE_CASING_W * z).toFixed(2)), line: mk('tview-route-line', +(ROUTE_LINE_W * z).toFixed(2)), d: '' }));
+  route.append(...pairs.map((q) => q.casing), ...pairs.map((q) => q.line));
+  parts.dotPairs = pairs;
+  return pairs;
+}
+
+/** OW-DOTS-GROUND: the route's dots as path data - a zero-length stroke at each (round caps draw it a dot), to the tenth
+ *  of a pixel, those on the screen grown by ROUTE_CLIP_PX alone. */
+export function routeDotsPath(dots, w = Infinity, h = Infinity, cls = null) {
+  const M = Number.isFinite(w) && Number.isFinite(h) ? ROUTE_CLIP_PX : Infinity;
+  let d = '';
+  for (const p of dots ?? []) {
+    if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
+    if (cls != null && (p.c ?? 0) !== cls) continue;   // OW-DOTS-EVEN: one size's dots
+    if (p.x < -M || p.y < -M || p.x > w + M || p.y > h + M) continue;
+    d += `M${p.x.toFixed(1)} ${p.y.toFixed(1)}h0`;
+  }
+  return d;
+}
+
 function put(node, key, value) {
   if (!node || last[key] === value) return;
   last[key] = value;
@@ -244,7 +285,13 @@ function build(doc, hooks) {
   tools.append(modes, idleMap);
   const foot = el('div', 'tview-foot');
   foot.append(back);
-  // OW-FILTER: THE CORNER'S SWITCHES - one per group of marks, a dot in the mark's own colour and how many there are
+  // PACE-DIALS (2026-10-06, the player: "Those options should also be available when the player stands still on the
+  // overworld map"): the travel speed dials, in the block whether a journey runs or not (the docked journey bar's own
+  // copy is hidden under the view - one set on the screen)
+  const pace = buildPaceControls(doc, 'tview');
+  // OW-FILTER: THE CORNER'S SWITCHES - one per group of marks, a dot in the mark's own colour and how many there are.
+  // FILTERS-LEFT (2026-10-06, the player: "move the filters for the overworld to the left bottom side"): they stand in a
+  // block of their own in the bottom-LEFT corner now (`side`), apart from the right's journey block
   const filters = el('div', 'tview-filters');
   filters.setAttribute?.('role', 'group');
   filters.setAttribute?.('aria-label', 'Overworld filters');
@@ -262,7 +309,68 @@ function build(doc, hooks) {
     filterBtns[g] = b; filterNums[g] = num;
     filters.append(b);
   }
-  bar.append(head, dock, tools, filters, foot);   // OW-BLOCK: top to bottom
+  // OW-WHO / OW-NODE-KM (FIELD BUGS 2026-10-04e): THE PLAYERS - by who they are to me, the least Renown - and how far off
+  // a gathering group still shows; the held map's key reads the same switches (systems/travelViewFilters.js)
+  filters.append(el('div', 'tview-label', TV_WHO_TEXT.title));
+  const whoBtns = {};
+  for (const g of TV_WHO_GROUPS) {
+    const b = el('button', 'tview-filter');
+    b.type = 'button';
+    b.dataset && (b.dataset.who = g);
+    b.append(el('span', `tview-fdot tview-fdot-kin-${g}`), el('span', 'tview-fword', TV_WHO_TEXT[g]));
+    b.onclick = (e) => { e.preventDefault(); toggleTravelViewWho(g); };
+    whoBtns[g] = b;
+    filters.append(b);
+  }
+  const renownBtn = el('button', 'tview-filter tview-cycle on');
+  renownBtn.type = 'button';
+  renownBtn.title = TV_WHO_TEXT.renownTip;
+  renownBtn.onclick = (e) => { e.preventDefault(); cycleTravelViewRenown(); };
+  const nodeBtn = el('button', 'tview-filter tview-cycle tview-cycle-wide on');
+  nodeBtn.type = 'button';
+  nodeBtn.title = TV_WHO_TEXT.nodeTip;
+  nodeBtn.onclick = (e) => { e.preventDefault(); cycleTravelViewNodeKm(); };
+  filters.append(renownBtn, nodeBtn);
+  // WAYPOINTS (2026-10-06, the player: "add the waypoints you want to mark (to follow) to the filter list on the overworld
+  // map with a dropdown menu"): a switch per kind (Personal, Party, Guild - the held map's key reads the same ones), the
+  // dropdown that follows one, and the followed list - each its flag's colour, its name, how far, Go and unfollow
+  filters.append(el('div', 'tview-label', WAYPOINT_TEXT.title));
+  const wpBtns = {};
+  for (const k of WAYPOINT_KINDS) {
+    const b = el('button', 'tview-filter');
+    b.type = 'button';
+    b.dataset && (b.dataset.wpkind = k);
+    const num = el('span', 'tview-fnum', '0');
+    b.append(el('span', `tview-fdot tview-fdot-wp-${k}`), el('span', 'tview-fword', WAYPOINT_TEXT[k]), num);
+    b.onclick = (e) => { e.preventDefault(); toggleWaypointKind(k); };
+    wpBtns[k] = { b, num };
+    filters.append(b);
+  }
+  // PLUS-PICK (2026-10-06, the player: "the buttons do not look the same as enhanced ui plus"): the dropdown is the kit's
+  // own - a switch like the others that unfolds the waypoints as switches under it (a browser <select> wears no stone)
+  const wpPick = /** @type {HTMLButtonElement} */ (el('button', 'tview-filter tview-cycle tview-cycle-wide tview-wp-pick on'));
+  wpPick.type = 'button';
+  wpPick.title = 'Choose a waypoint to follow - it stays at the screen\'s edge with its distance';
+  const wpPop = el('div', 'tview-wp-pop');
+  wpPop.style.display = 'none';
+  wpPick.onclick = (e) => { e.preventDefault(); if (wpPick.disabled) return; wpPop.style.display = wpPop.style.display === 'none' ? '' : 'none'; paintPickWord(); furniture.at = -Infinity; };
+  const wpList = el('div', 'tview-wp-list');
+  filters.append(wpPick, wpPop, wpList);
+  // FILTERS-LEFT: the block, its head (a fold), the switches under it
+  const side = el('div', 'tview-side');
+  side.setAttribute?.('role', 'group');
+  side.setAttribute?.('aria-label', 'Overworld filters');
+  const sideHead = el('button', 'tview-side-head');
+  sideHead.type = 'button';
+  const sideFold = el('span', 'tview-side-fold', '▾');
+  sideHead.append(el('span', 'tview-side-title', 'Map filters'), sideFold);
+  sideHead.onclick = (e) => { e.preventDefault(); setSideFolded(!sideFolded()); };
+  side.append(sideHead, filters);
+  side.addEventListener?.('mousedown', (e) => e.stopPropagation?.());
+  side.addEventListener?.('mouseup', (e) => e.stopPropagation?.());
+  // SEAT-TIP: the card a hovered plate answers with (a seat's: who holds it, this week's battle) - the held map's look
+  const tip = el('div', 'hmtip tview-tip');
+  bar.append(head, dock, pace.root, tools, foot);   // OW-BLOCK: top to bottom (FILTERS-LEFT: the filters their own block)
   // AUDIT TV B8: a press on the readout (Return, a plate) is the readout's - the host's window mousedown counts any
   // press as Mouse0 (the swing, the activation), so it stops here
   // PERF-TV: a label drawn before the plates' web font arrived would stay in the fallback face - the label images are
@@ -272,9 +380,9 @@ function build(doc, hooks) {
   r.addEventListener?.('mousedown', own);
   r.addEventListener?.('mouseup', own);
   if (route) r.append(route);
-  r.append(canvas, you, bar, said);
+  r.append(canvas, you, bar, side, said, tip);
   doc.body.append(r);
-  return { root: r, parts: { you, ring, chev, canvas, bar, where, trip, hint, back, route, casing, line, said, modes, modeBtns, dock, idle, idleMap, filters, filterBtns, filterNums } };
+  return { root: r, parts: { you, ring, chev, canvas, bar, where, trip, hint, back, route, casing, line, said, modes, modeBtns, dock, idle, idleMap, filters, filterBtns, filterNums, whoBtns, renownBtn, nodeBtn, tip, pace, side, sideHead, sideFold, wpBtns, wpPick, wpPop, wpList } };
 }
 
 /**
@@ -289,9 +397,13 @@ export function showTravelViewHud(hooks = {}, doc = globalThis.document) {
     resetMarks();   // PERF-TV: a new canvas holds nothing
     stopModes?.(); stopModes = onTravelPathMode(paintModes);
     stopFilters?.(); stopFilters = onTravelViewFilters((f) => { paintFilters(f); canvasSig = []; });
+    stopWaypoints?.(); stopWaypoints = onWaypoints(() => { paintWaypoints(); canvasSig = []; });   // WAYPOINTS
   }
+  wpHooks = hooks;   // WAYPOINTS: the followed list's Go
   paintModes(travelPathMode());
   paintFilters(travelViewFilters());
+  paintWaypoints();
+  paintSideFold();
   tickHudLayout(doc);   // HUD-MOVE
   parts.back.onclick = (e) => { e.preventDefault(); hooks.onReturn?.(); };
   parts.idleMap.onclick = (e) => { e.preventDefault(); hooks.onMap?.(); };
@@ -361,12 +473,15 @@ export function showTravelViewConfirm({ rows = [], yes = 'Yes', no = 'No', onYes
 }
 
 export function hideTravelViewHud() {
+  if (sideMoved?.style) { sideMoved.style.translate = ''; sideMoved = null; }   // SIDE-CORNER: the buffs back where they stand
+  closeWaypointMenu('overworld');   // WAYPOINTS: the view's own right-click menu goes with it
   hideTravelViewConfirm(false);   // OW-CONFIRM: the view gone, the question with it - unanswered is no
   undock();   // OW-DECK: a journey that runs on outlives the view - its bar goes home to the top of the screen
   unpublishBlock(root?.ownerDocument);   // OW-NOTICES: the notices back to their own place
   if (root) root.style.display = 'none';
   listenPointer(parts?.canvas?.ownerDocument?.defaultView, false);
   hits = []; setHover(null);
+  showMarkTip(null, null, 0, 0);   // SEAT-TIP: no card outlives the view
 }
 
 /** Take it down for good (a host teardown). */
@@ -376,8 +491,11 @@ export function disposeTravelViewHud() {
   unpublishBlock(root?.ownerDocument);
   stopModes?.(); stopModes = null;
   stopFilters?.(); stopFilters = null;
+  stopWaypoints?.(); stopWaypoints = null;   // WAYPOINTS
+  parts?.pace?.dispose?.();   // PACE-DIALS
   listenPointer(parts?.canvas?.ownerDocument?.defaultView, false);
   setHover(null);
+  tipShown = '';   // SEAT-TIP: the card goes with the root
   root?.remove();
   root = null; parts = null; last = null;
   resetMarks();
@@ -393,6 +511,159 @@ function paintFilters(f) {
     b.setAttribute?.('aria-pressed', on ? 'true' : 'false');
     b.title = TV_FILTER_TEXT.tip(TV_FILTER_TEXT[g], on);
   }
+  // OW-WHO / OW-NODE-KM: the players' switches and the two steps
+  const w = travelViewWho();
+  for (const [g, b] of Object.entries(parts?.whoBtns ?? {})) {
+    const on = w[g] !== false;
+    b.className = on ? 'tview-filter on' : 'tview-filter';
+    b.setAttribute?.('aria-pressed', on ? 'true' : 'false');
+    b.title = TV_WHO_TEXT.tip(TV_WHO_TEXT[g], on);
+  }
+  if (parts?.renownBtn) parts.renownBtn.textContent = TV_WHO_TEXT.renown(w.renown);
+  if (parts?.nodeBtn) parts.nodeBtn.textContent = TV_WHO_TEXT.nodeKm(w.nodeKm);
+}
+
+/** SIDE-CORNER: the HUD piece stepped aside for the filter block, put back as the view goes. */
+let sideMoved = null;
+/** WAYPOINTS: the switches, the dropdown and the followed list - drawn again when the store says it changed. */
+let stopWaypoints = null;
+let wpHooks = {};
+/** The followed list's distances, by id - written by the frame (updateTravelViewHud's `followDist`). */
+let wpDist = {};
+function paintWaypoints() {
+  if (!parts?.wpBtns) return;
+  const shown = waypointKindsShown();
+  const all = listWaypoints();
+  for (const k of WAYPOINT_KINDS) {
+    const { b, num } = parts.wpBtns[k];
+    const on = shown[k] !== false;
+    b.className = on ? 'tview-filter on' : 'tview-filter';
+    b.setAttribute?.('aria-pressed', on ? 'true' : 'false');
+    b.title = WAYPOINT_TEXT.tip(WAYPOINT_TEXT[k], on);
+    num.textContent = String(all.filter((w) => w.kind === k).length);
+  }
+  const doc = parts.wpPick.ownerDocument;
+  const follow = followedWaypointIds();
+  // the dropdown: every waypoint not followed yet, each a switch in its flag's colour
+  const pop = parts.wpPop;
+  pop.replaceChildren?.();
+  const open = all.filter((w) => !follow.includes(w.id));
+  for (const w of open) {
+    const b = doc.createElement('button');
+    b.type = 'button';
+    b.className = 'tview-filter on tview-wp-opt';
+    const dot = doc.createElement('span');
+    dot.className = `tview-wp-flag tview-wp-flag-${w.kind}`;
+    dot.style.background = waypointCss(w.color);
+    const word = doc.createElement('span');
+    word.className = 'tview-fword';
+    word.textContent = w.name;
+    const kind = doc.createElement('span');
+    kind.className = 'tview-fnum';
+    kind.textContent = WAYPOINT_TEXT[w.kind];
+    b.append(dot, word, kind);
+    b.title = `Follow ${w.name}${!w.mine && w.by ? ` (by ${w.by})` : ''}`;
+    b.onclick = (e) => { e.preventDefault(); pop.style.display = 'none'; setWaypointFollowed(w.id, true); };
+    pop.append(b);
+  }
+  parts.wpPick.disabled = open.length === 0;
+  if (!open.length) pop.style.display = 'none';
+  paintPickWord();
+  // the followed list
+  const list = parts.wpList;
+  list.replaceChildren?.();
+  for (const id of follow) {
+    const w = all.find((x) => x.id === id);
+    if (!w) continue;
+    const row = doc.createElement('div');
+    row.className = 'tview-wp-row';
+    row.dataset && (row.dataset.wp = id);
+    const dot = doc.createElement('span');
+    dot.className = `tview-wp-flag tview-wp-flag-${w.kind}`;
+    dot.style.background = waypointCss(w.color);
+    const name = doc.createElement('span');
+    name.className = 'tview-wp-name';
+    name.textContent = w.name;
+    name.title = `${WAYPOINT_TEXT.kindWord[w.kind]}${!w.mine && w.by ? ` by ${w.by}` : ''} - right-click its flag to rename it`;
+    const dist = doc.createElement('span');
+    dist.className = 'tview-wp-dist';
+    dist.textContent = wpDist[id] ?? '';
+    const go = doc.createElement('button');
+    go.type = 'button'; go.className = 'tview-mode tview-wp-go'; go.textContent = 'Go'; go.title = `Travel to ${w.name}`;
+    go.onclick = (e) => { e.preventDefault(); wpHooks.onWaypointGo?.(id); };
+    const x = doc.createElement('button');
+    x.type = 'button'; x.className = 'tview-mode tview-wp-x'; x.textContent = '×'; x.title = 'Stop following';
+    x.onclick = (e) => { e.preventDefault(); setWaypointFollowed(id, false); };
+    row.append(dot, name, dist, go, x);
+    list.append(row);
+  }
+  list.style.display = list.childNodes?.length ? '' : 'none';
+  furniture.at = -Infinity;   // the block's height may have changed
+}
+/** PLUS-PICK: the dropdown's own words - what it offers, and whether it is open. */
+function paintPickWord() {
+  const pick = parts?.wpPick;
+  if (!pick) return;
+  const any = listWaypoints().length > 0;
+  const open = parts.wpPop.style.display !== 'none';
+  pick.textContent = !any ? WAYPOINT_TEXT.none : pick.disabled ? 'All waypoints followed' : `${WAYPOINT_TEXT.follow} ${open ? '▴' : '▾'}`;
+  pick.className = `tview-filter tview-cycle tview-cycle-wide tview-wp-pick${pick.disabled ? '' : ' on'}`;
+}
+/** WAYPOINTS: a frame's distances written into the followed rows - only where one changed. */
+function paintWaypointDist(dist) {
+  wpDist = dist ?? {};
+  for (const row of parts?.wpList?.children ?? []) {
+    const id = row.dataset?.wp, d = row.querySelector?.('.tview-wp-dist');
+    const t = wpDist[id] ?? '';
+    if (d && d.textContent !== t) d.textContent = t;
+  }
+}
+/** FILTERS-LEFT: the block folded to its head, kept on the device. */
+const SIDE_FOLD_KEY = 'dfjs.overworld.filtersFolded';
+let sideFoldedNow = null;
+function sideFolded() {
+  if (sideFoldedNow == null) { try { sideFoldedNow = appStorage()?.getItem(SIDE_FOLD_KEY) === '1'; } catch { sideFoldedNow = false; } }
+  return sideFoldedNow;
+}
+function setSideFolded(on) {
+  sideFoldedNow = !!on;
+  try { appStorage()?.setItem(SIDE_FOLD_KEY, on ? '1' : '0'); } catch { /* the session's */ }
+  paintSideFold();
+}
+function paintSideFold() {
+  if (!parts?.side) return;
+  const f = sideFolded();
+  parts.side.className = f ? 'tview-side folded' : 'tview-side';
+  parts.sideFold.textContent = f ? '▸' : '▾';
+  parts.sideHead.title = f ? 'Show the filters' : 'Fold the filters away';
+  parts.sideHead.setAttribute?.('aria-expanded', f ? 'false' : 'true');
+  furniture.at = -Infinity;
+}
+/** SEAT-TIP: the hovered mark's card at the pointer, or none. `tip` is the mark's card or a function that makes it
+ *  (a seat's, asked only of the plate under the pointer); its words written only when they change, its box measured
+ *  once a card (a layout read each frame forced one), and its place written only when it moves. */
+let tipShown = '', tipSize = null, tipAt = '';
+function showMarkTip(tip, at, vw, vh) {
+  const box = parts?.tip;
+  if (!box) return;
+  const t = tip && at ? readTip(typeof tip === 'function' ? tip() : tip, { textMax: SEAT_TIP_TEXT_MAX }) : null;
+  if (!t) { if (tipShown) { tipShown = ''; tipSize = null; tipAt = ''; box.style.display = 'none'; } return; }
+  const key = tipKey(t);
+  if (key !== tipShown) {
+    tipShown = key; tipSize = null; tipAt = '';
+    const d = box.ownerDocument;
+    box.replaceChildren?.();
+    const line = (cls, text) => { const n = d.createElement('div'); n.className = cls; n.textContent = text; return n; };
+    box.append(line('hmtip-title', t.title), ...t.lines.map((l) => line('hmtip-line', l)));
+    box.style.display = 'block';
+  }
+  if (!tipSize || tipSize.vw !== vw) { const r = box.getBoundingClientRect?.() ?? { width: 0, height: 0 }; tipSize = { w: r.width, h: r.height, vw }; }
+  const p = placeTip(at.x, at.y, tipSize.w, tipSize.h, vw, vh);
+  const pos = `${p.left},${p.top}`;
+  if (pos === tipAt) return;
+  tipAt = pos;
+  box.style.left = `${p.left}px`;
+  box.style.top = `${p.top}px`;
 }
 /** OW-PATH: the switch's lit face. */
 let stopModes = null;
@@ -441,7 +712,7 @@ function syncDock(doc) {
 function resetMarks() { hits = []; drawnKeys = []; canvasDrew = false; canvasSig = []; furniture.at = -Infinity; }
 /** PERF-TV: the pointer's place over the page, followed while the readout stands (a plate under it is lit, and the
  *  cursor says it takes a click) - passive, never a handler that could stop the view's own. */
-const onPointerMoveHud = (e) => { pointer = { x: e.clientX, y: e.clientY }; };
+const onPointerMoveHud = (e) => { pointer = { x: e.clientX, y: e.clientY, ui: !!(root && e.target && e.target !== root && root.contains?.(e.target)) }; };   // SEAT-TIP: `ui` - over the block's own controls, not the land
 /** AUDIT DEEP2 E10: a finger lifted leaves no hover behind (a drag ended over a plate lit it until the next touch). */
 const onPointerUpHud = (e) => { if (e.pointerType === 'touch') pointer = null; };
 let pointerWin = null;
@@ -463,11 +734,13 @@ function listenPointer(win, on) {
 /**
  * One frame's readout.
  * @param {{ feet: {x:number,y:number,front:boolean}|null, heading: number|null, yaw: number, where: string, keys?: {move?:string, out?:string}|null,
- *   touch?: boolean, fade?: number, trip?: string, route?: Array<{x:number,y:number,front:boolean}|null>,
+ *   touch?: boolean, fade?: number, trip?: string, route?: Array<{x:number,y:number,front:boolean}|null>, followDist?: Record<string,string>|null,
+ *   routeDots?: Array<{x:number,y:number,c?:number}|null>|null, routeDotSizes?: readonly number[]|null,
  *   marks?: Array<{key:string, x:number, y:number, front:boolean, label?:string, sub?:string, kind?:string, pick?:boolean, edge?:boolean}> }} f
  *   `feet` the projected feet, `heading` the chevron's degrees (null keeps the last), `yaw` the camera's heading,
  *   `fade` 0..1 how far risen (the readout comes in with the camera and goes with it); TV2: `trip` the journey's line,
- *   `route` its projected points, and a mark with `pick` takes a click (`hooks.onMark`)
+ *   `route` its projected points, and a mark with `pick` takes a click (`hooks.onMark`); OW-DOTS-GROUND: `routeDots` the
+ *   route's ground dots (scenes/travelView.js routeGroundDots), OW-DOTS-EVEN: `routeDotSizes` a path pair a size
  */
 export function updateTravelViewHud(f) {
   if (!parts) return;
@@ -480,7 +753,10 @@ export function updateTravelViewHud(f) {
   style(root, 'op', 'opacity', fade.toFixed(3));
   if (f.feet?.front) {
     style(parts.you, 'you-d', 'display', '');
-    style(parts.you, 'you-t', 'transform', `translate(${Math.round(f.feet.x)}px, ${Math.round(f.feet.y)}px)`);
+    // TV-SMOOTH (2026-10-12, Mac: "the overworld traveling at high speed looks stuttery on the character and the circle"):
+    // a tenth of a pixel, never a whole one - the ring rounded to the pixel hopped a pixel at a time beside a body drawn
+    // smoothly (a 3d transform: the compositor moves it, no layout)
+    style(parts.you, 'you-t', 'transform', `translate3d(${f.feet.x.toFixed(1)}px, ${f.feet.y.toFixed(1)}px, 0)`);
   } else style(parts.you, 'you-d', 'display', 'none');
   if (f.heading != null) style(parts.chev, 'chev', 'transform', `rotate(${f.heading.toFixed(1)}deg)`);
   const words = `${last.where}|${last.hint}|${last.trip}`;
@@ -491,10 +767,23 @@ export function updateTravelViewHud(f) {
   if (`${last.where}|${last.hint}|${last.trip}` !== words) furniture.at = -Infinity;   // the bar's words changed: its height may have (a line wrapped, a journey's line came) - measured again next frame
   if (parts.line) {
     const d = routePath(f.route ?? [], vw, vh);   // FB0929: cut to the screen read above - a far journey's line dashed off it cost the frame
-    if (last.route !== d) {
-      last.route = d;
-      parts.line.setAttribute('d', d);
-      parts.casing.setAttribute('d', d);
+    // OW-DOTS-GROUND: the line is drawn as its dots - each a point on the land the view projected (scenes/travelView.js
+    // routeGroundDots), a zero-length stroke with round caps; the line's own path (`d`) where a host hands no dots
+    // OW-DOTS-EVEN: each size's dots on their own pair, the smaller toward the horizon (the frame's `routeDotSizes`)
+    const pairs = Array.isArray(f.routeDots) ? dotPairsFor(f.routeDotSizes) : null;
+    const shown = pairs ? '' : Array.isArray(f.routeDots) ? routeDotsPath(f.routeDots, vw, vh) : d;
+    last.route = d;
+    if (last.routeShown !== shown) {
+      last.routeShown = shown;
+      parts.line.setAttribute('d', shown);
+      parts.casing.setAttribute('d', shown);
+    }
+    for (const [i, q] of (pairs ?? parts.dotPairs ?? []).entries()) {
+      const dd = pairs ? routeDotsPath(f.routeDots, vw, vh, i) : '';
+      if (q.d === dd) continue;
+      q.d = dd;
+      q.line.setAttribute('d', dd);
+      q.casing.setAttribute('d', dd);
     }
   }
   // OW-FILTER: the counts are of every mark (a hidden group still says how many it holds); the canvas draws the shown
@@ -502,6 +791,7 @@ export function updateTravelViewHud(f) {
   const counts = countGroups(all);
   for (const g of TV_FILTER_GROUPS) put(parts.filterNums?.[g], `fn-${g}`, String(counts[g]));
   const fl = travelViewFilters();
+  if (f.followDist) paintWaypointDist(f.followDist);   // WAYPOINTS: how far each followed one is
   drawMarks(all.filter((m) => markShown(m, fl)), vw, vh, dpr, f.feet?.front ? f.feet : null);   // OW-CROWD: my mark, the badges' nearness (off the picture, its middle)
 }
 
@@ -520,6 +810,8 @@ export const TRAVEL_VIEW_MARK_COLORS = Object.freeze({
   lair: '#b0443a',   // TV6: an undiscovered dungeon - a lair's dull red
   band: '#e0503c',   // TV7: a roaming band - the enemy's red
   camp: '#d9622b',   // OW6: a camp, a pack or a band stood - an ember's red-orange, apart from the roaming bands
+  wayfarer: '#c9a96e',   // LW3: the living world's parties on the road - road dust, apart from a player's verdigris
+  stranger: '#ff3b2f',   // WILD3: a stranger in the open PvP zone - an enemy's red at its brightest
   bounty: '#0b0b0b', bountyRim: '#e6dccb',   // BOUNTY-OVERWORLD: a held bounty's hunt - BLACK, the maps' own circle (ui/bountyMapMark.js), with the legend's pale rim so it reads on dark ground
 });
 /** The plates' face - the stylesheet's --display, as the DOM plates had it. */
@@ -558,6 +850,8 @@ let canvasDrew = false;
 let canvasSig = [];     // last frame's picture, as drawn
 let hoverKey = null;
 let pointer = null;     // { x, y } the pointer over the page, while the readout is shown
+/** OW-HUBS: a carriage town's wheel on the Overworld, its radius (px). */
+export const TV_WHEEL_R = 5.5;
 /** OWS1: how far a ship's sail stands over its point (px) - a name worn above it stands above the sail. */
 export const SHIP_MARK_RISE = 9;
 /**
@@ -574,6 +868,209 @@ export function drawShipMark(g, x, y) {
   g.moveTo(x - 1, y - SHIP_MARK_RISE); g.lineTo(x - 1, y - 1); g.lineTo(x + 6, y - 1); g.closePath();
   g.fill(); g.stroke();
 }
+/** STRANGER-HELM: a knight's great helm about (x, y), in the marks' own art - the colour already set as the fill, a black
+ *  one-pixel edge; a flat-topped pot with a rounded crown, the eye slit across, a nasal bar down and three breaths. */
+export function strangerHelm(g, x, y) {
+  g.beginPath();
+  g.moveTo(x - 5.5, y + 6.5);
+  g.lineTo(x - 5.5, y - 2.5);
+  g.quadraticCurveTo(x - 5.5, y - 7.5, x, y - 7.5);
+  g.quadraticCurveTo(x + 5.5, y - 7.5, x + 5.5, y - 2.5);
+  g.lineTo(x + 5.5, y + 6.5);
+  g.closePath();
+  g.fill(); g.stroke();
+  const fill = g.fillStyle;
+  g.fillStyle = '#000';
+  g.fillRect(x - 4.5, y - 2, 9, 1.6);     // the eye slit
+  g.fillRect(x - 0.6, y - 0.4, 1.2, 4);   // the nasal bar's shadow under the slit
+  for (const dx of [-3, 2]) g.fillRect(x + dx, y + 3.2, 1.2, 1.2);   // the breaths
+  g.fillStyle = 'rgba(255,255,255,0.35)';
+  g.fillRect(x - 4, y - 6, 2.5, 1);       // the crown's light
+  g.fillStyle = fill;
+}
+/** LW12: a rumoured hideout's ring (px). */
+export const TV_HIDEOUT_R = 11;
+/** YARDS-FOUND: THE YARDS' MARK, by the emblem each yard's signboard paints (world/merchantYardArt.js) - the Wagon
+ *  Yard's wheel (the carriage towns' own, a little smaller: OW-HUBS' wheelPath), the Stable's horseshoe with its opening
+ *  up for luck and its nail holes - in `color` on the marks' black edge, about (x, y). */
+export const TV_YARD_R = 4.5;
+/** SHIPYARDS-FOUND (2026-10-11, Mac: "Everything should show on the map/overworld"): a port's places by their own
+ *  marks - the shipyard's anchor (its signboard's, world/portArt.js), the lighthouse's tower under its light, the docks'
+ *  bollard on its quay - in `color` on the marks' black edge, about (x, y). Each ink's two strokes, black then colour. */
+const inked = (g, color, width) => {
+  g.lineCap = 'round';
+  g.lineWidth = width + 2; g.strokeStyle = '#000'; g.stroke();
+  g.lineWidth = width; g.strokeStyle = color; g.stroke();
+  g.lineCap = 'butt';
+};
+export function portGlyph(g, x, y, kind, color) {
+  const R = TV_YARD_R;
+  if (kind === 'lighthouse') {
+    g.beginPath();   // the tower, narrowing up, and its lamp's light over it
+    g.moveTo(x - 3, y + R + 1); g.lineTo(x - 1.6, y - R + 1); g.lineTo(x + 1.6, y - R + 1); g.lineTo(x + 3, y + R + 1); g.closePath();
+    const fill = g.fillStyle;
+    g.fillStyle = color; g.lineWidth = 1; g.strokeStyle = '#000'; g.fill(); g.stroke();
+    g.beginPath(); g.arc(x, y - R - 1.5, 1.8, 0, Math.PI * 2); g.fillStyle = '#ffe9a8'; g.fill(); g.stroke();
+    g.fillStyle = fill;
+    return;
+  }
+  if (kind === 'docks') {
+    g.beginPath();   // the bollard: its post and its cap
+    g.moveTo(x - R, y + R - 0.5); g.lineTo(x + R, y + R - 0.5);   // the quay's edge
+    g.moveTo(x, y + R - 0.5); g.lineTo(x, y - R + 2);
+    g.moveTo(x - 2.4, y - R + 1.5); g.lineTo(x + 2.4, y - R + 1.5);
+    inked(g, color, 2);
+    return;
+  }
+  g.beginPath();   // the anchor: its ring, its shank and stock, its arms and flukes
+  g.arc(x, y - R + 0.5, 1.4, 0, Math.PI * 2);
+  g.moveTo(x, y - R + 2); g.lineTo(x, y + R);
+  g.moveTo(x - 2.6, y - R + 3.2); g.lineTo(x + 2.6, y - R + 3.2);
+  g.moveTo(x - R, y + 0.6); g.quadraticCurveTo(x - R + 0.4, y + R, x, y + R);
+  g.quadraticCurveTo(x + R - 0.4, y + R, x + R, y + 0.6);
+  inked(g, color, 1.5);
+}
+export function yardGlyph(g, x, y, kind, color) {
+  if (kind === 'shipyard' || kind === 'lighthouse' || kind === 'docks') { portGlyph(g, x, y, kind, color); return; }   // SHIPYARDS-FOUND: a port's three
+  if (kind === 'carpenter') {   // CARP-YARD: the joinery's board's hand saw - its blade tapering to the toe, its teeth, its handle
+    const R = TV_YARD_R;
+    g.beginPath();
+    g.moveTo(x - R + 2.5, y - 2); g.lineTo(x + R, y - 2); g.lineTo(x + R, y + 0.6); g.lineTo(x - R + 2.5, y + 2.4); g.closePath();
+    const fill = g.fillStyle;
+    g.fillStyle = color; g.lineWidth = 1; g.strokeStyle = '#000'; g.fill(); g.stroke();
+    g.beginPath(); g.rect(x - R - 0.5, y - 3, 3, 6.2); g.fill(); g.stroke();   // the handle
+    g.fillStyle = '#000';
+    for (let k = 0; k < 4; k++) g.fillRect(x - R + 3.2 + k * 1.6, y + 1.9 - k * 0.45, 0.8, 0.8);   // the teeth
+    g.fillStyle = fill;
+    return;
+  }
+  if (kind === 'transport') {
+    wheelPath(g, x, y, TV_YARD_R);
+    g.lineWidth = 3; g.strokeStyle = '#000'; g.stroke();
+    g.lineWidth = 1.5; g.strokeStyle = color; g.stroke();
+    return;
+  }
+  g.beginPath(); g.arc(x, y - 1, TV_YARD_R, 0, Math.PI);   // the lower half: a U, open at the top
+  g.lineCap = 'round';
+  g.lineWidth = 4.5; g.strokeStyle = '#000'; g.stroke();
+  g.lineWidth = 2.5; g.strokeStyle = color; g.stroke();
+  g.lineCap = 'butt';
+  const fill = g.fillStyle;
+  g.fillStyle = '#000';
+  for (const a of [0.35, 0.95, 1.55, 2.2, 2.8]) g.fillRect(x + Math.cos(a) * TV_YARD_R - 0.5, y - 1 + Math.sin(a) * TV_YARD_R - 0.5, 1, 1);   // the nail holes
+  g.fillStyle = fill;
+}
+/**
+ * OW-GLYPHS (2026-10-12, Mac: "give all the symbols the red dots (monsters and dungeons), green dots, logging nodes etc
+ * fitting symbols"): THE OVERWORLD'S MARKS BY WHAT THEY ARE - each in the marks' own art (its colour as the fill, the
+ * black one-pixel edge, details cut dark), about (x, y) and no taller than the dots were wide by much, so a label under
+ * or over one stands where it stood: a roaming band (monsters) a skull, a dungeon a stone arch round its dark door (an
+ * unfound lair in its red, a found one in brass), a player and my party a bust - a crowd two - a party on the road its
+ * pack, and a profession's nodes by their work: Mining's pick, Logging's pine, Herbalism's leaf, Hunting's paw, Fishing's
+ * fish. The colours are the ones the dots had; only the shapes are new. The fill is the caller's (`g.fillStyle`).
+ */
+const cutDark = (g, fn) => { const f = g.fillStyle; g.fillStyle = '#000'; fn(); g.fillStyle = f; };
+export function skullGlyph(g, x, y) {
+  g.beginPath();   // the cranium over the top, down to the jaw
+  g.moveTo(x - 3, y + 5.5); g.lineTo(x - 3, y + 2.6);
+  g.arc(x, y - 1, 5.2, Math.PI * 0.74, Math.PI * 2.26);
+  g.lineTo(x + 3, y + 5.5); g.closePath();
+  g.fill(); g.stroke();
+  cutDark(g, () => {
+    for (const dx of [-2.1, 2.1]) { g.beginPath(); g.arc(x + dx, y - 1, 1.45, 0, Math.PI * 2); g.fill(); }   // the eyes
+    g.beginPath(); g.moveTo(x, y + 0.9); g.lineTo(x + 0.9, y + 2.3); g.lineTo(x - 0.9, y + 2.3); g.closePath(); g.fill();   // the nose
+    for (const dx of [-1.1, 1.1]) g.fillRect(x + dx - 0.35, y + 3.6, 0.7, 1.9);   // the teeth
+  });
+}
+export function dungeonGlyph(g, x, y) {
+  g.beginPath();   // the arch's stones
+  g.moveTo(x - 6, y + 5.5); g.lineTo(x - 6, y - 0.5); g.arc(x, y - 0.5, 6, Math.PI, 0); g.lineTo(x + 6, y + 5.5); g.closePath();
+  g.fill(); g.stroke();
+  cutDark(g, () => {
+    g.beginPath();   // the door, dark
+    g.moveTo(x - 3, y + 5.5); g.lineTo(x - 3, y + 0.5); g.arc(x, y + 0.5, 3, Math.PI, 0); g.lineTo(x + 3, y + 5.5); g.closePath(); g.fill();
+    g.fillRect(x - 0.6, y - 6.5, 1.2, 2);   // the keystone's joints
+    g.fillRect(x - 6, y + 2, 2, 0.8); g.fillRect(x + 4, y + 2, 2, 0.8);
+  });
+}
+export function personGlyph(g, x, y) {
+  g.beginPath();   // the shoulders
+  g.moveTo(x - 5, y + 5.5); g.quadraticCurveTo(x - 5, y + 0.2, x, y + 0.2); g.quadraticCurveTo(x + 5, y + 0.2, x + 5, y + 5.5); g.closePath();
+  g.fill(); g.stroke();
+  g.beginPath(); g.arc(x, y - 3.4, 2.9, 0, Math.PI * 2); g.fill(); g.stroke();   // the head
+}
+export function crowdGlyph(g, x, y) {
+  personGlyph(g, x + 3.5, y - 1.5);   // the one behind
+  personGlyph(g, x - 2.5, y + 1);
+}
+export function packGlyph(g, x, y) {
+  const ink = g.strokeStyle;
+  g.beginPath(); g.arc(x, y - 4.2, 2, Math.PI, 0);   // the strap's loop: the edge, then its leather
+  g.lineWidth = 2.8; g.stroke(); g.lineWidth = 1.2; g.strokeStyle = g.fillStyle; g.stroke();
+  g.lineWidth = 1; g.strokeStyle = ink;
+  g.beginPath(); g.moveTo(x - 4.5, y + 5.5); g.lineTo(x - 4.5, y - 1); g.quadraticCurveTo(x - 4.5, y - 4, x, y - 4); g.quadraticCurveTo(x + 4.5, y - 4, x + 4.5, y - 1); g.lineTo(x + 4.5, y + 5.5); g.closePath();
+  g.fill(); g.stroke();   // the sack
+  cutDark(g, () => { g.fillRect(x - 4.5, y - 0.4, 9, 1); g.fillRect(x - 0.6, y - 0.4, 1.2, 3); });   // the flap and its buckle
+}
+/** OW-CROSS (2026-10-12, Mac: "where you click a cross mark not a circle"): THE JOURNEY'S END - an X, as a map marks the
+ *  spot: its shadow on the ground, two brush strokes crossed (the black rim, the gold, a pale stroke of light down
+ *  each), `r` its arms' reach. The spot a click walks to (`target`) and the place a journey ends at (`dest`, the
+ *  larger) wear it; the brush is handed back. */
+export const TV_CROSS_R = 6.5;
+export const TV_CROSS_GOLD = '#e8be6e';
+export function crossGlyph(g, x, y, r = TV_CROSS_R) {
+  const f = g.fillStyle, k = g.strokeStyle, w = g.lineWidth;
+  g.beginPath(); g.ellipse(x, y + r * 0.55, r * 1.25, r * 0.5, 0, 0, Math.PI * 2); g.fillStyle = 'rgba(0,0,0,0.35)'; g.fill();   // its shadow
+  const arms = () => { g.beginPath(); g.moveTo(x - r, y - r); g.lineTo(x + r, y + r); g.moveTo(x + r, y - r); g.lineTo(x - r, y + r); };
+  g.lineCap = 'round';
+  arms(); g.lineWidth = 5.5; g.strokeStyle = '#000'; g.stroke();
+  arms(); g.lineWidth = 3; g.strokeStyle = TV_CROSS_GOLD; g.stroke();
+  g.beginPath(); g.moveTo(x - r + 1.2, y - r + 0.4); g.lineTo(x + r - 0.8, y + r - 1.6); g.moveTo(x + r - 0.4, y - r + 1.2); g.lineTo(x - r + 1.6, y + r - 0.8);
+  g.lineWidth = 0.9; g.strokeStyle = 'rgba(255,248,225,0.75)'; g.stroke();   // the light down each stroke
+  g.lineCap = 'butt';
+  g.fillStyle = f; g.strokeStyle = k; g.lineWidth = w;
+}
+/** OW-GLYPHS: a profession's group of nodes by its work, in its colour. `prof` the kind's second word. */
+export function gatherGlyph(g, x, y, prof, color) {
+  if (prof === 'mining') {   // the pick: its handle, its curved head
+    g.beginPath(); g.moveTo(x - 4.5, y + 5.5); g.lineTo(x + 2, y - 3);
+    g.moveTo(x - 4, y - 5); g.quadraticCurveTo(x + 2.5, y - 6.5, x + 6, y - 0.5);
+    inked(g, color, 2);
+    g.lineWidth = 1; g.strokeStyle = '#000';   // the brush back for the label's turn
+    return;
+  }
+  if (prof === 'logging') {   // the pine: two tiers and its trunk
+    g.beginPath(); g.moveTo(x, y - 7); g.lineTo(x + 4, y - 1.5); g.lineTo(x + 2, y - 1.5); g.lineTo(x + 5.5, y + 3); g.lineTo(x - 5.5, y + 3); g.lineTo(x - 2, y - 1.5); g.lineTo(x - 4, y - 1.5); g.closePath();
+    g.fill(); g.stroke();
+    cutDark(g, () => g.fillRect(x - 1.2, y + 3, 2.4, 3));
+    return;
+  }
+  if (prof === 'herbalism') {   // the leaf and its vein
+    g.beginPath(); g.moveTo(x - 5, y + 5); g.quadraticCurveTo(x - 6, y - 5, x + 5, y - 5.5); g.quadraticCurveTo(x + 5.5, y + 5, x - 5, y + 5); g.closePath();
+    g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(x - 5, y + 5); g.lineTo(x + 2.5, y - 2.5); g.stroke();
+    return;
+  }
+  if (prof === 'hunting') {   // the paw: its pad and four toes
+    g.beginPath(); g.ellipse(x, y + 2.2, 3.6, 3, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    for (const [dx, dy] of [[-4.6, -1.6], [-1.7, -4.4], [1.7, -4.4], [4.6, -1.6]]) { g.beginPath(); g.arc(x + dx, y + dy, 1.6, 0, Math.PI * 2); g.fill(); g.stroke(); }
+    return;
+  }
+  if (prof === 'fishing') {   // the fish: its body, its tail, its eye
+    g.beginPath(); g.moveTo(x - 6, y); g.quadraticCurveTo(x - 1, y - 5.5, x + 3.5, y); g.lineTo(x + 6.5, y - 3.5); g.lineTo(x + 6.5, y + 3.5); g.lineTo(x + 3.5, y); g.quadraticCurveTo(x - 1, y + 5.5, x - 6, y); g.closePath();
+    g.fill(); g.stroke();
+    cutDark(g, () => { g.beginPath(); g.arc(x - 3.2, y - 0.6, 0.9, 0, Math.PI * 2); g.fill(); });
+    return;
+  }
+  g.beginPath(); g.moveTo(x, y - 7); g.lineTo(x + 5, y); g.lineTo(x, y + 7); g.lineTo(x - 5, y); g.closePath(); g.fill(); g.stroke();   // GATHER-OW's diamond, for a work with no glyph
+}
+/** YARDS-FOUND: a yard mark's own kind - its kind's second word (`yard stable`, `yard transport`; SHIPYARDS-FOUND: `yard
+ *  shipyard`, `yard lighthouse`, `yard docks`; CARP-YARD: `yard carpenter`), the Stable's where it names none the glyph
+ *  knows. */
+export const yardMarkKind = (m) => {
+  const k = String(m?.kind ?? '').split(' ')[1] ?? '';
+  return k === 'transport' || k === 'carpenter' || k === 'shipyard' || k === 'lighthouse' || k === 'docks' ? k : 'stable';   // CARP-YARD: the joinery's
+};
 /** OWS1: a mark at sea, by its kind. */
 export const isShipKind = (m) => /\bship\b/.test(m.kind ?? '');
 /** A mark's look, by its kind's first word. */
@@ -581,6 +1078,10 @@ const lookOf = (m) => {
   const k = (m.kind ?? '').split(' ')[0];
   if (k === 'bounty') return k;   // BOUNTY-OVERWORLD: a held bounty's hunt
   if (k === 'gather') return k;   // GATHER-OW: a profession's group of nodes
+  if (k === 'wayfarer') return k;   // LW3: the living world's parties on the road
+  if (k === 'waypoint') return k;   // WAYPOINTS: a flag
+  if (k === 'stranger') return k;   // WILD3: another player in the open zone - an enemy
+  if (k === 'yard') return k;   // YARDS-FOUND: a town's Stable or Wagon Yard
   return k === 'place' || k === 'far' || k === 'dest' || k === 'target' || k === 'party' || k === 'lair' || k === 'band' || k === 'raider' || k === 'camp' ? k : 'traveller';
 };
 /** OW-THEME (2026-09-28, Mac: "The overworld ui needs to follow enhanced ui theme"): the plates' stone - the Enhanced
@@ -599,8 +1100,8 @@ let plateFill = /** @type {string} */ (TRAVEL_VIEW_MARK_COLORS.plate);
 export const TV_PLUS_SHEET_ID = 'enhanced-plus-style';
 let plusFace = false;
 /** A label's image, made once (its shadow or its plate baked in) and kept by what it shows. */
-function labelSprite(doc, text, look, size, journey, hover, dpr) {
-  const key = `${plusFace ? 'px' : 'cl'}|${look}|${size}|${journey ? 1 : 0}|${hover ? 1 : 0}|${dpr}|${text}`;
+function labelSprite(doc, text, look, size, journey, hover, dpr, hub = false) {
+  const key = `${plusFace ? 'px' : 'cl'}|${look}|${size}|${journey ? 1 : 0}|${hover ? 1 : 0}|${hub ? 1 : 0}|${dpr}|${text}`;   // OW-HUBS: a carriage town's plate is its own
   let sp = sprites.get(key);
   if (sp) { sprites.delete(key); sprites.set(key, sp); return sp; }   // AUDIT DEEP2 E12: the newest at the back - the oldest goes first
   const c = doc.createElement('canvas');
@@ -620,15 +1121,15 @@ function labelSprite(doc, text, look, size, journey, hover, dpr) {
   const C = TRAVEL_VIEW_MARK_COLORS;
   if (plate) {
     x.fillStyle = plateFill; x.fillRect(0.5, 0.5, w - 1, h - 1);
-    x.strokeStyle = hover ? C.brass : C.plateEdge; x.lineWidth = 1; x.strokeRect(0.5, 0.5, w - 1, h - 1);
+    x.strokeStyle = hover || hub ? C.brass : C.plateEdge; x.lineWidth = hub ? 1.5 : 1; x.strokeRect(0.5, 0.5, w - 1, h - 1);   // OW-HUBS: a carriage town's plate edged in brass
     x.fillStyle = hover || look === 'far' ? C.brass : C.bone;
     if (plusFace) { x.shadowColor = '#050608'; x.shadowBlur = 0; x.shadowOffsetX = 1; x.shadowOffsetY = 1; }   // OW-PLUS-FACE: the kit's cut shadow
   } else if (plusFace) {
     x.shadowColor = '#050608'; x.shadowBlur = 0; x.shadowOffsetX = 1; x.shadowOffsetY = 1;   // OW-PLUS-FACE
-    x.fillStyle = look === 'dest' ? C.brass : look === 'sub' ? 'rgba(233,228,217,0.8)' : look === 'raider' ? C.raider : C.bone;
+    x.fillStyle = TV_KIN_COLORS[look.slice(4)] && look.startsWith('kin-') ? TV_KIN_COLORS[look.slice(4)] : look === 'dest' ? C.brass : look === 'sub' ? 'rgba(233,228,217,0.8)' : look === 'raider' ? C.raider : look === 'stranger' ? C.stranger : C.bone;   // OW-KIN
   } else {
     x.shadowColor = '#000'; x.shadowBlur = 3; x.shadowOffsetY = 1;
-    x.fillStyle = look === 'dest' ? C.brass : look === 'sub' ? 'rgba(233,228,217,0.8)' : look === 'raider' ? C.raider : C.bone;   // OWS3: "Pirates" in their colour
+    x.fillStyle = TV_KIN_COLORS[look.slice(4)] && look.startsWith('kin-') ? TV_KIN_COLORS[look.slice(4)] : look === 'dest' ? C.brass : look === 'sub' ? 'rgba(233,228,217,0.8)' : look === 'raider' ? C.raider : look === 'stranger' ? C.stranger : C.bone;   // OWS3: "Pirates" in their colour; OW-KIN: a friend's, a guild-mate's name in theirs
   }
   x.fillText(text, padX, padY + 1);
   if (journey) { x.fillStyle = C.brass; x.fillText(' →', padX + tw, padY + 1); }
@@ -655,7 +1156,7 @@ function badgeParts(b) {
 const badgeKey = (b) => {
   if (!b) return '';
   const h = badgeArms(b);
-  return `${b.title ?? ''}|${(b.glyphs ?? []).join(',')}|${b.lv ?? ''}|${b.gt ?? ''}|${(Array.isArray(b.rb) ? b.rb : []).join('/')}|${h ? `${h.field}/${h.border}/${h.device}` : ''}`;
+  return `${b.title ?? ''}|${(b.glyphs ?? []).join(',')}|${b.lv ?? ''}|${b.gt ?? ''}|${(Array.isArray(b.rb) ? b.rb : []).join('/')}|${h ? heraldryKey(h) : ''}`;   // AUDIT GUILD2 G12: the whole arms
 };
 /** AUDIT HERALDRY H4: the tag's frame as the in-play face's (.dfname-guild.armed) - a dark plate edged in the guild's
  *  border colour, the shield at its left - px (the shield's width a share of the tag's size). */
@@ -670,7 +1171,7 @@ export const TRAVEL_VIEW_RIBBON = Object.freeze({ band: 2, edge: 1, gap: 1 });
  */
 function badgeSprite(doc, m, size, party, dpr, bk = badgeKey(m.badge)) {
   const b = m.badge, journey = /\bjourney\b/.test(m.kind ?? '');
-  const key = `badge|${size}|${party ? 1 : 0}|${journey ? 1 : 0}|${dpr}|${m.label}|${bk}`;
+  const key = `badge|${size}|${party ? 1 : 0}|${m.kin ?? ''}|${journey ? 1 : 0}|${dpr}|${m.label}|${bk}`;   // OW-KIN: a friend made is drawn anew
   const sp = sprites.get(key);
   if (sp) { sprites.delete(key); sprites.set(key, sp); return sp; }
   if (badgeBuilds <= 0) return null;   // N1-1: this frame's are made - the name alone until the next
@@ -737,7 +1238,7 @@ function badgeSprite(doc, m, size, party, dpr, bk = badgeKey(m.badge)) {
     x.fillText(P.lv, cx + (lvW - x.measureText(P.lv).width) / 2, ry + (size - small) / 2);
     cx += lvW + gap;
   }
-  x.font = rowFont; x.fillStyle = party ? N.party : N.name;
+  x.font = rowFont; x.fillStyle = party ? N.party : (TV_KIN_COLORS[m.kin] ?? N.name);   // OW-KIN (FIELD BUGS 2026-10-04e): a friend's name in the friends' blue, a guild-mate's in violet - my party's stays its green
   x.fillText(m.label ?? '', cx, ry);
   cx += nameW;
   if (journey) { x.fillStyle = TRAVEL_VIEW_MARK_COLORS.brass; x.fillText(' →', cx, ry); cx += arrowW; }
@@ -824,16 +1325,17 @@ function drawMarks(marks, vw, vh, dpr, feet = null) {
     if (b.y0 < notchDepth(furniture.topNotch, b.x0, b.x1) || b.y1 > vh - notchDepth(furniture.footNotch, b.x0, b.x1)) q.fade = true;
   }
   let hover = null;
-  for (let i = placed.length - 1; i >= 0 && pointer; i--) {
+  for (let i = placed.length - 1; i >= 0 && pointer && !pointer.ui; i--) {   // SEAT-TIP: the block's controls over a plate are the block's - no plate lit, no card
     const q = placed[i];
     if (!q.m.pick) continue;
     const b = pickBox(q, vw);   // BOUNTY-SNAP
     if (pointer.x >= b.x0 && pointer.x <= b.x1 && pointer.y >= b.y0 && pointer.y <= b.y1) { hover = q.m.key; break; }
   }
   setHover(hover);
+  showMarkTip(hover ? placed.find((q) => q.m.key === hover)?.m.tip ?? null : null, pointer, vw, vh);   // SEAT-TIP: a seat's card while its plate is under the pointer
   // the picture this frame would draw: unchanged (a camera at rest), the canvas already shows it
   const sig = [bw, bh, hover ?? ''];
-  for (const q of placed) sig.push(q.m.key, q.x, q.y, q.held ? Math.round(q.held.angle) : 999, q.m.label ?? '', q.m.sub ?? '', q.m.kind ?? '', q.bk, q.fade ? 1 : 0);
+  for (const q of placed) sig.push(q.m.key, q.x, q.y, q.held ? Math.round(q.held.angle) : 999, q.m.label ?? '', q.m.sub ?? '', q.m.kind ?? '', q.bk, q.fade ? 1 : 0, q.m.kin ?? '', q.m.hub ? 1 : 0, q.m.color ?? '');   // OW-KIN, OW-HUBS; WAYPOINTS: a flag's colour
   for (const q of placed) if (q.m.pick) nextHits.push({ key: q.m.key, ...pickBox(q, vw) });   // BOUNTY-SNAP: a bounty's on its ring alone
   hits = nextHits;
   sayPlaces(placed);
@@ -849,7 +1351,7 @@ function drawMarks(marks, vw, vh, dpr, feet = null) {
   for (const q of placed) {
     const { m, held, x, y, look } = q;
     g.globalAlpha = q.fade ? TV_UNDER_HUD_ALPHA : 1;   // OW-EDGES: faint where it would lie over the compass or the hotbar
-    const color = look === 'gather' ? (m.color ?? C.brass) : look === 'party' ? C.party : look === 'traveller' ? C.traveller : look === 'lair' ? C.lair : look === 'band' ? C.band : look === 'raider' ? C.raider : look === 'camp' ? C.camp : look === 'bounty' ? C.bounty : C.brass;   // OWS3: a raider in the cinnabar; OW6: a camp in the ember
+    const color = look === 'gather' ? (m.color ?? C.brass) : look === 'party' ? C.party : look === 'traveller' ? C.traveller : look === 'lair' ? C.lair : look === 'band' ? C.band : look === 'raider' ? C.raider : look === 'stranger' ? C.stranger : look === 'camp' ? C.camp : look === 'bounty' ? C.bounty : look === 'waypoint' ? waypointCss(m.color) : look === 'wayfarer' ? (/\b(fight|hideout)\b/.test(m.kind ?? '') ? C.band : C.wayfarer) : C.brass;   // OWS3: a raider in the cinnabar; OW6: a camp in the ember; LW3: a party on the road in its dust (LW4: beset, in the bands' red)
     g.fillStyle = color; g.strokeStyle = '#000'; g.lineWidth = 1;
     if (held) {   // the arrow, turned the way it lies (0 up, clockwise)
       g.save(); g.translate(x, y); g.rotate((held.angle * Math.PI) / 180);
@@ -857,18 +1359,43 @@ function drawMarks(marks, vw, vh, dpr, feet = null) {
       // AUDIT DEEP2 E5: a NOTCHED head - a near-equilateral triangle read the same turned a third either way
       g.beginPath(); g.moveTo(0, -10); g.lineTo(7, 7); g.lineTo(0, 2); g.lineTo(-7, 7); g.closePath(); g.fill(); g.stroke();
       g.restore();
-    } else if (look === 'target') {
-      g.beginPath(); g.arc(x, y, 8, 0, Math.PI * 2); g.lineWidth = 2; g.strokeStyle = C.brass; g.stroke();
+    } else if (look === 'waypoint') {   // WAYPOINTS: a small flag in its colour (a party's pip, a guild's bar)
+      paintWaypointFlag(g, x, y, { color: m.color, kind: m.wpKind, followed: !!m.followed, hover: m.key === hover });
+    } else if (look === 'target' || look === 'dest') {   // OW-CROSS: where the click walks to - an X marks the spot (a place's end the larger)
+      crossGlyph(g, x, y, look === 'dest' ? TV_CROSS_R + 0.5 : TV_CROSS_R);
     } else if (isShipKind(m)) {
       drawShipMark(g, x, y);
     } else if (look === 'bounty') {   // BOUNTY-OVERWORLD: a hunt - a ring round a dot, the held map's circle
       g.beginPath(); g.arc(x, y, 7, 0, Math.PI * 2); g.lineWidth = 4; g.strokeStyle = C.bountyRim; g.stroke();
       g.lineWidth = 2; g.strokeStyle = color; g.stroke();
       g.beginPath(); g.arc(x, y, 2.5, 0, Math.PI * 2); g.lineWidth = 1; g.strokeStyle = C.bountyRim; g.fill(); g.stroke();
-    } else if (look === 'gather') {   // GATHER-OW: a profession's group - a gem's diamond in its colour, a ring of dark
-      g.beginPath(); g.moveTo(x, y - 7); g.lineTo(x + 5, y); g.lineTo(x, y + 7); g.lineTo(x - 5, y); g.closePath(); g.fill(); g.stroke();
+    } else if (look === 'gather') {   // GATHER-OW: a profession's group in its colour - OW-GLYPHS: by its work's glyph
+      gatherGlyph(g, x, y, (m.kind ?? '').split(' ')[1] ?? '', color);
+    } else if (look === 'stranger') {   // STRANGER-HELM (the owner: "a stranger should have a knights helmet in the same art as the dots"): a great helm - its fill the stranger's red, the dots' black edge, the eye slit and the breaths cut dark
+      strangerHelm(g, x, y);
     } else if (look === 'camp') {   // OW6: a camp - a tent's peak, not a band's dot
       g.beginPath(); g.moveTo(x, y - 6); g.lineTo(x + 6, y + 5); g.lineTo(x - 6, y + 5); g.closePath(); g.fill(); g.stroke();
+    } else if (look === 'yard') {   // YARDS-FOUND: a town's yard by its signboard's emblem - the Wagon Yard's wheel, the Stable's horseshoe (its opening up)
+      yardGlyph(g, x, y, yardMarkKind(m), C.brass);   // SHIPYARDS-FOUND: and a port's shipyard, lighthouse and docks by theirs
+    } else if ((look === 'place' || look === 'far') && m.hub) {   // OW-HUBS: a carriage town - its wheel, brass on a dark edge
+      wheelPath(g, x, y, TV_WHEEL_R);
+      g.lineWidth = 3; g.strokeStyle = '#000'; g.stroke();
+      g.lineWidth = 1.5; g.strokeStyle = C.brass; g.stroke();
+    } else if (look === 'band' || look === 'raider') {   // OW-GLYPHS: monsters on the move - a skull in the enemy's red
+      skullGlyph(g, x, y);
+    } else if (look === 'lair' || (look === 'far' && /\bdungeon\b/.test(m.kind ?? ''))) {   // OW-GLYPHS: a dungeon - its arch, an unfound lair's red, a found one's brass
+      dungeonGlyph(g, x, y);
+    } else if (look === 'party' || look === 'traveller') {   // OW-GLYPHS: a player - a bust, my party's green, a stranger's verdigris; a crowd two
+      if (/\bcrowd\b/.test(m.kind ?? '')) crowdGlyph(g, x, y); else personGlyph(g, x, y);
+    } else if (look === 'wayfarer' && /\bhideout\b/.test(m.kind ?? '')) {   // LW12: a band's rumoured hideout - a ring, its area, never a point
+      g.beginPath(); g.arc(x, y, TV_HIDEOUT_R, 0, Math.PI * 2); g.lineWidth = 4; g.strokeStyle = '#000'; g.stroke();
+      g.lineWidth = 2; g.strokeStyle = color; g.setLineDash?.([4, 3]); g.stroke(); g.setLineDash?.([]);
+    } else if (look === 'wayfarer') {   // LW3: a party on the road - a pack's square, a caravan's the larger
+      const r = /\bcaravan\b/.test(m.kind ?? '') ? 5 : 3.5;
+      if (/\bcaravan\b/.test(m.kind ?? '')) {   // LW10: a caravan's mark its wagon - the bed and two wheels under it
+        g.beginPath(); g.rect(x - r - 1, y - r + 1, r * 2 + 2, r * 1.4); g.fill(); g.stroke();
+        for (const wx of [x - r * 0.55, x + r * 0.55]) { g.beginPath(); g.arc(wx, y + r * 0.6, r * 0.42, 0, Math.PI * 2); g.fill(); g.stroke(); }
+      } else packGlyph(g, x, y);   // OW-GLYPHS: pilgrims, a pedlar - their pack (LW3's square)
     } else {
       const r = look === 'dest' || /\bcrowd\b/.test(m.kind ?? '') ? 7 : look === 'place' || look === 'far' ? 4 : 5;   // OW-CROWD: a crowd's dot the larger
       g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); g.stroke();
@@ -877,7 +1404,7 @@ function drawMarks(marks, vw, vh, dpr, feet = null) {
     const plate = look === 'place' || look === 'far';
     if (m.badge && !q.sp) unmade = true;
     const sp = q.sp   // OVERWORLD NAMES: a player, named as in play
-      ?? labelSprite(doc, m.label, look, held && !plate ? 11 : plate ? 13 : 12, /\bjourney\b/.test(m.kind ?? ''), m.key === hover, dpr);
+      ?? labelSprite(doc, m.label, look === 'traveller' && m.kin ? `kin-${m.kin}` : look, held && !plate ? 11 : plate ? 13 : 12, /\bjourney\b/.test(m.kind ?? ''), m.key === hover, dpr, plate && !!m.hub);   // OW-KIN; OW-HUBS
     if (!sp) continue;
     const sb = m.sub ? labelSprite(doc, m.sub, 'sub', 11, false, false, dpr) : null;   // TV5: a far place's distance, under its plate
     // held at the foot, the label stands ABOVE its arrow - under it is the bar (EDGE-FURNITURE)
@@ -1005,7 +1532,7 @@ const SIDE_REACH = 120;
 /** AUDIT DEEP2 E1/E2: the view's block's own foot (px, the style sheet's `bottom`) and its air over what it clears. */
 const BAR_FOOT = 18, BAR_AIR = 8;
 const furniture = { top: TV_EDGE_MARGIN, foot: TV_EDGE_MARGIN, lTop: TV_EDGE_MARGIN, lFoot: TV_EDGE_MARGIN, rTop: TV_EDGE_MARGIN,
-  rFoot: TV_EDGE_MARGIN, topLo: TV_EDGE_MARGIN, topHi: 0, footLo: TV_EDGE_MARGIN, footHi: 0, bar: BAR_FOOT, at: -Infinity, vw: 0, vh: 0,
+  rFoot: TV_EDGE_MARGIN, topLo: TV_EDGE_MARGIN, topHi: 0, footLo: TV_EDGE_MARGIN, footHi: 0, bar: BAR_FOOT, side: BAR_FOOT, at: -Infinity, vw: 0, vh: 0,
   topNotch: [], footNotch: [], notice: null };
 /**
  * OW-EDGES (2026-09-29, the player: "all the markers floating around can be more to the screen edges, respect the hotbar
@@ -1102,6 +1629,24 @@ function measureFurniture(doc, vw, vh) {
       publishBlock(doc, 'top', br.top, br.bottom);
     }
   }
+  // FILTERS-LEFT: the filter block in the bottom-left corner, lifted as the right's block is - over whatever stands under
+  // its span in the foot half (the quick slots, a phone's buttons, the right's block on a narrow screen), never past the
+  // screen's middle - then a piece the marks keep clear of like the rest
+  // SIDE-CORNER (2026-10-06, the player: "the whole filter block is not properly in the left corner ... if there are
+  // issues with the buffs ... just place them next right to the filter block"): the block STAYS in the corner (the sheet's
+  // left and bottom, never lifted); the HUD's quick-slot block and its buffs, when they stand in its way, step to its right
+  // while the view is up (`translate`, so the HUD's own place and the layout editor's move are left as they are)
+  const side = parts?.side, sr = side?.getBoundingClientRect?.();
+  const quick = doc?.querySelector?.('.hud .hud-quick');
+  if (quick?.style) {
+    quick.style.translate = '';
+    const qr = quick.getBoundingClientRect?.();
+    if (sr && sr.width > 0 && qr && qr.width > 0 && qr.left < sr.right && qr.right > sr.left && qr.bottom > sr.top && qr.top < sr.bottom) {
+      quick.style.translate = `${Math.round(sr.right + BAR_AIR - qr.left)}px 0`;
+      sideMoved = quick;
+    }
+  }
+  if (sr && sr.width > 0 && sr.height > 0) rects.push({ left: sr.left, right: sr.right, top: sr.top, bottom: sr.bottom, width: sr.width, height: sr.height });
   for (const r of rects) {
     let upper = r.bottom <= vh / 2, lower = r.top >= vh / 2;
     // OW-EDGES: a tall piece across the middle is the edge's it stands on - the Overworld's block rises from the foot past
@@ -1230,6 +1775,10 @@ export const BOUNTY_SNAP_PX = 10;
 /** The box a pickable mark takes a click in: a bounty's ring alone, every other mark its markBox. */
 function pickBox(q, vw) {
   if (q.look === 'bounty') return { x0: q.x - BOUNTY_SNAP_PX, x1: q.x + BOUNTY_SNAP_PX, y0: q.y - BOUNTY_SNAP_PX, y1: q.y + BOUNTY_SNAP_PX };
+  if (q.look === 'waypoint' && !q.held) {   // WAYPOINTS: the flag over its foot and the name under it
+    const f = flagBox(q.x, q.y), b = markBox(q, vw);
+    return { x0: Math.min(f.x0, b.x0), x1: Math.max(f.x1, b.x1), y0: f.y0, y1: b.y1 };
+  }
   return markBox(q, vw);
 }
 function markBox(q, vw) {

@@ -13,8 +13,9 @@ import assert from 'node:assert/strict';
 import { Renderer, WORLD_FRAME } from '../src/render/renderer.js';
 import { EL_LANE, EL_MESH_FS, EL_BB_FS } from '../src/render/enhancedLighting.js';
 import * as bounds from '../src/render/bounds.js';   // a namespace: on the base the placement grid is missing, and only its pins fail
-import { sunCascadeMatrices, pointFaceMatrices, shadowFarFor, swayLean, spheresTouch, foldSignature, SHADOW_LIGHT_FLATS, SHADOW_NO_CAST_ARCHIVES, SHADOW_GLSL, SHADOW_SUN_SIZE, SHADOW_LO_REBUILDS } from '../src/render/shadowPass.js';
+import { sunCascadeMatrices, pointFaceMatrices, shadowFarFor, swayLean, spheresTouch, foldSignature, SHADOW_LIGHT_FLATS, SHADOW_NO_CAST_ARCHIVES, SHADOW_GLSL, SHADOW_SUN_SIZE, SHADOW_LO_REBUILDS, SHADOW_TUNING } from '../src/render/shadowPass.js';
 import { StaticBatchBuilder, keyResolver } from '../src/render/staticBatch.js';
+SHADOW_TUNING.override = false;   // FLICKER-FIX: these tests pin EL8's schedule (SHADOW_LO_REBUILDS, the cadences)
 
 const I = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 const RIGHT = new Float32Array([1, 0, 0]), UP = new Float32Array([0, 1, 0]);
@@ -163,14 +164,14 @@ test('PERF-EXT1: EVERY BATCH A REPLAY SKIPS BY ITS PLACEMENTS RASTERISES NOTHING
   }
   const lights = new Float32Array(8 * 4);
   for (let i = 0; i < 8; i++) lights.set([(rand() * 2 - 1) * 60, 1 + rand() * 4, (rand() * 2 - 1) * 60, 8 + rand() * 20], i * 4);
-  const vaoOf = new Map(batches.map((b) => [b.vao, b]));
+  const vaoOf = new Map(batches.map((b) => [`${b.vao.id}:${b._ibOff | 0}`, b]));   // PIN MOVED (PERF-ARENA): a still batch's draw is its arena's VAO and its range's offset together
   // every replay the pass makes: its matrix, its light, its texel and filter, and the batches it drew
   const reps = [];
   const replay = sp.replay.bind(sp);
-  sp.replay = (f, vp, lightPos, recordBasis, minRadius, texel, filter, self) => {
+  sp.replay = (f, vp, lightPos, recordBasis, minRadius, texel, filter, self, ...rest) => {   // AUDIT 637 D5: and whatever follows (PERF-SHADOW1's candidates) - dropped, every lantern face walked everything
     const at = g.draws.length, right = [...sp._right];
-    const n = replay(f, vp, lightPos, recordBasis, minRadius, texel, filter, self);
-    const drawn = new Set(g.draws.slice(at).filter((d) => d[0] === sp.programs.bb.p && vaoOf.has(d[1])).map((d) => vaoOf.get(d[1])));
+    const n = replay(f, vp, lightPos, recordBasis, minRadius, texel, filter, self, ...rest);
+    const drawn = new Set(g.draws.slice(at).filter((d) => d[0] === sp.programs.bb.p && vaoOf.has(`${d[1]?.id}:${d[4] | 0}`)).map((d) => vaoOf.get(`${d[1]?.id}:${d[4] | 0}`)));
     reps.push({ vp: Float64Array.from(vp), light: lightPos ? [...lightPos] : null, texel, filter, drawn, right });
     return n;
   };
@@ -867,7 +868,7 @@ test('PERF-EXT (the review): ONE HOME EACH - the flat\'s half-height lift is wri
   assert.deepEqual(count(/size\??\.h(?: \?\? 0\))? \* 0\.5/g), ['bounds.js'], 'one lift: half the height, at its home');
   assert.deepEqual(count(/Math\.hypot\([\w.]*size\.w, [\w.]*size\.h\)/g), ['bounds.js'], 'one half-diagonal, at its home');
   const b = src['bounds.js'];
-  for (const fn of ['batchSphere', 'placementsInCube', 'placementsInVolume']) {
+  for (const fn of ['batchSphere', 'placementsInCubeOf', 'placementsInVolume']) {   // PIN MOVED (PERF-ALLOC2): placementsInCube hands its cube to placementsInCubeOf, which asks the lift
     const body = b.slice(b.indexOf(`export function ${fn}(`), b.indexOf('\n}', b.indexOf(`export function ${fn}(`)));
     assert.match(body, /batchLift\(b\)/, `${fn} lifts by the home`);
   }

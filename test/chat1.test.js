@@ -54,7 +54,8 @@ test('CHAT1 / AUDIT CHAT: the wire - the constants once and literally, one home 
   assert.equal(CHAT_HELLO_HZ_MAX, 50); assert.equal(CHAT_ROOM_HZ_MAX, 20);
   assert.equal(CHAT_WORLD_ROOM, 'chat:world');
   // CHAT-CHAN: the World channel and the 62 region channels, ENUMERATED - the whitelist stays a list (AUDIT CHAT A1)
-  assert.deepEqual([...CHAT_ROOMS], ['chat:world', ...Array.from({ length: 62 }, (_, i) => `chat:region.${i}`)], 'the whitelist: the World channel and one per politic region');
+  assert.deepEqual([...CHAT_ROOMS], ['chat:world', ...Array.from({ length: 62 }, (_, i) => `chat:region.${i}`), ...Array.from({ length: 16 }, (_, k) => `chat:world.${k}`), ...Array.from({ length: 62 * 4 }, (_, i) => `chat:region.${Math.floor(i / 4)}.${i % 4}`),
+    ...['en', 'de', 'fr', 'es', 'pt', 'it', 'nl', 'pl', 'ru', 'fi', 'sv', 'tr', 'ja', 'zh', 'ko'].map((c) => `chat:lang.${c}`)], 'the whitelist: the World channel and one per politic region (PIN MOVED, SCALE5c: and the hub\'s sixteen shards; part two: and each region\'s four; CHAT-LANG: and one per language)');
   for (const k of ['sanitizeChat', 'isChatRoom', 'chatGate']) assert.equal(relay[k], { sanitizeChat, isChatRoom, chatGate }[k], `${k}: the same function object at both ends`);
   assert.equal(relay.CHAT_MAX, CHAT_MAX); assert.equal(relay.CHAT_ROOMS, CHAT_ROOMS);
   // the sanitizer
@@ -127,10 +128,11 @@ test('CHAT1 / AUDIT CHAT: the Room as a CHANNEL - a hello keeps the secret and n
   assert.deepEqual(a.sent[0], { t: 'welcome', id: 'aaaa-0001', peers: [], n: 1, v: RELAY_VERSION, now: a.sent[0].now });   // SRV-N: and the deploy's name, on a channel's welcome too - the only welcome a chat link ever gets; AUDIT SOC B7: and the relay's clock
   assert.equal(typeof a.sent[0].now, 'number');
   assert.deepEqual(b.sent, [{ t: 'welcome', id: 'bbbb-0002', peers: [{ id: 'aaaa-0001', name: 'aaaa-0001', sub: 'acct-aaaa-0001' }], n: 2, v: RELAY_VERSION, now: b.sent[0].now }], 'b is told who is in the channel - a, by name and verified account (MOD1: what /mute names), no look, no pose');
-  assert.deepEqual(ofType(a, 'join'), [{ t: 'join', id: 'bbbb-0002', name: 'bbbb-0002', sub: 'acct-bbbb-0002' }], 'and a hears b join - the name and the verified account (MOD1), nothing else');
+  assert.deepEqual(ofType(a, 'join'), [{ t: 'join', id: 'bbbb-0002', name: 'bbbb-0002', sub: 'acct-bbbb-0002', n: 2 }], 'and a hears b join - the name and the verified account (MOD1), and the room\'s count (PIN MOVED, AUDIT SCALE5a C1-C3), nothing else');
   assert.equal(r.store.has('secret:aaaa-0001'), true, 'the secret is kept');
   assert.equal(r.store.has('look:aaaa-0001'), false, 'the look is not: nobody is drawn from a channel');
-  assert.equal(r.store.has('hellos'), true, 'AUDIT CHAT A1: the hello bucket is kept - the gate is never off');
+  assert.equal(r.store.has('hellos'), false, 'SCALE2b: the hello bucket is the instance\'s now, never stored');
+  assert.ok(r.room._hellos, 'AUDIT CHAT A1: the hello bucket is kept - the gate is never off');
   assert.equal(b.att.pose, null, 'a pose in the hello is not kept either');
   await r.pose(a, at(1, 1));
   assert.equal(ofType(b, 'pose').length, 0, 'a pose in a channel reaches no one');
@@ -156,7 +158,7 @@ test('CHAT1 / AUDIT CHAT: the Room as a CHANNEL - a hello keeps the secret and n
   assert.deepEqual(c.sent.at(-1), { t: 'error', m: 'id taken' });
   const d = r.connect(); await r.hello(d, 'dddd-0004');
   await r.drop(b);
-  assert.deepEqual(ofType(d, 'leave'), [{ t: 'leave', id: 'bbbb-0002' }], 'ROSTER-G: a channel says its leaves, as it says its joins');
+  assert.deepEqual(ofType(d, 'leave'), [{ t: 'leave', id: 'bbbb-0002', n: 1 }], 'ROSTER-G: a channel says its leaves, as it says its joins - and the count it leaves, d alone (PIN MOVED, AUDIT SCALE5a C1-C3)');
   assert.equal(ofType(d, 'host').length, 0, 'and still no host word - a channel has no host');
   assert.equal(r.store.has('secret:bbbb-0002'), false, 'the secret goes with the socket');
   assert.equal(r.store.has('secret:dddd-0004'), true, 'and no one else\'s');
@@ -274,6 +276,8 @@ test('CHAT1 / AUDIT CHAT: the session as a CHANNEL (presence: false) - the hello
   ws.open();
   assert.equal(ws.sent[0].t, 'hello'); assert.equal(ws.sent[0].pose, null, 'a channel\'s hello carries no pose whatever the join was handed');
   assert.equal(ws.sent[0].id, 'mac-0001'); assert.equal(ws.sent[0].secret, 'secret-of-mac-0001');
+  assert.equal(s.sendChat('early'), false, 'SD-HELLO (PIN MOVED): nothing past the hello until the room welcomes the socket');
+  ws.receive({ t: 'welcome', id: 'mac-0001', peers: [] });   // SD-HELLO (PIN MOVED): welcomed - the channel's law below as it was
   assert.equal(s.sendPose({ x: 1, y: 2, z: 3, yaw: 0, pitch: 0, mv: 1 }), false, 'AUDIT CHAT D3: a channel session refuses a pose');
   assert.equal(s.sendChat('   '), false, 'nothing to say sends nothing');
   assert.equal(s.sendChat('\u200b'), false);
@@ -334,7 +338,9 @@ test('CHAT1 / AUDIT CHAT: the session as a CHANNEL (presence: false) - the hello
   assert.equal(p.presence, true);
   p.join('town:m9', { x: 1, y: 2, z: 3, yaw: 0, pitch: 0, mv: 1 });
   const pw = sockets[4]; pw.open();
-  assert.deepEqual(pw.sent[0].pose, { x: 1, y: 2, z: 3, yaw: 0, pitch: 0, mv: 1 });
+  const { ts: helloTs, ...helloPose } = pw.sent[0].pose;   // SCALE2b: and stamped with when it was said
+  assert.deepEqual(helloPose, { x: 1, y: 2, z: 3, yaw: 0, pitch: 0, mv: 1 }); assert.ok(Number.isInteger(helloTs));
+  pw.receive({ t: 'welcome', id: 'mac-0001', peers: [] });   // SD-HELLO (PIN MOVED): welcomed - a socket says nothing past its hello until then
   assert.equal(p.sendPose({ x: 2, y: 2, z: 3, yaw: 0, pitch: 0, mv: 1 }), true, 'a presence session sends its pose');
   // RELAY-H1 re-aimed this: a presence session now ALSO pings (PING_MS, runtime-answered in the object's sleep) so the
   // socket's liveness no longer costs a wake; its proof of life to the PEERS is still the pose, which a ping never delays.
@@ -349,7 +355,7 @@ test('CHAT1 / AUDIT CHAT: the session as a CHANNEL (presence: false) - the hello
 test('CHAT1 / AUDIT CHAT: the log - the World tab from CHAT_TABS (one today, each a room the relay whitelists); a line kept on its tab under the cap; unread unless the panel is open ON that tab; select and open read it; the version bumps on what the panel would show; the peek holds then fades on the log\'s own clock; the tag from the id', () => {
   // CHAT-CHAN: four tabs - two ride rooms of their own (`link`), the World's fixed and the Region's set as the player moves
   // GUILD1c: and a fifth, the Guild's, riding the hub's link as the Party's does
-  assert.deepEqual(CHAT_TABS.map((t) => [t.id, t.label, t.room, t.link]), [['world', 'World', 'chat:world', true], ['region', 'Region', null, true], ['party', 'Party', null, false], ['guild', 'Guild', null, false], ['local', 'Local', null, false]]);
+  assert.deepEqual(CHAT_TABS.map((t) => [t.id, t.label, t.room, t.link]), [['world', 'World', 'chat:world', true], ['region', 'Region', null, true], ['lang', 'Lang', null, true], ['party', 'Party', null, false], ['guild', 'Guild', null, false], ['local', 'Local', null, false]]);
   assert.ok(CHAT_TABS.every((t) => t.room === null || CHAT_ROOMS.has(t.room)), 'every room a tab starts on is a channel the relay runs (AUDIT CHAT A1)');
   assert.ok(CHAT_TABS.every((t) => typeof t.hint === 'string' && t.hint.length > 0), 'and each says who it reaches');
   assert.equal(CHAT_KEEP, 200); assert.equal(CHAT_FADE_MS, 20000); assert.equal(CHAT_PEEK, 5); assert.equal(CHAT_REJOIN_MS, 30000);
@@ -359,7 +365,7 @@ test('CHAT1 / AUDIT CHAT: the log - the World tab from CHAT_TABS (one today, eac
   assert.equal(tagOf(''), tagOf(null));
   let clock = 10_000;
   const log = new ChatLog({ keep: 3, now: () => clock });
-  assert.deepEqual(log.tabs.map((t) => [t.id, t.label, t.room, t.messages.length, t.unread]), [['world', 'World', 'chat:world', 0, 0], ['region', 'Region', null, 0, 0], ['party', 'Party', null, 0, 0], ['guild', 'Guild', null, 0, 0], ['local', 'Local', null, 0, 0]]);
+  assert.deepEqual(log.tabs.map((t) => [t.id, t.label, t.room, t.messages.length, t.unread]), [['world', 'World', 'chat:world', 0, 0], ['region', 'Region', null, 0, 0], ['lang', 'Lang', null, 0, 0], ['party', 'Party', null, 0, 0], ['guild', 'Guild', null, 0, 0], ['local', 'Local', null, 0, 0]]);
   assert.equal(log.active, 'world'); assert.equal(log.open, false);
   const v0 = log.version;
   assert.equal(log.push('nowhere', { id: 'a', name: 'A', text: 'x' }), null, 'no such tab: nothing kept');
@@ -386,7 +392,7 @@ test('CHAT1 / AUDIT CHAT: the log - the World tab from CHAT_TABS (one today, eac
   assert.equal(log.select('nowhere'), false);
   log.markRead('world'); assert.equal(log.unreadTotal(), 0);
   // two tabs: unread by tab, select reads only when open
-  const two = new ChatLog({ tabs: [CHAT_TABS[0], CHAT_TABS[2]], now: () => clock });   // CHAT-CHAN: the World and Party rows, the pair this block has always driven
+  const two = new ChatLog({ tabs: [CHAT_TABS[0], CHAT_TABS.find((t) => t.id === 'party')], now: () => clock });   // CHAT-CHAN: the World and Party rows, the pair this block has always driven (CHAT-LANG: found by id - the Language row stands between them now)
   two.push('party', { id: 'a', name: 'A', text: 'psst' });
   assert.deepEqual(two.tabs.map((t) => t.unread), [0, 1]);
   // CHAT-P: the Party row starts OFF the bar - the host puts it on while a party is (ChatLog.setShown)
@@ -484,7 +490,7 @@ test('CHAT1 / AUDIT CHAT: the panel - built once over the document with the shee
   assert.equal(doc.getElementById(CHAT_STYLE_ID)?.tagName, 'STYLE', 'the sheet');
   createChatPanel({ log: new ChatLog(), onSend() {}, action: defaultAction, doc, win, touch: false }).destroy();
   assert.equal(find(doc.head, '').filter((n) => n.id === CHAT_STYLE_ID).length, 1, 'injected once');
-  assert.deepEqual(find(root, 'dfchat-tab').map((b) => [b.textContent, b.dataset.tab]), [['World', 'world'], ['Region', 'region'], ['Party', 'party'], ['Guild', 'guild'], ['Local', 'local']], 'one tab per row of the log');
+  assert.deepEqual(find(root, 'dfchat-tab').map((b) => [b.textContent, b.dataset.tab]), [['World', 'world'], ['Region', 'region'], ['Lang', 'lang'], ['Party', 'party'], ['Guild', 'guild'], ['Local', 'local']], 'one tab per row of the log');   // CHAT-LANG: the Language tab
   assert.equal(win.listeners.filter((l) => l !== win.listeners[0]).length, 1, 'ONE listener on the window (AUDIT CHAT D5: of any type)');
   assert.equal(win.listeners[1].t, 'keydown'); assert.equal(win.listeners[1].capture, true);
   const input = panel.input;
@@ -648,7 +654,8 @@ test('CHAT1 / AUDIT CHAT: the host by source - world.js starts the chat with the
   assert.match(w, /const chatStart = \(\) => \{\s*if \(!online\.url\) return;/, 'AUDIT CHAT A9/B1: a relay the law refused is no relay for the chat either');
   // CHAT-CHAN: a channel session per tab that rides a room of its OWN (`link`: the World and the Region tabs) - the Party
   // tab's lines come down the hub's link by the relay's own routing word, and the Region tab's room waits for its region
-  assert.match(w, /for \(const tab of chatLog\.tabs\) \{\s*if \(!tab\.link\) continue;[^\n]*\n\s*const link = new OnlineSession\(\{ url: online\.url, name: online\.name, look: online\.look, id: online\.id, secret: online\.secret, presence: false \}\);\s*link\.onChat = \(line\) => chatLog\.push\(tab\.room === SOCIAL_ROOM && \(line\.ch === 'party' \|\| line\.ch === 'guild'\) \? line\.ch : tab\.id, line\);[\s\S]{0,1100}?link\.onRelay = onRelayVersion;\s*link\.onGuildGone = guildGone;[^\n]*\n\s*if \(tab\.room\) link\.join\(tab\.room\);[^\n]*\n\s*chatLinks\.set\(tab\.id, link\);/, 'a channel session per tab with a room, the presence session\'s identity, a line to its tab');
+  // PIN MOVED (SCALE2c, SCALE5b): the link holds the page's one wave and asks the second wire
+  assert.match(w, /for \(const tab of chatLog\.tabs\) \{\s*if \(!tab\.link\) continue;[^\n]*\n\s*const link = new OnlineSession\(\{ url: online\.url, name: online\.name, look: online\.look, id: online\.id, secret: online\.secret, presence: false, wave: pageWave, wire2: true \}\);[^\n]*\n\s*link\.onChat = \(line\) => \(tab\.room === SOCIAL_ROOM && \(line\.ch === 'party' \|\| line\.ch === 'guild'\) && receiveWaypointLine\(line\)\) \|\| chatLog\.push\(tab\.room === SOCIAL_ROOM && \(line\.ch === 'party' \|\| line\.ch === 'guild'\) \? line\.ch : tab\.id, line\);[\s\S]{0,1100}?link\.onRelay = onRelayVersion;\s*link\.onGuildGone = guildGone;[^\n]*\n\s*if \(tab\.room\) link\.join\(channelLinkRoom\(tab\.room\)\);[^\n]*\n\s*chatLinks\.set\(tab\.id, link\);/, 'a channel session per tab with a room (PIN MOVED, SCALE5c: a channel link its own shard), the presence session\'s identity, a line to its tab');
   // CHAT-CHAN: and the Local tab is the presence session's own room, kept within earshot
   assert.match(w, /online\.onChat = \(line\) => \{ if \(localLineHeard\(line, peersNear\(\), player\.feetAt\(\)\)\) chatLog\.push\('local', line\); \};/, 'the Local tab: the presence session\'s lines, those within earshot');
   // RED1: and the SERVER's own line beside the player's, with the flag
@@ -673,7 +680,7 @@ test('CHAT1 / AUDIT CHAT: the host by source - world.js starts the chat with the
   assert.match(w, /return chatSend\(tabId, cmd\.text, tabId\);/, 'a line that is no command is said on the tab it was typed on');
   const onSend = /onSend: \(tabId, text\) => \{([\s\S]*?)\n {6}\},/.exec(w);
   assert.ok(onSend, 'UNSTUCK1: the host no longer carries an onSend block');
-  const cmdAt = onSend[1].indexOf("/^\\/unstuck$/i.test(text.trim())");
+  const cmdAt = onSend[1].indexOf("/^\\/unstuck(\\s+cancel)?$/i.test(text.trim())");   // PVPUNSTUCK: the command takes an optional "cancel" now (a zone wait can be called off) - PIN MOVED
   const sendAt = onSend[1].indexOf('chatSend(');
   assert.ok(cmdAt > 0, 'UNSTUCK1: the local /unstuck command is gone from onSend');
   assert.ok(cmdAt < sendAt, 'UNSTUCK1: the local command must be tested BEFORE the relay send, or the room hears it');
@@ -702,8 +709,11 @@ test('CHAT1 / AUDIT CHAT: the host by source - world.js starts the chat with the
   assert.match(w, /status: chatStatus\(chatLog\.active\),/, 'the active tab\'s line');
   assert.match(w, /return s\?\.statusLine\(tab\?\.label \?\? 'chat'\) \?\? null;/, 'the session\'s own line, labelled (B5)');
   assert.doesNotMatch(w, /chat: \$\{link\.error/, 'and no remake of it');
-  assert.match(w, /const onlineFrame = \(now, dt\) => \{\s*chatFrame\(\);(?:[^\n]*\n)(?:\s*(?:\/\/[^\n]*|tradeFrame\(\);[^\n]*|duelFrame\(\);[^\n]*|profileFrame\(\);[^\n]*|pageFrame\(\);[^\n]*|mail\?\.poll\(\);[^\n]*|gateFrame\(\);[^\n]*|renownTracker\?\.tick\(\);[^\n]*|peerMenuFrame\(\);[^\n]*|peerFxFrame\(\);[^\n]*|if \(realmSession && !realmSession\.lost && realmDoorShut\(online\)\) \{ realmLost\('no-realm-character'\); return; \}|if \(seatOut\(\)\) \{|if \(!_seatLeft\) leaveSeat\(now\);|if \(!_seatSaid\) \{[^\n]*|_seatSaid = true;|if \(modes\?\.gateArenaDay\?\.\(\) != null\) ejectFromCourt\(COURT_TEXT\.lost\);|chatNotice\(SEAT_NOTICE\);|setMidScreenText\(SEAT_MID_TEXT\);|peerBodies\.destroy\(\);[^\n]*|\})\n)*\s*if \(townTalk\.overlay instanceof DeathScreen \|\| modes\?\.deathUp\?\.\(\)\)/, 'the chat frame runs before the dead return: the channels keep their heartbeat and reconnect while the death screen is up');
-  assert.match(w, /'pagehide', \(\) => \{\s*try \{ worldPublish\(performance\.now\(\), true\); \}\s*catch \(e\) \{[^\n]*\}\s*online\?\.leave\(\);\s*for \(const link of chatLinks\?\.values\(\) \?\? \[\]\) link\.leave\(\);\s*peerBodies\?\.destroy\(\);/, 'the goodbye leaves every channel - and AUDIT ONCRASH1 A7: the publish is behind its own guard, the leave is not behind the publish');
+  // CHAP1 (PIN MOVED at AUDIT CHAP, which found CHAP1 had left it red): the Roll's tick runs beside Renown's
+  // PIN MOVED (SCALE4c): the lane's look at the box is its stamp now (`_mailFrameAt`) - the box rides the tab's heartbeat
+  // PIN MOVED (NAME-AS): a name chosen on this device is said again from here too, after the others' blows
+  assert.match(w, /const onlineFrame = \(now, dt\) => \{\s*if \(!modes\?\.sailingCabin \|\| seatOut\(\) \|\| playerEntity\.health <= 0 \|\| modes\?\.deathUp\?\.\(\)\) cabinLink\.close\(\);\n\s*chatFrame\(\);(?:[^\n]*\n)(?:\s*(?:\/\/[^\n]*|tradeFrame\(\);[^\n]*|duelFrame\(\);[^\n]*|wedFrame\(\);[^\n]*|profileFrame\(\);[^\n]*|pageFrame\(\);[^\n]*|_mailFrameAt = performance\.now\(\);[^\n]*|gateFrame\(\);[^\n]*|serpentFrame\(\);[^\n]*|sdFrame\(\);[^\n]*|renownTracker\?\.tick\(\);[^\n]*|rollTracker\?\.tick\(\);[^\n]*|peerMenuFrame\(\);[^\n]*|peerFxFrame\(\);[^\n]*|nameAsFrame\(\);[^\n]*|if \(realmSession && !realmSession\.lost && realmDoorShut\(online\)\) \{ realmLost\('no-realm-character'\); return; \}|if \(seatOut\(\)\) \{|if \(!_seatLeft\) leaveSeat\(now\);|if \(!_seatSaid\) \{[^\n]*|_seatSaid = true;|if \(modes\?\.gateArenaDay\?\.\(\) != null\) ejectFromCourt\(COURT_TEXT\.lost\);|chatNotice\(SEAT_NOTICE\);|setMidScreenText\(SEAT_MID_TEXT\);|peerBodies\.destroy\(\);[^\n]*|\})\n)*\s*if \(townTalk\.overlay instanceof DeathScreen \|\| modes\?\.deathUp\?\.\(\)\)/, 'the chat frame runs before the dead return: the channels keep their heartbeat and reconnect while the death screen is up');
+  assert.match(w, /'pagehide', \(\) => \{\s*try \{ worldPublish\(performance\.now\(\), true\); \}\s*catch \(e\) \{[^\n]*\}\s*cabinLink\.close\(\);\s*online\?\.leave\(\);\s*for \(const link of chatLinks\?\.values\(\) \?\? \[\]\) link\.leave\(\);\s*peerBodies\?\.destroy\(\);/, 'the goodbye leaves every channel - and AUDIT ONCRASH1 A7: the publish is behind its own guard, the leave is not behind the publish');
   assert.doesNotMatch(w, /chatPanel\?\.destroy\(\)/, 'AUDIT CHAT B4: and keeps the panel - a page restored from the cache gets its chat back');
   // CG2 rests on the host listening in the BUBBLE phase (AUDIT CHAT D2): a capture listener beside the panel's would fill the ring
   assert.match(w, /\n  addEventListener\('keydown', \(e\) => \{/, 'the host\'s window keydown listener');
@@ -722,7 +732,10 @@ test('CHAT1 / AUDIT CHAT: the host by source - world.js starts the chat with the
   // The LAW is unchanged and is what the slice asserts - the one meter runs on a channel's pose BEFORE the decline -
   // so the pin still reads the order, over a source with its comments stripped rather than around them.
   const bare = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
-  assert.match(bare(room), /if \(m\.t === 'pose' \|\| m\.t === 'ping'\) \{\s*const chat = isChatRoom\(a\.key\);\s*const posed = m\.t === 'pose' && !chat;\s*const now = Date\.now\(\);\s*const unmoved = [^\n]*\s*const stopped = [^\n]*\s*const still = [^\n]*\s*const battle = posed && isBattleRoom\(a\.key\) && a\.sub;\s*if \(battle && !this\._spend\(ws, now, poseGate, 'bucket', 'drops', 'too many poses'\)\) return;\s*const step = battle \? await this\._siegeStep\(ws, a, m\.p, now\) : null;\s*if \(battle && !step\) return;\s*const turned = [^\n]*\s*const met = battle \? this\._metered\(ws, a, true, \{ pose: m\.p \}, turned\) : this\._meter\(ws, a, now, \{ pose: posed \? m\.p : a\.pose \}, turned\);\s*if \(!met\) return;\s*if \(m\.t === 'ping'\)[^\n]*\s*if \(chat\) return;/, 'AUDIT CHAT A3: a channel\'s pose is gated (the one meter, AUDIT WORLD A1) before it is declined (PVP-REF, PIN MOVED: a siege fighter\'s step is judged before the meter - a channel is never a siege\'s room, so its pose still reaches the meter first; CROWN1 part two, PIN MOVED again: a siege\'s room or a Royal Tourney\'s - isBattleRoom)');   // PIN MOVED (AUDIT-SEATS): R2/R4 - a battle room\'s pose spends the gate before the referee judges it (`posed` is false in a channel, so a channel\'s pose still reaches the one meter first)
+  // PIN MOVED (PERF-RELAY1): the arm is a method of its own, `_poseFrame` - `_message` hands a pose or a ping to it as
+  // the arm took it, and the order this pin reads is the method's, line for line
+  assert.match(bare(room), /if \(m\.t === 'pose' \|\| m\.t === 'ping'\) return this\._poseFrame\(ws, a, m\);/, 'PERF-RELAY1: a pose and a ping go to the arm\'s own method');
+  assert.match(bare(room), /async _poseFrame\(ws, a, m\) \{\s*const chat = isChatRoom\(a\.key\);\s*const posed = m\.t === 'pose' && !chat;\s*const now = Date\.now\(\);\s*const unmoved = [^\n]*\s*const stopped = [^\n]*\s*const still = [^\n]*\s*const battle = posed && isBattleRoom\(a\.key\) && a\.sub;\s*if \(battle && !this\._spend\(ws, now, poseGate, 'bucket', 'drops', 'too many poses'\)\) return;\s*const step = battle \? await this\._siegeStep\(ws, a, m\.p, now\) : null;\s*if \(battle && !step\) return;\s*const turned = [^\n]*\s*const met = battle \? this\._metered\(ws, a, true, \{ pose: m\.p \}, turned\) : this\._meter\(ws, a, now, \{ pose: posed \? m\.p : a\.pose \}, turned, posed && !stopped\);\s*if \(!met\) return;\s*if \(m\.t === 'ping'\)[^\n]*\s*if \(chat\) return;/, 'AUDIT CHAT A3: a channel\'s pose is gated (the one meter, AUDIT WORLD A1) before it is declined (PVP-REF, PIN MOVED: a siege fighter\'s step is judged before the meter - a channel is never a siege\'s room, so its pose still reaches the meter first; CROWN1 part two, PIN MOVED again: a siege\'s room or a Royal Tourney\'s - isBattleRoom)');   // PIN MOVED (AUDIT-SEATS): R2/R4 - a battle room\'s pose spends the gate before the referee judges it (`posed` is false in a channel, so a channel\'s pose still reaches the one meter first)
   assert.match(room, /if \(other === ws \|\| chat \|\| inRange\(a\.key \?\? '', a\.pose, b\.pose\)\) this\._send\(other, out\);/, 'the fan: the sender, a channel\'s everyone, a place\'s range');
   assert.match(room, /const room = tokenGate\(this\._roomChat, now, CHAT_ROOM_HZ_MAX\);/, 'the room\'s own budget (A2)');
   const dial = rd('src/ui/pixelDial.js');

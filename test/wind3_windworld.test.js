@@ -280,7 +280,8 @@ test('WIND3 the flats\' sway in the renderer: BB_VS declares the wind and the sh
   assert.ok(vs.indexOf('uUp * ((aCorner.y + 0.5) * uSize.y);') < vs.indexOf('if (uSway > 0.0)') && vs.indexOf('if (uSway > 0.0)') < vs.indexOf('vBBWorld = world;'), 'after the quad is placed, before the world position is handed on (the shadow and the fog read the leaned position)');
   assert.match(r, /this\.bbUFlatWind = gl\.getUniformLocation\(this\.bbProgram, 'uFlatWind'\);/);
   assert.match(r, /this\.bbUSway = gl\.getUniformLocation\(this\.bbProgram, 'uSway'\);/);
-  assert.match(r, /setFlatWind\(v\) \{\s*\n\s*const fw = this\._flatWind \?\?= new Float32Array\(4\);\s*\n\s*if \(v\) \{ fw\[0\] = v\[0\] \|\| 0; fw\[1\] = v\[1\] \|\| 0; fw\[2\] = v\[2\] \|\| 0; fw\[3\] = v\[3\] \|\| 0; \} else fw\.fill\(0\);/);
+  // PIN MOVED (WINDFALL1, 2026-10-08): the setter takes Windfall's law beside the wind (render/windfallSway.js)
+  assert.match(r, /setFlatWind\(v, windfall = null\) \{\s*\n\s*const fw = this\._flatWind \?\?= new Float32Array\(4\);\s*\n\s*if \(v\) \{ fw\[0\] = v\[0\] \|\| 0; fw\[1\] = v\[1\] \|\| 0; fw\[2\] = v\[2\] \|\| 0; fw\[3\] = v\[3\] \|\| 0; \} else fw\.fill\(0\);/);
   // the METHOD's body, found by its own closing brace rather than by a
   // count of characters: the fixed 6,000-char window this replaces slid
   // off the end the moment PERF-CROWD2 added the frustum test above these
@@ -289,7 +290,7 @@ test('WIND3 the flats\' sway in the renderer: BB_VS declares the wind and the sh
   const dbStart = r.indexOf('  drawBillboards(batches, camRight, camUp) {');
   const db = r.slice(dbStart, r.indexOf('\n  }\n', dbStart));
   assert.equal((db.match(/gl\.uniform4fv\(this\.bbUFlatWind, this\._flatWind \?\? ZERO_FLAT_WIND\);/g) || []).length, 1, 'one wind upload a call');
-  assert.match(db, /const sw = b\.sway \|\| 0;[^\n]*\n\s*if \(sw !== lastSway\) \{ gl\.uniform1f\(this\.bbUSway, sw\); lastSway = sw; \}/, 'the share per batch, uploaded when it changes');
+  assert.match(db, /const sw = swayShare\(b, wfLaw\);[^\n]*\n\s*if \(sw !== lastSway\) \{ gl\.uniform1f\(this\.bbUSway, sw\); lastSway = sw; \}/, 'the share per batch, uploaded when it changes (WINDFALL1: its mask under the mod\'s law)');
   assert.match(db, /let lastSway = null;/, 'the first batch always uploads');
   // executed: the prototype's setFlatWind holds four numbers and clears to zero
   const bare = Object.create(Renderer.prototype);
@@ -302,7 +303,7 @@ test('WIND3 the flats\' sway in the renderer: BB_VS declares the wind and the sh
 });
 
 test('WIND3 the hosts: both exterior hosts read the one wind once a frame, feed the rain\'s rate and travel from it, draw the wisps after the rain as a foreign pass, tick the loop beside the ambience and stop it on the modal frame, hand the flats the wind before their draw, and tag the flora batches - and hold no copy of the mapping', () => {
-  for (const [host, eye] of [['src/scenes/world.js', 'wxEye'], ['src/scenes/exterior.js', 'eye']]) {   // PIN MOVED (OW-WEATHER, FIELD BUGS 2026-10-01 #9): the world host's eye is the view's (test/fb1001_overworld.test.js)
+  for (const [host, eye] of [['src/scenes/world.js', 'wxEye32'], ['src/scenes/exterior.js', 'eye32']]) {   // PIN MOVED (OW-WEATHER, FIELD BUGS 2026-10-01 #9): the world host's eye is the view's (test/fb1001_overworld.test.js)
     const s = rd(host);
     const one = (re, what) => assert.equal((s.match(re) || []).length, 1, `${host}: ${what}`);
     one(/const wd = windDrive\(sky, now \/ 1000, dt\);/g, 'the one read');
@@ -311,7 +312,7 @@ test('WIND3 the hosts: both exterior hosts read the one wind once a frame, feed 
     assert.ok(!/_lastNow|labWindSlider|Math\.sin\(tsec \* 0\.31\)/.test(s), `${host}: no copy of the mapping, no private rain clock`);
     const wisp = s.search(/if \(wisps && wd\.on && wispsOn\(\)(?: && !_dwAirOff)?\) \{/);   // DW-C: the world host's wisps are the distance fog's while it is on
     assert.ok(wisp > 0 && wisp > s.indexOf('precip.draw(precipShown, proj, view'), `${host}: the wisps after the rain`);
-    assert.ok(s.slice(wisp, wisp + 300).includes(`wisps.draw(wd, proj, view, new Float32Array(${eye}), now / 1000);\n      renderer.markForeignPass();`), `${host}: their own program is a foreign pass`);
+    assert.ok(/^\s+renderer\.markForeignPass\(\);/m.test(s.slice(wisp, wisp + 300).split(`wisps.draw(wd, proj, view, ${eye}, now / 1000);\n`)[1] ?? ''), `${host}: their own program is a foreign pass`);   // RAIN-OVER-GRASS: the world host's falling weather is one closure, indented once more
     one(/const wisps = sky\.enhanced \? new WindWispsRenderer\(renderer\.gl\) : null;/g, 'built on the enhanced lane at boot');
     one(/const windAudio = createWindAudio\(\);/g, 'the loop\'s driver');
     const amb = s.indexOf('ambience.update(dt, { playerPos:');
@@ -319,11 +320,18 @@ test('WIND3 the hosts: both exterior hosts read the one wind once a frame, feed 
     const modal = s.indexOf('if (modes.frame(dt, now)) {');
     assert.ok(s.slice(modal, modal + 900).includes('windAudio.stop();'), `${host}: silent indoors`);
     assert.ok(s.indexOf('windAudio.stop();') < s.indexOf('windAudio.update(wd, dt, windSoundOn());'), `${host}: the modal branch returns before the exterior tick`);
-    one(/renderer\.setFlatWind\(floraSwayOn\(\) && wd\.on \? \[wd\.windV\[0\], wd\.windV\[1\], now \/ 1000, wd\.gust\] : null\);[^\n]*\n\s*renderer\.drawBillboards\(/g, 'the flats\' wind, right before their draw');
-    assert.equal((s.match(/batch\.sway = floraSwayOf\(archive, natureArchive, (sib\.)?size\.h\);/g) || []).length, 2, `${host}: the season's batch and the classic one tagged`);
+    // PIN MOVED (AUDIT MEADOW1): the world host hands the wave the clock its floating-origin crossings carried (windDrive.js
+    // gustClock, so the flats and the grass stand still under a crossing); the exterior host has no floating origin
+    const clock = host === 'src/scenes/world.js' ? 'windClock' : 'now \\/ 1000';
+    // PIN MOVED (WINDFALL1, 2026-10-08): and Windfall's law beside it, under the same switch (scenes/windfallHost.js)
+    one(new RegExp(`renderer\\.setFlatWind\\(floraSwayOn\\(\\) && wd\\.on \\? \\[wd\\.windV\\[0\\], wd\\.windV\\[1\\], ${clock}, wd\\.gust\\] : null, floraSwayOn\\(\\) && wd\\.on \\? windfallLaw : null\\);[^\\n]*\\n\\s*renderer\\.drawBillboards\\(`, 'g'), 'the flats\' wind, right before their draw');
+    // PIN MOVED (ECOTONE1, 2026-10-07): the streaming host asks by its pixel's nature set - its own climate's archive and any
+    // a climate border stood there (windDrive.js floraSwayOf takes a Set); the exterior host has one climate
+    const flora = host === 'src/scenes/world.js' ? 'natureSet' : 'natureArchive';
+    assert.equal((s.match(new RegExp(`batch\\.sway = floraSwayOf\\(archive, ${flora}, (sib\\.)?size\\.h\\);`, 'g')) || []).length, 2, `${host}: the season's batch and the classic one tagged`);
     for (const imp of ["from '../systems/windDrive.js'", "from '../render/windWisps.js'", "from '../systems/windAudio.js'"]) assert.ok(s.includes(imp), `${host}: imports ${imp}`);
   }
-  assert.match(rd('src/scenes/world.js'), /\{ dir: wd\.dir, speed: wd\.slider \* wd\.gust, windV: wd\.windV \}/, 'the grass takes the same answer');
+  assert.match(rd('src/scenes/world.js'), /\{ dir: wd\.dir, speed: wd\.slider \* wd\.gust, windV: wd\.windV, sway: floraSwayOn\(\) && wd\.on \}/, 'the grass takes the same answer');   // PIN MOVED (AUDIT MEADOW1): and the flats' own switch
 });
 
 test('WIND3 records: the rendering page, the features arc, the ledger\'s wind row and the testing row', () => {

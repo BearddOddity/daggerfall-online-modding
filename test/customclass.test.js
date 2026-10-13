@@ -596,7 +596,7 @@ test('U20a: the rep window\'s balance is its own FIELD, 0 until a bar is clicked
 
 test('U20a follow-up: the MINUS key reaches the stat and skill spinners', () => {
   // overlayAction tests the typed-character class FIRST and the
-  // hyphen is a literal inside it (input.js:"four hosts read that"), so '-' always
+  // hyphen is a literal inside it (input.js:"if (e.key.length === 1 && /[a-zA-Z0-9 '-]/.test(e.key))"), so '-' always
   // arrives as 'char:-'. The stats screen's `minus` arm was
   // unreachable from a keyboard: a point could be spent and never
   // taken back except by clicking.

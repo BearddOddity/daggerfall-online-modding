@@ -49,6 +49,9 @@ Each is quoted where the code keeps it, beside the line it decided.
   the board window (`ui/bountyWindow.js` through `ui/bountyDoor.js`) in the Enhanced Plus stone and brass on every
   skin - the window lays its own sheet on the classic skins, the Broker's precedent. The other boards open DFU's
   rumour exactly as before (`systems/bulletinBoard.js`; the ROAD A9 pins hold).
+  SPAM-TAKE (`01-Overview/Field-Bugs-2026-10-10.md`): a take moves the window's card on to the next open notice, so
+  Take pressed again and again takes the four in order; the last take's card asks a pick before it offers a press (in a
+  party, Share stood under the cursor); Give up asks twice and stands at the card's left; the window is one height.
 - **Every bounty board of a town posts the SAME four hunts**, and every player reads the same four. A posting is a
   pure function of (the day, the town's pixel, the slot): where it is, which of its tier's beasts, how many, which
   story, who pinned it. The notices turn over each game day.
@@ -97,7 +100,8 @@ Each is quoted where the code keeps it, beside the line it decided.
 2. **Stood** the first time the hunter stands on its pixel in the open (or inside its dungeon): 4 to 8 of ONE beast,
    60 to 110 metres out on a random bearing, and a line names how far and which way. The open-ground pack stands
    through the camp's own stand (the world host's `_standCampEncounter` - one home for a group in the wilderness:
-   the anchor on the terrain's floor, off roads, out of town rects and the sea, the camp's 60 m sight, one camp id so
+   the anchor on the terrain's floor, off roads, out of town rects and the sea, never inside a rock - BOUNTY-ROCK, FIELD
+   BUGS 2026-10-03: the collider's point-in-solid over every spot, the trail's and the farm's too - the camp's 60 m sight, one camp id so
    one member's alarm wakes the rest and they spare each other), fixed at the posting's count, `loose` (a board's
    hunt is not the encounter roll's to refuse) and `transient` (never saved).
 3. **Counted** as corpses fall - a beast culled (walked 200 m from) or lost to a reload is no kill, and only what is

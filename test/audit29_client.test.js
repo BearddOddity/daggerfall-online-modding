@@ -15,7 +15,7 @@ const noWait = () => Promise.resolve();
 const memStorage = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)) }; };
 const DAY_MS = 86_400_000;
 const T = 20500 * DAY_MS + 12 * 3600_000;
-const okState = (day = 20500, extra = {}) => ({ ok: true, data: { day, character: 'c1', tracks: [], today: {}, taken: [], stores: [], caps: { harvests: 60, stores: 5000 }, ...extra } });
+const okState = (day = 20500, extra = {}) => ({ ok: true, data: { day, character: 'c1', tracks: [], today: {}, taken: [], stores: [], caps: { stores: 5000 }, ...extra } });
 
 test('AUDIT 29 C1: the state is read one at a time - presses while a read is on the wire share it; a failed read is not asked again for its backoff', async () => {
   let asked = 0, t = T;
@@ -140,9 +140,10 @@ test('AUDIT 29 B2: a home\'s Forge station is offered, and sold, only where a Fo
   setPref('skin', 'enhanced');
   assert.equal(forgeOffered(), true);
   // PIN MOVED (PROF11): the mason's bench is a seventh home station, offered by the same gate
-  assert.deepEqual(stationsOffered(), ['alchemy', 'spells', 'enchant', 'forge', 'workbench', 'loom', 'mason', 'jeweller'], 'PROF4: the workbench by the same gate; PROF7: the loom; PROF11: the mason\'s bench; PIN MOVED (PROF10): the jeweller\'s bench');
+  assert.deepEqual(stationsOffered(), ['alchemy', 'spells', 'enchant', 'forge', 'workbench', 'loom', 'mason', 'jeweller', 'vendor'], 'PROF4: the workbench by the same gate; PROF7: the loom; PROF11: the mason\'s bench; PIN MOVED (PROF10): the jeweller\'s bench; PIN MOVED (HOME-VENDOR): the hired trader, where the market trades');
   assert.match(FORGE_COLD_LINE, /Stores page/);
   setProfessionsPages(null);
   const src = (await import('node:fs')).readFileSync(new URL('../src/scenes/decorTool.js', import.meta.url), 'utf8');
   assert.match(src, /if \(PROF_STATIONS\.includes\(want\) && !forgeOffered\(\)\) \{ deps\.say\?\.\(stationColdLine\(want\)\); return false; \}/, 'the tool sells none where the panel offers none (PROF4: a workbench neither)');
+  assert.match(src, /if \(want === VENDOR_STATION && \(r\?\.kind !== 'home' \|\| !forgeOffered\(\)\)\) \{ deps\.say\?\.\(VENDOR_COLD_LINE\); return false; \}/, 'HOME-VENDOR: nor a trader - WAGONS2 (FINAL AUDIT): and in a home alone');
 });

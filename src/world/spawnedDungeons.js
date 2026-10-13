@@ -103,14 +103,35 @@ export function spawnPlateauFloor(woods, px, py) {
   return (sum / (HEIGHTMAP_DIMENSION * HEIGHTMAP_DIMENSION)) * MAX_TERRAIN_HEIGHT;
 }
 
+/**
+ * WILD-DRY (2026-10-12, a player's live client: the map's first open froze 6.7 s - the zone's giants' walking ground,
+ * systems/wildGiants.js cellsOf, asks every pixel of the zone whether it is dry, and each answer read the whole
+ * 129 x 129 kernel): WHETHER THE PLATEAU ON (px, py) STANDS OVER SPAWN_DRY_ELEVATION - `spawnPlateauFloor(...) >
+ * SPAWN_DRY_ELEVATION` to the bit, read only until it is certain. Every sample is in [0, 1] (sampleKernel's clamp01),
+ * so the running sum never falls - and a float sum of non-negatives never falls either, nor do the division and the
+ * product by positive constants - so once the column's running average is over the line, the whole one is; and a pixel
+ * that never gets there is answered by the very sum spawnPlateauFloor makes, in its very order. `kernelOf` the kernel's
+ * maker (the pins count its reads).
+ */
+export function spawnGroundDry(woods, px, py, kernelOf = sampleKernel) {
+  const k = kernelOf(woods, px, py, HEIGHTMAP_DIMENSION, false);
+  const n = HEIGHTMAP_DIMENSION * HEIGHTMAP_DIMENSION;
+  let sum = 0;
+  for (let x = 0; x < HEIGHTMAP_DIMENSION; x++) {
+    for (let y = 0; y < HEIGHTMAP_DIMENSION; y++) sum += k(x, y);
+    if ((sum / n) * MAX_TERRAIN_HEIGHT > SPAWN_DRY_ELEVATION) return true;
+  }
+  return false;
+}
+
 /** Would a ruin on (px, py) stand on dry ground? Kept per pixel: the height map does not change under a session, and
- *  the build and the Overworld's far found spawns both ask. */
+ *  the build and the Overworld's far found spawns both ask. WILD-DRY: answered by spawnGroundDry. */
 export function createSpawnGround(woods) {
   const dry = new Map();
   return (px, py) => {
     const key = py * 1000 + px;
     let d = dry.get(key);
-    if (d === undefined) dry.set(key, d = spawnPlateauFloor(woods, px, py) > SPAWN_DRY_ELEVATION);
+    if (d === undefined) dry.set(key, d = spawnGroundDry(woods, px, py));
     return d;
   };
 }
@@ -140,7 +161,7 @@ export const pickTemplate = (templates, salt, px, py) => (templates?.length ? te
  * property of WHERE it stands - region, politic, climate (`where`, from the host, which owns the map files).
  * `locationIndex` is -1: the quest machine and the music read it as "a real table row", and this is none.
  * @param {object} template a real, non-main-story location with hasDungeon
- * @param {{salt:number, px:number, py:number, where?:{regionIndex?:number, regionName?:string, politic?:number, climate?:object}}} o
+ * @param {{salt:number, px:number, py:number, where?:{regionIndex?:number, regionName?:string, politic?:number, climate?:object}, elite?:boolean}} o
  */
 export function synthesizeDungeonLocation(template, { salt, px, py, where = {}, elite = false }) {
   const mapId = spawnedMapId(salt, px, py);
@@ -168,7 +189,7 @@ export function synthesizeDungeonLocation(template, { salt, px, py, where = {}, 
  */
 export function spawnTemplates(locations, isMain = () => false) {
   const dungeons = [...(locations ?? [])].filter((l) => l?.hasDungeon && l.dungeon?.blocks?.length
-    && l.exterior?.exteriorData && !isMain(l.mapTableData?.mapId) && !l.spawned
+    && l.exterior?.exteriorData && !isMain(l.mapTableData?.mapId) && !l.spawned && !l.ether   // AUDIT CAPTAIN'S SEA P3: never an isle's place - a session that stood ruins past the Veil first cloned other templates on every Bay pixel than its party
     && spawnClearance(l.exterior.exteriorData.width, l.exterior.exteriorData.height) >= SPAWN_CLEARANCE_M);   // SPAWNED-DUNGEONS3: never one the player could cross into inside 300 m
   const small = dungeons.filter((l) => l.exterior.exteriorData.width * l.exterior.exteriorData.height === 1);
   return small.length ? small : dungeons;
@@ -220,9 +241,11 @@ export function spawnedLocationCentreLocal(loc) {
 }
 
 /** The line, with the distance to the nearest ten metres and the compass word the host resolved. */
-export function dungeonSightLine(metres, direction, elite = false) {
+export function dungeonSightLine(metres, direction, tier = 'regular') {
   const m = Math.max(10, Math.round(metres / 10) * 10);
-  return `You see ${elite ? 'an Elite Dungeon' : 'a Dungeon'} ${m} metres to the ${direction}!`;
+  // TIER1 (Super-Dungeons.md section 12): the tier's words - an Elite's and (SD2) a Super's; a regular spawn is "a Dungeon"
+  const what = tier === 'super' ? 'an Abyss Dungeon' : tier === 'elite' ? 'an Elite Dungeon' : 'a Dungeon';
+  return `You see ${what} ${m} metres to the ${direction}!`;
 }
 
 // ---------------------------------------------------------------- TTL1

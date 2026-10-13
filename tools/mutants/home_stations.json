@@ -38,11 +38,12 @@
   {
     "name": "HOME-STATIONS-licence-unpaid",
     "file": "src/scenes/decorTool.js",
-    "old": "      if (!act && fee > 0) deps.wallet().pay(fee);\n",
+    "old": "    if (!act && fee > 0) deps.wallet().pay(fee);\n",
     "new": "",
     "tests": [
       "test/homestations.test.js"
-    ]
+    ],
+    "note": "AUDIT YARD-HEIGHT (PIN MOVED, re-aimed by content: one write of a piece at a time)."
   },
   {
     "name": "HOME-STATIONS-paid-short",
@@ -65,11 +66,12 @@
   {
     "name": "HOME-STATIONS-refund-on-unmaking",
     "file": "src/scenes/decorTool.js",
-    "old": "      if (!act && fee > 0) deps.wallet().pay(fee);",
-    "new": "      if (!act && fee > 0) deps.wallet().pay(fee); else deps.wallet().credit?.(DECOR_STATION_FEES[piece.station] / 2);",
+    "old": "    if (!act && fee > 0) deps.wallet().pay(fee);",
+    "new": "    if (!act && fee > 0) deps.wallet().pay(fee); else deps.wallet().credit?.(DECOR_STATION_FEES[piece.station] / 2);",
     "tests": [
       "test/homestations.test.js"
-    ]
+    ],
+    "note": "AUDIT YARD-HEIGHT (PIN MOVED, re-aimed by content: one write of a piece at a time)."
   },
   {
     "name": "HOME-STATIONS-station-holds-things",
@@ -92,11 +94,12 @@
   {
     "name": "HOME-STATIONS-chooser-stuck",
     "file": "src/ui/decorPanel.js",
-    "old": "const o = stationsOffered(); stationOffer = o[(o.indexOf(stationOffer) + 1) % o.length];",
-    "new": "const o = stationsOffered(); stationOffer = o[0];",
+    "old": "const o = stationsOffered(view?.trader !== false); stationOffer = o[(o.indexOf(stationOffer) + 1) % o.length];",
+    "new": "const o = stationsOffered(view?.trader !== false); stationOffer = o[0];",
     "tests": [
       "test/homestations.test.js"
-    ]
+    ],
+    "note": "WAGONS2 (FINAL AUDIT, PIN MOVED): re-aimed by content."
   },
   {
     "name": "HOME-STATIONS-never-pressed",

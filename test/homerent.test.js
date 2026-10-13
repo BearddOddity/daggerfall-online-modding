@@ -237,7 +237,7 @@ test('HOME-RENT held rent comes with a sale, and a delete waits for it: rent nob
   const act = async ({ call, apply }) => { const r = await call({ id: o.character, lease: 'l', seq: 8 }); if (r.ok) apply(r); return r; };
   const tab = await sellOnlineHome(client, { mapId: 7, buildingKey: 300, credit: (n) => credited.push(n), realm: { act } });
   assert.deepEqual([tab.ok, tab.rent, credited], [true, 40, [2540]], 'the refund and the held rent, as the service paid them');
-  assert.equal(homeSoldLine(tab.refund, tab.decorBack, tab.rent), 'You sold your home. 2540 gold went to this region\'s bank account, 40 of it rent you had not collected.');
+  assert.equal(homeSoldLine(tab.refund, tab.decorBack, tab.rent), 'You sold your home. 2,540 gold went to your account at the Bank of the Empire, 40 of it rent you had not collected.');   // HOME-PRICE: the thousands, the Empire's account
 });
 
 test('HOME-RENT the client\'s registry and door: the town is asked for the playing character, a row keeps its rooms free and its tenancy, a tenant\'s door opens, and the door\'s rows say "Go in" where it opens, "Rent a room" from the cheapest, and a tenant\'s own room to renew (mutants: the character unsent; the tenancy dropped; the rent row where none is free)', async (t) => {
@@ -380,7 +380,7 @@ test('HOME-RENT the decorator\'s rooms view: an online home of two rooms gets "R
   for (let i = 0; i < 3; i++) { r3.frame({ overlayUp: true }); await settle(); }
   btn('Collect rent').fire('click');
   await settle(); await settle();
-  assert.ok(r3.said.includes('You collected 70 gold in rent. It went to this region\'s bank account.'));
+  assert.ok(r3.said.includes('You collected 70 gold in rent. It went to your account at the Bank of the Empire.'));   // AUDIT HOME-PRICE E4 (PIN MOVED): online the rent lands in the Empire's account
   for (let i = 0; i < 3; i++) { r3.frame({ overlayUp: true }); await settle(); }
   rowsNow().find((r) => /Offered at/.test(JSON.stringify(r.children.map((k) => k.children?.map((x) => x.textContent))))).fire('click');
   btn('Stop offering').fire('click');
@@ -397,7 +397,7 @@ test('HOME-RENT the decorator\'s rooms view: an online home of two rooms gets "R
 
 test('HOME-RENT the host by source: the door lists a tenant\'s and a room-to-rent\'s rows, a rent row pressed (or a click on a home that shuts me out with a room free) asks which room, how many days and the price before it pays on the record, a tenant is told their days and rests there, and the decorator\'s rooms go through the service\'s own door (mutants: the rent before the lock unasked; the tenant\'s bed; the confirm skipped)', () => {
   const wm = src('src/scenes/worldModes.js');
-  assert.match(wm, /if \(home\) return homeVisitorRows\(home, homeDoorFor\(bd, home\)\);/);
+  assert.match(wm, /const rows = \[\.\.\.\(homeVisitorRows\(home, homeDoorFor\(bd, home\)\) \?\? \[\]\), \.\.\.\(worldPlaqueOn\(\) \? homeVoteRows\(home\) : \[\]\)\];/);   // PIN MOVED: HOME-VOTE - a visitor's rows, and the town's votes under them; PIN MOVED (AUDIT HOME-VOTE II D1): where the plaque draws a list
   assert.match(wm, /&& \(verb === HOME_VERB\.rent \|\| \(verb == null && door === 'locked' && home\.rent\)\)\) \{ openHomeRent\(bd, home\)/);
   assert.ok(wm.indexOf('openHomeRent(bd, home).catch') < wm.indexOf("if (door === 'locked') { townTalk?.say?.(homeLockedLine(home)); return true; }"), 'before the lock');
   assert.match(wm, /action: \(\) => openHomeRentConfirm\(bd, room, d\)/, 'the price asked before it is paid');

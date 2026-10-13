@@ -58,13 +58,14 @@ test('AUDIT WORLD4 A1: whether an act frame FITS is ONE HOME the sender reads be
 });
 
 test('AUDIT WORLD4 B1: an item field the readers walk as an ARRAY must BE an array - a string `enchantments` survived the clamp entire (it is a bounded string, which is a legal value) and then threw out of three readers, one of them the enchantment round inside the frame body itself, freezing the tab for good', () => {
-  assert.deepEqual([...LOOT_ARRAY_FIELDS], ['enchantments', 'customEnchantments', 'affixes'], 'the fields the readers walk (LR1: the rarity affix list too)');
+  assert.deepEqual([...LOOT_ARRAY_FIELDS], ['enchantments', 'customEnchantments', 'affixes', 'sockets', 'decks'], 'the fields the readers walk (LR1: the rarity affix list too; GEM1, PIN MOVED: a piece\'s socket list; CARDS8, PIN MOVED: a Card Binder\'s decks)');
   for (const f of LOOT_ARRAY_FIELDS) {
     assert.equal(validLootItem({ templateIndex: 133, [f]: 'abc' }), null, `${f} as a string is not an item`);
     assert.equal(validLootItem({ templateIndex: 133, [f]: 7 }), null, `${f} as a number is not an item`);
     assert.equal(validLootItem({ templateIndex: 133, [f]: { 0: { type: 1 } } }), null, `${f} as an object is not an item`);
-    const sample = f === 'affixes' ? [{ id: 'damage', value: 5 }] : [{ type: 1, param: 2 }];   // LR4: an affix list is CHECKED, not only typed - a sound record
-    assert.deepEqual(validLootItem({ templateIndex: 133, [f]: sample })[f], sample, `${f} as an array is kept whole`);
+    const sample = f === 'affixes' ? [{ id: 'damage', value: 5 }] : f === 'decks' ? [{ name: 'Starter Deck', cards: ['rat'] }] : f === 'sockets' ? ['empty'] : [{ type: 1, param: 2 }];   // CARDS8: a binder's deck, a sound one   // LR4: an affix list is CHECKED, not only typed - a sound record
+    const on = f === 'sockets' ? { group: 'Jewellery', rarity: 'rare' } : {};   // GEM1: a socket list stands on a piece that may hold one (lootRarity.js validSocket)
+    assert.deepEqual(validLootItem({ templateIndex: 133, ...on, [f]: sample })[f], sample, `${f} as an array is kept whole`);
     assert.deepEqual(validLootItem({ templateIndex: 133, [f]: [] })[f], [], 'an empty one too');
     assert.equal(validLootList([{ templateIndex: 133, [f]: 'abc' }]), null, 'and one such entry refuses the whole list');
   }
@@ -90,7 +91,7 @@ test('AUDIT WORLD4 A2/B2/D1 + C4: the mint is the ONE HOME of what may be said -
   assert.match(d, /if \(canon\.startsWith\('loot:'\)\) settleLootFlat\(Number\(canon\.slice\(5\)\)\);/, 'the room\'s word');
   assert.match(d, /settleLootFlat\(i\);   \/\/ AUDIT WORLD4 C3\/D2/, 'the save\'s restore');
   assert.equal((d.match(/const bi = billboardBatches\.indexOf\(p\.batch\);/g) ?? []).length, 1, 'and ONE HOME frees a layout pile\'s flat - the other destroy in the file is droppedLoot\'s teardown, a different owner');
-  assert.match(d, /const LOOT_KEY_RE = \/\^\(loot\|corpse\|enc\):\(0\|\[1-9\]\[0-9\]\{0,4\}\)\$\/;/, 'C4: one spelling, five digits at most (REST-SYNC: `enc` a shared encounter\'s body)');
+  assert.match(d, /const LOOT_KEY_RE = \/\^\(loot\|corpse\|enc\|srch\):\(0\|\[1-9\]\[0-9\]\{0,4\}\)\$\/;/, 'C4: one spelling, five digits at most (REST-SYNC: `enc` a shared encounter\'s body; SEARCH1: `srch` a searched object)');
   assert.match(d, /function lootKeyOf\(key\) \{\s*if \(typeof key !== 'string'\) return null;\s*const m = LOOT_KEY_RE\.exec\(key\);\s*return m \? `\$\{m\[1\]\}:\$\{Number\(m\[2\]\)\}` : null;\s*\}/, 'and the canon is what lands in _lootSeen and rides the wire');
   // C4 executed on the shape of the law: the spellings the old `key.split(':')` read as one container
   const RE = /^(loot|corpse|enc):(0|[1-9][0-9]{0,4})$/;
@@ -122,7 +123,7 @@ test('AUDIT WORLD4 D3/D4/B3: the memory says what it means and takes only what i
     'D3: what this client will not say, it will not hear - an old snapshot inside WORLD_TTL_MS used to blanket-replace a joiner\'s own rolls');
   assert.match(d, /function applyWorld\(w, \{ truncate = true, wire = false \} = \{\}\) \{/, 'and the wire is told from a save off disk');
   assert.match(d, /function patchFoe\(f, sf, wire = false\) \{\s*f\.entity\.health = sf\.health;/, 'B3: the per-foe body knows which it is');
-  assert.match(d, /if \(!wire\) f\.entity\.items = sf\.items\.map\(\(it\) => \(\{ \.\.\.it \}\)\);\s*else if \(sf\.items != null\) \{ const li = unbound\(validLootList\(sf\.items\)\); if \(li\) f\.entity\.items = li; \}/,   // SS3: projected, then without a bound piece
+  assert.match(d, /if \(!wire\) f\.entity\.items = sf\.items\.map\(\(it\) => \(\{ \.\.\.it \}\)\);\s*else if \(sf\.items != null\) \{ const li = peerHanded\(validLootList\(sf\.items\)\); if \(li\) f\.entity\.items = li; \}/,   // SS3: projected, then without a bound piece; PIN MOVED (HACKED-GOLD): SS3's peer law rides systems/peerWord.js peerHanded - a bound piece and a letter of credit
     'a list off the wire goes through the projection or nowhere; a record without one leaves this client\'s own roll alone');
   assert.match(d, /patchFoe\(f, sf, wire\);/, 'threaded');
   assert.match(d, /if \(ok && foes\[i\]\) \{ patchFoe\(foes\[i\], sf, wire\);/, 'on the rebuild too');   // CORPSE-GOLD: and the body's own record after it

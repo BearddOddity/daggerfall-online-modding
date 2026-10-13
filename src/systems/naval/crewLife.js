@@ -32,7 +32,7 @@
 
 import { musterOf, MOBILE, CREW_PER_HAND, MUSTER_MIN, MUSTER_MAX } from './navalBoarding.js';
 import { seededRng } from '../wind.js';
-import { mainLevel, DECK_STEP } from './navalDeck.js';
+import { mainLevel, DECK_STEP, FLIGHT_OVER } from './navalDeck.js';
 import { watchCount } from './shipWatch.js';
 
 /** A walker's pace on deck (m/s) - an amble, a hurry under fire or to a muster. */
@@ -67,6 +67,27 @@ export const CHORE_SHARE = 0.15;
 export const WORK_SHARE = 0.75;
 /** SHIP-WATCH: how far back from her stem the lookout stands (m). */
 export const LOOKOUT_BACK = 0.75;
+/**
+ * HOLDINGS (bible/03-World/Holdings.md, Mac: "Named crew companions should be able to be assigned to certain roles, and
+ * be positioned accordingly to their role"): A HAND'S POST BY HIS ROLE (shipCrew.js CREW_ROLES), on her main deck - her
+ * First Mate aft by her helm, her Bosun before her mainmast, her Carpenter by her hatch, her Cook forward at her galley's
+ * stove, her Gunners at her guns along her waist, starboard and port in turn; her Lookout keeps her bow (SHIP-WATCH), her
+ * Deckhands and her Bard go where they will. A second holder of one post stands beside the first.
+ */
+export const ROLE_POSTS = Object.freeze(['First Mate', 'Bosun', 'Carpenter', 'Cook', 'Gunner']);
+/** AUDIT HOLDINGS C2: with none named Lookout, the order a posted hand gives his post up to keep her bow (a hand with
+ *  no post first) - her First Mate never. */
+export const LOOKOUT_YIELD = Object.freeze(['Gunner', 'Cook', 'Carpenter', 'Bosun']);
+/** HOLDINGS: the share of an idle hand's choices that take him back to his post (the rest are his own - a job, a talk, a
+ *  walk), and how far off it he stands at it (m). */
+export const POST_SHARE = 0.8;
+export const POST_REACH = 0.6;
+/** HOLDINGS: how much longer a man stands at his post than an idle man stands anywhere. */
+export const POST_STAND = 2.5;
+/** HOLDINGS: how far apart two posts stand (m), and the ring of places round a post asked for that a taken one moves to
+ *  (her frame's metres, nearest first). */
+export const POST_APART = 1.0;
+const POST_RING = Object.freeze([[0, 0], [1.2, 0], [-1.2, 0], [0, 1.2], [0, -1.2], [1.2, 1.2], [-1.2, 1.2], [1.2, -1.2], [-1.2, -1.2], [2.4, 0], [-2.4, 0], [0, 2.4], [0, -2.4]].map((v) => Object.freeze(v)));
 /** A player's crew, round and round: the hands' Warriors with the rest of a ship's company - a Bard leads the song. */
 export const PLAYER_CREW = Object.freeze([MOBILE.Warrior, MOBILE.Barbarian, MOBILE.Bard, MOBILE.Archer, MOBILE.Warrior, MOBILE.Monk, MOBILE.Rogue, MOBILE.Warrior]);
 /** A player's crewed boat stands a man for every CREW_PER_HAND of her crew (at least one while any are aboard). */
@@ -234,10 +255,15 @@ const within = (rng, range) => range[0] + rng() * (range[1] - range[0]);
  */
 export function createCrewLife({ deck, roster, seed, places = [], faction = null }) {
   const rng = seededRng(((seed >>> 0) ^ 0x51ce11fe) >>> 0);
-  const spots = deck?.count ? deck.spots(Math.max(16, roster.length * 3)) : [];
-  // a flat on her walkable deck starts a walker; one off it (her wheel, her poop) is a station
+  // GALLEON (2026-10-01): her hands' work her MAIN deck's - a raised deck her walk joins up its flights (the new
+  // galleon's castle, the Carrack's forecastle) is her officers' and her walk's, never where her hands idle: a muster
+  // called from her castle's roof was 20 m of walk from the rail, past her grapples' flight
+  const main = deck?.y && deck.count ? mainLevel(deck) : NaN;
+  const spots = deck?.count ? deck.spots(Math.max(16, roster.length * 3), Number.isNaN(main) ? undefined : main) : [];
+  // a flat on her walkable deck starts a walker; one off it (her wheel, her poop) is a station - GALLEON: and one on a
+  // raised deck of hers (her castle's: her officer and her coxswain at her helm)
   const onDeck = [], stations = [];
-  for (const p of places) (deck?.walkable(p[0], p[2]) ? onDeck : stations).push(p);
+  for (const p of places) (deck?.walkable(p[0], p[2]) && !(p[1] > main + FLIGHT_OVER) ? onDeck : stations).push(p);
   const starts = [...stations.map((p) => ({ p, station: true })), ...onDeck.map((p) => ({ p, station: false })), ...spots.map((p) => ({ p, station: false }))];
   /** The `i`th of her roster, standing at his start. */
   const member = (r, i) => {
@@ -255,14 +281,94 @@ export function createCrewLife({ deck, roster, seed, places = [], faction = null
   let musterKey = '', quiet = false;
   // SHIP-WATCH: her bow (the lookout's post) and her hatch (where the watch below goes down and comes up), off her deck;
   // her lookout; whether her crew is turned in; the work she has (0..1)
-  const ext = deck?.y ? deckExtentZ(deck) : null;
-  const bow = ext && deck?.nearest ? deck.nearest(0, ext[1] - LOOKOUT_BACK) : null;
-  const hatch = deck?.count ? deck.nearest?.(0, ext ? (ext[0] + ext[1]) / 2 : 0) ?? null : null;
+  // GALLEON (2026-10-01): her hatch amidships of her MAIN deck - a raised deck her walk joins (the new galleon's castle
+  // up its two flights, the Carrack's forecastle) drew the middle of her whole deck off it, the galleon's onto her
+  // mainmast's drum. AUDIT GN-D7: her hatchways are no deck now (their covers open), so the galleon's stands on her
+  // deck beside her fore hatchway (1.6 m to port of its middle), never on its cover over the hole - the Carrack's at
+  // her cargo hatch's fore end (her main deck's middle lies on her main deck on every hull: its nearest cell is hers)
+  const mainExt = deck?.y && deck.count ? deckExtentZ(deck, main) : null;
+  // AUDIT GN-D4: her bow her MAIN deck's too, LOOKOUT_BACK from its stem and a cell of it (`nearest` at its level) -
+  // her whole deck's ran up the Carrack's forecastle stair, and her lookout kept his watch up there 1460 s of every
+  // 1740 (never where her hands idle); her main deck's stem's nearest cell at any level is her stair's, 5.59 m up
+  const bow = mainExt && deck?.nearest ? deck.nearest(0, mainExt[1] - LOOKOUT_BACK, main) : null;
+  const hatch = deck?.count ? deck.nearest?.(0, mainExt ? (mainExt[0] + mainExt[1]) / 2 : 0) ?? null : null;
   /** @type {any} */ let lookout = null;
   let asleep = false, work = 0;
   // AUDIT WK-W10: the roster place of the hand her card names Lookout (`ctx.lookout`), -1 for none; AUDIT WK-W7: whether
   // she has taken a step; AUDIT WK-W8: whether hands wait below to come up
   let named = -1, stood = false, rising = false;
+  // HOLDINGS: her hands' roles by roster place (`ctx.roles`), and the posts on her main deck they keep - made once
+  /** @type {readonly (string | null)[]} */ let roles = [];
+  /** @type {any} */ let posts;
+  /** HOLDINGS: her posts - each role's base place and facing on her main deck, her guns' places along her waist. */
+  function rolePosts() {
+    if (posts !== undefined) return posts;
+    const main = deck?.count ? mainLevel(deck) : NaN;
+    const e = deck?.count ? deckExtentZ(deck, main) ?? mainExt : null;   // GALLEON: her whole deck's extent is no longer kept - her main deck's is
+    if (!e || !deck?.nearest) return (posts = null);
+    const mid = (e[0] + e[1]) / 2, len = Math.max(1, e[1] - e[0]);
+    // each post a place of its own: the deck point nearest the one asked for, else the nearest of a ring round it that
+    // stands POST_APART from every post taken (her hatch, where the watch goes below, among them)
+    const taken = hatch ? [hatch] : [];
+    const at = (x, z) => {
+      for (const [dx, dz] of POST_RING) {
+        const q = deck.nearest(x + dx, z + dz);
+        if (q && !taken.some((t) => Math.hypot(t[0] - q[0], t[2] - q[2]) < POST_APART)) { taken.push(q); return q; }
+      }
+      return null;
+    };
+    // GALLEON-HOLDINGS: to port of her hatch where her deck lies there and not to starboard - Mac's galleon's hatch
+    // stands to port of her open fore hatchway (AUDIT GN-D7), and a post asked in the hole found her deck across it,
+    // 3.5 m off
+    const cx = hatch && !deck.walkable?.(hatch[0] + 1.1, hatch[2]) && deck.walkable?.(hatch[0] - 1.1, hatch[2]) ? -1.1 : 1.1;
+    const carpenter = hatch ? { at: at(hatch[0] + cx, hatch[2]), face: cx > 0 ? -Math.PI / 2 : Math.PI / 2 } : null;
+    const guns = [];
+    for (let k = 0; k < 6; k++) {
+      const side = k % 2 === 0 ? 1 : -1, z = mid + (Math.floor(k / 2) - 1) * Math.min(3, len * 0.15);
+      const r = deck.rail?.(side, z, [0, 0, 0], main);
+      const p = r ? at(r[0] - side * 0.5, r[2]) : null;
+      if (p) guns.push({ at: p, face: side > 0 ? Math.PI / 2 : -Math.PI / 2 });
+    }
+    return (posts = {
+      'First Mate': { at: at(0.8, e[0] + Math.min(2, len * 0.15)), face: 0 },
+      Bosun: { at: at(0, mid + Math.min(2.5, len * 0.12)), face: 0 },
+      Carpenter: carpenter,
+      Cook: { at: at(-0.8, e[1] - Math.min(4, len * 0.25)), face: Math.PI },
+      Gunner: guns,
+      at,
+    });
+  }
+  /** HOLDINGS: whether `m` stands at his post. */
+  const atPost = (m) => { const p = postOf(m); return !!p && Math.hypot(m.pos[0] - p.at[0], m.pos[2] - p.at[2]) <= POST_REACH; };
+  /** HOLDINGS: the post `m` keeps by his role - `{ at, face }` - or null: none for his role, a station's man (his own),
+   *  her lookout (her bow), or a deck with no room for it. The n-th holder of a post stands beside the first; her n-th
+   *  Gunner at her n-th gun. */
+  function postOf(m) {
+    const role = roles[m.i];
+    if (!role || m.station || m === lookout || !ROLE_POSTS.includes(role)) return null;
+    const p = rolePosts();
+    if (!p) return null;
+    let n = 0;
+    // AUDIT HOLDINGS C8: a holder gone (ashore, fallen) holds no place - the next stands at the post, not beside it
+    for (const o of members) { if (o === m) break; if (roles[o.i] === role && !o.station && o !== lookout && !o.gone) n++; }
+    if (role === 'Gunner') {
+      if (n < p.Gunner.length) return p.Gunner[n] ?? null;
+      if (!p.Gunner.length) return null;
+      // AUDIT HOLDINGS C8: a Gunner past her guns (a galley's eight hands) beside one of them, never on its man's spot
+      const gun = p.Gunner[n % p.Gunner.length];
+      gun.more ??= [];
+      const k = Math.floor(n / p.Gunner.length) - 1;
+      while (gun.more.length <= k) { const q = p.at(gun.at[0], gun.at[2]); gun.more.push(q ? { at: q, face: gun.face } : null); }
+      return gun.more[k] ?? gun;
+    }
+    const base = p[role];
+    if (!base?.at) return null;
+    if (!n) return base;
+    // the n-th holder of a post: a place of his own beside the first's, made once
+    base.more ??= [];
+    while (base.more.length < n) { const q = p.at(base.at[0], base.at[2]); base.more.push(q ? { at: q, face: base.face } : null); }
+    return base.more[n - 1] ?? base;
+  }
   /** SHIP-WATCH: whether `m` can keep her bow - a walker standing, never her Bard (she leads the song); AUDIT WK-W1: nor
    *  a man on his way below. */
   const canLook = (m) => !!m && !m.gone && !m.below && !m.station && m.mobile !== MOBILE.Bard && m.state !== 'turnIn';
@@ -277,18 +383,32 @@ export function createCrewLife({ deck, roster, seed, places = [], faction = null
       lookout = want;
     }
     if (lookout && !lookout.gone && !lookout.below) return lookout;
-    let first = null;
+    let first = null, best = null, bestRank = Infinity;
     lookout = null;
     for (let k = 0; k < members.length; k++) {
       const m = members[k];
       if (!canLook(m)) continue;
-      if (m.i > 0) return (lookout = m);
-      first = first ?? m;
+      if (m.i === 0) { first = first ?? m; continue; }
+      // AUDIT HOLDINGS C2: with none named Lookout, a hand with no post keeps her bow - else the one whose post matters
+      // least (LOOKOUT_YIELD: a Gunner, her Cook, her Carpenter, her Bosun), never the Bosun the Small Ship's and the
+      // Carrack's rosters are dealt while a Gunner stands by; no roles at all, her first hand past her captain as ever
+      const role = roles[m.i] ?? '', rank = LOOKOUT_YIELD.indexOf(role);
+      const r = role === 'First Mate' ? LOOKOUT_YIELD.length : rank < 0 ? -1 : rank;
+      if (r < bestRank) { best = m; bestRank = r; if (r < 0) break; }
     }
-    return (lookout = first);
+    return (lookout = best ?? first);
   }
 
   const live = () => members.filter((m) => !m.gone && !m.below);
+  /** AUDIT GN-D10: whether `m` - a hand, never a station - stands off her main deck (up a flight, on her castle's roof,
+   *  on the Carrack's forecastle): her officers' and her walk's, never where her hands idle. A hand gone up to talk
+   *  with her officer at the helm comes back down the moment the talk ends, and none waits or is sought there - the
+   *  new galleon's eight hands idled, waited and talked among themselves on her castle 380 s of every 1740. */
+  const offMain = (m) => !m.station && Math.abs(m.pos[1] - main) > DECK_STEP;
+  /** AUDIT GN-T2 (AUDIT NAV2 F41's law): whether another man stands within 0.3 m of `m` - a walk's end free when it was
+   *  chosen, taken while he walked (a man whose talk ended on his way stopped beside it: the Carrack's two stood merged
+   *  2.5 s once her cargo hatch changed her spots). */
+  const onAMan = (m) => members.some((o) => o !== m && !o.gone && !o.below && Math.hypot(o.pos[0] - m.pos[0], o.pos[2] - m.pos[2]) < 0.3);
   const say = (m, text, kind = 'talk') => { m.line = { text, kind, t: CREW_LINE_S }; };
   /** The song dropped with its leader gone - AUDIT NAV2 F47: and the next one CHANTY_S off (it began 0.03 s later). */
   const dropLeader = (m) => { if (chanty?.leader === m) { chanty = null; chantyT = within(rng, CHANTY_S); } };
@@ -320,7 +440,12 @@ export function createCrewLife({ deck, roster, seed, places = [], faction = null
     let to = null;
     for (const turn of TALK_TURNS) {
       const a = from + turn;
-      const p = deck?.clamp?.(o.pos[0] + Math.sin(a) * CREW_TALK_REACH, o.pos[2] + Math.cos(a) * CREW_TALK_REACH);
+      // AUDIT GN-D-wall: his place on her main deck when `o` stands on it (a hand on a flight's foot tread too), else on
+      // the floor `o` stands on (her officer on her castle) - the nearest cell at any level stood a hand two and three
+      // treads up a flight to talk with one at its foot (the Carrack's forecastle stair, 7-13 s a run once her stair's
+      // kept file lay beside her hands' spots); off every floor of hers (a station's post), the nearest as before
+      const tx = o.pos[0] + Math.sin(a) * CREW_TALK_REACH, tz = o.pos[2] + Math.cos(a) * CREW_TALK_REACH;
+      const p = deck?.clamp?.(tx, tz, undefined, 0, o.station || offMain(o) ? o.pos[1] : main) ?? deck?.clamp?.(tx, tz);
       if (!p) { to = o.pos; break; }
       if (Math.hypot(p[0] - o.pos[0], p[2] - o.pos[2]) >= 1 && !members.some((x) => x !== m && x !== o && !x.gone && claims(x, p, 0.6))) { to = p; break; }
     }
@@ -337,6 +462,9 @@ export function createCrewLife({ deck, roster, seed, places = [], faction = null
     for (const x of [m, m.mate]) {
       if (!x) continue;
       x.mate = null; x.talk = null; x.state = 'idle'; x.t = within(rng, CREW_IDLE_S); x.face = null; x.path = null;   // a walk to it given up with it (AUDIT NAV2 F46, F48)
+      // AUDIT GN-D10: off her main deck - back down at once; AUDIT GN-D-wall (F41's law): on a man - on at once (a talk
+      // the chanty ended while one walked past his mate to his place left the Carrack's two merged 5.8 s)
+      if (offMain(x) || onAMan(x)) x.t = 0;
     }
   }
   /** SHIP-WATCH: a man at a job where he stands, for WORK_S, facing his work. */
@@ -413,8 +541,23 @@ export function createCrewLife({ deck, roster, seed, places = [], faction = null
     if (m.station) { m.face = m.face ?? m.yaw; m.t = within(rng, CREW_IDLE_S); if (rng() < 0.3) m.face = rng() * TAU; return; }
     // SHIP-WATCH: the lookout to the bow, and there he keeps it, facing out over her stem
     if (m === lookout && bow) {
-      if (Math.hypot(m.pos[0] - bow[0], m.pos[2] - bow[2]) > 0.6 && walkTo(m, bow)) return;
+      if (Math.hypot(m.pos[0] - bow[0], m.pos[2] - bow[2]) > 0.6) {
+        // AUDIT GN-D4: never onto a man standing at her bow - her main deck's now, where a hand's spot can lie (the
+        // Carrack's lookout stood on one 2.9 s): he waits his turn
+        if (members.some((o) => o !== m && !o.gone && !o.below && Math.hypot(o.pos[0] - bow[0], o.pos[2] - bow[2]) < 0.6)) { m.t = within(rng, CREW_IDLE_S) * 0.25; return; }
+        if (walkTo(m, bow)) return;
+      }
       m.state = 'watch'; m.face = 0; m.t = within(rng, CREW_IDLE_S) * 2;
+      return;
+    }
+    // AUDIT GN-D10: a hand off her main deck goes back down to it before anything else - no job, no talk up there
+    if (offMain(m)) { const s = freeSpot(); if (s && walkTo(m, s)) return; }
+    // HOLDINGS: a hand with a post keeps to it - most of his idle choices take him back to it, facing his work there; the
+    // rest are his own (a job, a talk, a walk). A struck crew keeps none (AUDIT NAV2 F46's quiet)
+    const post = quiet ? null : postOf(m);
+    if (post && rng() < POST_SHARE) {
+      if (Math.hypot(m.pos[0] - post.at[0], m.pos[2] - post.at[2]) > POST_REACH && walkTo(m, post.at)) return;
+      m.face = post.face; m.t = within(rng, CREW_IDLE_S) * POST_STAND;
       return;
     }
     // SHIP-WATCH: a job of work - the more a fight left her to mend, the likelier; a chore now and then at peace. AUDIT
@@ -432,7 +575,7 @@ export function createCrewLife({ deck, roster, seed, places = [], faction = null
     if (rng() < 0.35 && !quiet && m !== chanty?.leader) {
       let best = null, bestD = CREW_TALK_SEEK;
       for (const o of members) {
-        if (o === m || o.gone || o.below || o.state !== 'idle' || o.mate || o === chanty?.leader || o === lookout) continue;
+        if (o === m || o.gone || o.below || o.state !== 'idle' || o.mate || o === chanty?.leader || o === lookout || offMain(o) || atPost(o)) continue;   // AUDIT GN-D10: never a hand off her main deck; HOLDINGS: nor a man at his post
         const d = Math.hypot(o.pos[0] - m.pos[0], o.pos[2] - m.pos[2]);
         if (d < bestD) { bestD = d; best = o; }
       }
@@ -453,9 +596,10 @@ export function createCrewLife({ deck, roster, seed, places = [], faction = null
    * their spirits or their order (shipCrew.js line), or null for the crew's own. SHIP-WATCH: `ctx.asleep` the night's
    * sleeping hours (all but the watch below); `ctx.work` what a fight left to mend (0..1); `ctx.call` a lookout's call
    * to shout this step (his, or the first man's); AUDIT WK-W10: `ctx.lookout` the roster place of the hand her card
-   * names Lookout (shipCrew.js ROLES), who keeps her bow whenever he can.
+   * names Lookout (shipCrew.js ROLES), who keeps her bow whenever he can. HOLDINGS: `ctx.roles` her hands' roles by roster
+   * place (shipCrew.js CREW_ROLES) - each keeps his role's post (ROLE_POSTS), her Gunners their guns under fire.
    * @param {number} dt
-   * @param {{ battle?: boolean, struck?: boolean, muster?: number, avoid?: number[] | null, order?: string | null, sings?: boolean, line?: (() => string | null) | null, asleep?: boolean, work?: number, call?: string | null, lookout?: number }} [ctx]
+   * @param {{ battle?: boolean, struck?: boolean, muster?: number, avoid?: number[] | null, order?: string | null, sings?: boolean, line?: (() => string | null) | null, asleep?: boolean, work?: number, call?: string | null, lookout?: number, roles?: readonly (string | null)[] | null }} [ctx]
    */
   function step(dt, ctx = {}) {
     // AUDIT WK-W7: her first step is taken in a frame of no time too (stood under a pause or a window) - nothing moves in
@@ -471,6 +615,7 @@ export function createCrewLife({ deck, roster, seed, places = [], faction = null
     if ((battle || struck) && !quiet) for (const m of members) if (m.mate && !m.gone) endTalk(m);
     quiet = battle || struck;
     // AUDIT WK-W1: her lookout every step - by day as by night, another the step he is gone (AUDIT WK-W10: her card's)
+    roles = Array.isArray(ctx.roles) ? ctx.roles : [];   // HOLDINGS: her hands' roles, by roster place
     named = Number.isInteger(ctx.lookout) ? /** @type {number} */ (ctx.lookout) : -1;
     pickLookout();
     // SHIP-WATCH: the night - turned in but the watch; the guns, a muster or her colours down call every hand up. AUDIT
@@ -546,7 +691,13 @@ export function createCrewLife({ deck, roster, seed, places = [], faction = null
         case 'idle':
           if ((m.t -= dt) > 0) break;
           if (!battle) decide(m);
-          else if (!m.station) { const s = freeSpot(); if (!s || !walkTo(m, s, CREW_HURRY)) m.t = within(rng, CREW_IDLE_S) * 0.5; }   // at the guns: from post to post at a run
+          else if (!m.station) {
+            // HOLDINGS: her Gunners at their own guns, facing out; the rest from post to post at a run
+            const gun = roles[m.i] === 'Gunner' ? postOf(m) : null;
+            if (gun && Math.hypot(m.pos[0] - gun.at[0], m.pos[2] - gun.at[2]) <= POST_REACH) { m.face = gun.face; m.t = within(rng, CREW_IDLE_S) * 0.5; break; }
+            const s = gun?.at ?? freeSpot();
+            if (!s || !walkTo(m, s, CREW_HURRY)) m.t = within(rng, CREW_IDLE_S) * 0.5;
+          }   // at the guns: from post to post at a run
           else m.t = within(rng, CREW_IDLE_S);
           break;
         case 'watch':   // SHIP-WATCH: the lookout at the bow, facing out over her stem
@@ -567,7 +718,7 @@ export function createCrewLife({ deck, roster, seed, places = [], faction = null
           // someone in his way too long: somewhere else - AUDIT NAV2 F48: a talk given up, a muster stood to where he is
           // (only a plain walk gave up: the other two waited on the player 23 to 29 s)
           if (advance(m, dt, ctx.avoid ?? null)) { m.blockT = 0; } else if ((m.blockT = (m.blockT ?? 0) + dt) > CREW_BLOCKED_S) { m.path = null; m.blockT = 0; if (m.state === 'toTalk') endTalk(m); }
-          if (m.state === 'walk' && !m.path) { m.state = 'idle'; m.t = within(rng, CREW_IDLE_S) * (m === lookout && !battle ? 0 : 1); }   // SHIP-WATCH: the lookout at his post at once - AUDIT WK-D5: at the guns he stands at each as the rest do (he ran post to post without a stop)
+          if (m.state === 'walk' && !m.path) { m.state = 'idle'; m.t = within(rng, CREW_IDLE_S) * (m === lookout && !battle || offMain(m) || onAMan(m) ? 0 : 1); }   // SHIP-WATCH: the lookout at his post at once - AUDIT WK-D5: at the guns he stands at each as the rest do (he ran post to post without a stop); AUDIT GN-D10: a walk given up off her main deck, down again at once; AUDIT GN-T2: one ended on a man standing, on again at once
           else if (m.state === 'toWork' && !m.path) { if (asleep && !(work > 0)) { m.state = 'idle'; m.t = 0; } else startWork(m); }
           else if (m.state === 'turnIn' && !m.path) { m.below = true; m.state = 'below'; m.line = null; continue; }
           else if (m.state === 'toTalk' && !m.path) m.state = 'talk';
@@ -730,6 +881,8 @@ export function createCrewLife({ deck, roster, seed, places = [], faction = null
     /** SHIP-WATCH: her lookout (a member, or null); whether her crew is turned in; how many are below; her hatch and
      *  her bow (her frame), or null. */
     lookout: () => pickLookout(),
+    /** HOLDINGS: the post the `i`th of her roster keeps by his role (`{ at, face }`), or null. */
+    postOf: (i) => (members[i] ? postOf(members[i]) : null),
     asleep: () => asleep,
     belowCount: () => members.reduce((a, m) => a + (!m.gone && m.below ? 1 : 0), 0),
     hatch, bow,

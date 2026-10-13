@@ -178,7 +178,8 @@ test('AUDIT C4-C6: the rest never reads longer than a rest (an older save\'s clo
   const rec = N.revenantRecord(me, r.id);
   rec.companion.state = 'resting'; rec.companion.until = 10000;
   assert.equal(RC.restUntil(rec, 5000), 5000 + RC.REVENANT_REST_MIN, 'an older clock: never more than a rest away');
-  assert.equal(RC.restUntil(rec, 9900), 10000);
+  assert.equal(RC.restUntil(rec, 5240), 5480, 'the corrected deadline stays fixed as the clock advances');
+  assert.equal(RC.restUntil(rec, 9900), 5480, 'an elapsed rest is not extended again');
   rec.companion.state = 'with'; rec.companion.until = null;
   const party = RC.revenantParty();
   RC.holdSworn(r.id, 60000);
@@ -198,9 +199,10 @@ test('AUDIT C4-C6: the rest never reads longer than a rest (an older save\'s clo
 
 test('AUDIT C3/C7: the world keeps the slots and the words true - past the slots the most lately sworn steps away; opposite acts in one pause cancel; a load forgets the words and the members (mutants: a fourth at the side; a dismiss said for one that never left)', () => {
   const w = read('src/scenes/world.js');
-  assert.match(w, /if \(companionsWithYou\(\) > COMPANION_SLOTS\) \{\n\s*const last = revenantsWithYou\(\)\.sort\(\(a, b\) => \(b\.swornAt \?\? 0\) - \(a\.swornAt \?\? 0\)\)\[0\];\n\s*if \(last && sendRevenantAway\(last\.id\)\)/);
+  assert.match(w, /if \(companionsWithYou\(\) > COMPANION_SLOTS\) \{\n\s*const last = revenantsWithYou\(\)\.sort\(\(a, b\) => \(b\.swornAt \?\? 0\) - \(a\.swornAt \?\? 0\)\)\[0\];\n\s*if \(last && sendRevenantAway\(last\.id, \{ byYou: false \}\)\)/);   // PIN MOVED (RVN11a, Feud-Arc.md 22.1): the slots' hold, never the player's sending - no loyalty lost
   assert.match(w, /if \(kind === 'arrive'\) \{ if \(sentAt >= 0\) _revenantDepartures\.splice\(sentAt, 1\); else noteRevenantArrival\(r\.id\); return; \}/);
-  assert.match(w, /const clearSworn = \(\) => \{ revenantAshore\.clear\(\); _revenantArrivals\.clear\(\); _revenantDepartures\.length = 0; forgetSwornMember\(\); \};/);
+  // PIN MOVED (AUDIT FEUD: a load forgets a turning queued under a window too)
+  assert.match(w, /const clearSworn = \(\) => \{ revenantAshore\.clear\(\); _revenantArrivals\.clear\(\); _revenantDepartures\.length = 0; _revenantBetrayals\.length = 0; forgetSwornMember\(\); \};/);
   assert.equal((w.match(/clearSworn\(\);/g) ?? []).length, 2, 'the quickload and a same-dungeon load');
 });
 
@@ -219,8 +221,9 @@ test('AUDIT B1/B4/B6: the window holds the wait; one held is no swing\'s, spell\
   const x = read('src/scenes/exteriorFoes.js'), d = read('src/scenes/dungeonContext.js');
   assert.match(x, /const live = dropFateHeld\(foes\.filter\(\(f\) => !f\.dead && !isShipmate\(f\)\)\);/);
   assert.match(d, /const live = dropFateHeld\(foes\.filter\(\(f\) => !f\.dead && f\.companion == null\)\);/);
-  assert.match(read('src/scenes/hostMagic.js'), /if \(foe\?\.yielded \|\| foe\?\.executing \|\| foe\?\.sparing \|\| foe\?\.leaving\) return null;/);
-  assert.match(read('src/combat/arrowFlight.js'), /if \(foe\.yielded \|\| foe\.executing \|\| foe\.sparing \|\| foe\.leaving\) return 0;/, 'the player\'s shaft lands nothing on one held (every host\'s one copy)');
+  // PIN MOVED (RVN4: nor one roaring its last stand - the spell's door and the shaft's)
+  assert.match(read('src/scenes/hostMagic.js'), /if \(foe\?\.yielded \|\| foe\?\.executing \|\| foe\?\.sparing \|\| foe\?\.leaving \|\| foe\?\.roaring\) return null;/);
+  assert.match(read('src/combat/arrowFlight.js'), /if \(foe\.yielded \|\| foe\.executing \|\| foe\.sparing \|\| foe\.leaving \|\| foe\.roaring\) return 0;/, 'the player\'s shaft lands nothing on one held (every host\'s one copy)');
   assert.match(read('src/scenes/world.js'), /else if \(rec\.yielded\) rec\.yielded\.judging = \(\) => !w\.done;/, 'the host holds it while its window stands');
   // the pile takes the pack - the record keeps none
   fresh();
@@ -253,7 +256,7 @@ test('AUDIT B2/B3/B5/P1-P3: the execution pays its Renown and takes its soul; a 
   const base = { i: 1, t: 2, x: 0, f: [0, 0, 0], y: 0 };
   assert.equal(validFoeRecord({ ...base, sp: 1 })?.sp, 1, 'the oath rides the wire');
   assert.equal(validFoeRecord({ ...base, sp: 2 }), null, '1 or absent');
-  assert.match(d, /return t \? \{ title: f\.yielded \? `\$\{t\} - beaten` : t \} : null;/, 'the dungeon\'s hover says beaten');
+  assert.match(d, /return t \? \{ title: f\.yielded \? `\$\{t\} - beaten` : t, subs: questFoeSubs\(f\) \} : null;/, 'the dungeon\'s hover says beaten (QUEST-FOE-LINE: and a quest foe\'s line beside it)');
 });
 
 // ── THE UI ───────────────────────────────────────────────────────────────────────────────────────────────────────

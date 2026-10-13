@@ -30,7 +30,7 @@
 // the field only 2 (:137) or 0 (:139), so its own `punishmentType ==
 // 1` arms at :329 and :399 are dead code, and :279 says so in DFU's
 // own words - "Seems like an execution sentence can't be given in
-// classic. It can't be given here, either." court.js:"The %cri crime names", court.js:"for (let i = 0; i < penaltyAmount; i++) {".."}" and
+// classic. It can't be given here, either." court.js:"return localizedText('Execution', 'Execution');", court.js:"export function pleaGuilty".."if (court.punishmentType === 1) return { outcome: 'executed' };" and
 // :431 carry the same unreachable arm for the same reason (an arm
 // that is absent and an arm that is wrong read alike from the call
 // site). The prison time-skip riding the host clock callback is the
@@ -337,6 +337,46 @@ export function deductGold(player, amount) {
     return owed;   // underpaid - the caller decides what covers the rest
   }
   return 0;
+}
+/** MARKET-AUDIT (2026-10-04): deductGold, and the undo of exactly what it took - the coins back to the purse, each letter
+ *  back to the value it had (a spent one into the pack again). A refused online payment gave its whole cost back as
+ *  coins (`addGold`): a 30,000-gold letter paid out and refused came back as 150 kg of purse. The undo moves only what
+ *  this payment moved, so gold the purse gained or a letter spent elsewhere between stays as it is. */
+export function deductGoldUndoable(player, amount) {
+  const purse = goldPiecesOf(player);
+  const items = player.items ?? [];
+  const letters = items.filter((it) => it.templateIndex === LETTER_OF_CREDIT_TEMPLATE).map((it) => [it, it.value ?? 0]);
+  const owed = deductGold(player, amount);
+  const coins = purse - goldPiecesOf(player);
+  const spent = letters.filter(([it, v]) => !items.includes(it) || (it.value ?? 0) !== v).map(([it, v]) => [it, v - (items.includes(it) ? (it.value ?? 0) : 0)]);
+  let undone = false;
+  const undo = () => {
+    if (undone) return;
+    undone = true;
+    if (coins > 0) addGoldPieces(player, coins);
+    const pack = (player.items ??= []);
+    for (const [it, back] of spent) {
+      if (pack.includes(it)) it.value = (it.value ?? 0) + back;
+      else { it.value = back; pack.push(it); }
+    }
+  };
+  return { owed, undo };
+}
+/** MARKET-AUDIT: an online payment's order - the purse and its letters (deductGold), then what they could not cover off
+ *  `account` (a bank account's `accountGold`, or none) - answering the undo of exactly that: the purse's coins, each
+ *  letter, the account's share, once. Every realm act's `reserve` gives this back on a refusal; a whole-cost `credit` as
+ *  coins turned letters and the bank's gold into a purse past carrying. */
+export function payUndoable(player, amount, account = null) {
+  const { owed, undo } = deductGoldUndoable(player, amount);
+  const fromBank = account && owed > 0 ? owed : 0;
+  if (fromBank) account.accountGold -= fromBank;
+  let undone = false;
+  return () => {
+    if (undone) return;
+    undone = true;
+    undo();
+    if (fromBank) account.accountGold += fromBank;
+  };
 }
 /** `playerEntity.GoldPieces += amount` - E3's sale proceeds and every
  *  other credit. E4 made it the counter's write; nothing lands in the

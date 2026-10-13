@@ -590,8 +590,8 @@
   {
     "name": "PROF11-no-mason-station",
     "file": "src/net/decorLaw.js",
-    "old": "'workbench', 'loom', 'mason', 'jeweller']);",
-    "new": "'workbench', 'loom', 'jeweller']);",
+    "old": "'workbench', 'loom', 'mason', 'jeweller', 'vendor']);",
+    "new": "'workbench', 'loom', 'jeweller', 'vendor']);",
     "tests": [
       "test/prof11_law.test.js",
       "test/homestations.test.js",
@@ -601,8 +601,8 @@
   {
     "name": "PROF11-mason-licence-cheap",
     "file": "src/net/decorLaw.js",
-    "old": "loom: 50_000, mason: 50_000, jeweller: 50_000 });",
-    "new": "loom: 50_000, mason: 5_000, jeweller: 50_000 });",
+    "old": "loom: 50_000, mason: 50_000, jeweller: 50_000, vendor: 25_000 });",
+    "new": "loom: 50_000, mason: 5_000, jeweller: 50_000, vendor: 25_000 });",
     "tests": [
       "test/prof11_law.test.js",
       "test/homestations.test.js"
@@ -899,12 +899,13 @@
   {
     "name": "PROF11-pages-masonry-unpractised",
     "file": "src/ui/profPages.js",
-    "old": "'carpentry', 'masonry', 'cooking', 'jewelcrafting', 'alchemy', 'enchanting']);   // PROF8: Fishing; PROF11: Masonry",
-    "new": "'carpentry', 'cooking', 'jewelcrafting', 'alchemy', 'enchanting']);   // PROF8: Fishing; PROF11: Masonry",
+    "old": "  masonry: () => [[t('prof.page.unlocks.masonry1', 'Cut Stone, from Rough Stone'), 1],",
+    "new": "  stonework: () => [[t('prof.page.unlocks.masonry1', 'Cut Stone, from Rough Stone'), 1],",
     "tests": [
-      "test/prof11_client.test.js"
+      "test/prof11_client.test.js",
+      "test/craft3_five.test.js"
     ],
-    "note": "PROF9 (RE-AIMED by content): the fire's code beside it. PROF12 (PIN MOVED): re-aimed by content."
+    "note": "PROF9 (RE-AIMED by content): the fire's code beside it. PROF12 (PIN MOVED): re-aimed by content. CRAFT3: re-aimed by content. L10N4 (the merge of main): re-aimed by content - the table's rows read when drawn."
   },
   {
     "name": "PROF11-pages-fortifications-unsaid",
@@ -915,7 +916,7 @@
       "test/prof11_client.test.js"
     ],
     "equivalent": true,
-    "why": "nothing waits on SEAT2b since the fortifications shipped - no specialisation or recipe carries a later slice now, so the word is never drawn (it stands for the next slice that does)"
+    "why": "CRAFT3's re-judge (2026-10-07): survives on main too - since SEAT2b built the fortifications no choice is `later: 'SEAT2b'`, so LATER_WORDS.SEAT2b is a word no card reads now; the pins that the Builder and the Fortifier are chosen stand. L10N4: so too through its getter - the word stands for the next slice that waits on one."
   },
   {
     "name": "PROF11-pages-mortar-at-rank-0",
@@ -929,8 +930,8 @@
   {
     "name": "PROF11-pages-hands-not-at-the-bench",
     "file": "src/ui/profPages.js",
-    "old": ": me !== _mason && _mason.act ? 'mason' : me !== _cook",
-    "new": ": me !== _cook",
+    "old": ": me !== _mason && (_mason.act || _mason.crafting) ? 'mason'\n    : me !== _cook",
+    "new": "\n    : me !== _cook",
     "tests": [
       "test/prof11_client.test.js"
     ],
@@ -1156,12 +1157,13 @@
   {
     "name": "PROF11-door-sculptor-unworded",
     "file": "src/net/accountClient.js",
-    "old": "  'prof-sculptor': () => t('account.refusal.profSculptor', 'Only a Sculptor carves stone decor - Masonry\\'s choice at 100.'),   // PROF11\n",
+    "old": "  'prof-sculptor': () => t('account.refusal.profSculptor', 'Only a Sculptor carves stone decor - a Building choice at 100 (Masonry\\'s).'),   // PROF11; CRAFT3: the craft's\n",
     "new": "",
     "tests": [
       "test/prof11_service.test.js",
       "test/prof11_client.test.js"
-    ]
+    ],
+    "note": "CRAFT3: re-aimed by content."
   },
   {
     "name": "PROF11-svc-work-rank-unasked",

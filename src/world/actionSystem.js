@@ -105,6 +105,10 @@ export const DOOR_VERB_FLAGS = new Set([
  *  GetComponent as `kind === 'door'` alone, which admits the special
  *  door the C# lookup can never return. */
 export const isActionDoorObject = (o) => !!o && o.kind === 'door' && !o.special;
+/** How far down a chain IsPlaying looks before it answers no (DaggerfallAction.IsPlaying's recursion, bounded here so
+ *  a looped chain cannot overflow the stack). AUDIT DELVE A4: one home - the echo's chain walk reads it
+ *  (systems/dungeonEcho.js ECHO_CHAIN_MAX). */
+export const PLAY_DEPTH_MAX = 32;
 
 // Delegated relays (P10/U6): Teleport, the text actions and
 // SetGlobalVar run through scene seams inside _runRelay. Activate
@@ -442,6 +446,7 @@ constructor(collider, { damagePlayer = null, drainMagicka = null, castSpell = nu
     this.onTeleportPortal = null;
     this.onLockedDoor = null;
     this.onActionSound = null;
+    this.onPlayed = null;   // ECHO1: (o, triggerType) - every Receive that passed the gate, before its Play (systems/dungeonEcho.js)
     this.onShowText = null;
     this.onShowTextInput = null;
     this.onDoorText = null;
@@ -536,7 +541,32 @@ constructor(collider, { damagePlayer = null, drainMagicka = null, castSpell = nu
 
   _next(o) {
     if (o.nextKey == null || o.nextKey < 0) return null;
-    return this._links.get(`${o.ns}:${o.nextKey}`) ?? null;
+    return this.objectAt(o.ns, o.nextKey);
+  }
+
+  /** The object registered under block instance `ns` and RDB object position `positionKey` - the chain's own key, the
+   *  one `_next` follows. TOTEM-CAGE: a quest item's scene marker is found by it (systems/quest/sceneMount.js
+   *  sceneMarkerMover). */
+  objectAt(ns, positionKey) {
+    return this._links.get(`${ns}:${positionKey}`) ?? null;
+  }
+
+  /** ECHO1: the object `o`'s chain link - `_next`, DFU's ActivateNext, for a reader that walks the chain without
+   *  playing it (systems/dungeonEcho.js chainMovers). */
+  nextOf(o) {
+    return this._next(o);
+  }
+
+  /** SENSE1 (the delve arc): every object some OTHER object's chain reaches - the keys `_next` resolves to. The look
+   *  round's secrets tier asks it which movers only a chain moves (systems/dungeonSense.js isSecretMover). A read of
+   *  the graph DFU only ever walks forward - not a DFU member. */
+  chainTargets() {
+    const out = new Set();
+    for (const o of this.objects.values()) {
+      const n = this._next(o);
+      if (n && n !== o) out.add(n.key);
+    }
+    return out;
   }
 
   /** Register an effect action (Hurt/Poison/DrainMagicka/CastSpell):
@@ -703,6 +733,11 @@ constructor(collider, { damagePlayer = null, drainMagicka = null, castSpell = nu
       actionFlag: action.actionFlag ?? ACTION_FLAGS.None,
       index: action.index,
       axisRaw: action.axisRaw,
+      // FIELD BUGS 2026-10-05c (FLAT-RELAY; "red brick sections are not always working at teleporters"): an acting FLAT
+      // relay is heard by its box (dungeonContext collisionTriggers' standsOnAction), as addEffect's and addMoveFlat's
+      // are - left unset, the pass asked a flat's triangles, which it has none of, and a walk into a flat Teleport
+      // (Collision03) never fired: AUDIT PRE-MERGE 0929's "the acting flats keep the box", lost for relays alone
+      isFlat: action.isFlat === true,
       activationCount: 0,
       state: 'start',
       nextKey: action.nextObject,
@@ -934,7 +969,7 @@ constructor(collider, { damagePlayer = null, drainMagicka = null, castSpell = nu
   _isPlaying(o, depth = 0) {
     const s = o.kind === 'door' ? o.moveState : o.state;
     if (s === 'forward' || s === 'reverse') return true;
-    if (depth > 32) return false;
+    if (depth > PLAY_DEPTH_MAX) return false;
     const next = this._next(o);
     return next ? this._isPlaying(next, depth + 1) : false;
   }
@@ -953,6 +988,7 @@ constructor(collider, { damagePlayer = null, drainMagicka = null, castSpell = nu
       if (!allowed || !allowed.includes(triggerType)) return;
     }
     o.activationCount = (o.activationCount ?? 0) + 1;   // verbatim: Receive increments, then Plays
+    this.onPlayed?.(o, triggerType);   // ECHO1: what this graph set going, and by which trigger (an observer - nothing reads back)
     this._play(o);
   }
 
@@ -1401,6 +1437,19 @@ constructor(collider, { damagePlayer = null, drainMagicka = null, castSpell = nu
     } else {
       this.collider.addMesh(o.key, o.cpu.positions, o.cpu.indices, o.matrix);
     }
+  }
+
+  /** AUDIT LW-ROOMS (scenes/livingIndoors.js): `fn`'s answer with every
+   *  door shut as the build hung it - each solid at its base, where a
+   *  door open (its bucket gone: _settleDoorBucket) or carried off by its
+   *  Move is no wall - and each bucket after as its live swing has it.
+   *  The living world measures its room so: a door the player, a load or
+   *  a peer left open laid the room out anew, its every drinker elsewhere.
+   *  @template T @param {() => T} fn @returns {T} */
+  withDoorsShut(fn) {
+    const doors = [...this.objects.values()].filter((o) => o.kind === 'door');
+    for (const o of doors) { this.collider.removeBucket(o.key); this.collider.addMesh(o.key, o.cpu.positions, o.cpu.indices, o.base); }
+    try { return fn(); } finally { for (const o of doors) this._settleDoorBucket(o); }
   }
 
   /** A door is a solid obstacle only while the hinge is fully closed

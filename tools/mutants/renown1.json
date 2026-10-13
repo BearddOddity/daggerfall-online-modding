@@ -56,11 +56,12 @@
   {
     "name": "RENOWN1-hour-spend-matches-nothing",
     "file": "server-account/src/renownTracks.js",
-    "old": "       WHERE id = ?1\n       RETURNING renown_last_credit AS credit, (${track}) AS before, ${repeat} AS repeat, ${refused} AS refused`,",
-    "new": "       WHERE id = ?1 AND ?2 IS NULL\n       RETURNING renown_last_credit AS credit, (${track}) AS before, ${repeat} AS repeat, ${refused} AS refused`,",
+    "old": "       WHERE id = ?1\n       RETURNING renown_last_credit AS credit, (${track}) AS before, ${repeat} AS repeat, ${refused} AS refused, renown_hour_xp AS hour_xp`,",
+    "new": "       WHERE id = ?1 AND ?2 IS NULL\n       RETURNING renown_last_credit AS credit, (${track}) AS before, ${repeat} AS repeat, ${refused} AS refused, renown_hour_xp AS hour_xp`,",
     "tests": [
       "test/renown1.test.js"
-    ]
+    ],
+    "note": "SCALE4h (re-aimed by content): the hour's spend read back too."
   },
   {
     "name": "RENOWN1-hour-window-never-resets",
@@ -83,8 +84,8 @@
   {
     "name": "RENOWN1-tracks-unbounded",
     "file": "server-account/src/renownTracks.js",
-    "old": "  const refused = `(NOT EXISTS (${track}) AND (SELECT COUNT(*) FROM renown_tracks WHERE player = ?1) >= ?7)`;",
-    "new": "  const refused = `(NOT EXISTS (${track}) AND (SELECT COUNT(*) FROM renown_tracks WHERE player = ?1) > ?7)`;",
+    "old": "  const refused = `(NOT EXISTS (${track}) AND ${held} >= ?7)`;",
+    "new": "  const refused = `(NOT EXISTS (${track}) AND ${held} > ?7)`;",
     "tests": [
       "test/renown1.test.js"
     ]
@@ -417,8 +418,8 @@
   {
     "name": "RENOWN1-heading-changed-for-everyone",
     "file": "src/ui/enhancedAccount.js",
-    "old": "    } else root.append(el('h3', null, heading));",
-    "new": "    } else { const plain = el('h3', null, null); plain.append(el('span', 'acctname', heading)); root.append(plain); }",
+    "old": "    } else head.append(el('h3', null, heading));",
+    "new": "    } else { const plain = el('h3', null, null); plain.append(el('span', 'acctname', heading)); head.append(plain); }",
     "tests": [
       "test/renown1.test.js"
     ]

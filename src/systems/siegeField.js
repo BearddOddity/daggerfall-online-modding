@@ -27,6 +27,7 @@
 // Pure. Not a DFU member. Ledger A (EVERY PALACE A SEAT's row).
 import { PIXEL_UNITS } from '../net/wire.js';
 import { SIEGE_UNITS_PER_M } from '../net/siegeRef.js';
+import { noticeBoardIndex } from './bountyBoard.js';
 
 /** The building keys of a laid-out town's records of one type (world/buildingNames.js BUILDING_TYPES) - its blocks' own
  *  building data, the key every building of the pixel carries (scenes/seatBanners.js palaceKeysOf's walk). Pure. */
@@ -48,12 +49,15 @@ export const SIEGE_FIELD = Object.freeze({ thronePaceM: 1.5, defendCampM: 12, ga
  * lowest (AUDIT G2: its centre's height, as DFU's landing measures it - player/enterExit.js doorWorldPosition; on a tie
  * the first, the records' order - the same on every machine) of those a face can be taken from (AUDIT G3: doorFace - a
  * door narrower than a man passed over for the next): `{ door, box, normal }`, the frame siegeFieldOf's `castle` and
- * scenes/seatBanners.js seatBannerAnchors' take. Null for none. Pure.
- * @param {Array<{ door: { a: number[], b: number[] } | null, box: number[], normal?: number[] | null }>} doors
+ * scenes/seatBanners.js seatBannerAnchors' take. Null for none. Pure. AUDIT PRE-MERGE 1003 W7: a door marked `arena` (the
+ * undercroft's stair in Daggerfall's colosseum, scenes/world.js - a dungeon entrance of the arena's block, ARENA1) is no
+ * castle's: it is passed over, however low it stands, and stays the player's door all the same (the hosts' door lists).
+ * @param {Array<{ door: { a: number[], b: number[] } | null, box: number[], normal?: number[] | null, arena?: boolean }>} doors
  */
 export function castleEntranceOf(doors) {
   let best = null, low = Infinity;
   for (const d of doors ?? []) {
+    if (d?.arena) continue;   // AUDIT PRE-MERGE 1003 W7
     if (!d?.door || !Array.isArray(d.door.a) || !Array.isArray(d.door.b) || !Array.isArray(d.box) || d.box.length < 6) continue;
     const y = (d.door.a[1] + d.door.b[1]) / 2;
     const normal = Array.isArray(d.normal) ? [...d.normal] : null;
@@ -120,13 +124,10 @@ export function siegeFieldOf({ frames = null, palaceKeys = [], templeKeys = [], 
     gateBanner = step(centre, away, SIEGE_FIELD.openGateM);
     attack = step(centre, away, SIEGE_FIELD.openCampM);
   }
-  // the Market: the rumour board nearest the middle
-  let market = centre, near = Infinity;
-  boards.forEach((b, i) => {
-    if (bounty.has(i) || !Array.isArray(b?.box) || b.box.length < 6) return;
-    const m = boxMid(b.box), d = Math.hypot(m[0] - centre[0], m[1] - centre[1]);
-    if (d < near) { near = d; market = m; }
-  });
+  // the Market: the rumour board nearest the middle (bountyBoard.js noticeBoardIndex - AUDIT 657 B7: one law, its tie
+  // broken by the boards' position, never their order)
+  const at = noticeBoardIndex(boards, bounty, centre);
+  const market = at >= 0 && boards[at].box.length >= 6 ? boxMid(boards[at].box) : centre;
   // the Temple: its door, else the largest guild hall's, else the middle
   let temple = null;
   for (const k of templeKeys) { const f = doorFace(frames?.get?.(k)); if (f) { temple = step(f.at, f.out, SIEGE_FIELD.templePaceM); break; } }

@@ -14,6 +14,7 @@ import { readFileSync } from 'node:fs';
 import {
   validParkData, cellRoomOfWire, relaySupportsPark, validPose, poseChanged, parseClient, PARK_CELL_MAX, PARK_ACCOUNT_MAX, PARK_TTL_MS, PIXEL_UNITS,
   parkRegistryRoom, parkKeyOf, parkKey, POSE_RIDE,
+  POSE_BOUND,
 } from '../src/net/wire.js';
 import { lerpPose } from '../src/net/online.js';
 import { fakeRooms, fakeRoom } from './fakeRoom.mjs';
@@ -45,7 +46,7 @@ test('HCC-PARK wire: the frame names its CHARACTER; the anchor names the cell (M
   assert.equal(validParkData({ c: CA, a: [AX, AZ], r: { h: [AX, 1, AZ, 0, 1, 1] } }), null, 'a walking horse is not parked');
   assert.equal(validParkData({ c: CA, a: [AX, AZ], r: { w: W(AX + 20000) } }), null, 'a part far from its anchor is a second place');
   assert.deepEqual(validParkData({ c: CA, a: [AX, AZ], r: { h: [AX, 1, AZ, 0, 1e300, 0] } }).r.h, [AX, 1, AZ, 0, 1, 0], 'AUDIT D5: a facing is a unit one - 1e300 is not stored and fanned');
-  assert.equal(validParkData({ c: CA, a: [-1, AZ] }), null); assert.equal(validParkData({ c: CA, a: [AX] }), null);
+  assert.equal(validParkData({ c: CA, a: [-POSE_BOUND - 1, AZ] }), null);   // PIN MOVED (TV-BEYOND): an anchor west of the Bay is the world's - past the world is none assert.equal(validParkData({ c: CA, a: [AX] }), null);
   assert.equal(validParkData({ c: CA, a: [AX, AZ], r: { n: 'Bess' } }), null, 'a name with nothing parked');
   assert.deepEqual(parseClient(JSON.stringify({ t: 'park', data: { c: CA } }), { hasHello: true }), { t: 'park', data: { c: CA } });
   assert.equal(parseClient(JSON.stringify({ t: 'park', data: null }), { hasHello: true }).error, 'bad park', 'the old null word names no character');
@@ -375,10 +376,10 @@ test('HCC-PARK / RIDE hosts: the owner\'s word names the character, is ticked wi
   assert.match(w, /const data = word \? \{ c, \.\.\.word \} : \{ c \};/);
   assert.match(w, /const rejoin = online\.room !== _parkRoom \|\| online\.welcomes !== _parkWelcomes;/);
   assert.match(w, /const via = online\.sendPark\(data, cell\);/);
-  assert.match(w, /online\.onPark = \(room, e\) => hcc\.applyKept\(room, e, campToScene, performance\.now\(\)\);/);
+  assert.match(w, /online\.onPark = \(room, e\) => \{ wagonWarden\?\.keptWord\(room, e\); hcc\.applyKept\(room, e, campToScene, performance\.now\(\)\); \};/);   // PIN MOVED (WARDEN1): a throw it had not said is played before the pool takes the word
   assert.match(w, /online\.onParks = \(room, list\) => hcc\.replaceKept\(room, list, campToScene, performance\.now\(\)\);/);
   assert.match(w, /hcc\.pruneKept\(isCellRoom\(online\.room\) \? \[online\.room, \.\.\.online\.haloRooms\(\)\] : \[\], now\);/);
-  assert.match(w, /peerRiders\.sync\(seen, onlineToScene,[^\n]*\n\s+const afoot = seen\.filter\(\(d\) => !peerRiders\.isRiding\(d\.id\)[^;]*\);[^\n]*\n\s+peerBodies\.sync\(afoot,/);
+  assert.match(w, /peerRiders\.sync\(seen, onlineToScene,[^\n]*\n\s+const afoot = seen\.filter\(\(d\) => (?:\(peerRidesIn3d\(d\) \|\| )?!peerRiders\.isRiding\(d\.id\)[^;]*\);[^\n]*\n\s+peerBodies\.sync\(afoot,/);
   assert.match(w, /bodyHeight: \(id\) => peerRiders\.heightOf\(id\) \|\| peerBodies\.heightOf\(id\)/);
   assert.match(w, /const riding = \(modes\?\.mode \?\? 'exterior'\) === 'exterior' && isRiding\(player\.transportMode\);/);
   assert.match(w, /rd: !riding \? 0 : player\.transportMode === TRANSPORT_MODES\.Cart \? 2 : 1,/);
@@ -390,5 +391,5 @@ test('HCC-PARK / RIDE hosts: the owner\'s word names the character, is ticked wi
   const s = rd('server/src/index.js');
   assert.match(s, /if \(path === PARK_INTERNAL_REG \|\| path === PARK_INTERNAL_DROP\) return this\._parkInternal\(path, request\);/);
   assert.match(s, /const k = await parkKeyOf\(a\.sub, m\.data\.c\);/);
-  assert.match(s, /if \(m\.data\.r && cell === here\) await this\._parkStore\(k, a\.sub, a\.id, a\.name \?\? '', m\.data\.r, now\);/);
+  assert.match(s, /if \(m\.data\.r && cell === here\) \{\n\s*const thrown = await this\._parkStore\(k, a\.sub, a\.id, a\.name \?\? '', m\.data\.r, now\);/);   // PIN MOVED (WARDEN1): the store answers a thrown team its owner re-said
 });

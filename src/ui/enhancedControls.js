@@ -80,7 +80,7 @@ import {
   applyUnsavedKeybinds, buttonText,
   comboFromEvent, swingHint, floatHint, sharedFloatNote, fixedKeyRows,
   bindingHolders, replaceKeybindPromptRows, stageReplace, stagedDefaults,
-  canShareKey, stageShare, keySharers, SHARE_KEY_LABEL,
+  canShareKey, stageShare, keySharers, SHARE_KEY_LABEL, unsavedEdits,
 } from '../systems/controlsConfig.js';
 import { localizedText } from '../systems/textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language
 import { gameSettingsText } from '../systems/textDatabases.js';   // L10N3f: DFU's GameSettings text database, a pack's in its language
@@ -125,6 +125,10 @@ export const DEFAULTS_PROMPT = 'Are you sure you want to set default controls?';
  *  stays open and the press SAVES, so the word says what it does. The classic grid keeps the word baked in
  *  CNFG00I0's art. */
 export const CONFIRM_LABEL = 'Confirm';
+/** UNSAVED-MARK (FIELD BUGS 2026-10-11): a row whose staged key the registry does not hold yet says so, and the head
+ *  counts what a Confirm still owes. */
+export const UNSAVED_ROW = 'Not saved yet - press Confirm.';
+export const unsavedCount = (n) => `${n} change${n === 1 ? '' : 's'} not saved yet - press ${CONFIRM_LABEL} to keep ${n === 1 ? 'it' : 'them'}.`;
 
 // ── PER-VISIT STATE ──────────────────────────────────────────────
 // `unsaved` is the staged pair of dicts. It is created on the first
@@ -138,6 +142,7 @@ let armedMouse = null;     // MAC-K1: and its mouse half - one arm, two doors
 let prompt = null;         // { kind: 'defaults' } | { kind: 'replace', action, code, holders, usingPrimary }
 let pendingDefaults = false;   // KB1: Defaults is staged; Confirm commits it with the live reset
 let notice = null;         // the multipleAssignments line, or the saved note
+let edited = new Set();    // UNSAVED-MARK: the shown dict's rows a Confirm still owes - read at each paint
 let repaint = () => {};
 
 const refresh = () => { dupes = checkDuplicates(unsaved); };
@@ -255,7 +260,7 @@ function arm(action) {
  *  keybind button itself (:361) and the right-click remove (:372,
  *  where it is ANDed with the unbound-slot refusal). The pending
  *  capture is the only live gesture on the screen. The classic grid
- *  carries the law in one line (ui/controlsWindow.js:393); this face
+ *  carries the law in one line (ui/controlsWindow.js:"keybindings not working"); this face
  *  carries it as ONE predicate wrapped round every click surface, so
  *  a control cannot be added without it. arm()'s own leading disarm()
  *  is then unreachable-by-click — which is DFU's shape, not a loss.
@@ -372,9 +377,10 @@ function keyRow(action, label) {
   const code = dict.get(action);
   const marks = promptMarks(prompt, unsaved.usingPrimary);
   const mark = marks.want === action ? ' ctl-want' : marks.holders.has(action) ? ' ctl-holder' : '';
-  const row = el('div', `row ctl-row${mark}`);
+  const row = el('div', `row ctl-row${mark}${edited.has(action) ? ' ctl-unsaved' : ''}`);
   const main = el('div', 'row-main');
   main.append(el('div', 'row-name', label));
+  if (edited.has(action)) main.append(el('div', 'row-sub ctl-unsaved-note', UNSAVED_ROW));   // UNSAVED-MARK
   // SWING-LABEL: the one row whose button is not the whole answer - see swingHint.
   if (action === 'SwingWeapon' && unsaved.usingPrimary) main.append(el('div', 'row-sub', swingHint(code ?? null, swingMode(), dict.get('ReadyWeapon') ?? null)));
   // UXB1-D: ...and the two whose key is not the only one that moves you - see floatHint.
@@ -481,22 +487,32 @@ function group(body, heading, rows) {
 export function paneControls(body, { render = () => {} } = {}) {
   repaint = render;
   stage();
+  // UNSAVED-MARK (FIELD BUGS 2026-10-11): what a Confirm still owes, read off the registry at each paint
+  const owed = unsavedEdits(bindings(), unsaved);
+  edited = new Set(owed.filter((e) => e.primary === unsaved.usingPrimary).map((e) => e.action));
+
+  // UNSAVED-MARK: THE HOW-TO SCROLLS AWAY; THE STICKY HEAD IS THE LAW AND ITS BUTTONS. The head carried all three of
+  // the page's paragraphs: 312 px on a desktop, its top under the Settings toolbar (both sticky at the top of one
+  // scroll), and 462 px on a phone - over the very row just bound. The how-to is the page's first card now, read once.
+  const intro = el('div', 'card ctl-intro');
+  intro.append(el('h3', null, 'Controls'));
+  intro.append(el('p', 'meta',
+    'Click a binding, then press the key you want. Every key binds, Escape included. '
+    + 'Hold Ctrl, Shift or Alt while you press to bind a combination. '
+    + 'Right-click a binding, or press ✕, to clear it.'));
+  intro.append(el('p', 'meta',
+    'A key that is already in use asks first: move it, or use it for both. A shared key does everything it is bound to, and each of its rows says what else it does. '
+    + 'Keys inside a window (Escape, Enter, the arrows, a window\'s own letters) belong to that window and are not listed here.'));
+  intro.append(el('p', 'meta ctl-intro-law', `Nothing is saved until you press ${CONFIRM_LABEL}. A key not saved yet is marked on its row.`));
+  body.append(intro);
 
   // UXB1-D: A PROMPT STANDS IN THE HEAD, NOT IN PLACE OF THE LIST. The head is sticky (TORCH-BIND), so the question
   // is on screen wherever the player had scrolled to; the list stays under it (inert - `act`), so answering it
   // leaves them on the row they were binding rather than at the top of the page, and the rows it is about are marked
   // (promptMarks).
-  const head = el('div', `card ctl-head${prompt ? ' ctl-asking' : ''}`);
+  const head = el('div', `card ctl-head${prompt ? ' ctl-asking' : ''}${owed.length ? ' ctl-owed' : ''}`);
   if (prompt) head.append(promptCard());
   else {
-    head.append(el('h3', null, 'Controls'));
-    head.append(el('p', 'meta',
-      'Click a binding, then press the key you want. Every key binds, Escape included. '
-      + 'Hold Ctrl, Shift or Alt while you press to bind a combination. '
-      + 'Right-click a binding, or press ✕, to clear it.'));
-    head.append(el('p', 'meta',
-      'A key that is already in use asks first: move it, or use it for both. A shared key does everything it is bound to, and each of its rows says what else it does. '
-      + 'Keys inside a window (Escape, Enter, the arrows, a window\'s own letters) belong to that window and are not listed here.'));
     head.append(el('p', 'meta',
       `Nothing is saved until you press ${CONFIRM_LABEL}, Defaults included. Leave this page and your changes are dropped.`));
 
@@ -515,6 +531,7 @@ export function paneControls(body, { render = () => {} } = {}) {
     // L10N3d: the refusal shown in the player's language (DaggerfallControlsWindow.cs:262); `notice` keeps the
     // English, which is what the line is told apart by
     const refusal = localizedText('multipleAssignments', MULTIPLE_ASSIGNMENTS);
+    if (owed.length) head.append(el('p', 'ctl-notice ctl-pending', unsavedCount(owed.length)));   // UNSAVED-MARK
     if (notice) head.append(el('p', `ctl-notice${notice === MULTIPLE_ASSIGNMENTS ? ' bad' : ''}`, notice === MULTIPLE_ASSIGNMENTS ? refusal : notice));
     if (!dupes.ok && notice !== MULTIPLE_ASSIGNMENTS) {
       head.append(el('p', 'ctl-notice bad', refusal));

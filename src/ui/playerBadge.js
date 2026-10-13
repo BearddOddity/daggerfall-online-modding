@@ -49,7 +49,8 @@
 // SOC4's party green already crosses that seam.
 // ═══════════════════════════════════════════════════════════════════
 
-import { TITLES, GLYPHS, SEAT_TITLES } from '../net/identityToken.js';
+import { TITLES, GLYPHS, SEAT_TITLES, CHAPTER_TITLES } from '../net/identityToken.js';
+import { chapterTitleText } from '../net/npcChapterLaw.js';   // CHAP4c: a chapter's seat's title, worded off its claim
 import { seatTitleText } from '../net/townSeatLaw.js';   // SEAT1c: a seat title in words, off its claim
 
 /** SEAT1c: THE PLACE A SEAT TITLE NAMES - the client's own seat by key (`{ name, region }`), or null. The host sets it
@@ -90,12 +91,34 @@ export const TITLE_TEXT = Object.freeze({
   crowned: 'Crowned',
   keeper: 'Keeper',
   champion: 'Champion',
+  grandchampion: 'Grand Champion',   // ARENA4 (2026-10-02, Mac: "Being a top rank PvE fighter comes with it's own title")
+  arenachampion: 'Arena Champion',   // ARENA4: "Being the #1 pvp arena player comes with it's own temporary title/glyph"
+  aegis: 'Aegis of Oblivion',        // AEGIS (2026-10-03, the owner): Sureme's own
+  primarch: 'Primarch',              // PRIMARCH (2026-10-04, GA00250: "the title will be Primarch"): GA00250's own
+  crystalfist: 'Crystal Fist',       // CRYSTAL-FIST (2026-10-05, the owner: "Title: Crystal Fist"): Flylighter's own
+  hourbreaker: 'Hourbreaker',        // SD9b (2026-10-07, the Super Dungeons arc): one Brass Remnant's kill in four grants it
+  hoursfirst: "Hour's First",       // HOURS-FIRST (2026-10-08, Mac: "a title named Hour's First"): the first group to break an Abyss Dungeon, by name
+  iliacchampion: 'Iliac Champion',   // CARDS10 (2026-10-08, Tavern-Cards section 6.4: "a title for the top of it"): Iliac Hand's season #1, while they hold the top
+  // CHAP4c (2026-10-08, the Chapters arc): a chapter's seats' - worded off their claim (npcChapterLaw.js chapterTitleText,
+  // "Master of the Fighters Guild, Anticlere"); these where the claim names no chapter this client knows
+  chaptermaster: 'Chapter Master',
+  chapterofficer: 'Chapter Councillor',   // GUILD3a (bible/11-Multiplayer/Guilds-Made-Plain.md): a chapter's rank 8 sits on its council - "Officer" is a player guild's rank
+  formermaster: 'Former Master',
+  highmaster: 'High Master',      // CHAP6e: a Master's in its chapter's Ascendancy - GUILD3e: while its chapter stands Ascendant
+  seasonmaster: 'Season Master',  // CHAP6e: a Season's Master's, kept for good
 });
 
 /** WB9g (2026-09-30, Mac: "an animated burning ground aura that circles the ground where your character stands"): AN
  *  AURA'S WORD, as a player reads it - the Broker's offer and the account card's button. */
 export const AURA_TEXT = Object.freeze({
   dagonfire: "Dagon's Fire",
+  oblivionward: 'Oblivion Ward',   // AEGIS: the Aegis of Oblivion's ring of runes, granted with the title
+  radiance: 'Golden Radiance',     // PRIMARCH: the Primarch's column of golden light about the body, granted with the title
+  shadowcloak: 'Holo Shadow Cloak',   // SHADOW-CLOAK: the Shadow Fang's hooded cloak of shadow and crimson light, granted with the title
+  seraphwings: 'Seraph Wings',   // SERAPH-WINGS: wings of flowing golden light, the developers' own
+  resonance: 'Crystal Resonance',   // CRYSTAL-FIST: the Crystal Fist's ring of purple squares rising and falling, granted with the title
+  turninghour: 'The Turning Hour',   // SD9c: the Brass Remnant's wheel of brass gears and gold light, one kill in eight
+  firsthour: 'The First Hour',   // HOURS-FIRST: The Turning Hour in the first dawn's light, Hour's First's own, granted with the title
 });
 
 /** SHADOW-FANG (2026-09-26, Mac): "SirMcMobdon gets a brand new
@@ -127,6 +150,52 @@ const PENITENT_LIGHT = Object.freeze([1, 0.953, 0.839, 1]);     // #fff3d6
 const GATEBREAKER_CRIMSON = Object.freeze([0.62, 0.05, 0.07, 1]);  // #9e0d12
 const GATEBREAKER_FIRE = Object.freeze([1, 0.42, 0.08, 1]);        // #ff6b14
 const GATEBREAKER_EMBER = Object.freeze([1, 0.82, 0.32, 1]);       // #ffd152
+
+/** AEGIS (2026-10-03, the owner: "For the account named Sureme ... a title, glyph and new custom aura for this user.
+ *  Title: Aegis of Oblivion. Theme: Purple"). Three violets out of the void into the ward's light - the void's deep
+ *  violet, the ward's own (the Oblivion Ward's glow, render/auraRing.js WARD_RGB), and the light at the aegis's edge.
+ *  Chosen in Chromium over a night sky, a day sky, stone, grass and snow at 13 to 64 px beside the Apostle's and the
+ *  Protector's: the reverse (light into the void) read as a bare name over a night sky and was lost on snow; a paler
+ *  run (#8b3dff to #f0e2ff) lost its light end on snow; this one reads violet on all five. */
+const OBLIVION_VOID = Object.freeze([0.439, 0.188, 0.878, 1]);    // #7030e0
+const OBLIVION_VIOLET = Object.freeze([0.698, 0.302, 1, 1]);      // #b24dff
+const OBLIVION_LILAC = Object.freeze([0.925, 0.863, 1, 1]);       // #ecdcff
+/** The abyss under the aegis - the glyph's tendrils, darker than any stop of the word (Sureme's reference: the black
+ *  splash the pillars and the ring stand out of). */
+const OBLIVION_ABYSS = Object.freeze([0.302, 0.102, 0.580, 1]);   // #4d1a94
+
+/** PRIMARCH (2026-10-04, GA00250, relayed by the owner: "the title will be Primarch, the color will be that light gold
+ *  color that you guys use in some places in the game menu", over a screenshot of their own name in the pause menu's
+ *  pixel face - "that color"). That is #d8cfae: the pixel menu's text (ui/enhancedStyle.js `.px-mname`, the name in
+ *  the screenshot, and the menu's rows and the talk window's), sampled off the screenshot's letters at #d4ccb0 through
+ *  its JPEG. ONE colour, as asked - no gradient; a one-colour title wears every face's black text shadow, and it read
+ *  on all five grounds in Chromium at 13 to 64 px, snow included. A pin holds it to the menu's own rule. */
+const PRIMARCH_GOLD = Object.freeze([0.847, 0.812, 0.682, 1]);   // #d8cfae
+
+/** CRYSTAL-FIST (2026-10-05, the owner, for Flylighter: "Title: Crystal Fist", the glyph "referenced above" - three
+ *  purple slashes - and the aura "also purple", "the color 'gradient' would be unnecessary"). The reference's own
+ *  purple, #a349a4, every one of its glyph's pixels: ONE colour for the title, the glyph and the aura (render/auraRing.js
+ *  RESONANCE_RGB, which reads it from here), as the three were asked in one. AUDIT: like every one-colour title it wears
+ *  the DOM faces' black text shadow, and on the classic face (net/remotePlayers.js drawNames) a bare tint with no edge -
+ *  over a night sky it is the weakest one-colour title (WCAG 3.65 against the Protector's 4.36), the reference's own
+ *  colour kept as asked. */
+export const CRYSTAL_PURPLE = Object.freeze([0.639, 0.286, 0.643, 1]);   // #a349a4
+
+/** SD9b (2026-10-07, the Super Dungeons arc; bible/11-Multiplayer/Super-Dungeons.md section 11): HOURBREAKER - the
+ *  Brass Remnant's title, one kill in four on its first write. Drawn in the Hour's own colours: the Remnant's brass into
+ *  its bar's gold (ui/gateBossBar.js's brass theme, `.wb-boss-name`) into the light of its heart; its one colour the
+ *  bar's gold, for a face that draws no gradient - yellower and darker than the Founder's, warmer than the Primarch's. */
+export const HOUR_BRASS = Object.freeze([0.71, 0.525, 0.184, 1]);   // #b5862f
+export const HOUR_GOLD = Object.freeze([0.91, 0.753, 0.376, 1]);    // #e8c060 - SD9c: The Turning Hour's light (render/auraRing.js TURNING_RGB reads all three from here)
+export const HOUR_LIGHT = Object.freeze([1, 0.945, 0.769, 1]);      // #fff1c4
+/** HOURS-FIRST (2026-10-08, Mac: "a unique different version of the aura, a title named Hour's First"): THE FIRST
+ *  DAWN'S COLOURS - the Hour broken for the first time, and the light that came back into it. Hour's First is drawn rose
+ *  gold into pearl into the dawn's white; its one colour the rose gold - redder and paler than the Hourbreaker's gold and
+ *  the Grand Champion's bronze, oranger than the Hierophant's rose. The First Hour's wheel is cast in them
+ *  (render/auraRing.js FIRST_RGB reads all three from here). */
+export const HOUR_DAWN = Object.freeze([0.902, 0.553, 0.443, 1]);   // #e68d71
+export const HOUR_PEARL = Object.freeze([1, 0.851, 0.659, 1]);       // #ffd9a8
+export const HOUR_SUN = Object.freeze([1, 0.969, 0.918, 1]);         // #fff7ea
 
 /** A title's colour, RGBA 0..1 - the same shape SOC4's PARTY_GREEN is
  *  in, so `nameLayer.cssRgba` turns it into CSS and `drawText` takes it
@@ -161,6 +230,35 @@ export const TITLE_RGBA = Object.freeze({
   crowned: Object.freeze([1, 0.886, 0.541, 1]),       // #ffe28a
   keeper: Object.freeze([0.471, 0.706, 0.443, 1]),    // #78b471
   champion: Object.freeze([0.851, 0.867, 0.890, 1]),  // #d9dde3
+  // ARENA4 (2026-10-02; no colour named): the GRAND CHAMPION in a champion's BRONZE - the cup on the Hall of Champions'
+  // wall, darker and browner than the Dungeon Master's bright orange and the Gatebreaker's fire, and no gold (the
+  // Founder's); the ARENA CHAMPION in the LAUREL's own green - the wreath the season's #1 wears, the glyph's colour too
+  grandchampion: Object.freeze([0.804, 0.498, 0.196, 1]),   // #cd7f32
+  arenachampion: Object.freeze([0.557, 0.776, 0.247, 1]),   // #8ec63f
+  // AEGIS: the gradient's middle, the ward's violet - the colour a face that cannot draw a gradient uses (the account
+  // card's button, the classic face's tint), and the glyph's. Bluer than the Hierophant's rose, brighter and redder than
+  // the Apostle's periwinkle and the Protector's royal purple
+  aegis: OBLIVION_VIOLET,
+  // PRIMARCH: the menu's light gold, as GA00250 asked - paler and greyer than the Founder's gold and the Crowned's, warmer
+  // than the Champion's silver
+  primarch: PRIMARCH_GOLD,
+  // CRYSTAL-FIST: the reference's purple, as Flylighter drew the glyph - redder than the Aegis's violet, the Protector's
+  // royal purple and the Apostle's periwinkle, darker and bluer than the Hierophant's rose
+  crystalfist: CRYSTAL_PURPLE,
+  hourbreaker: HOUR_GOLD,   // SD9b: the Remnant's bar's gold
+  hoursfirst: HOUR_DAWN,    // HOURS-FIRST: the first dawn's rose gold
+  // CARDS10: the ILIAC CHAMPION in the Bay's own sea-blue - the water the game is named for, bluer and brighter than the
+  // Apostle's periwinkle, no gold (the Founder's) and no green (the Arena Champion's laurel)
+  iliacchampion: Object.freeze([0.239, 0.608, 0.820, 1]),   // #3d9bd1
+  // CHAP4c: a chapter's seats' - a guild banner's steel blue for its Master, paler for an officer, weathered grey for a
+  // Master who lost the seat; lighter and greyer than the Herald's azure, darker than the Champion's silver
+  chaptermaster: Object.freeze([0.498, 0.698, 0.898, 1]),   // #7fb2e5
+  chapterofficer: Object.freeze([0.659, 0.769, 0.867, 1]),  // #a8c4dd
+  formermaster: Object.freeze([0.604, 0.627, 0.659, 1]),    // #9aa0a8
+  // CHAP6e: a High Master's the banner's blue made bright and deep in an Ascendancy; a Season's Master's the same blue
+  // aged to slate, the colour of a banner kept on a hall's wall
+  highmaster: Object.freeze([0.365, 0.612, 0.925, 1]),      // #5d9cec
+  seasonmaster: Object.freeze([0.435, 0.561, 0.722, 1]),    // #6f8fb8
 });
 
 /** SHADOW-FANG: A TITLE DRAWN AS A GRADIENT - its stops, RGBA 0..1, left
@@ -172,6 +270,9 @@ export const TITLE_GRADIENT = Object.freeze({
   shadowfang: Object.freeze([SHADOW_BLACK, SHADOW_CRIMSON]),
   penitent: Object.freeze([PENITENT_GOLD, PENITENT_LIGHT, PENITENT_SKY]),
   gatebreaker: Object.freeze([GATEBREAKER_CRIMSON, GATEBREAKER_FIRE, GATEBREAKER_EMBER]),   // WB9g: coal, fire, ember
+  hourbreaker: Object.freeze([HOUR_BRASS, HOUR_GOLD, HOUR_LIGHT]),   // SD9b: the Remnant's brass into the light of its heart
+  hoursfirst: Object.freeze([HOUR_DAWN, HOUR_PEARL, HOUR_SUN]),   // HOURS-FIRST: rose gold into pearl into the dawn's white
+  aegis: Object.freeze([OBLIVION_VOID, OBLIVION_VIOLET, OBLIVION_LILAC]),   // AEGIS: out of the void into the ward's light
 });
 
 /** PENITENT: THE EDGE A GRADIENT TITLE WEARS, where it is not the title's
@@ -184,6 +285,8 @@ export const TITLE_GRADIENT = Object.freeze({
 export const TITLE_EDGE = Object.freeze({
   penitent: Object.freeze([0, 0, 0, 1]),
   gatebreaker: Object.freeze([0, 0, 0, 1]),   // WB9g: its ember end is bright - edged in black, as Penitent's
+  aegis: Object.freeze([0, 0, 0, 1]),   // AEGIS: its lilac end is bright - edged in black, as Penitent's and the Gatebreaker's
+  hoursfirst: Object.freeze([0, 0, 0, 1]),   // HOURS-FIRST: its dawn end is near white - edged in black, as Penitent's
 });
 
 /** A glyph's colour. The sprout is green because Mac said green; the
@@ -209,6 +312,10 @@ export const GLYPH_RGBA = Object.freeze({
   crownDF: Object.freeze([0.231, 0.435, 0.847, 1]),   // #3b6fd8
   crownWR: Object.freeze([0.702, 0.149, 0.180, 1]),   // #b3262e
   crownSN: Object.freeze([0.831, 0.627, 0.090, 1]),   // #d4a017
+  laurel: TITLE_RGBA.arenachampion,    // ARENA4: the wreath in the Arena Champion's own green - one grant's two halves
+  aegis: TITLE_RGBA.aegis,             // AEGIS: the pillars and the ring in the title's violet - the tendrils are its detail, below
+  primarch: TITLE_RGBA.primarch,       // PRIMARCH: the cross in the title's light gold - GA00250: "with the same color of the name"
+  crystalfist: TITLE_RGBA.crystalfist, // CRYSTAL-FIST: the three slashes in the title's purple - the reference's own
 });
 
 /** SHADOW-FANG: A GLYPH FILLED WITH A GRADIENT - its title's two stops,
@@ -233,6 +340,11 @@ export const GLYPH_EDGE_W = 0.55;
 export const GLYPH_DETAIL = Object.freeze({
   shadowfang: Object.freeze({ path: 'M9.3 4.7L11.8 5.5L9.8 6.2Z', rgba: SHADOW_EYE }),
   penitent: Object.freeze({ path: 'M8 3.2L8.65 3.85L8 4.5L7.35 3.85ZM7.45 4.5H8.55V6.3H7.45ZM5.9 6.3H10.1V7.3H5.9ZM7.25 7.3H8.75L8 14Z', rgba: PENITENT_SKY }),
+  // AEGIS: THE VOID'S TENDRILS under the aegis, in the abyss's violet - Sureme's reference stands its pillars and ring
+  // out of a black splash. One filled mass hung from the ring's foot: five tendrils, the outer two swept out wide and
+  // low, the inner two curling down, the middle one straight down, each tapering to a point. A skirt of straight spikes
+  // read as an upside-down crown and a jellyfish; in the title's lilac it read as a crown again.
+  aegis: Object.freeze({ path: 'M4.4 12.9Q2.2 13.2 0.3 14.6Q2.8 14.3 5 14.3Q4 15 3 15.8Q5.4 15.3 6.6 14.5L8 15.95L9.4 14.5Q10.6 15.3 13 15.8Q12 15 11 14.3Q13.2 14.3 15.7 14.6Q13.8 13.2 11.6 12.9Q8 14 4.4 12.9Z', rgba: OBLIVION_ABYSS }),
 });
 
 /** THE CLASSIC FACE'S STAND-IN: one character, and it must be one the
@@ -253,6 +365,10 @@ export const GLYPH_MARK = Object.freeze({
   crownDF: 'D',       // SEAT1c: each crown its kingdom's initial
   crownWR: 'W',
   crownSN: 'S',
+  laurel: '@',        // ARENA4: the wreath, a ring round the name's end
+  aegis: 'O',         // AEGIS: the ring the pillars stand through - and Oblivion's initial
+  primarch: 't',      // PRIMARCH: a cross with its foot turned, as the reference's footrest
+  crystalfist: '\\',  // CRYSTAL-FIST: a slash the way the reference's three fall, down to the right
 });
 
 /** The printable range the classic font covers. ACC1d-MARK's own bound,
@@ -296,12 +412,35 @@ export const GLYPH_PATH = Object.freeze({
   crownDF: 'M1.5 12.5h13V14h-13zM1.5 11.5L1 4.5l3.2 3L5.6 2.8 8 6.6l2.4-3.8 1.4 4.7 3.2-3-.5 7z',
   crownWR: 'M1.5 12.5h13V14h-13zM1.5 11.5L1 4.5l3.2 3L5.6 2.8 8 6.6l2.4-3.8 1.4 4.7 3.2-3-.5 7z',
   crownSN: 'M1.5 12.5h13V14h-13zM1.5 11.5L1 4.5l3.2 3L5.6 2.8 8 6.6l2.4-3.8 1.4 4.7 3.2-3-.5 7z',
+  // ARENA4: THE LAUREL - two branches rising from a tie at the foot and curving up and out, open at the top as a
+  // victor's wreath is, three leaves on each and a bud at each tip
+  laurel: 'M8 14.5C4.5 13 2.5 10 3 5M8 14.5C11.5 13 13.5 10 13 5M3.2 7L1.6 6M3.6 9.6L1.8 9.4M5 12L3.4 12.6M12.8 7L14.4 6M12.4 9.6L14.2 9.4M11 12L12.6 12.6M3 5L2.4 3.2M13 5L13.6 3.2',
+  // AEGIS: SUREME'S REFERENCE (the Path of Exile sigil they sent), drawn after it and not traced - a tall pillar up the
+  // middle, a short pillar each side, and a wide ring lying across all three below the middle, the side pillars
+  // standing at its two ends: "I O I" with the middle risen. The squared spiral the reference curls at its top right
+  // read as a flag at a name's size and is left out; its black splash is GLYPH_DETAIL's tendrils.
+  aegis: 'M8 0.9V10.9M3 7.2V12.8M13 7.2V12.8M3 10.2A5 2.6 0 1 0 13 10.2A5 2.6 0 1 0 3 10.2',
+  // PRIMARCH: GA00250'S REFERENCE (2026-10-04, after the first push: "i'd like to that be the glyph design if possible.
+  // with the same color of the name"), drawn after it - THE THREE-BARRED CROSS: the shaft the full height up the middle;
+  // a short bar near its head; the long crossbar below it, the glyph's widest; and low down a footrest as wide as the head
+  // bar, slanting down to the right as the reference's does. Its widths and heights the reference's, measured off it; the
+  // shaft and the bars a little thicker (1.6 units against its 1.35) so the footrest's slant still reads at a name's
+  // 13 px. Filled, one colour; every bar wound the shaft's way round, so where they cross it the fill is whole.
+  primarch: 'M7.2 0.4H8.8V15.6H7.2ZM6 1.4H10V2.9H6ZM2.9 3.8H13.1V5.4H2.9ZM6 9.6L10 12.9V14.5L6 11.2Z',
+  // CRYSTAL-FIST: FLYLIGHTER'S REFERENCE (2026-10-05), traced off its pixels - THREE SLASHES falling down to the right,
+  // parallel, a claw's: the middle one the longest, corner to corner; the one above it and the one below it two thirds
+  // its length, each beside its middle, the upper a little further down it. Each a band of one thickness (the
+  // reference's seven pixels across, a gap of six between), its ends cut square to it with their corners taken off as the
+  // reference's are (AUDIT: two pixels back along the slash at each corner, so an end reads rounded, not squared, at the
+  // account card's and the profile's sizes); filled, one colour, every outline wound the same way round. Scaled whole
+  // into the box by the uncut bands, the measures the reference's.
+  crystalfist: 'M0.77 6.99L0.77 6.26L1.32 5.71L2.05 5.71L10.11 13.77L10.11 14.5L9.56 15.05L8.82 15.05ZM0.77 2.23L0.77 1.5L1.32 0.95L2.05 0.95L14.5 13.4L14.5 14.13L13.95 14.68L13.22 14.68ZM5.89 2.6L5.89 1.87L6.44 1.32L7.18 1.32L15.23 9.37L15.23 10.11L14.68 10.66L13.95 10.66Z',
 });
 
 /** Is this glyph DRAWN as an outline rather than filled? The sprout is
  *  a shape and the brackets are strokes; said here so the layer does
  *  not have to know which is which by name. */
-export const GLYPH_STROKE = Object.freeze({ sprout: true, dev: true, mod: true, dm: true, disciple: true, apostle: true, hierophant: true, shadowfang: false, penitent: true, herald: true, tower: false, crownDF: false, crownWR: false, crownSN: false });   // SEAT1c: the seats' four filled
+export const GLYPH_STROKE = Object.freeze({ sprout: true, dev: true, mod: true, dm: true, disciple: true, apostle: true, hierophant: true, shadowfang: false, penitent: true, herald: true, tower: false, crownDF: false, crownWR: false, crownSN: false, laurel: true, aegis: true, primarch: false, crystalfist: false });   // SEAT1c: the seats' four filled; ARENA4: the laurel's branches stroked; AEGIS: the pillars and the ring stroked; PRIMARCH: the cross filled; CRYSTAL-FIST: the slashes filled
 
 /**
  * The title a peer wears, ready to draw: `{ key, text, rgba }`, or
@@ -315,8 +454,9 @@ export const GLYPH_STROKE = Object.freeze({ sprout: true, dev: true, mod: true, 
 export function titleBadge(peer) {
   const key = peer?.title;
   if (typeof key !== 'string' || !TITLES.includes(key)) return null;
-  // SEAT1c: a seat title worded off its claim where this client knows the place, else its plain word
-  const text = (SEAT_TITLES.includes(key) ? seatTitleText(key, peer?.ts, _seatPlace) : null) ?? TITLE_TEXT[key];
+  // SEAT1c: a seat title worded off its claim where this client knows the place, else its plain word; CHAP4c: and a
+  // chapter's seat's
+  const text = (SEAT_TITLES.includes(key) ? seatTitleText(key, peer?.ts, _seatPlace) : CHAPTER_TITLES.includes(key) ? chapterTitleText(key, peer?.ts) : null) ?? TITLE_TEXT[key];
   if (!text) return null;
   return { key, text, rgba: TITLE_RGBA[key] ?? null, gradient: TITLE_GRADIENT[key] ?? null, edge: TITLE_EDGE[key] ?? null };   // PENITENT: `edge`
 }
@@ -412,6 +552,11 @@ export function glyphBadges(peer) {
  * without anybody remembering to write one.
  */
 export const badgeClass = (kind, key) => `${kind}-${key}`;
+/** AEGIS: THE TITLE WHOSE PAINT AN AURA'S BUTTON WEARS on the account card - the aura's own family: the Broker's fire
+ *  the Gatebreaker's, the Oblivion Ward the Aegis of Oblivion's, the Golden Radiance the Primarch's (PRIMARCH), the Holo
+ *  Shadow Cloak the Shadow Fang's black and crimson (SHADOW-CLOAK), the Seraph Wings the Founder's gold - the wings' own, where
+ *  the developer's paint is a red (SERAPH-WINGS), the Crystal Resonance the Crystal Fist's purple (CRYSTAL-FIST). A pin walks AURA_TEXT and requires an entry. */
+export const AURA_PAINT = Object.freeze({ dagonfire: 'gatebreaker', oblivionward: 'aegis', radiance: 'primarch', shadowcloak: 'shadowfang', seraphwings: 'founder', resonance: 'crystalfist', turninghour: 'hourbreaker', firsthour: 'hoursfirst' });   // HOURS-FIRST: The First Hour in Hour's First's rose gold
 /** SHADOW-FANG: `titlePaint`'s properties as CSS declarations, the colour
  *  left to the button (its border is drawn in it) - so a gradient title's
  *  word on the card is the SAME paint as over a head, not a second one. */
@@ -425,9 +570,14 @@ export const badgeCss = () => [
   // SHADOW-FANG: a gradient title's word (the card wraps it in .acttitleword) - the button keeps the plain colour
   ...TITLES.filter((t) => TITLE_GRADIENT[t]).map((t) => `.card button.acttitle.${badgeClass('tl', t)} .acttitleword { ${wordCss(t)} }`),
   ...GLYPHS.map((g) => `.card .acctglyph.${badgeClass('gl', g)} .acctglyphart { color: ${cssRgba(GLYPH_RGBA[g])}; }`),
+  // PROFILE-MENU: the title the profile's plate says it wears (ui/enhancedAccount.js plateFacts) - the button's colour,
+  // and a gradient title's word painted as the button's is
+  ...TITLES.map((t) => `.card .acctworntitle.${badgeClass('tl', t)} { color: ${cssRgba(TITLE_RGBA[t])}; }`),
+  ...TITLES.filter((t) => TITLE_GRADIENT[t]).map((t) => `.card .acctworntitle.${badgeClass('tl', t)} .acctwornword { ${wordCss(t)} }`),
   // WB9g: an aura's button wears the Gatebreaker's own fire - the Broker's two pieces are one family of colour - its
-  // word (.actauraword, the aura's name: a title's word rule stays one per gradient title) painted as that title's is
-  ...Object.keys(AURA_TEXT).map((a) => `.card button.acttitle.actaura.aura-${a} { color: ${cssRgba(TITLE_RGBA.gatebreaker)}; }\n.card button.acttitle.actaura.aura-${a} .actauraword { ${wordCss('gatebreaker')} }`),
+  // word (.actauraword, the aura's name: a title's word rule stays one per gradient title) painted as that title's is.
+  // AEGIS: each aura in ITS title's paint (AURA_PAINT) - the Oblivion Ward in the Aegis of Oblivion's violets
+  ...Object.keys(AURA_TEXT).map((a) => `.card button.acttitle.actaura.aura-${a} { color: ${cssRgba(TITLE_RGBA[AURA_PAINT[a]])}; }\n.card button.acttitle.actaura.aura-${a} .actauraword { ${wordCss(AURA_PAINT[a])} }`),
 ].join('\n');
 
 /** The classic face's whole suffix: the marks, run together, or ''.

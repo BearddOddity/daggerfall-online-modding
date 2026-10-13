@@ -90,7 +90,8 @@ test('CLASSIC-PAGES: with no pages to show (offline, the switch shut) the door s
 });
 
 test('CLASSIC-PAGES: THE PROFESSIONS KEY - appended, a default share on the down arrow beside less sail (as more sail shares the act choice\'s up arrow), in the Professions group, a port row; the router opens the pause on the Professions page, and nothing while sailing', () => {
-  assert.equal(ACTIONS.at(-1), 'Professions', 'appended after HELM-KEYS\' two: the classic grid and a saved file resolve by position');
+  // PIN MOVED (SPYGLASS, 2026-10-11): the captain's glass appended after them, last
+  assert.deepEqual(ACTIONS.slice(-5), ['Professions', 'LegacyFamily', 'ModeWheel', 'WeaponTechnique', 'Spyglass'], 'appended after HELM-KEYS\' two: the classic grid and a saved file resolve by position (LEGACY1\'s family tree after it, MODE-WHEEL\'s wheel, TECH1\'s technique, SPYGLASS\'s glass last)');
   assert.ok(DEFAULT_SHARES.some(([c, a, partner]) => c === 'ArrowDown' && a === 'Professions' && partner === 'BoatSailDown'), 'shared onto less sail\'s own key');
   assert.ok(!DEFAULT_BINDINGS.some(([, a]) => a === 'Professions'), 'it owns no key - KB1 law 3 keeps every owner once');
   assert.ok(DEFAULT_BINDINGS.some(([c, a]) => c === 'ArrowUp' && a === 'ActChoice'), 'the professions\' two keys on the arrows');
@@ -121,9 +122,10 @@ test('CLASSIC-PAGES: a Forge, Workbench or Loom works on either skin while the p
   setProfessionsPages(null);
   _resetForTests();
   for (const st of ['forge', 'workbench', 'loom']) assert.doesNotMatch(stationColdLine(st), /Enhanced/, `${st}: no skin named`);
-  assert.equal(storesWhereLine('DOWN'), 'Gathered goods go to your Stores, not your pack: DOWN opens your Stores page.');
-  assert.equal(storesWhereLine(''), 'Gathered goods go to your Stores, not your pack: the pause menu\'s Stores page.', 'the key unbound');
+  // PIN MOVED (AUDIT HOLDINGS C7): the Stores page is on the Holdings tab; the key opens the Professions
+  assert.equal(storesWhereLine('DOWN'), 'Gathered goods go to your Stores, not your pack: the pause menu\'s Holdings > Stores (DOWN opens your Professions).');
+  assert.equal(storesWhereLine(''), 'Gathered goods go to your Stores, not your pack: the pause menu\'s Holdings > Stores.', 'the key unbound');
   // the station's press is the pause door's, at the Stores page - which opens on the classic skin now
   assert.match(rd('src/scenes/worldModes.js'), /if \(forgeOffered\(\)\) interiorKeyCtx\.togglePause\(\{ at: 'stores' \}\)/);
-  assert.match(rd('src/scenes/gatherHost.js'), /hud\.toast\(storesWhereLine\(deps\.keyLabel\?\.\('Professions'\) \?\? ''\)\)/, 'the host names the key the player has it on');
+  assert.match(rd('src/scenes/gatherHost.js'), /hud\.toast\(storesWhereLine\(deps\.keyLabel\?\.\('Professions'\) \?\? '', d\.carry === true\)\)/, 'the host names the key the player has it on (BAG1, PIN MOVED: and says the bag when the goods were carried)');
 });

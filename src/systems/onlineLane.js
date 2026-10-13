@@ -53,7 +53,7 @@ export const isOnlinePage = (search = globalThis.location?.search ?? '') => page
 /** The keys main.js's front door DECIDES per choice (F12's law: set on
  *  the door that wants them, deleted on every other) - and so the keys
  *  a stale URL must not carry into the menu that decides them. */
-export const BOOT_DOOR_KEYS = Object.freeze(['load', 'online', 'loadkey', 'test', 'classic', 'classicload', 'realm', 'realmnew']);   // REALM P1.3: the realm character's id, and a character born online
+export const BOOT_DOOR_KEYS = Object.freeze(['load', 'online', 'loadkey', 'test', 'classic', 'classicload', 'realm', 'realmnew', 'legacyborn', 'region', 'loc']);   // HOUSE-WAITS (FIELD BUGS 2026-10-09f): a waiting house's birth, decided by the Online page   // REALM P1.3: the realm character's id, and a character born online
 
 /**
  * MAC-N3 (2026-09-16, Mac: "Chat UI not visable with classic in online
@@ -140,11 +140,13 @@ export function declareOnlinePrefs(table) {
 /** The switches the lane deliberately leaves to the player (SURV-TIERS: and one tier, the survival pref) -
  *  the pin fails on a boolean uiPrefs key that is in neither list. */
 export const ONLINE_PLAYERS_OWN_PREFS = [
+  'tutorialPopups',   // TUT1: the tutorial's popups are each player's to keep or turn off
   'touchAnalogStick', 'touchGyroLook', 'touchHaptics', 'touchFullscreen',   // TI2: how this phone is held
   'showFps',          // FPS1: a diagnostic over the game
   'hudLocked',        // HUD-MOVE: where THIS player keeps their HUD - a layout on one screen, nothing the room agrees on
   'hudBarsSplit',     // HUD-MOVE: whether this player's three bars move apart - the same screen's
   'hudSnap',          // HUD-SNAP: whether this player's pieces catch on each other while moved - the same screen's
+  'shotDownload',     // LOAD1: whether THIS player's screenshot key also saves a file - their disk, nobody else's
   'skipStartVideo',   // UXB1-A: whether THIS player sits through the opening film - read at the front door, before any room
   'chatHidden',       // CHAT-R2: whether THIS player wants the chat on screen - the room does not get a say in what someone looks at
   'peerClassSprites', // 2026-09-17: how OTHER players are drawn on THIS machine (animated class sprite vs paperdoll) -
@@ -154,6 +156,7 @@ export const ONLINE_PLAYERS_OWN_PREFS = [
   'heldMap',          // MAP-TOGGLE: whether THIS player's maps are the held sheet or DFU's windows - a look, nothing the room agrees on
   'plusCursor', 'plusItemHover',   // PLUS6/7: the Plus dress's gauntlet cursor and its hover card - what THIS screen draws (OVH3's law: the skin is the player's; PLUS-ONLY retired `enhancedPlus`)
   'packPhoneDoll',    // PACK-PHONE: whether THIS phone's pack draws the body - what this screen draws
+  'padCursorAssist',  // PAD-CURSOR: how THIS player's controller cursor feels - nothing the room agrees on
   'plusToggleRun',    // PADPLUS1: whether THIS player's Run button latches - how this pad is held, nothing the room agrees on
   'proceduralSky',    // EE1's legacy key, read only by the migration
   'language', 'languageOffered',   // L10N1b: the language THIS player reads the port in, and whether the front door has asked - words on this screen, nothing the room agrees on
@@ -161,6 +164,8 @@ export const ONLINE_PLAYERS_OWN_PREFS = [
   'gentleActs',   // PROF1: Gentle acts - an accessibility choice; every act plain is never an edge over another player
   'acceptStrangerSpells',   // SPELL-GIFT: whether a stranger's healing and protective spells land on THIS player - their own say
   'showToTravellers',   // TV3: whether the region's travellers see where THIS player is - their own say
+  'chatChannelColours', 'chatPingSound',   // CHAT-COLOURS, PING1: how THIS player's chat is coloured and whether a ping chimes - a screen and an ear, nothing the room agrees on
+  'standingAll',   // EVERY-STANDING: whether THIS player's Standing page lists every faction's number - a page they read, nothing the room agrees on
 ];   // (RF4: grown by declareOnlinePrefs with the registry's 'player' answers - the dials)
 
 /** DISC22-A (2026-09-24, Mac: "repair magical items should be enabled by default and required online"): THE DFU
@@ -178,9 +183,15 @@ export function onlineForcedSetting(section, key, search) {
   return Object.hasOwn(ONLINE_FORCED_SETTINGS[section] ?? {}, key) && isOnlinePage(search) ? ONLINE_FORCED_SETTINGS[section][key] : undefined;
 }
 
-/** The forced value of a uiPrefs key on an online page, else undefined. */
+/** The forced value of a uiPrefs key on an online page, else undefined.
+ *  PERF-URL2 (2026-10-06, Mac: "I wanna look into how we can continue to improve performance, including for online"):
+ *  THE TABLE FIRST, as onlineForcedSetting above has asked it since AUDIT RETRO1 G2. getPref asks this on every read - hundreds a frame
+ *  - and the page test reads `location.search`, a DOM getter, before PERF-URL's memo can answer; the table forces a
+ *  handful of keys (the Features registry's own switches, RF4 - AUDIT 637 C5: not the mods'), so every other read paid the page for nothing
+ *  (measured in the real game, offline: 0.09 ms a frame of isOnlinePage under onlineForcedPref, beside the sea's own
+ *  forced switch). Two pure reads joined by `&&`: the same answer in either order. */
 export function onlineForcedPref(key, search) {
-  return isOnlinePage(search) && Object.hasOwn(ONLINE_FORCED_PREFS, key) ? ONLINE_FORCED_PREFS[key] : undefined;
+  return Object.hasOwn(ONLINE_FORCED_PREFS, key) && isOnlinePage(search) ? ONLINE_FORCED_PREFS[key] : undefined;
 }
 
 /**
@@ -211,8 +222,8 @@ export function onlineForcedPref(key, search) {
  *     the Shield Widget's block is always the defender's own;
  *   - Oblivion leveling is written into a CHARACTER at creation and
  *     kept by that character; Handheld Torches is an item in my save
- *     with a light on my screen; Travel Options is my own journey
- *     (OL2 already spends no world time online).
+ *     with a light on my screen. (Travel Options was "my own journey"
+ *     here until TRAVEL-ONLINE, below: its off switch was a teleport.)
  *
  * None of those reaches a second machine as a RULE. Each reaches it as
  * a RESULT, which is exactly what the wire carries.
@@ -236,11 +247,21 @@ export function onlineForcedPref(key, search) {
  * `Enabled` bought the room nothing while its own dial gave the floor
  * away. So the table is by KEY, not by mod.
  *
- * `RiversAndStreams` is NOT here, and that is measured too:
+ * `RiversAndStreams` WAS NOT HERE, and that was measured too:
  * SMOOTHED_TILES is {46, 0xff} - the road and track beds - and the
  * painter lays a road before it ever considers water (roadPainter
- * paintRoads), so a river paints tiles and never moves a height. It is
- * paint, and paint is the player's.
+ * paintRoads), so a river painted tiles and never moved a height. It
+ * was paint, and paint is the player's.
+ *
+ * LANDFORM3 (2026-10-06, Mac: "Yes rivers should be online"): IT IS
+ * GROUND NOW. The landforms (world/landforms.js - the room's ground,
+ * forced on below) cut every painted river and stream into the land,
+ * so the river switch decides where the ground IS beside every river
+ * in the Bay - the roads' own reason - and it is the room's. And the
+ * room's rivers are ON, past the mod's shipped off: a room that held
+ * the mod's default would have no rivers at all, and the channels are
+ * what Mac asked to see online. (The smoother still moves no river's
+ * height; the kernel's cut does - test/landform.test.js measures it.)
  *
  * MODS-ONLINE-4 (2026-09-22, Mac: "What about player balance?"): AND
  * THE READING ABOVE ANSWERED THE WRONG QUESTION FOR THREE OF THEM.
@@ -272,17 +293,21 @@ export function onlineForcedPref(key, search) {
  * Calories reaches another player only through a corpse's FOOD -
  * meat and rations, no power and no gear - and forcing it means
  * nobody may opt out of freezing to death, which is a live
- * complaint; the Shield Widget, Handheld Torches, Oblivion leveling
- * and Travel Options only ever make the player's OWN run harder or
- * easier, and the last two of those mostly harder.
+ * complaint; the Shield Widget, Handheld Torches and Oblivion leveling
+ * only ever make the player's OWN run harder or easier.
  *
  * So: what the lane forces is the floor the room stands on, and the
  * three switches that spend a stranger's evening. (CORPSE-FOOD, 2026-09-23: the food itself is the room's - minted online whatever the tier, survival/switch.js corpseFoodOn - and the tier stays the player's.)
  */
+/** AUDIT TRAVEL-ONLINE T7: what the map says if a trip over land ever reaches fast travel online (world.js's fork) -
+ *  unreachable while the room holds Travel Options' switches, said rather than teleported should it ever be reached. */
+export const ONLINE_LAND_TRAVEL_REFUSAL = 'Online, a journey over land is travelled, not skipped. Turn on Travel Options and try again.';
+
 export const ONLINE_ROOM_MOD_KEYS = Object.freeze({
   'roads-hazelnut': Object.freeze({
     Enabled: true,        // which network is painted, and so which beds are smoothed
     SmoothRoads: true,    // whether the beds are smoothed at all - the dial that gave the floor away
+    RiversAndStreams: true,   // LANDFORM3: whether rivers are painted, and so cut into the land - on, past the mod's shipped off (above)
   }),
   // WOD1 (2026-09-23): the second floor. World of Daggerfall levels the
   // ground under every camp and rock field it stands (LocationLoader.cs
@@ -290,7 +315,7 @@ export const ONLINE_ROOM_MOD_KEYS = Object.freeze({
   // rock in it, so two players who disagree walk two terrains and pass
   // through each other's boulders - the roads' own reason, word for
   // word. Its one switch is the room's.
-  'world-of-daggerfall': Object.freeze({ Enabled: true }),
+  'world-of-daggerfall': Object.freeze({ Enabled: true, Mountains: false }),   // WOD-PEAKS: and its spires the room's too - they level the ground and stand rock
   // DS1 (2026-09-25): the third floor. Every owner's ship stands at the SAME
   // map pixel - (2,2) for the small, (5,5) for the large (banking.js
   // SHIP_COORDS) - so a room's sailors share one deck, and Detailed Ships
@@ -299,11 +324,46 @@ export const ONLINE_ROOM_MOD_KEYS = Object.freeze({
   // other's crates; the switch is the room's. (Below decks opens no room -
   // worldModes' ship interior is the player's own.)
   'detailed-ships': Object.freeze({ Enabled: true }),
+  // WD3 (2026-10-01, Mac: "ensure this doesn't conflict or regress anything (For example housing customization)"): the
+  // towns themselves. Beautiful Villages and Beautiful Cities lay 7,727 of Daggerfall's places out again - new streets,
+  // new walls, every building where its block now stands - so two players who disagree walk two towns, one through the
+  // other's houses, and a building KEY (an online home's, a shared quest's) names two different buildings. The switch is
+  // the room's. The homes bought before them keep the towns they were bought in, for everyone (net/homeLaw.js WD3).
+  'beautiful-villages': Object.freeze({ Enabled: true }),
+  'beautiful-cities': Object.freeze({ Enabled: true }),
   // RAID2 (2026-09-27, Mac on World Events - Raiding Parties online: "1. Server 2. Keep"): the towns' raids are the
   // WORLD's - the day's roll is the shared day's, one player runs each raid and every other stands its raiders as
   // puppets and fights them, and a raid's deaths are every owner's summed. A player with the switch off would walk a
   // raided town the others fight in, unable to see the raiders striking him; the switch is the room's.
   'world-events-raiding-parties': Object.freeze({ Enabled: true }),
+  // TRAVEL-ONLINE (2026-10-03, Mac: "Remove instant travel online"; and TO-ONLINE's own words, 2026-09-19: "travel
+  // options uses instant travel for the online mod, which shouldn't be the case"): online a trip on the map is TRAVELLED -
+  // the mod's journey, or the Overworld's on the enhanced skin - never Daggerfall's fast travel, which online is a
+  // teleport (it arrives at the world's present: no world time to spend). Three switches reached that teleport: the mod
+  // off, and either of the two dials that send a Cautious or an Inns trip down the journey (ui/travelPopUp.js
+  // isPlayerControlledTravel; TO-LIVE put both on the tile). AUDIT TRAVEL-ONLINE T1: and a fourth - the ports rule. Off,
+  // nothing knocks the ship toggle (on by default, travelMapState.js) off a trip from the wilderness to an inland place,
+  // and a ship is never walked: the teleport again, free with Camp Out. All four are the room's, at the shipped defaults.
+  // A ship's passage from a port, and a party's journey to its leader (DFU's fast travel by design), are not touched.
+  'travel-options': Object.freeze({
+    Enabled: true,
+    'CautiousTravel.PlayerControlledCautiousTravel': true,
+    'StopAtInnsTravel.PlayerControlledInnsTravel': true,
+    'ShipTravel.OnlyFromPorts': true,
+  }),
+  // IT1 (2026-10-04, the owner, on instant travel online "as an option but with a cost", then "let this be the next mod
+  // we integrate 1:1" - and the choice put to them, "a driver's trip is Daggerfall's fast travel online ... the map's own
+  // trips stay walked"): IMMERSIVE TRAVEL. Its switch is the room's for the floor's reason: it stands a carriage, two
+  // horses and a driver at every city gate (its four gate blocks, laid onto Beautiful Cities' as well), collidable
+  // models a player without them would walk through. And DisableNormalTravel is the room's, OFF - the port's shipped
+  // default (IT1's recorded departure: the mod ships it on) - so online the travel map's trips stay Travel Options'
+  // walked journeys and a driver's fare is fast travel over land (a port's ship passage, TRAVEL-ONLINE item 9, the other
+  // fast travel online - AUDIT IT1 W5); on, the map would refuse every trip to a place.
+  // The fares and the driver's rules are the room's too, whole (ONLINE_WHOLE_MODS below).
+  'immersive-travel': Object.freeze({
+    Enabled: true,
+    'General.DisableNormalTravel': false,
+  }),
   // DW-A to DW-D (2026-09-25): the fourth floor, and more than a floor. Iliac
   // Puddle No More carves the sea out from under the terrain - the switch
   // and the depth decide where the seafloor stands, so two players who
@@ -391,6 +451,7 @@ export const ONLINE_PLAYERS_OWN_MODS = [
   'seasons-iliac-bay',     // which texture archives load for the season - a swap in front of the same terrain
   'weapon-widget',         // the first-person weapon's own motion; no damage, no timing, no attack state
   'eye-of-the-beholder',   // third person and your own billboard; peers are drawn by remotePlayers either way
+  'readied-spellcasting-hands',   // RSH1: your own first-person hands on your own screen; the cast itself is unchanged
   'ambient-text',          // flavour lines on your own screen
   'immersive-footsteps',   // your own footstep audio
   'better-ambience',       // ambient audio and the dungeon's darkness, both drawn locally
@@ -401,13 +462,18 @@ export const ONLINE_PLAYERS_OWN_MODS = [
   'shield-widget',               // the block is the DEFENDER's - damageShieldPool runs where the blow lands
   'handheld-torches',            // an item in my save with a light on my screen
   'oblivion-remaster-leveling',  // written into a character at creation and kept by that character
-  'travel-options',              // my own journey; OL2 already spends no world time online
   'diverse-weapons',        // DW1: the first-person weapon's and the icons' art - drawn on your own screen and nowhere else
   'horse-cart-and-cargo',   // HCC: whose horse and wagon stand where is the player's own; the others only SEE them (the online half rides the pose and the cell's frame, never a switch of the room's ground)
   'warm-ashes-ships',       // WA1: my own voyage's ambush - my quest, my crew and pirates (a spawner's foes, WORLD2: a peer on the same deck sees them fight), my lent ship; the pirate vessels are my blocks' variant and stand 40-140 m off in open water, where a peer without them sees sea
   'foraging',               // FORAGE1: my own tools, my own pack, my own quests - a use, a food, a fetch quest all run on my save
   'aquatic-sprites',        // AS1: 119 flats of scenery in three flooded dungeon blocks - no collider, no action, no marker; a peer without them walks the same rooms (the editor's seven sub-degree turns of a room model are under half a degree)
+  'low-poly-trees',         // LPT1: how the wilderness's trees are DRAWN - a 3D tree or its far picture where the same flat stands; the tree's cover, its sway, its Logging node and its fall are the flat's own, so a peer without it walks the same wood
+  'project-legacy',         // LEGACY1: my own family - its record, its births and its deaths are my characters'; the heirloom is an item in my save, and its power is folded where it is worn
+  'physical-items',         // PI1: how MY loot lies - my own bodies' items stood round them (a peer's body shows none: its list is its owner's), my own shift-drops a pile as any drop is; a take off a dungeon's body is the room's word as the quick door's is (dungeonContext.js publishLoot), so what any peer reads of a container is the same switch on or off
   'come-sail-away',         // CSA-A: a boat is a possession in my save, placed and sailed by me - HCC's wagon's shape: whose boat stands where is the player's own, and a peer only SEES me move (my pose); its wind is my machine's own roll (ComeSailAway.UpdateWind, UnityEngine.Random), as it is each DFU player's
+  'heat-haze',              // HAZE1: the desert's shimmer on your own screen, over a weather and an hour the room already shares
+  'windfall',               // WINDFALL1: how the trees sway, the leaves and flakes that blow and the gusts you hear - your own screen and speakers; nothing stands, rolls or is written
+  'snowfall',               // SNOWFALL1: the winter ground's paint and the snow drawn over it, on your own screen - the floor under it is the terrain's
 ];
 
 /**
@@ -437,6 +503,10 @@ export const ONLINE_WHOLE_MODS = Object.freeze({
   'roleplay-realism-items': Object.freeze([]),
   'roleplay-realism': Object.freeze(['variantNpcs', 'variantResidents']),   // who stands behind a counter and in a house: looks
   'oblivion-remaster-leveling': Object.freeze(['Enabled']),                 // which leveling a character uses stays its own; the dials are the room's
+  // IT1: a driver's fare is the price of fast travel over land online - a fee of 0, a dungeon on his list or the region
+  // lock off would be a free or a wider teleport a dial away, so every rule is the room's at the mod's own value. Only
+  // the map's looks stay the player's: the dots' sizes, the roads drawn on the page, a captain's map showing docks alone.
+  'immersive-travel': Object.freeze(['General.ClearerMapDots', 'General.DrawRoads', 'General.DrawTracks', 'ShipTravel.ShowLargerDocks', 'ShipTravel.ShowOnlyDocks']),
 });
 
 /** The forced value of a mod's switch on an online page, else undefined -

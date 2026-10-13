@@ -372,13 +372,14 @@
   {
     "name": "PROF10-no-master-jeweller",
     "file": "src/net/recipeLaw.js",
-    "old": "spec100 === 'masterwright' || spec100 === MASTER_JEWELLER;",
-    "new": "spec100 === 'masterwright';",
+    "old": "(r?.profession === 'jewelcrafting' ? spec100 === MASTER_JEWELLER : spec100 === 'masterwright')",
+    "new": "(r?.profession === 'jewelcrafting' ? false : spec100 === 'masterwright')",
     "tests": [
       "test/prof10_law.test.js",
       "test/prof10_service.test.js",
       "test/prof10_client.test.js"
-    ]
+    ],
+    "note": "CRAFT3: re-aimed by content."
   },
   {
     "name": "PROF10-cracked-never-spent",
@@ -557,8 +558,8 @@
   {
     "name": "PROF10-no-jeweller-station",
     "file": "src/net/decorLaw.js",
-    "old": "'workbench', 'loom', 'mason', 'jeweller']);",
-    "new": "'workbench', 'loom', 'mason']);",
+    "old": "'workbench', 'loom', 'mason', 'jeweller', 'vendor']);",
+    "new": "'workbench', 'loom', 'mason', 'vendor']);",
     "tests": [
       "test/prof10_law.test.js",
       "test/homestations.test.js"
@@ -567,8 +568,8 @@
   {
     "name": "PROF10-jeweller-licence-cheap",
     "file": "src/net/decorLaw.js",
-    "old": "mason: 50_000, jeweller: 50_000 });",
-    "new": "mason: 50_000, jeweller: 5_000 });",
+    "old": "mason: 50_000, jeweller: 50_000, vendor: 25_000 });",
+    "new": "mason: 50_000, jeweller: 5_000, vendor: 25_000 });",
     "tests": [
       "test/prof10_law.test.js"
     ]
@@ -576,8 +577,8 @@
   {
     "name": "PROF10-jeweller-station-unnamed",
     "file": "src/net/decorLaw.js",
-    "old": "jeweller: 'Jeweller\\'s bench' });",
-    "new": "jeweller: 'Bench' });",
+    "old": "jeweller: 'Jeweller\\'s bench', vendor: 'Hired trader' });",
+    "new": "jeweller: 'Bench', vendor: 'Hired trader' });",
     "tests": [
       "test/prof10_law.test.js"
     ]
@@ -818,8 +819,8 @@
   {
     "name": "PROF10-maker-reads-the-template",
     "file": "src/systems/enchanting.js",
-    "old": "const basePower = craftedJewelPoints(item) ?? templateByIndex(",
-    "new": "const basePower = templateByIndex(",
+    "old": "const basePower = craftedJewelPoints(item) ?? lookup(",
+    "new": "const basePower = lookup(",
     "tests": [
       "test/prof10_client.test.js"
     ]
@@ -901,11 +902,12 @@
   {
     "name": "PROF10-svc-no-master-jeweller",
     "file": "server-account/src/professions.js",
-    "old": "qualityOdds(rank - r.rank, { masterwright: masterworkSpec(specs[100]) })",
+    "old": "qualityOdds(rank - r.rank, { masterwright: masterworkSpec(specs[100], r) })",
     "new": "qualityOdds(rank - r.rank, { masterwright: specs[100] === 'masterwright' })",
     "tests": [
       "test/prof10_service.test.js"
-    ]
+    ],
+    "note": "CRAFT3: re-aimed by content."
   },
   {
     "name": "PROF10-svc-hand-at-100",
@@ -958,11 +960,12 @@
   {
     "name": "PROF10-refusal-unsaid",
     "file": "src/net/accountClient.js",
-    "old": "  'prof-lapidary': () => t('account.refusal.profLapidary', 'Only a Lapidary sets a Siege-cracked Gem as a piece\\'s gem - Jewelcrafting\\'s choice at 100.'),   // PROF10\n",
+    "old": "  'prof-lapidary': () => t('account.refusal.profLapidary', 'Only a Lapidary sets a Siege-cracked Gem as a piece\\'s gem - a Smithing choice at 100 (Jewelcrafting\\'s).'),   // PROF10; CRAFT3\n",
     "new": "",
     "tests": [
       "test/prof10_client.test.js"
-    ]
+    ],
+    "note": "CRAFT3: re-aimed by content."
   },
   {
     "name": "PROF10-book-cracked-unkept",
@@ -976,8 +979,8 @@
   {
     "name": "PROF10-book-cracked-unasked",
     "file": "src/net/profBook.js",
-    "old": "Number.isSafeInteger(w.seat) ? w.seat : null, w.cracked === true)));",
-    "new": "Number.isSafeInteger(w.seat) ? w.seat : null, false)));",
+    "old": "Number.isSafeInteger(w.seat) ? w.seat : null, w.cracked === true)), key);",
+    "new": "Number.isSafeInteger(w.seat) ? w.seat : null, false)), key);",
     "tests": [
       "test/prof10_client.test.js"
     ]
@@ -1004,8 +1007,8 @@
   {
     "name": "PROF10-pages-hands-not-at-the-bench",
     "file": "src/ui/profPages.js",
-    "old": "    : me !== _jewel && _jewel.act ? 'jeweller' : null);",
-    "new": "    : null);",
+    "old": ": me !== _jewel && (_jewel.act || _jewel.crafting) ? 'jeweller' : null);",
+    "new": ": null);",
     "tests": [
       "test/prof10_client.test.js"
     ]
@@ -1049,12 +1052,12 @@
   {
     "name": "PROF10-pages-jewelcrafting-unpractised",
     "file": "src/ui/profPages.js",
-    "old": "'masonry', 'cooking', 'jewelcrafting', 'alchemy', 'enchanting']);   // PROF8: Fishing; PROF11: Masonry; PROF9: Cooking; PROF10: Jewelcrafting",
-    "new": "'masonry', 'cooking', 'alchemy', 'enchanting']);   // PROF8: Fishing; PROF11: Masonry; PROF9: Cooking; PROF10: Jewelcrafting",
+    "old": "  jewelcrafting: () => [[t('prof.page.unlocks.jewelcrafting1', 'Silver pieces; the Cloth Amulet'), 1],",
+    "new": "  jewels: () => [[t('prof.page.unlocks.jewelcrafting1', 'Silver pieces; the Cloth Amulet'), 1],",
     "tests": [
       "test/prof10_client.test.js"
     ],
-    "note": "PROF12 (PIN MOVED): re-aimed by content."
+    "note": "PROF12 (PIN MOVED): re-aimed by content. CRAFT3: re-aimed by content."
   },
   {
     "name": "PROF10-pages-no-bench",
@@ -1140,11 +1143,12 @@
   {
     "name": "PROF10-pages-odds-no-master-jeweller",
     "file": "src/ui/profPages.js",
-    "old": "qualityOdds(rank - r.rank, { masterwright: masterworkSpec(specs[100]) })",
-    "new": "qualityOdds(rank - r.rank, { masterwright: false })",
+    "old": "const odds = qualityOdds(rank - r.rank, { masterwright: masterworkSpec(specs[100], r) });   // CRAFT3",
+    "new": "const odds = qualityOdds(rank - r.rank, { masterwright: false });   // CRAFT3",
     "tests": [
       "test/prof10_client.test.js"
-    ]
+    ],
+    "note": "CRAFT3: re-aimed by content."
   },
   {
     "name": "PROF10-pages-no-heartwood",
@@ -1230,8 +1234,8 @@
   {
     "name": "PROF10-pages-one-act-a-page-unkept",
     "file": "src/ui/profPages.js",
-    "old": "craftable(r, held, spends) && !_jewel.crafting && !_jewel.act && !elsewhere && !short;",
-    "new": "craftable(r, held, spends) && !_jewel.crafting && !_jewel.act && !short;",
+    "old": "(craftable(r, held, spends) || chain?.ok === true) && !_jewel.crafting && !_jewel.act && !elsewhere && !short;",
+    "new": "(craftable(r, held, spends) || chain?.ok === true) && !_jewel.crafting && !_jewel.act && !short;",
     "tests": [
       "test/prof10_client.test.js"
     ]
@@ -1546,8 +1550,8 @@
   {
     "name": "PROF541-J7-every-gem-its-first",
     "file": "server-account/src/professions.js",
-    "old": "OR substr(recipe, 1, length(${fk}) + 1) = ${fk} || ':')",
-    "new": "OR 0)",
+    "old": "  const kin = firstCraftKin(r);",
+    "new": "  const kin = [r.id];",
     "tests": [
       "test/prof10_service.test.js"
     ]
@@ -1555,8 +1559,8 @@
   {
     "name": "PROF541-J7-key-the-gem",
     "file": "src/net/recipeLaw.js",
-    "old": "r.id.split(':').slice(0, 2).join(':')",
-    "new": "r.id.split(':').slice(0, 3).join(':')",
+    "old": "export const firstCraftKey = (r) => (!r ? null : `${r.product}@${r.tier}`);",
+    "new": "export const firstCraftKey = (r) => (!r ? null : r.kind === 'jewel' ? r.id : `${r.product}@${r.tier}`);",
     "tests": [
       "test/prof10_service.test.js"
     ]

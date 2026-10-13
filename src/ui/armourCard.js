@@ -27,6 +27,7 @@ import { struckBodyPartTable } from '../combat/formulas.js';
 import { itemDamageLine, weaponDamageRange } from '../systems/itemInfo.js';
 import { itemIsIdentified } from '../systems/tradeModes.js';
 import { armorLabelValue } from './nativeInventory.js';
+import { lineComparison, lootRarityOn } from '../systems/lootRarity.js';   // LOOT18: the lines against what a wear replaces
 
 /** The seven parts in DFU's BodyParts order (ItemEnums.cs:140-150), named off the enum's own members ("RightArm" says
  *  "Right arm"), so no second list of them stands anywhere. No lookbehind in the split (SAFARI1: a Safari before 16.4
@@ -125,14 +126,20 @@ export function wearComparison(entity, item) {
   for (let part = 0; part < NUMBER_BODY_PARTS; part++) {
     if (covered.has(part) || after[part] !== before[part]) parts.push({ part, before: before[part], after: after[part] });
   }
-  let damage = null;
+  let damage = null, hands = null;
   if (itemDamageLine(item) != null) {
     const rival = [table[slot], ...replaces].find((it) => it && itemDamageLine(it) != null);
     if (rival) damage = { against: rival, before: weaponDamageRange(rival), after: weaponDamageRange(item) };
+    // HANDS-COMPARE (2026-10-08, the owner: "Damage comparison should now show left and right hand in the item info when
+    // hovering"): a weapon set against what each hand holds now - the right's and the left's, each its own row
+    hands = [['Right hand', EQUIP_SLOTS.RightHand], ['Left hand', EQUIP_SLOTS.LeftHand]].map(([label, s]) => {
+      const held = table[s];
+      return { label, held, before: held && itemDamageLine(held) != null ? weaponDamageRange(held) : null, after: weaponDamageRange(item) };
+    });
   }
   const tableNow = struckBodyPartTable();
   return {
-    slot, replaces, parts, damage,
+    slot, replaces, parts, damage, hands,
     overall: parts.length ? { before: overallArmour(before, tableNow), after: overallArmour(after, tableNow) } : null,
   };
 }
@@ -183,8 +190,41 @@ export function armourPlaque(entity) {
  * red worse). Null where wearComparison is, and for a piece that is neither armour nor a weapon and moves no part (a
  * ring, a shirt): there is no stat to set against another. `nameOf` names a piece (the pack hands itemLongName).
  */
-export function compareBlock(entity, item, nameOf = (it) => String(it?.name ?? 'piece')) {
-  const cmp = wearComparison(entity, item);
+/** LOOT18 (the Loot arc II, bible/06-Systems/Loot-II-Arc.md section 10): THE LINES A WEAR WOULD CHANGE, under the
+ *  numbers - each of the piece's lines against the same line on what it replaces (systems/lootRarity.js
+ *  lineComparison): up or down by how much, `new` where they have none, and their lines it would lose; a resistance
+ *  line with what of its element the rolled gear counts, now and after (LOOT12's cap). Only a wear that replaces a known
+ *  piece, and only a piece whose lines are known. */
+export const LINES_HEAD = 'Its lines against what it replaces';
+export function lineCompareBlock(entity, item, wear = undefined) {
+  // AUDIT LOOT II B6: the card's comparison handed in (`wear`, compareBlock's) - a hover folded the entity twice for it -
+  // and none at all with the ladder off, where there are no lines to set
+  if (!lootRarityOn()) return null;
+  const cmp = wear === undefined ? wearComparison(entity, item) : wear;
+  if (!cmp || !cmp.replaces.length) return null;
+  const lines = lineComparison(entity, item, cmp.replaces);
+  if (!lines || (!lines.rows.length && !lines.lost.length)) return null;
+  const box = el('div', 'cmp cmp-lines');
+  box.append(el('p', 'cmp-head', LINES_HEAD));
+  const ul = el('ul', 'cmp-linelist');
+  for (const r of lines.rows) {
+    const li = el('li', 'cmp-line');
+    li.append(el('span', 'cmp-v', r.text));
+    li.append(r.delta == null ? el('span', 'cmp-d new', 'new') : el('span', `cmp-d ${r.delta > 0 ? 'up' : r.delta < 0 ? 'down' : 'same'}`, r.delta > 0 ? `▲${r.delta}` : r.delta < 0 ? `▼${-r.delta}` : '='));
+    if (r.resist) li.append(el('span', 'cmp-note', `${r.resist.now}% → ${r.resist.then}% counts`));
+    ul.append(li);
+  }
+  for (const t of lines.lost) {
+    const li = el('li', 'cmp-line lost');
+    li.append(el('span', 'cmp-v', t), el('span', 'cmp-d down', 'lost'));
+    ul.append(li);
+  }
+  box.append(ul);
+  return box;
+}
+
+export function compareBlock(entity, item, nameOf = (it) => String(it?.name ?? 'piece'), wear = undefined) {
+  const cmp = wear === undefined ? wearComparison(entity, item) : wear;   // AUDIT LOOT II B6: or the one the card already made
   if (!cmp) return null;
   if (!cmp.parts.length && !cmp.damage && item.group !== 'Armor' && itemDamageLine(item) == null) return null;
   const box = el('div', 'cmp');
@@ -198,7 +238,14 @@ export function compareBlock(entity, item, nameOf = (it) => String(it?.name ?? '
     g.append(el('dt', null, key), dd);
     dl.append(g);
   };
-  if (cmp.damage) {
+  if (cmp.hands) {
+    // HANDS-COMPARE: against each hand - a weapon there, its range to this one's; a shield or nothing, this one's alone
+    for (const h of cmp.hands) {
+      const [a0, a1] = h.after;
+      if (h.before) { const [b0, b1] = h.before; row(`vs ${h.label}`, `${b0} - ${b1} → ${a0} - ${a1}`, delta(a0 - b0), delta(a1 - b1)); }
+      else row(`vs ${h.label}`, `${h.held ? nameOf(h.held) : 'empty'} → ${a0} - ${a1}`);
+    }
+  } else if (cmp.damage) {
     const [b0, b1] = cmp.damage.before, [a0, a1] = cmp.damage.after;
     row('Damage', `${b0} - ${b1} → ${a0} - ${a1}`, delta(a0 - b0), delta(a1 - b1));
   }

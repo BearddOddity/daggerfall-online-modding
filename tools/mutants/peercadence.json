@@ -74,8 +74,8 @@
   {
     "name": "PEERCADENCE-the-rig-poses-whatever-the-flag",
     "file": "src/combat/fpArm.js",
-    "old": "        if (pose) {\n          poseAssembly(t.arm, {",
-    "new": "        if (true) {\n          poseAssembly(t.arm, {",
+    "old": "        if (pose) {\n          posePartClocks(t.arm, weaponClockValue(), { frameTime: partClock });",
+    "new": "        if (true) {\n          posePartClocks(t.arm, weaponClockValue(), { frameTime: partClock });",
     "tests": [
       "test/peercadence.test.js"
     ]
@@ -156,8 +156,8 @@
   {
     "name": "AUDIT-PEERCADENCE-a-far-body-keeps-its-stale-skin",
     "file": "src/net/peerBodies.js",
-    "old": "        b.posed = false; b.stale = false; b.owed = false;   // AUDIT PEER-CADENCE F2: far",
-    "new": "        b.stale = false; b.owed = false;   // AUDIT PEER-CADENCE F2: far",
+    "old": "if (b.far || dt > 0 || !this._buildInRange) { b.posed = false; b.stale = false; b.owed = false; }   // AUDIT PEER-CADENCE F2: far",
+    "new": "if (b.far || dt > 0 || !this._buildInRange) { b.stale = false; b.owed = false; }   // AUDIT PEER-CADENCE F2: far",
     "tests": [
       "test/peercadence.test.js"
     ]

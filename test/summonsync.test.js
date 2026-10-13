@@ -16,6 +16,8 @@ import { validQuestTags, questMarkerYields, QUEST_PUPPETS_MAX, validLooseSeqs, c
 import { isPrivateQuestFoe } from '../src/scenes/questFoeHost.js';   // CURSE-SYNC: the handovers' word for a quest's foe
 import { PARTY_ME, noteFighter, foeFighters, partyFoeLoses, partyFoeHeals, partyFoeHits, _resetPartyScaleForTests } from '../src/systems/partyScale.js';
 import { indexText } from './bibleIndex.mjs';
+import { foeSeed, applyWireLook } from '../src/characters/foeBodies.js';   // AUDIT MW-NPC II K3: the dungeon context's look seed, in the mounted scope
+import { partyOnlyQuestShare } from '../src/scenes/questFoeHost.js';   // QUEST-OWNER: the dungeon's quest seam, narrowed to the party (ownShare)
 
 const D = readFileSync(new URL('../src/scenes/dungeonContext.js', import.meta.url), 'utf8');
 const AST = acorn.parse(D, { ecmaVersion: 'latest', sourceType: 'module' });
@@ -44,6 +46,9 @@ const scoped = (state) => new Proxy(state, {
   set: (t, k, v) => { t[k] = v; return true; },
 });
 const mount = (body, state) => new Function('__s', `with (__s) { ${body} }`)(scoped(state));
+/** DESYNC-ZERO: the room's reader-side allowance for one owner's loose stands (dungeonContext.js LOOSE_PUPPETS_MAX) - a
+ *  Greater Giant's call of ten stands whole; CELL_LOOSE_PUPPETS (the wire's, four) is its floor. */
+const LOOSE_PUPPETS_MAX = 24;
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
 const QUEST = 'M0B00Y16';
@@ -65,16 +70,18 @@ function side(self, { layout = [], own = [], authority = true } = {}) {
   const share = {
     tagOf: (f) => (f.questBehaviour?.targetSymbol?.name && !f.questBehaviour.private ? { q: QUEST, s: f.questBehaviour.targetSymbol.name } : null),
     accepts: (from) => PARTY.has(self) && PARTY.has(from),
+    partyPeer: (id) => PARTY.has(self) && PARTY.has(id),   // QUEST-OWNER: the world host's seam carries it (world.js questShareSeam), and the dungeon's narrowing asks it
     peerMayHit: (peerId) => PARTY.has(peerId),
     onPuppetHurt() {}, onPuppetDied() {},
     behaviourFor: (tag) => { const b = { questUID: 7, targetSymbol: { name: tag.s } }; bound.push(b); return b; },
     adoptsOrphan: () => false,
   };
   const state = {
-    opts: { selfId: () => self, questShare: () => share },
+    foeSeed, applyWireLook,   // AUDIT MW-NPC II K3: the records' look seed (roomRecord, applyFoeRecord, the puppets' stands)
+    partyOnlyQuestShare, opts: { selfId: () => self, questShare: () => share },
     _layoutFoes: layout.length, foes, _authority: authority, _ctxDead: false, _locationKey: 'dungeon:7',
     _ownSeq: 0, _ownFrameSeq: 0, _ownGen: 0, _ownPups: new Map(), _ownPending: new Map(), _ownOwners: new Map(), _ownPendLoose: new Set(), _ownAdopted: new Map(), _ownKept: new Map(),
-    FOE_HEALTH_MAX, FOE_LEVEL_MAX, CELL_FRAME_RECORDS_MAX, QUEST_PUPPETS_MAX, CELL_LOOSE_PUPPETS, HIT_DMG_MAX: 10000, FOES_FRAME_MAX,
+    FOE_HEALTH_MAX, FOE_LEVEL_MAX, CELL_FRAME_RECORDS_MAX, QUEST_PUPPETS_MAX, CELL_LOOSE_PUPPETS, LOOSE_PUPPETS_MAX, HIT_DMG_MAX: 10000, FOES_FRAME_MAX,
     validFoeRecord, validQuestTags, validLooseSeqs, companionNames, questMarkerYields, GENDER_BIT: ['male', 'female'],   // PIN MOVED (AUDIT WK-U3, 2026-10-01): the own lane reads companions' names beside their places
     _sharedFoe: () => false, fightN: () => 1, canStandFoe: () => true,
     applyFoeRecord: (f, r) => { if (r.f) f.ai.feet = [...r.f]; if (Number.isFinite(r.h)) f.entity.health = r.h; if (r.d === 1) f.dead = true; f._pup = { feet: [...(r.f ?? f.ai.feet)], yaw: r.y ?? 0 }; },
@@ -149,14 +156,15 @@ test('SUMMON-SYNC: my loose stands past the run ride the own lane named in `lf` 
 });
 
 test('SUMMON-SYNC: anyone in the room stands my loose stands - a stranger to my party too - CELL_LOOSE_PUPPETS an owner, a quest\'s allowance apart; the party\'s quest stays the party\'s; a number named nowhere, or junk in `lf`, stands nothing; a full frame takes down what it no longer lists', async () => {
-  const six = Array.from({ length: 6 }, (_, k) => loose({ ai: { feet: [k, 0, 1], yaw: 0, moving: false, target: null } }));
+  const six = Array.from({ length: LOOSE_PUPPETS_MAX + 2 }, (_, k) => loose({ ai: { feet: [k, 0, 1], yaw: 0, moving: false, target: null } }));
   const vamp = questFoe('_vampire_');
   const owner = side('aaa-0001', { own: [...six, vamp] });
   const frame = owner.ownFrame(true);
   const bob = side('bob-0005');   // no party of the owner's
   assert.equal(bob.applyOwnFrame('aaa-0001', frame), true);
   await tick();
-  assert.equal(bob.built.length, CELL_LOOSE_PUPPETS, `four of the six - the cell's allowance (${CELL_LOOSE_PUPPETS})`);
+  assert.equal(bob.built.length, LOOSE_PUPPETS_MAX, `the room's allowance (${LOOSE_PUPPETS_MAX}) of ${six.length}`);
+  assert.ok(LOOSE_PUPPETS_MAX >= CELL_LOOSE_PUPPETS && LOOSE_PUPPETS_MAX >= 10, 'DESYNC-ZERO: a Greater Giant\'s call of ten stands whole');
   const pups = [...bob.state._ownPups.values()];
   assert.ok(pups.every((p) => p._pupLoose === true && p._pupQuest === null && p._ownFrom === 'aaa-0001'), 'loose puppets, the owner\'s');
   assert.ok(!pups.some((p) => p._ownI === vamp._ownSeq), 'and never the party\'s quest foe');
@@ -166,7 +174,7 @@ test('SUMMON-SYNC: anyone in the room stands my loose stands - a stranger to my 
   assert.equal(amy.built.length, 1, 'the quest foe stands');
   amy.applyOwnFrame('aaa-0001', frame);
   await tick();
-  assert.equal(amy.built.length, CELL_LOOSE_PUPPETS + 1, 'and the loose four beside it - each kind its own allowance, a standing quest foe no loose stand\'s');
+  assert.equal(amy.built.length, LOOSE_PUPPETS_MAX + 1, 'and the loose four beside it - each kind its own allowance, a standing quest foe no loose stand\'s');
   // a record named BOTH a party's quest foe and a loose stand is the quest's - a stranger stands nothing of it
   const dual = side('bob-0005');
   dual.applyOwnFrame('aaa-0001', { ...owner.ownFrame(true), lf: [vamp._ownSeq] });
@@ -239,10 +247,10 @@ test('SUMMON-SYNC: my loose stand hunts every player in the room - my quest foe 
   const line = D.slice(at, D.indexOf('\n', at));
   const arrow = line.slice(line.indexOf('(streamed = false'), line.lastIndexOf(' : null,'));
   const summon = loose(), vamp = questFoe('_vampire_'), stray = foe(), lay = foe();
-  const share = { tagOf: (f) => (f.questBehaviour ? { q: QUEST, s: '_vampire_' } : null), peerMayHit: (id) => PARTY.has(id) };
+  const share = { tagOf: (f) => (f.questBehaviour ? { q: QUEST, s: '_vampire_' } : null), peerMayHit: (id) => PARTY.has(id), partyPeer: (id) => PARTY.has(id) };   // QUEST-OWNER: the seam's party door
   const peers = [{ id: 'mmm-0002' }, { id: 'bob-0005' }];
   const cands = mount(`${declSrc('isRoomFoe')}\n${declSrc('ownShare')}\n${declSrc('ownQuestTag')}\n${declSrc('ownLoose')}\nreturn ${arrow};`,
-    { foes: [lay, summon, vamp, stray], _layoutFoes: 1, _authority: false, opts: { questShare: () => share }, peerCandidates: () => peers });
+    { foes: [lay, summon, vamp, stray], _layoutFoes: 1, _authority: false, partyOnlyQuestShare, opts: { questShare: () => share }, peerCandidates: () => peers });
   const ids = (rec, streamed = false) => cands(streamed, rec).filter((c) => !c.ai).map((c) => c.id);
   assert.deepEqual(ids(summon), ['mmm-0002', 'bob-0005'], 'my loose stand: everyone in the room');
   assert.deepEqual(ids(vamp), ['mmm-0002'], 'my quest foe: its party');
@@ -260,7 +268,7 @@ test('SUMMON-SYNC: my loose stand is weighed by who fights it, counted by me who
   const pup = foe({ _ownFrom: 'bob-0005', _ownI: 3, _pupLoose: true, _fightN: 3 });
   const d = mount(`${declSrc('isRoomFoe')}\n${declSrc('ownShare')}\n${declSrc('ownQuestTag')}\n${declSrc('ownLoose')}\n${declSrc('ownRides')}\n${strip(D.slice(a, b))}
     return { _sharedFoe, _runsFoe, fightN, _weighHit, door: (foe, healthDamage, bypassShield = false, _whole = false) => { ${door[0]} } };`,
-  { foes: [foe(), summon, ally, pup], _layoutFoes: 1, _authority: false, opts: { questShare: () => ({ tagOf: () => null }) }, playerEntity: { maxHealth: 100 }, partyFoeLoses, partyFoeHits, partyFoeHeals, foeFighters, performance });
+  { foes: [foe(), summon, ally, pup], _layoutFoes: 1, _authority: false, partyOnlyQuestShare, opts: { questShare: () => ({ tagOf: () => null }) }, playerEntity: { maxHealth: 100 }, partyFoeLoses, partyFoeHits, partyFoeHeals, foeFighters, performance });
   const now = performance.now();
   for (const who of [PARTY_ME, 'bob-0005', 'carl-0003', 'dave-0004']) { noteFighter(summon, who, now); noteFighter(ally, who, now); noteFighter(pup, who, now); }
   assert.deepEqual([d._sharedFoe(summon), d._runsFoe(summon), d.fightN(summon)], [true, true, 4], 'mine: shared, run here, four fight it');
@@ -292,7 +300,7 @@ test('SUMMON-SYNC: the Wabbajack re-stands only what this copy runs - never a pu
 });
 
 test('SUMMON-SYNC by source: every loose stand is marked, a quest\'s foe unmarked; the flag is retired at its site and off the board', () => {
-  assert.match(D, /if \(yawRad != null && f\.ai\) f\.ai\.yaw = yawRad;\n\s*f\._loose = true;/, 'spawnLooseFoe marks its stand');   // merged beside OH-F C4: the alliance rides the build's record (buildFoeAt), so the mark follows the yaw
+  assert.match(D, /if \(yawRad != null && f\.ai\) f\.ai\.yaw = yawRad;\n\s*(?:if \(bout\) \{ f\.entity\.bout = bout; f\.entity\.items = \[\]; f\._bout = true; return f; \}\n\s*)?f\._loose = true;/, 'spawnLooseFoe marks its stand');   // ARENA2: an arena bout's fighter is the bout's, not a loose stand (offline; ARENA4 carries it online)   // merged beside OH-F C4: the alliance rides the build's record (buildFoeAt), so the mark follows the yaw
   assert.match(D, /const f = await spawnLooseFoe\(mobileType, position, \{ gender, yawRad(?:, questSpawn: true)? \}\);\n\s*if \(!f\) \{[^\n]*\}\n\s*f\._loose = false;/, 'a quest\'s foe rides by its quest\'s law');
   assert.match(D, /SUMMON-SYNC \(2026-09-27, Mac: "Finish the 2 gaps"\) paid the last/);
   assert.match(indexText(), /## Open flags/, 'the index still carries the open flags (a negative pin over a page that lost them would pass for ever - HARD5)');
@@ -324,7 +332,7 @@ test('SUMMON-SYNC: an ALLY goes with its summoner - neither handover names an he
   assert.deepEqual(sent.at(-1).f, [null, 'bob-0005', 'mmm-0002'], 'the room\'s: no heir for my ally, the nearest for my summon, the party for my quest\'s');
   const cell = new Function('modes', 'online', 'isCellRoom', 'peersNear', 'social', 'exteriorFoes', 'isPrivateQuestFoe', `return () => ${body('const handOverFoes = () =>')};`)(
     { mode: 'exterior' }, { room: 'world:3,12', sendFoes: (f) => { sent.push(f); return true; } }, () => true, () => near, social,
-    { handOverFrame: (heirOf) => ({ f: [heirOf(ally), heirOf(summon), heirOf(vamp)] }), dropOwnLive: () => 2 }, isPrivateQuestFoe);
+    { handOver: (heirOf, send) => send({ f: [heirOf(ally), heirOf(summon), heirOf(vamp)] }) ? 2 : 0 }, isPrivateQuestFoe);
   assert.equal(cell(), 2);
   assert.deepEqual(sent.at(-1).f, [null, 'bob-0005', 'mmm-0002'], 'and the cell\'s, by the same rule');
 });

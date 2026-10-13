@@ -87,7 +87,16 @@ IsSnowFreeClimate serves the footsteps and the table never rolls snow
 for a snow-free zone, so nothing in DFU keeps rain off snow. This is a
 departure, recorded on the Ledger, and it is the enhanced lane's.
 
-`test/weather2a_snowground.test.js`.
+**SNOWLESS1 (FIELD BUGS 2026-10-09 #1, `01-Overview/Field-Bugs-2026-10-09.md`).** The law asked the archive law alone
+(`groundIsSnowy`: climate type and season), so with Snowless Swamps and Jungles worn every winter rain and storm in an
+Ocean, Rainforest or Swamp climate fell as snow on its green ground (about 37% of a jungle's winter days), and snow
+systems the weather map drifts out of a snowy climate went on snowing over the desert, where nothing turned them back.
+It asks the ground as drawn now (`world/climateSwaps.js` groundWearsSnow: the add-on's winter set wears none), and runs
+both ways: snow over a ground that wears none falls as rain (`overGround`, `mapGround`). The table's own swamp-winter
+snow rains under the add-on too - the same enhanced-lane departure, recorded on the Ledger's row; the classic lane keeps
+every word.
+
+`test/weather2a_snowground.test.js`, `test/fb1009_snowless.test.js`.
 
 ## C - CLOUD TYPES BY PLACE (WEATHER2c, 2026-09-14)
 
@@ -1105,4 +1114,37 @@ generator for one number (`wind.js seededFirst`, `seededRng`'s own first draw: o
 BITS: a snapshot of 840 skies, 400 winds and paths, the systems near 84 places and 21 forecasts compared byte for byte
 before and after, and goldens taken under the code before it pinned in test/flow2_fast_tests.test.js (the wind and its
 path, the sky with its system's place and shape, a front's cells and where they were born). The gate runs in ~58 s.
+
+## RAIN-LEAK - the fall's own clock, and what a shower lets go of (2026-10-11)
+
+Asked *"Does rain have a memory leak"* - no: `PrecipitationRenderer` and `RainCurtainsRenderer` are built once a page
+(`bootWorld` and `bootExterior` run once, and every scene change is a reload), a weather change reuses the one
+renderer, and the curtains' memo clears at 256. Then *"Take care of all 3"* - the three things the read found that
+were not a leak but read like one:
+
+- **RAIN-CLOCK.** Every precipitation program moves its drops by `uTime` x a per-drop rate and by the host's
+  integrated wind travel (`windOff`), float32 on the GPU, and both were handed over unbounded: `uTime` the page's
+  uptime, `windOff` every metre the wind had blown since boot. A day in, `uTime` x fall is ~2.5e6 m, where a
+  float32's step is a quarter metre against ~0.4 m a frame of travel - the rain moves in jumps. The wisps wrap theirs
+  on commensurate periods (AUDIT 68 S17-wisp-wrap-gust), but the lab's stage is pinned byte for byte to
+  grass-proto.html and its fall and gust are continuous per drop, so no wrap of either is unseen. The renderer's
+  `clock` re-origins instead (`uTime` from 0, `windOff` zeroed) on the first draw after the fall has been off the
+  screen `PRECIP_REST_S` (10 s - a clear sky, an interior, the eye under water: how a spell of weather begins), on a
+  host clock run backwards, and at `PRECIP_CLOCK_MAX_S` (an hour) of unbroken fall - one frame's reshuffle of a
+  statistically identical field, where a float32's step is under a centimetre. All three programs read it (classic,
+  the lab's, DS1's pixel snow), and only a draw that reaches the GPU moves it: a front at no intensity is no frame of
+  the fall. The rest is 10 s and not one frame because the software GPU renders the streaming scene at seconds a
+  frame.
+- **The loops let go of every node.** `AudioEngine.loop` and `loop3d` (the street's rain, Better Ambience's rain
+  through the walls and at a dungeon's exit) disconnected the source alone on `stop` and at a fade's end; the gain,
+  the panner and the low-pass stayed wired into the bus. `releaseNodes` lets go of all of them, as the beds and the
+  retrigger loops already did.
+- **One eye array a frame.** The falling weather's draws (the sand, the rain and snow, the wisps) each minted
+  `new Float32Array(eye)` every frame; each host now fills one (`wxEye32`, `eye32`) made at boot - world.js inside
+  `drawFalling`, not in the frame, whose bytecode PERF-V8 holds under three quarters of V8's ceiling.
+
+Pinned in test/rainleak.test.js on a recording GL and a recording audio context; `tools/mutants/rainleak.json`, 16, 16
+dead. What still mints an eye a frame - the bolts (test/bolt_lightning.test.js pins their eye as the view's own), and in
+world.js the banners, the duel wall, the gate's pool and smoke, the omen and the loot lines - is outside the falling
+weather and was left as it stands.
 

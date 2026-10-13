@@ -23,12 +23,16 @@ import { renownFoeStruck, renownFoeDied } from '../src/net/renownTracker.js';   
 import { reportPlayerKill } from '../src/systems/playerKills.js';   // SET2: the kill door's third word, in the harness's scope
 import { partyFoeLoses, noteFighter, foeFighters, takeWholeBlow, PARTY_ME } from '../src/systems/partyScale.js';
 import { stampWonWeapons } from '../src/systems/lootRarity.js';   // SIGIL1: the kill door's stamp, the real one (offline: nothing marked)
+import { rollCorpseKit } from '../src/systems/foeLootCap.js';   // KIT-ROLL: the kill door's kit roll, the real one (no plain foe's stamp here: nothing rolled)
 import { registerFoeDoor } from '../src/systems/artifactEffects.js';   // AUDIT PSCALE1 DOORS-2: `stand` registers the foe's door   // PSCALE1: the kill door's weight - who fights it - in the harness's scope
 import { validFoeRecord, FOE_HEALTH_MAX, FOE_LEVEL_MAX } from '../src/net/wire.js';   // AUDIT SET P-M3: the stream's door, and the record's bounds
 import { FOES_FULL_MS } from '../src/net/online.js';   // AUDIT FINAL F7: the full frame the name must outlive
 import { sayEnemyDied } from '../src/scenes/corpseMarker.js';   // LOOT7-CHECK DUNGEON-DIED: the kill door's notice, the real one
 import { eliteCorpseSize, isEliteCorpse, markEliteCorpseBatch } from '../src/systems/eliteFoes.js';   // ELITE FOES: the corpse chain's own imports, the real ones (no elite here: the size and batch as they were)
 import { effectiveLevel } from '../src/systems/mentorMode.js';   // SOFTCAP2: the mentor's level the spawn sites read (a free name there, the module's own import)
+import { blowClassOf } from '../src/ai/puppetBlows.js';   // AUDIT FEUD: the hit door builds a blow's class whenever its weakness rides (the real one - no wind-up here, no weakness: none)
+import { feudWeakBlow } from '../src/systems/feudLedger.js';   // AUDIT FEUD: ...asked of the real test (none registered here: no weakness)
+import { ARENA_PUPPET_OWNER } from '../src/net/arenaLaw.js';   // ARENA4: the kill door's puppet test, the real owner word (no puppet here)
 
 const D = readFileSync(new URL('../src/scenes/dungeonContext.js', import.meta.url), 'utf8');
 const AST = acorn.parse(D, { ecmaVersion: 'latest', sourceType: 'module' });
@@ -94,14 +98,14 @@ const foeRec = (over = {}) => ({
 function killHarness({ foes, foeDeps = null, getTexture = async () => ({ recordCount: 99 }) } = {}) {
   const log = { deaths: 0, chimes: 0, freed: [], minted: 0, hud: [] };
   const state = {
-    foes, foeDeps, _authority: true, _layoutFoes: foes.length, opts: {}, lastPlayerFeet: [0, 0, 0], _ecvT: 0, _ctxDead: false,
+    foes, foeDeps, ARENA_PUPPET_OWNER, blowClassOf, feudWeakBlow, _authority: true, _layoutFoes: foes.length, opts: {}, lastPlayerFeet: [0, 0, 0], _ecvT: 0, _ctxDead: false,
     playerEntity: { isPlayer: true, items: [], luck: 50 },
     markFoeStruck: () => {}, markConcealedHit: () => {}, makeEnemiesHostile: () => {}, peerCandidate: () => null, renownFoeStruck, renownFoeDied, reportPlayerKill,   // RENOWN1: the kill door's two stamps, the real ones (no handler: nothing paid)
     partyFoeLoses, noteFighter, foeFighters, takeWholeBlow, PARTY_ME, registerFoeDoor,   // PSCALE1: the real weight - only my own blows land here, so every foe fights one and every blow lands whole
     ownRides: () => false,   // PSCALE-OWN / SUMMON-SYNC: nothing of mine on the own lane here
     damageShieldPool: (e, n) => n, attemptSoulTrap, peerSoulTrapOf, fillEmptyTrap, isAzurasStarEquipped: () => false,
     hudText: { add: (l) => log.hud.push(l) }, sayEnemyDied, SOUL_TRAP_TEXT: { trapSuccess: 'ok', trapFail: 'fail', trapNoneEmpty: 'none' },   // LOOT7-CHECK DUNGEON-DIED: the notice, onto the harness's line
-    setEnemyAlert, playRareDrop: () => { log.chimes++; }, raiseEnemyDeath: () => { log.deaths++; }, liveStat: () => 50, stampWonWeapons,
+    setEnemyAlert, playRareDrop: () => { log.chimes++; }, raiseEnemyDeath: () => { log.deaths++; }, liveStat: () => 50, stampWonWeapons, rollCorpseKit,
     audio: {}, ENEMY_BASICS, weaponKnockbackApplies: () => false, maxFatigue: () => 100, q2: (x) => x, q3: (x) => x,
     _wallNow: () => null, floorLanding: (c, p) => p, collider: null, getTexture,
     uploadRecord: () => {}, billboardSize: () => ({ w: 1, h: 1 }), armFlatAnim: () => {}, flatAnims: { remove: () => {} }, uploadRecordFrame: () => {},
@@ -273,7 +277,7 @@ test('AUDIT 68 S19-removed-foe-lootable: a Destroy()ed foe (dispel, Wabbajack, a
   const h = killHarness({ foes: [lich, rat] });
   Object.assign(h.state, {
     lootPiles: [], RAY_DISTANCE, TREASURE_ACTIVATION_DISTANCE, CORPSE_ACTIVATION_DISTANCE,
-    droppedLoot: { lootTargets: () => [] }, droppedTorches: { targets: () => [] }, camps: { targets: () => [] },
+    droppedLoot: { lootTargets: () => [] }, droppedTorches: { targets: () => [] }, camps: { targets: () => [] }, searchables: [], SEARCH_REACH: 0,   // SEARCH1: none in this room
   });
   const loot = mount(`
     ${declSrc('LOOT_KEY_RE')}
@@ -422,12 +426,15 @@ test('AUDIT 68 S19-rest-alert-decay-wrong-clock (LIVED1): the rest decays the al
     sharedClockOn: () => false, worldMinutes: () => own,   // AUDIT LIVED1 A: the arm hands its rounds the world's sky
     survivalFeed: () => null, survivalEnvNow: () => null, runSurvivalMinutes: () => {}, foes: [], foeSinks: () => ({}),
     decayEnemyAlert, dfLocation: { mapTableData: { dungeonType: 0 } }, _spawnEncounter: () => {},
+    onlineRoom: () => false, restInLair: () => false,   // PIN MOVED (RVN7d: the rest's first roll asks after a revenant at home - none here)
     intermittentEnemySpawn: (ctx) => { rolled.push(ctx.enemyAlertActive); return null; },
+    camps: { tend: () => { state.tended = (state.tended ?? 0) + 1; } },   // AUDIT REST II H3: the arm tends my Campfire through the night
   };
   setEnemyAlert(state.playerEntity, true, 5000);
   const { restAdvance } = mount(`${declSrc('_restAdvance')} return { restAdvance: _restAdvance };`, state);
   restAdvance(10);
   assert.equal(own, 5000 + ALERT_DECAY_MINUTES + 10, 'the arm moved the character\'s clock by its ten minutes');
+  assert.equal(state.tended, 1, 'and tended my Campfire once (AUDIT REST II H3)');
   assert.equal(state.playerEntity.enemyAlertActive, false, 'PlayerEntity.Update:380-384 at the rest\'s own minute');
   assert.deepEqual(rolled, Array(10).fill(false), 'every sub-tick\'s IntermittentEnemySpawn rolls unarmed');
 });
@@ -459,7 +466,7 @@ test('AUDIT SET P-M3: a joiner\'s killing blow, applied at the host, is named on
   const rec = mount(`${declSrc('foeMaxOf')} ${fnSrc('roomRecord')} return { roomRecord };`, { q2: (x) => x, q3: (x) => x, FOE_HEALTH_MAX, FOE_LEVEL_MAX, KILLED_BY_MS, _sharedFoe: () => false, fightN: () => 1 });
   const r = rec.roomRecord(rat, 0, true);
   assert.equal(r.v, 'peer-7');
-  assert.ok(rat._sentKey.endsWith(',peer-7'), 'the name rides the key');
+  assert.ok(rat._sentKey.split(',').includes('peer-7'), 'the name rides the key');   // PIN MOVED (RVN13, Feud-Arc.md 25: a revenant's own ride the key after it)
   assert.equal('v' in rec.roomRecord(bat, 1, true), false, 'the host\'s kill names nobody');
   assert.equal('v' in rec.roomRecord(foeRec(), 2, true), false, 'a live foe names nobody');
   // AUDIT FINAL F7: for KILLED_BY_MS after the death, never for as long as the body lies - 453 elite corpses named by
@@ -484,7 +491,8 @@ test('AUDIT SET P-M3: a joiner\'s killing blow, applied at the host, is named on
     const foes = [foeRec(), foeRec()];
     const state = {
       foes, _layoutFoes: 2, _retyping: new Set(), _authority: false, validFoeRecord, opts: { selfId: () => self },
-      renownFoeDied: () => {}, reportPlayerKill: (e, info) => kills.push([self, e, info]), addCorpseFood: () => {}, stampWonWeapons: () => {},
+      renownFoeDied: () => {}, reportPlayerKill: (e, info) => kills.push([self, e, info]), rollCorpseKit: () => [], addCorpseFood: () => {}, stampWonWeapons: () => {}, capFoeLoot: () => [],
+      dropFoeCard: () => null,   // PIN MOVED (AUDIT CARDS-6 A3): the copy's own card, drawn at the copy door - not this seam
       sayEnemyDied, hudText: { add: () => {} },   // LOOT7-CHECK DUNGEON-DIED: the striker's notice (test/loot7check.test.js reads its line)
       liveStat: () => 50, playerEntity: { isPlayer: true, items: [] }, setFoeDead: (f, d) => { f.dead = d; }, retypeFoe: async () => false,
     };

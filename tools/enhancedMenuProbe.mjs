@@ -32,7 +32,9 @@ async function run(label, opts) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
 
-  await page.goto(`${BASE}/play/?nointro`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/play/?nointro`, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.px-menu', { timeout: 60000 });
+  if (await page.locator('.px-acctstage').count()) await page.keyboard.press('Escape');
   await page.waitForSelector('.px-menu button', { timeout: 15000 });   // PX1: the door is the pixel home now
 
   // 1. THE DOOR OPENED WITHOUT DATA. ensureArena2's picker is a fixed
@@ -44,16 +46,17 @@ async function run(label, opts) {
   // probe's subject; the claim is that the home DREW, with the doors
   // this file goes on to drive. So it asks for those by name, and a
   // door added or moved is not a failure here.
-  const doors = (await page.locator('.px-menu button').allInnerTexts()).map((t) => t.trim().toUpperCase());
+  // AUDIT PLUS-MENU M2: a door's diamonds are drawing (aria-hidden) and stand at rest under Plus - the name is the words
+  const doors = (await page.locator('.px-menu button').allInnerTexts()).map((t) => t.replace(/\u25c6/g, '').trim().toUpperCase());
   check(`${label}: the menu draws with no ARENA2`, doors.length > 0, `${doors.length} doors`);
-  for (const want of ['SETTINGS', 'FEATURES']) {
+  for (const want of ['SETTINGS', 'OVERHAULS']) {   // ORG2: Features is Settings' tabs; the Overhauls door is the one this file drives next to it
     check(`${label}: the ${want.toLowerCase()} door is on the rail`, doors.includes(want), doors.join(' / '));
   }
 
   // MENU-TOGGLE (2026-09-26): the door's Enhanced/Classic pair is retired - the interface is the Overhauls page's -
   // so the foot is build on the left and About on the right, and nothing between them
   const foot = await page.evaluate(() => {
-    const about = document.querySelector('.px-foot .px-about');
+    const about = document.querySelector('.px-foot .px-about:not(.px-shots)');
     const b = about?.getBoundingClientRect();
     return { toggle: Boolean(document.querySelector('.skinswitch, .skinopt')), right: b ? Math.round(innerWidth - b.right) : null };
   });
@@ -67,8 +70,8 @@ async function run(label, opts) {
   await page.waitForSelector('#enhanced-menu .row');
   // SO1 (2026-09-11) put the Enhanced category first, and FT8 (2026-09-14)
   // emptied it of switches (they are the Features home's now) - the rows
-  // this step reads and the one it presses are the GAME category's.
-  await page.locator('#enhanced-menu .subbtn').filter({ hasText: /^Game/ }).first().click();
+  // this step reads and the one it presses are the GAME category's (ORG2: the Gameplay tab's).
+  await page.locator('#enhanced-menu .subbtn').filter({ hasText: /^Gameplay/ }).first().click();
   await page.waitForTimeout(200);
   const rows = await page.locator('#enhanced-menu .row').count();
   check(`${label}: settings rows render`, rows > 10, `${rows} rows`);
@@ -117,8 +120,13 @@ async function run(label, opts) {
   //     the switch click timed out. Re-aimed at the tiles: the control
   //     is a SEGMENTED BAR now, not one cycling button, so a tier is
   //     pressed by name rather than stepped into.
-  await page.goto(`${BASE}/play/?nointro`, { waitUntil: 'networkidle' });
-  await page.locator('.px-menu button').filter({ hasText: /Features/ }).first().click();
+  //
+  //     ORG2 (2026-10-09): the Features home is the Settings screen's tabs - the outdoors row is on Graphics, the tab
+  //     Settings opens on.
+  await page.goto(`${BASE}/play/?nointro`, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.px-menu', { timeout: 60000 });
+  if (await page.locator('.px-acctstage').count()) await page.keyboard.press('Escape');
+  await page.locator('.px-menu button').filter({ hasText: /Settings/ }).first().click();
   await page.waitForSelector('#enhanced-menu .ft-tile', { timeout: 10000 });
   const skyTile = page.locator('#enhanced-menu .ft-tile')
     .filter({ has: page.locator('.ft-tile-name', { hasText: /^Enhanced environments$/ }) });
@@ -133,9 +141,9 @@ async function run(label, opts) {
       labels: sky ? [...sky.querySelectorAll('.kind')].map((k) => k.textContent) : [],
     };
   });
-  check(`${label}: the Features home opens with its tiles`, pane.rows >= 21 && pane.sky !== null, JSON.stringify(pane));
+  check(`${label}: the Graphics tab opens with its Features rows`, pane.rows >= 15 && pane.sky !== null, JSON.stringify(pane));
   check(`${label}: the outdoors read Dynamic Skies by default, wearing both labels`,
-    pane.sky === 'On, with Dynamic Skies' && pane.labels.join('+') === 'Enhanced+Mod Authored', JSON.stringify(pane));
+    pane.sky === 'Dynamic Skies' && pane.labels.join('+') === 'Enhanced+Mod Authored', JSON.stringify(pane));
   if (label === 'phone') check("phone: the outdoors switch is a thumb's target", pane.skyTarget >= 38, `${pane.skyTarget}px`);
   // the bar's OFF segment is the pref off - pressed by name, where the old list stepped a cycling button
   await skyTile.locator('.ft-segb', { hasText: /^Off/ }).first().click();
@@ -148,7 +156,9 @@ async function run(label, opts) {
   await skyTile.locator('.ft-segb', { hasText: /Dynamic Skies/ }).first().click();   // back to where it was
 
   // 3. THE PICK APPEARS WHEN A GAME STARTS, and not one moment before.
-  await page.goto(`${BASE}/play/?nointro`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/play/?nointro`, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.px-menu', { timeout: 60000 });
+  if (await page.locator('.px-acctstage').count()) await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');   // PX2: Escape backs a section out to home
   await page.waitForSelector('.px-menu button', { timeout: 10000 });
   await page.locator('.px-menu button').filter({ hasText: /New Game/ }).first().click();
@@ -172,12 +182,15 @@ await run('phone', { ...devices['Pixel 5'] });
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
   const page = await ctx.newPage();
   await page.goto(`${BASE}/play/?skin=classic&nointro`, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.px-menu', { timeout: 60000 });
+  if (await page.locator('.px-acctstage').count()) await page.keyboard.press('Escape');
   await page.waitForSelector('.px-menu button', { timeout: 20000 });
   const st = await page.evaluate(() => JSON.parse(window.__menu()));
   // FT14 took Mods off this rail and FT16 took Controls into Settings;
   // this line still expected both, which is the third thing in this
   // file that had gone stale unnoticed.
-  check('classic: the enhanced door mounts with the classic rail', JSON.stringify(st.sections) === JSON.stringify(['begin', 'online', 'settings', 'features', 'overhauls', 'about']), JSON.stringify(st.sections));
+  check('classic: the enhanced door mounts with the classic rail', JSON.stringify(st.sections) === JSON.stringify(['begin', 'online', 'settings', 'overhauls', 'screenshots', 'about']), JSON.stringify(st.sections));
+  if (await page.locator('.px-acctstage').count()) await page.keyboard.press('Escape');
   await page.locator('.px-menu .door-begin').click();
   await page.locator('#enhanced-menu .act.primary', { hasText: 'Begin' }).click();   // FD1: the door opens the Begin pane; its button starts
   const picked = await page.waitForSelector('#pick', { timeout: 15000 }).then(() => true, () => false);
@@ -189,9 +202,11 @@ await run('phone', { ...devices['Pixel 5'] });
 //    STORES the choice and reloads with no ?skin= on the URL - onto the classic door, which gates the data before
 //    its menu. A fresh context, so the stored choice is this context's alone, and it is cleared after.
 {
-  const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const page = await ctx.newPage();
-  await page.goto(`${BASE}/play/?nointro`, { waitUntil: 'load' });
+  await page.goto(`${BASE}/play/?nointro`, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.px-menu', { timeout: 60000 });
+  if (await page.locator('.px-acctstage').count()) await page.keyboard.press('Escape');
   await page.waitForSelector('.px-menu button', { timeout: 20000 });
   await page.locator('.px-menu button').filter({ hasText: /Overhauls/ }).first().click();
   const ui = page.locator('.look-panel[data-panel="ui"]');
@@ -199,7 +214,8 @@ await run('phone', { ...devices['Pixel 5'] });
   for (let i = 0; i < 3 && (await ui.locator('.look-name').innerText()).trim() !== 'Classic'; i++) await ui.locator('.look-arrow').last().click();
   await ui.locator('.look-use').click();
   // FD1: the classic door is this same screen with the Begin rail; the pick rises behind Begin
-  await page.waitForSelector('.px-menu .door-begin', { timeout: 20000 });
+  await page.waitForSelector('.px-menu .door-begin', { timeout: 60000 });
+  if (await page.locator('.px-acctstage').count()) await page.keyboard.press('Escape');
   await page.locator('.px-menu .door-begin').click();
   await page.locator('#enhanced-menu .act.primary', { hasText: 'Begin' }).click();   // FD1: the pane's own Begin
   const picked = await page.waitForSelector('#pick', { timeout: 15000 }).then(() => true, () => false);

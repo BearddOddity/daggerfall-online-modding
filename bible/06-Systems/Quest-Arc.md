@@ -1427,10 +1427,10 @@ triage: 25 kills at fails=5+ (one at fails=7 - the `| 0` int32 rail
 broke three pins at once), 2 survivors at the baseline 4, both
 PROVEN equivalents:
 
-- questBridge.js:"import { noteOfferPending" `rawZ ?? 0 -> ?? 1`: the hash's only read of
+- questBridge.js line 76 `rawZ ?? 0 -> ?? 1`: the hash's only read of
   rawZ is `z >> 2`, and `1 >> 2 === 0 === 0 >> 2` - for any record
   LACKING rawZ the mutated default is arithmetically invisible.
-- questBridge.js:"rest of StaticNPC.cs." `(pn.flags ?? 0) -> (?? 1)` in the gender arm:
+- questBridge.js line 85 `(pn.flags ?? 0) -> (?? 1)` in the gender arm:
   gender reads bit 5 alone, and `1 & 32 === 0 === 0 & 32` - Male
   either way, every path.
 
@@ -1458,7 +1458,7 @@ spamming the same questor does not re-pulse the task. DFU makes you go
 click someone else and come back.
 
 The port carries `lastNPCClicked` as an NPCData-shaped OBJECT LITERAL,
-and both hosts mint a fresh one at every click - worldModes.js:"const npcNameDeps".."const dict = townTalk?.factionDict ?? null;"'s
+and both hosts mint a fresh one at every click - worldModes.js:"return questBridge?.machine?.movedQuestorName?.(npcData)"'s
 quest-flat arm builds `{ hash, flags, factionID, nameSeed, gender,
 buildingKey, mapID }` inline, and questBridge.clickNpc runs
 `staticNpcData(pn, sceneCtx)`. So `lastClicked === this.clickMemory`
@@ -2818,7 +2818,7 @@ empty name. Two things read it:
 - `topicTree`'s same-building-static test (`:558`) matches a topic
   caption against that name, so it never matched.
 
-Mobile townspeople had names the whole time (`townPopulation.js:"RandomiseNPC, verbatim"`).
+Mobile townspeople had names the whole time (`townPopulation.js:"from the region's"`).
 Only the ones you can actually talk to were anonymous. *A PORTED
 FUNCTION WITH NO CALLER IS A COMMENT* - the second time in five waves,
 and this one had a workaround written to keep it plausible.
@@ -5480,7 +5480,7 @@ lesson one host over.
 **What did NOT ship:** PlayerEntity.Update's per-minute *intermittent
 spawn* roll (:486-492) still has no caller on this route. It is not
 this pool's dependency — it is a loop that carries the passive-guard
-spawns and the NPC-guard conversion with it (world.js:"if (!survivalOn())".."for (const p of built.values()) {") — and
+spawns and the NPC-guard conversion with it (world.js:"is rebuilt every") — and
 it is named at the mount so the absence reads as a fact.
 
 **(c) The find-place seam's absence, narrowed to one sentence.**
@@ -5501,13 +5501,13 @@ instance* for the interior mode, so it covers the shops entered from
 `?exterior` too. It passed neither of `EntityEffectManager`'s two
 ready-spell events (`hostMagic.js:"onNewReadySpell ="`), and those two doors are the
 *only* route into the machine's `CastSpellDo` / `CastEffectDo` latches
-(`machine.js:"as the host's live"`/`machine.js:"(CreateFoe.cs:56-57)"`; C# subscribes them in the action's
+(`machine.js:"LATCHES this on the"`/`machine.js:"PlayerEnterExit.OnTransitionExterior"`; C# subscribes them in the action's
 constructor). Every `cast X spell do` and `cast X effect do` on this
 whole route could therefore never latch and never fire. The pair the
-other two engine-owning hosts wire (`world.js:"WATCH is not swept"`,
+other two engine-owning hosts wire (`world.js:"held-Escape accelerator"`,
 `dungeonContext.js:"by _modeAction's"`) is wired here now, and with it
 `CastSpellDo`'s two world reads — `getClassicSpellEffects` and the
-byte-folded `spellHasMatchForClassicEffect` (`world.js:"Quest parchment boxes"`),
+byte-folded `spellHasMatchForClassicEffect` (`world.js:"convention its People/Courts"`),
 absent which the action self-completes at *parse*
 (`actions.js:"= parentQuest?.hooks?.world?.getClassicSpellEffects?.(action.spellID)"`/`actions.js:"CastSpellDo could not find".."this.setComplete();   // C#: the TEMPLATE completes - kept"`) and the task can never arm at all.
 
@@ -6337,7 +6337,8 @@ trace found a real weakness beside it:
   (QuestMachine.cs:725), a Dictionary.Add that throws on a UID already live. `startQuestImmediate` used `set` and
   replaced the live quest in silence. It now throws the same words restoreSaveData already threw, after `start()` and
   the topic registration, in C#'s order, and the quest on the table stands.
-- **The door the duplicate came through.** A quickload runs from under any window (FIX-E, for the death screen's F11),
+- **The door the duplicate came through.** A quickload ran from under any window (FIX-E, for the death screen's F11 -
+  the death screen's alone since DUPE-LOAD, 2026-10-11),
   a quest offer popup among them, and the offer flow kept the quest it had parsed in the game being replaced. Yes
   after the load started it in the loaded game, and a restored quest drawing the same UID was overwritten. DFU cannot
   reach this: its load window and quickload key both stand on the HUD. The bridge's `restore` now calls
@@ -6422,7 +6423,10 @@ reads one, all of them DFU's one clock offline:
 - **`nowSeconds`, the CHARACTER's clock** (LIVED1's own): the Clock resource, CreateFoe's and PlaySound's
   intervals, GUARD-ONLINE's watch, the tombstone's week. A rest, a loiter or a journey spends them, as in DFU: the
   time RAISED since a sample is charged whole (the session's count, `worldTick.js raisedMinutes`), the time lived
-  with the world one played step at most (WORLD7's bound, on the lived part alone). The rest ticks the quests
+  with the world one played step at most (WORLD7's bound, on the lived part alone). [SUPERSEDED BY QCLOCK-WORLD
+  2026-10-02 (`Online-Time-Arc.md` 6.3c) for the Clock and CreateFoe's interval: online the raise is charged
+  nothing, the lived time one step - a rest spends no quest days. PlaySound's interval, GUARD-ONLINE's watch (one
+  quest's hall, kept by waiting there) and the tombstone's week still read the character's clock raw.] The rest ticks the quests
   online too (`restSession.js`; RESTX2's stand-down retired).
 - **`skySeconds`, the SKY**: DailyFrom's window, GivePc's daytime, the season trigger, QAE's "until", the
   date/time macros.
@@ -6439,3 +6443,158 @@ holder's - AUDIT TIME), and an online save from before TIME3 moves onto the char
 whole seconds, where DFU samples `WorldTime.Now.ToSeconds()` - whole seconds of a clock that keeps its fraction - so
 every tick dropped its fraction: at ten ticks a real second a countdown ran a fifth to a third slow. It samples
 whole seconds now (`clock.js wholeSeconds`). Pins: `test/time3_quests.test.js`; mutants: `tools/mutants/time3.json`.
+
+## TOTEM-CAGE - a quest item rides its acting marker (2026-10-03, Discord, Shortstori: "the Totem of Tiber Septim isnt here")
+
+S0000008 places the Totem at `_daggerfall_ marker 5` (DaggerfallCastle2, the city's dungeon; "hidden in the treasury").
+DFU stands a quest item at its marker's layout point and then PARENTS it to the marker's scene object
+(GameObjectHelper.cs AddQuestItem :1144-1148, "This ensures mobile quest objects parented to action marker translates
+correctly"), because an RDB marker can carry an action of its own (RDBLayout.cs:403-406) - and GetDaggerfallMarker's
+note (:1165-1186) names the case: "raising treasure room cage for totem in Daggerfall castle". The port registered the
+acting marker as a moving flat and never moved the item with it, so the cage rose without the Totem; online the cage's
+pose is the castle room's memory (WORLD3/WORLD34) and never resets, so every player met a raised, empty cage.
+
+The parenting is data now (`sceneMount.js`): `sceneMarkerOf` is GetDaggerfallMarker's unique-or-null law over the laid
+dungeon's 199.11/18 markers by the ID both sides mint (block position + object position: the layout's `loadID`, the
+quest marker's `markerID`); `sceneMarkerMover` answers the ActionSystem mover registered for it (`objectAt`, the
+chain's own key), only when it moves; `rideSceneMarker` hands the stand the mover's live `offset` (its batch's origin
+uniform, now or at the fill); `questStandBox` puts the activation box where the stand is. The dungeon adapter's
+`standItem` rides `dungeonContext.questMarkerMover(marker.markerID)`. A building's quest item never rides: DFU adds
+DaggerfallMarker in RDBLayout alone, a building's quest marker carries MarkerID 0 (Place.cs:1503-1506), and an RMB flat
+has no action. Quest NPCs and foes are never parented in DFU either (AddQuestNPC, AddQuestFoe).
+
+The travel is read WHOLE from the marker's start, which is DFU's outcome on its entry and its load (the layout stands
+the item, the saved action state lands after it); online the room's word can land before a re-mount, and the whole
+travel is the only reading that agrees. The one difference: a quest that hot-places an item onto a marker that already
+moved this visit stands it on the marker, where DFU's reparent leaves it off by the travel.
+`test/fb1003b_totem.test.js`; `tools/mutants/fb1003b_totem.json`. `01-Overview/Field-Bugs-2026-10-03b.md` TOTEM-CAGE.
+
+## GUARD-RETURN - a return to the hall re-arms the Nightblades, as in Daggerfall Unity (2026-10-07, a player through the lead)
+
+The report: "Protect an Honored Mage: assassins spawn again after leaving and re-entering the Mages Guild" - accept
+N0B20Y02, stay in the guild until the three Nightblades come, kill them, step out while the three hours run, come back
+before they end, and three more come.
+
+That is Daggerfall Unity's own law, faithfully run, and nothing in the port. `until _S.12_ performed: pc at
+_magesguild_ set _S.01_`, and `_S.01_` is `create foe _F.00_ every 55 minutes 1 times with 100% success`. Traced
+through DFU's C# (master, fetched for this reading):
+
+- PcAt.Update STARTS its task on every tick the player is at the Place and CLEARS it on every tick they are not
+  (`ParentQuest.StartTask` / `ParentQuest.ClearTask`; the port's `actions.js:"this.parentQuest.clearTask(this.taskSymbol);"`).
+- A clear is Task.SetTriggerValue(false), which calls RearmActions - the wave's IsComplete is lifted.
+- The next tick `_S.01_` runs set again, Task.Update's `if (!prevTriggered) action.InitialiseOnSet()` re-arms the wave
+  whole (the port's `task.js:"if (!this.prevTriggered) action.initialiseOnSet();"`).
+- CreateFoe.InitialiseOnSet zeroes lastSpawnTime and spawnCounter - Update's own comment on the count says "This can be
+  cleared on next set/rearm" (the port's `actions.js:"InitialiseOnSet (CreateFoe.cs:61-65): a task rearm restarts the"`).
+  The first Update after it backdates the timer a Range(0, interval) into the 55 minutes, and the 100% roll makes
+  `foe.SpawnCount` (3) again.
+
+CreateFoe reads no kill count. Foe.KillCount ("does not rearm") is read by the `killed` trigger, and by
+GameObjectHelper.AddQuestResourceObjects for a PLACED foe alone (`if (foe.KillCount < foe.SpawnCount)
+AddQuestFoe(...)`; the port's `sceneMount.js:"if (resource.killCount < resource.spawnCount) {"`). So a `place foe`
+killed stays dead on re-entry, and a `create foe` wave comes again whenever its task is set again. The Online-Waits page
+recorded the same re-arm already (`Online-Waits.md` W3: a guard stepping out for a minute every twenty met 2.8 waves of
+Nightblades offline over 400 rolls); online the re-armed wave keeps the script's full interval, never the short wait.
+The reward is not at risk: `_questdone_` waits on `_S.03_` (`killed 3 _F.00_`), and the second three only add to the
+kills.
+
+NOT CHANGED, and Mac's to decide: it is a Port-Doctrine departure. The shape is not N0B20Y02's alone - a counted
+`create foe` wave in a task that a `pc at` sets and clears stands in 26 vendored quests (A0C10Y02, A0C10Y05, B0B00Y00,
+B0B10Y04, B0B71Y03, B0B81Y02, K0C00Y00, K0C00Y02, K0C0XY01, K0C30Y03, L0A01L00, L0B50Y11, M0B00Y15, M0B00Y16, M0B1XY01,
+M0B20Y02, M0C00Y14, N0B10Y03, N0B20Y02, O0A0AL00, O0B10Y07, P0B20L09, R0C10Y08, R0C10Y09, S0000006, Z0C00Y00; read off
+the parsed corpus), and every one re-arms the same way on a return. A departure aimed at this report alone would be a
+wave whose foe has its whole count killed (`killCount >= spawnCount`, AddQuestResourceObjects' own test) keeping its
+spent count across a re-set; it would also stop the second and later rats, guards and monsters of the other 25 for a
+player who steps out and back, which is why it is not taken here.
+
+The four hosts: the law is the quest machine's (`systems/quest/actions.js`, `systems/quest/task.js`), read by every
+host alike - scenes/exterior.js, scenes/world.js, scenes/worldModes.js (the interior, where the guild stands) and
+scenes/dungeonContext.js; none was edited, and the interior's placed-foe mount is DFU's kill test above.
+
+`test/fb1007_guardreturn.test.js` (3) runs the real script through the quest's own update, the Place's own isPlayerHere
+over the hosts' location seams and the Foe's own incrementKills, and pins the reading AS DFU's: one wave for a guard who
+stays; a second three for one who kills, steps out and comes back inside the trance (none while away; the kills on
+record unread); nothing armed after the trance. `tools/mutants/fb1007_guardreturn.json` (2, both dead: a re-set that
+keeps the count, a `pc at` that never clears).
+
+## KVAR-HOLD - THE MAIN STORY'S DUNGEONS ARE NO RANDOM QUEST'S (2026-10-08)
+
+FIELD BUGS 2026-10-08, Themicles (Fighters Guild, Lord K'avar Quest Part I, `vendor/dfu-quests/Quests/M0B11Y18.txt`):
+*"the quest assigned K'var's location to Privateers Hold in Daggerfall. I've searched the dungeon several times now and
+have tried the repair button ... I can now not receive new Fighters Guild quests with this one still stuck"* - and,
+searching further, *"it seems to be bugged all the way back in the base game if the quest manages to pick Privateer's
+Hold"*. `Place _stronghold_ remote dungeon2` draws a Human Stronghold; DFU's CollectDungeonIndicesOfType (Place.cs
+:1346-1380) keeps out only a dungeon another Place holds, so once the tutorial and `_BRISIEN` let Privateer's Hold go
+(their own `permanent` Places), the draw could land there - K'avar on one of the Hold's quest markers, many of which no
+player walking in from its door reaches, his questor hidden until the quest ends (`_S.03_`), the guild's door shut with
+it. Two port laws made it likely: NEARBY-QUESTS draws among the nearest few, and the Hold is among the nearest
+strongholds to the classic start; and online `_S.02_`'s 3-13 days are a short wait (REST8), so the stronghold hunt is
+the only path. Repair could not help: it puts back what a marker lost, and his marker had lost nothing.
+
+- **The draw** (`systems/quest/place.js _collectDungeonIndicesOfType`): a dungeon of the main story
+  (`world/dungeonTextures.js isMainStoryDungeon`, DFU's fourteen) is never a random quest's - the declared type's
+  draw and the any-dungeon retry alike. The main story's own Places name them `permanent` and never pass there. A
+  DEPARTURE (Port-Ledger A), the precedent `oceanHoles.js` and the spawned dungeons' "the main story's own dungeons
+  are never cloned".
+- **A save that already holds one** (`Place._reseatStoryDungeon`, the dungeon arm of `reseatMovedSite`, which the
+  load's re-seat already runs - `machine.js reseatMovedSites`, `world.js` applyLayoutPins): a remote dungeon site in a
+  main-story dungeon is drawn again in ITS region (`_remoteDungeonSite`, SelectRemoteDungeonSite's draw lifted out to
+  take a region) by the place's declared type, else any dungeon; what the quest stood on its markers is carried to
+  the new site's (`_carryAssignments`), the site link follows, and a reveal the quest already made of it is made again
+  (`discoverLocation`), so the map shows where K'avar went. The questor stays hidden as the quest has it; the quest
+  ends as it always could - K'avar killed or driven off, or the 30-day `_gettraitor_` clock.
+- **THE FOUR HOSTS**: none is touched - the draw is the quest layer's, and the re-seat rides the load pass
+  `scenes/world.js` already runs (`scenes/exterior.js`, the fixed city, runs no layout pins; `scenes/worldModes.js` and
+  `scenes/dungeonContext.js` mount what the quest says).
+
+Not done, offered to Mac: an Abandon for an ordinary guild quest (DFU's console `endquest`, `machine.tombstoneQuest`) -
+the port gives Abandon to bounties and revenant hunts alone. `test/kvarhold.test.js` (3); `tools/mutants/kvarhold.json`
+(12), all dead. AUDIT FIELD-BUGS 1008 (`01-Overview/Audit-Log.md`): drawn among the few nearest the Hold it leaves, never
+this client's player (every shared copy the same); a `local dungeon` rescued too; the new site fitted to the size its
+link builds once the link stands there (`fitSiteToBuild`); a reveal that throws leaves the move and the link standing. PIN MOVED: `test/nearby_quests.test.js`'s fixture ids start past 5000 (1001 is Mantellan Crux).
+
+## QUEST-SHELF - every quest abandoned and reclaimed (2026-10-08)
+
+Mac: *"All quests should be able to be abandoned and reclaimed."* Daggerfall has no abandon (DFU's console `endquest`
+tombstones a quest for good); the port's Abandon SETS A QUEST ASIDE, KEPT WHOLE, and Reclaim brings the same quest back
+as it was. A DEPARTURE (Port-Ledger A), the port's own.
+
+- **The state** (`systems/quest/quest.js`): `shelvedAt` - the character-clock second it was set aside, saved and read
+  back like `shareId` (an older envelope: never set aside) and listed in `questStamps.js QUEST_OWN_SECOND_KEYS`, so a
+  party member's copy and a TIME3 envelope move it with its clocks; `shelvedSites` - the Places whose site links it
+  held, by name. `isShelved(quest)`.
+- **Abandon** (`machine.js shelveQuest`): never a tombstone - its items stay in the pack (the load's orphan sweep keeps a
+  quest the machine still holds), its topics, notebook and journal stay its own. It stops running (the tick), hears no
+  click (`setLastNPCClicked`, `_forEachAction`), its questor's door opens (`isLastNPCClickedAnActiveQuestor`,
+  `activeQuestor` - Themicles' guild offers work again), a named NPC it held is home (`activeFactionPersons`), its site
+  links are set aside, a wave in flight is let go, its faction listeners go (its task asks again once it runs), it
+  leaves the party's step (`sharedQuestNames`; a partner's share or step is refused quietly, `questShare.js` 'shelved',
+  `updateSharedQuest`), and is handed on to nobody (`getShareableQuestData`). Its sites stay RESERVED
+  (`getAllActiveQuestSites` still answers them), so the building or dungeon is its own when it comes back. In a scene
+  (`resourceBehaviour.js update`, each frame): its people and things are put out of sight, its questor stands, and its
+  FOES stand and still count their deaths - a foe put away would leave its wave's `killed` unreachable; a click on any
+  of them falls through to talk and guild routing (`doClick`). Its topics are offered by no list (`topicTree.js`),
+  guidance marks nothing of it (`questGuidance.js questEnded`), the hosts' live quest ids leave it out. Refused: gone,
+  ending, already set aside, the world's own quests (`PROTECTED_QUESTS` - the main quest's backbone, the curse, the
+  tutorial), and a raid the sea runs (`WA_RAID_QUESTS`, the bridge's word). The main story's own quests may be set aside.
+- **Reclaim** (`machine.js reclaimQuest`): its envelope moved on by the time it was away (`shiftQuestStamps`, TIME3's
+  law - its clocks' samples, a wave's timing, a sound's, a daily guard's) and restored as a load restores one, so no
+  deadline ran down while it was set aside; its site links stand again by Place; a scene it stands in mounts its
+  people, things and foes the next time it is built (or at once, where its things were only put out of sight). It does
+  not rejoin the party's step: Share it again.
+- **The journal** (`scenes/questBridge.js`): the one walk files a quest set aside in `shelved` (its clock as it stopped),
+  the rail under ABANDONED (`ui/questRail.js`), and the pause window's Quests tab draws Abandon quest (twice, BOUNTY1's
+  arming) where the bridge allows it (`journalClean.canAbandon`) and Reclaim quest (once) on an abandoned one, saying
+  what happened (`shelfRefusalText`). The doors ride `journalClean`, so all four hosts' pause windows carry them -
+  `scenes/world.js`, `scenes/exterior.js`, `scenes/worldModes.js` (through world.js's host) and `scenes/dungeonContext.js`.
+  The classic skin's logbook is DFU's native window and draws no button (THE NATIVE-WINDOW RULE: no DFU geometry to cite
+  for one); a quest set aside leaves its active page. The chronicle (the L key) is read-only and leaves it out.
+
+AUDIT QUEST-SHELF (`01-Overview/Audit-Log.md`, 2026-10-09): a copy RUNNING answers for its name before one set aside
+(`sharedCandidateNamed`), so the same quest taken again is never shadowed, and the copy set aside is not reclaimed while
+it runs (`twin`); a reclaim relinks at once what stands of it and its topics; a named NPC's home copy stands
+(`individualHome`); a partner's envelope carries no shelf (`NO_SHELF`); the Settings repair, the rumor mill
+(`questAway`) and the lens leave a quest set aside alone; the button asks the press's own ladder (`shelveRefusal`).
+
+`test/questshelf.test.js` (5); `tools/mutants/questshelf.json` (58), all dead. PINS MOVED: `test/questbridge.test.js`,
+`test/rest8_questwaits.test.js`, `test/journal_clean.test.js`, `test/time3_quests.test.js`, `test/enhancedPause.test.js`.

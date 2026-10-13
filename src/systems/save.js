@@ -12,6 +12,7 @@
 // mid-flight Move-door tween fields (Ledger C) and cross-location
 // travel-on-load. Versioned envelope; a mismatch refuses loudly.
 
+import { readBankCabinLink } from '../net/boatIdentity.js';
 import { clampLegalReputations } from './court.js';   // AUDIT 23 (C4)
 import { defineLiveMaxMagicka, defineLiveMaxHealth } from './chargen.js';   // AUDIT 39: the live MaxMagicka accessor, on the LOAD arm too; DISC10-E L4: and MaxHealth's
 import { rebuildEquipState, isEquipped, unequipSlot } from './equip.js';   // AUDIT 17e C1   // AUDIT 63 F28: RemoveItem takes an EQUIPPED item off the doll on its way out
@@ -19,6 +20,11 @@ import { templateByIndex } from './itemTemplates.js';   // AUDIT 63r F28: `short
 import { restartHeldEnchantments } from './enchantments.js';   // E2: the held bundles' restore half
 import { snapshotWeather, restoreWeather, rollClimateWeathersForDay } from './weatherSim.js';   // W1: playerPosition.weather (SerializablePlayer.cs:225) - one value, every host; AUDIT WORLD5 C4: the shared day's sky over a loaded one
 import { snapshotRegionConditions, restoreRegionConditions } from './regionConditions.js';
+import { arenaLadderSnapshot, arenaLadderRestore } from './arenaLadder.js';
+import { regularsBookRestore } from './cardTableSession.js';   // AUDIT CARDS-2 H2: the tavern regulars' purses, by the day   // ARENA2: the arena's ladder, offline
+import { forfeitsBookRestore } from './iliacTableSession.js';   // CARDS10: the regulars' forfeits
+import { arenaLeagueSnapshot, arenaLeagueRestore } from './arenaLeague.js';   // ARENA3: the banners, the season, the Records page, the book
+import { arenaReplaysSnapshot, arenaReplaysRestore } from './arenaReplay.js';   // ARENA5: your ladder replays
 import { snapshotStanding, restoreStanding } from './standing.js';   // REP: the standing book   // S42: the CONDITION half of RegionDataRecord
 import { snapshotDiscovery, restoreDiscovery } from './discovery.js';   // T4
 import { getWorldVariationSaveData, restoreWorldVariationData, clearWorldDataVariants } from './worldDataVariants.js';   // RR3b: the world-data variants ride the save
@@ -27,9 +33,12 @@ import { createSceneCache, snapshotSceneCache, restoreSceneCache } from './scene
 import { seedCustomSpellIndex } from './spellMaker.js';   // S1: made spells carry their own record
 import { seedBundleSeq, effectKindLoaded } from './effects.js';   // X10: the live-bundle counter's restore half; AUDIT PRE-MERGE 0928 S3: a mod's effect restores only while its mod is loaded
 import { repairLostCurses } from './curseRepair.js';   // CURSE-REPAIR1: a curse the round clock pruned, given back
-import { repairUnmintedConditions } from './conditionRepair.js';   // DISC21-A: a wearable minted with no condition, minted
-import { restackStones, nameEmbers } from './gateSpoils.js';   // SS1: Sigil Stones saved before they stacked, folded into one stack; WB12a: and named Deadlands Embers
+import { repairUnmintedConditions, repoolWeaponConditions } from './conditionRepair.js';   // DISC21-A: a wearable minted with no condition, minted; WEAPON-POOL: a weapon on its row's pool, moved to the one pool
+import { restackStones, nameEmbers, PORTAL_GIFT, givePortalGift } from './gateSpoils.js';   // SS1: Sigil Stones saved before they stacked, folded into one stack; WB12a: and named Deadlands Embers
+import { WALLET_GIFT, giveWalletGift } from './walletItem.js';   // WALLET1: a character from before the wallet is given one, once
+import { BINDER_GIFT, giveBinderGift, cleanBinders } from './iliacItems.js';   // CARDS8: and a Card Binder with the starter deck, once
 import './profTemplates.js';   // PROF2: the ores, ingots and stone a pack may hold, known to every scene a save loads in
+import './restItems.js';   // REST6: the seven rest supplies (1700-1706), known to every scene a save loads in
 import { repairRarityNames, repairRarityBases } from './lootRarity.js';   // DISC29-B: a Magic or Rare Roleplay & Realism: Items piece given back its make's word; RARITY-WEAR: a rolled wand worn as an Amulet
 import { SOCIAL_GROUPS } from '../formats/factionFile.js';   // AUDIT 24
 import { travelMapSaveData, restoreTravelMapSaveData } from './travelMapState.js';   // U41: TravelMapSaveData
@@ -45,6 +54,7 @@ import { setItemFields } from './itemTemplates.js';   // JAN1: an item saved bef
 import { restoreKnightlyOrderFlags } from './knightlyGifts.js';   // D9: KnightlyOrder.RestoreGuildData's armour-bit back-fill
 import { GUILD_GROUPS } from '../formats/factionFile.js';   // the membership book's key IS the guild group
 import { appStorage } from './appStorage.js';   // DA1: localStorage in a browser, real save files in the desktop shell
+import { normalTribute } from '../world/lefayMonument.js';   // LEFAY1: the flowers a character laid at Julian LeFay's monument
 import { characterIdOf, adoptLegacyCards, mintCharacterId } from './characterId.js';   // CHARID1: a character is an id, not a name
 import { isOnlinePage } from './onlineLane.js';   // ONLINE-DEATH-FIX: the page is online
 import { STREAMING_TERRAIN_SCALE } from '../world/terrainSampler.js';   // TERRAIN-SCALE1: the scale every saved exterior height stands on
@@ -52,6 +62,8 @@ import { reviveForPlay } from './deathRespawn.js';   // ONLINE-DEATH-FIX: the SA
 import { setLightSource } from './lightSource.js';   // DISC7: the light in hand's one door
 import { renownHpOf, renownMpOf, offlineVitals } from './renownLayer.js';   // RENOWN1: the online layer never reaches a save
 import { stashedItemLists } from '../net/realmGoldLaw.js';   // AUDIT PRE-MERGE 0929 D3: every list of the character's own things a save carries
+import { DEPOSIT_MAX, depositOrderOk } from '../net/bagLaw.js';   // AUDIT2 BAG1: a deposit's stamp, kept to a deposit's bounds
+import { resetBlowEffects } from './blowEffects.js';   // AUDIT TELL L2: a load forgets the last game's landings
 
 /** One membership book, rows copied (GuildMembership_v1's shape). */
 const copyMembershipBook = (book) => Object.fromEntries(
@@ -102,6 +114,10 @@ const ENTITY_FIELDS = [
   // carries the bar too, because Daggerfall has no engine-side level
   // progress counter for it to live in the way Morrowind does.
   'levelingSystem', 'levelProgress', 'levelRollUp',
+  // LEGACY-CHOICE: Project Legacy's answer, the same kind of fact - asked ONCE, at chargen, and the character's own: a
+  // model, or no lineage (systems/legacy/family.js NO_LINEAGE), which keeps them out of the system for good. A save
+  // written before it carries none, and reads as a character who was never asked.
+  'legacyChoice',
   // AUDIT 17h F1: the six BIOGRAPHY modifiers, which DFU persists
   // one-for-one (SerializablePlayer.cs:136-141, :305-310). Without
   // them a load reset every biography answer's lasting effect.
@@ -148,6 +164,13 @@ const ENTITY_FIELDS = [
   // every Legendary and Ruhn's Regalia whole, to look at; the mark rides every save of it, and the boot keeps such a
   // character offline (testRoomOnlineRefused). A save without it restores undefined: a character of the world.
   'testRoom',
+  // REST1: the last night's end on the character's own clock (systems/restAct.js) - the night interval is a DIFFERENCE
+  // against it, so a save that dropped it would let a reload pass a night at every rest. A save older than this field
+  // restores undefined, which reads as "no night yet": the first rest is a night.
+  'restNightAt',
+  // LEGACY4: Project Legacy's blessings - an ancestor laid to rest, their best skill on the one who laid them
+  // (systems/legacy/heirloom.js legacyFold). A save older than this field restores undefined: no blessing.
+  'legacyBlessings',
 ];
 
 /** PlayerEntity.skillsRecentlyRaised: TWO 32-bit masks over the 35
@@ -207,6 +230,18 @@ export const copyEffectEntry = (a) => {
   delete c.caster;
   return c;
 };
+
+/** AUDIT2 BAG1: a deposits' stamps table as a save keeps it - `{ id: { material, qty, order? } }` (systems/materialsBag.js
+ *  takeCarried), every entry its shape - a deposit's own bounds (net/bagLaw.js) - or dropped. */
+export function bagTakesSaved(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const [id, t] of Object.entries(raw)) {
+    if (id.length > 64 || !t || typeof t.material !== 'string' || !Number.isSafeInteger(t.qty) || t.qty < 1 || t.qty > DEPOSIT_MAX) continue;
+    out[id] = { material: t.material, qty: t.qty, ...(depositOrderOk(t.order) ? { order: t.order } : {}) };
+  }
+  return out;
+}
 
 /** A plain-object snapshot of the player + scene extras. */
 export function snapshotPlayer(entity, { position = null, pose = null, classicMinutes = 0, readiedSpellIndex = null, world = null, locationKey = null, quest = null, talk = null, interior = null, dungeon = null, travelMap = null, escortingFaces = null, quickslots = null, spawns = null, smallerDungeonsState = 0, modData = null } = {}) {
@@ -313,6 +348,7 @@ export function snapshotPlayer(entity, { position = null, pose = null, classicMi
   snap.masterSkills = entity.masterSkills === true;   // SOFTCAP3: the Master Skills switch
   snap.masterSkillsAsked = !!entity.masterSkillsAsked;   // SOFTCAP3: the one-time offline offer, made
   snap.masterSkillsInfoSeen = !!entity.masterSkillsInfoSeen;   // SOFTCAP3: the one-time online explanation, shown
+  snap.lefayTribute = normalTribute(entity.lefayTribute);   // LEFAY1: the flowers laid at Julian LeFay's monument - how many, and the newest where they lay
   snap.masteredSkills = Array.isArray(entity.masteredSkills) ? [...entity.masteredSkills] : [];   // SOFTCAP4: the permanent 2/2/1 masteries
   snap.masteryPrompted = Array.isArray(entity.masteryPrompted) ? [...entity.masteryPrompted] : [];   // SOFTCAP4: the skills already asked about
   snap.career = entity.career ? { ...entity.career } : null;   // plain CFG data
@@ -325,6 +361,11 @@ export function snapshotPlayer(entity, { position = null, pose = null, classicMi
   // W-slice: the cart's own 750kg collection (PlayerEntity.WagonItems
   // - SerializablePlayer carries wagonItems beside items).
   snap.wagonItems = (entity.wagonItems ?? []).map((it) => ({ ...it }));
+  // BAG1: the Materials Bag's own list (systems/materialsBag.js), beside the wagon's
+  snap.bagItems = (entity.bagItems ?? []).map((it) => ({ ...it }));
+  // AUDIT2 BAG1 K3/K7/H2: the deposits whose items left the bag and the pack - each its id, material and units - so a page
+  // that boots this save knows the save saw them go (systems/materialsBag.js takeCarried's `stamp`)
+  snap.bagTakes = bagTakesSaved(entity.bagTakes);
   // DECOR2b: what the furnisher delivered and is not standing in a room - the character's own, never carried
   snap.furnishings = (entity.furnishings ?? []).map((it) => ({ ...it }));
   // R1: PlayerEntity.OtherItems - the in-repair collection
@@ -344,8 +385,12 @@ export function snapshotPlayer(entity, { position = null, pose = null, classicMi
   snap.bankAccounts = (entity.bankAccounts ?? []).map((a) => ({ ...a }));
   snap.houses = (entity.houses ?? []).map((h) => ({ ...h }));
   snap.ownedShip = entity.ownedShip ?? -1;
+  snap.boatCabinLink = readBankCabinLink(entity.boatCabinLink);
   if (entity.shipCrossed === true) snap.shipCrossed = true;   // RESTORE: a ship that came through customs, which the realm's bank never buys back (banking.js)
-  snap.loanAmnesty = Number.isSafeInteger(entity.loanAmnesty) ? entity.loanAmnesty : LOAN_AMNESTY;   // LOAN-AMNESTY: which amnesty this character has had - a character never restored from an older save is born after the last
+  snap.loanAmnesty = Number.isSafeInteger(entity.loanAmnesty) ? entity.loanAmnesty : LOAN_AMNESTY;
+  snap.binderGift = Number.isSafeInteger(entity.binderGift) ? entity.binderGift : BINDER_GIFT;   // CARDS8: whether this character has been given its binder - the Wallet's law: one never restored from an older save is born with it (chargen's)
+  snap.walletGift = Number.isSafeInteger(entity.walletGift) ? entity.walletGift : WALLET_GIFT;   // WALLET1: whether this character has been given its wallet - one never restored from an older save is born with it (its kit's)
+  snap.portalGift = Number.isSafeInteger(entity.portalGift) ? entity.portalGift : PORTAL_GIFT;   // PORTAL-GIFT: which gift this character has had - one never restored from an older save is born after it   // LOAN-AMNESTY: which amnesty this character has had - a character never restored from an older save is born after the last
   // TR4: SerializablePlayer.cs:180 - the BOARDING MEMORY is saved
   // beside the deed. Without it a save taken at sea loads with no way
   // back: IsOnShip needs the memory to answer true, so disembarking
@@ -406,6 +451,19 @@ export function snapshotPlayer(entity, { position = null, pose = null, classicMi
   // it must be COPIED or the snapshot aliases live state.
   snap.legalRep = entity.legalRep ? { ...entity.legalRep } : null;
   snap.standing = snapshotStanding(entity);   // REP: the watch's clocks and the prices paid, per region
+  // ARENA2: THE LADDER (systems/arenaLadder.js) - the tier, the bouts won in it, the champions beaten, the Grand
+  // Champion and the record, versioned inside its own shape (`v`); additive, so SAVE_VERSION does not move
+  snap.arena = arenaLadderSnapshot(entity.arenaLadder ?? null);
+  // AUDIT CARDS-2 H2: THE TAVERN REGULARS' BOOK (systems/cardTableSession.js) - each card table's regulars' purses and
+  // tempers for the game day, so a load puts them back as it puts the purse back; additive (an older save keeps none)
+  snap.cardRegulars = regularsBookRestore(entity.cardRegulars);
+  snap.iliacForfeits = forfeitsBookRestore(entity.iliacForfeits);   // CARDS10: the regulars who paid a card tonight
+  // ARENA5: YOUR LADDER REPLAYS (systems/arenaReplay.js) - the last three ladder bouts, each its own versioned record,
+  // on the arena record beside the ladder (an older save reads back with none; the ladder's own read ignores the field)
+  snap.arena.replays = arenaReplaysSnapshot(entity.arenaReplays ?? []);
+  // ARENA3: THE LEAGUE (systems/arenaLeague.js) - the banner worn, the season's points given, the laurel, the closed
+  // seasons, the last bouts and the bookmaker's book; versioned inside its own shape, additive like the ladder
+  snap.arenaLeague = arenaLeagueSnapshot(entity.arenaLeague ?? null);
   // Any biography deltas still parked (only if FACTION.TXT was missing
   // at creation - S25 drains them at the chargen seam otherwise).
   snap.pendingFactionRep = (entity.pendingFactionRep ?? []).map((r) => ({ ...r }));
@@ -584,11 +642,110 @@ export function resolvePendingSpells(entity, spellsByIndex) {
   return got;
 }
 
+/** The feud's and Project Legacy's records in a save's per-mod slot (systems/revenant.js REVENANT_SAVE and
+ *  systems/legacy/family.js LEGACY_VENDOR, pinned equal by test/itemwalk.test.js through the real records - both
+ *  modules reach this one through their imports, so this one names their keys). */
+const REVENANT_VENDOR = 'Revenant';
+const LEGACY_VENDOR = 'ProjectLegacy';
+const listsOf = (/** @type {any[]} */ ...ls) => ls.filter(Array.isArray);
+const arrayOf = (/** @type {any} */ x) => (Array.isArray(x) ? x : []);
+/**
+ * ITEM-WALK A (2026-10-07, Mac: "Do them now within this PR"): EVERY OTHER LIST OF ITEMS A SAVE HOLDS - the lists
+ * customs never reads, because no one's wealth lies in them (net/realmGoldLaw.js stashedItemLists reads the rest):
+ * in each cached scene, the owner's own things set out in a room (DECOR2a `decorOwn`, one item a piece) and a guild's
+ * day's Buy shelves (GUILD-SHELF `guildShelves`); a living foe's kit and a guard's, in the world bag and in a
+ * building's half of the save (`interior`; a dead foe's is a container customs reads); what a revenant took (the
+ * feud's `list[].took`, its own until it falls); each quest's item as its Item resource keeps it (quest/item.js
+ * getSaveData `item`) and what a Foe resource will hand its spawns (quest/foe.js `itemQueue`); and Project Legacy's
+ * bequests (each member's and the waiting Succession's) and remains (each list as it lies and as it was laid). Not its
+ * pictures of items: a member's `look` is a paperdoll's recipe, a piece's `decor[].item` a descriptor.
+ * @param {any} snap
+ */
+function heldItemLists(snap) {
+  const out = [];
+  for (const scene of arrayOf(snap?.sceneCache?.scenes)) {
+    out.push(...listsOf(Object.values(scene?.decorOwn ?? {})));
+    for (const shelf of Object.values(scene?.guildShelves ?? {})) out.push(...listsOf(shelf?.items));
+  }
+  for (const foe of arrayOf(snap?.world?.foes)) if (!foe?.dead) out.push(...listsOf(foe?.items));
+  for (const guard of arrayOf(snap?.world?.guards)) out.push(...listsOf(guard?.items));
+  for (const foe of arrayOf(snap?.interior?.foes)) out.push(...listsOf(foe?.items));
+  for (const guard of arrayOf(snap?.interior?.guards)) out.push(...listsOf(guard?.items));
+  for (const r of arrayOf(snap?.modData?.[REVENANT_VENDOR]?.list)) out.push(...listsOf(r?.took));
+  for (const q of arrayOf(snap?.quest?.machine?.quests)) {
+    for (const res of arrayOf(q?.resources)) {
+      if (res?.resourceSpecific?.item) out.push([res.resourceSpecific.item]);
+      out.push(...listsOf(res?.resourceSpecific?.itemQueue));
+    }
+  }
+  const line = snap?.modData?.[LEGACY_VENDOR];
+  for (const p of arrayOf(line?.people)) out.push(...listsOf(p?.bequest));
+  out.push(...listsOf(line?.pending?.bequest));
+  for (const r of arrayOf(line?.remains)) out.push(...listsOf(r?.items, r?.first));
+  return out;
+}
+/**
+ * ITEM-WALK A: EVERY LIST OF ITEMS A SAVE HOLDS, ONE WALK - the character's own five (`own`'s: the pack, the wagon, the
+ * Materials Bag, the furnisher's deliveries and the repairer's shelf), every list customs reads (stashedItemLists) and
+ * every other (heldItemLists). The load passes the entity it restores as `own`: its copies are the ones the game plays.
+ * @param {any} snap @param {any} [own]
+ */
+export const savedItemLists = (snap, own = snap) => [...listsOf(own?.items, own?.wagonItems, own?.bagItems, own?.furnishings, own?.otherItems), ...stashedItemLists(snap), ...heldItemLists(snap)];
+
+/**
+ * ITEM-WALK (2026-10-07, Mac: "Do them now within this PR"): THE LOAD'S ITEM REPAIRS, ONE RUNNER - each one-time repair a
+ * load makes to the items it reads, over every list in `repairLists`, in place. The load runs it over every list the
+ * save holds (savedItemLists); Project Legacy over what leaves the line's record by no load - a bequest as it is paid,
+ * a fallen member's remains as they open (scenes/legacyHost.js). Each repair leaves a piece it has made right as it
+ * is, so a second run changes nothing.
+ * @param {any[][]} repairLists
+ */
+export function repairItemLists(repairLists) {
+  // DISC21-A: a biography item was minted with no condition until DISC21, and Roleplay & Realism wore the questions'
+  // ebony dagger to 20% of nothing - broken, and undamaged to the repairer. Minted now, by the law it missed.
+  for (const list of repairLists) {
+    const n = repairUnmintedConditions(list);
+    if (n) console.info(`[save] DISC21-A: ${n} item(s) given the condition they were never minted with`);
+  }
+  // WEAPON-POOL: a weapon minted on its row's pool (an iron dagger at 50) moves to the one pool every type shares now,
+  // its condition the same share of it - every list, as the repairs above
+  for (const list of repairLists) {
+    const n = repoolWeaponConditions(list);
+    if (n) console.info(`[save] WEAPON-POOL: ${n} weapon(s) moved to the one condition pool`);
+  }
+  // DISC29-B: a Magic or Rare piece of Roleplay & Realism: Items armour rolled before the fix lost Brigandine, Fur or
+  // Mail from its name (lootRarity.js rarityName) - given back, so the piece a class check refuses says what it is.
+  for (const list of repairLists) {
+    const n = repairRarityNames(list);
+    if (n) console.info(`[save] DISC29-B: ${n} item name(s) given back the word their make wrote`);
+  }
+  // WB12a: the Sigil Stones a save kept under their old name are Deadlands Embers - every list, as the names above
+  for (const list of repairLists) {
+    const n = nameEmbers(list);
+    if (n) console.info(`[save] WB12a: ${n} stone record(s) named Deadlands Embers`);
+  }
+  // RARITY-WEAR (FIELD BUGS 2026-10-01): a Magic, Rare or Legendary piece the spoils minted on a Wand - no slot takes it,
+  // so its tier was read by nothing - moved to its wearable home (lootRarity.js repairRarityBases: the Amulet)
+  for (const list of repairLists) {
+    const n = repairRarityBases(list);
+    if (n) console.info(`[save] RARITY-WEAR: ${n} rolled piece(s) on a base nothing can wear moved to one a slot takes`);
+  }
+  // AUDIT CARDS-6 A6: every card worth its tier's worth (iliacItems.js cleanBinders - a card minted before CARDS9 carried
+  // a coin's) in every list, not the pack's alone: one in the wagon, the bag or a house chest kept its coin after a load
+  for (const list of repairLists) cleanBinders(list);
+}
+
+/** PORTAL1 (AUDIT PORTAL1 U9): how many saves this page has restored - every load, whichever host runs it, passes the one
+ *  door below, so a host that must end something at EVERY load (scenes/world.js: the portals standing) asks this count
+ *  rather than each branch of each load. */
+let _restores = 0;
+export const restoresSoFar = () => _restores;
 export function restorePlayer(entity, snap, spellsByIndex = null) {
   if (!snap || snap.v !== SAVE_VERSION) {
     console.warn(`[save] version mismatch (got ${snap?.v}, want ${SAVE_VERSION}); refusing`);
     return null;
   }
+  _restores++;   // PORTAL1: a load that lands - the world host ends its portals on the count's move
   // AUDIT LIVED1b F3 (S4): THE ENVELOPE'S CLOCKS ARE READ ONCE, HERE. A clock is an unsigned minute count (DFU's
   // ToClassicDaggerfallTime answers a uint), and nothing legitimate writes another - but a tampered or corrupted one
   // reached every reader raw: at 2^53 the calendar loop's `i++` stands still and the page froze for good, a
@@ -608,6 +765,7 @@ export function restorePlayer(entity, snap, spellsByIndex = null) {
   defineLiveMaxMagicka(entity);
   defineLiveMaxHealth(entity);   // DISC10-E L4: the same law for MaxHealth - the setter below writes the RAW value
   for (const k of ENTITY_FIELDS) entity[k] = snap[k];
+  resetBlowEffects(entity);   // AUDIT TELL L2: the last game's landings - a bleed, a knockdown, a push queued - are nobody's in this one
   // CHARID1: A LEGACY SAVE IS ADOPTED HERE. An envelope written before
   // the id existed carries none; its character gets one now, and every
   // card of that name that has none is stamped with it - so the next
@@ -643,12 +801,15 @@ export function restorePlayer(entity, snap, spellsByIndex = null) {
   entity.masterSkills = snap.masterSkills === true;   // SOFTCAP3
   entity.masterSkillsAsked = snap.masterSkillsAsked === true;   // SOFTCAP3
   entity.masterSkillsInfoSeen = snap.masterSkillsInfoSeen === true;   // SOFTCAP3
+  entity.lefayTribute = normalTribute(snap.lefayTribute);   // LEFAY1: a save from before it laid none
   entity.masteredSkills = Array.isArray(snap.masteredSkills) ? snap.masteredSkills.filter(Number.isInteger) : [];   // SOFTCAP4
   entity.masteryPrompted = Array.isArray(snap.masteryPrompted) ? snap.masteryPrompted.filter(Number.isInteger) : [];   // SOFTCAP4
   entity._mentor = null;   // SOFTCAP1: recomputed by the party frame, never restored
   entity.career = snap.career ? { ...snap.career } : entity.career;
   entity.items = snap.items.map((it) => setItemFields(it));   // JAN1: SetItem's two writes on every item in (a copy, as before)
   entity.wagonItems = (snap.wagonItems ?? []).map((it) => setItemFields(it));   // W-slice (pre-W saves restore empty); JAN1: set on the way in
+  entity.bagItems = (snap.bagItems ?? []).map((it) => setItemFields(it));   // BAG1: a save written before holds none
+  entity.bagTakes = bagTakesSaved(snap.bagTakes);   // AUDIT2 BAG1: the deposits' stamps - a save written before holds none
   entity.furnishings = (snap.furnishings ?? []).map((it) => setItemFields(it));   // DECOR2b: a save written before holds none
   entity.otherItems = (snap.otherItems ?? []).map((it) => setItemFields(it));   // R1: the in-repair collection (pre-R1 saves restore empty); JAN1: set on the way in
   // AUDIT PRE-MERGE 0929 D3: THE LOAD'S ITEM REPAIRS REACH EVERY LIST THE SAVE CARRIES - the pack, the wagon and the
@@ -657,30 +818,9 @@ export function restorePlayer(entity, snap, spellsByIndex = null) {
   // Come Sail Away's boats and cargoes), repaired in the save itself before the scene cache is restored from it and
   // before the world and the mods' data go back to their hosts. A piece kept in a house chest loaded with the name its
   // make had lost, and kept it once carried out - "pieces you already have are renamed when you load".
-  const repairLists = [entity.items, entity.wagonItems, entity.otherItems, ...stashedItemLists(snap)];
-  // DISC21-A: a biography item was minted with no condition until DISC21, and Roleplay & Realism wore the questions'
-  // ebony dagger to 20% of nothing - broken, and undamaged to the repairer. Minted now, by the law it missed.
-  for (const list of repairLists) {
-    const n = repairUnmintedConditions(list);
-    if (n) console.info(`[save] DISC21-A: ${n} item(s) given the condition they were never minted with`);
-  }
-  // DISC29-B: a Magic or Rare piece of Roleplay & Realism: Items armour rolled before the fix lost Brigandine, Fur or
-  // Mail from its name (lootRarity.js rarityName) - given back, so the piece a class check refuses says what it is.
-  for (const list of repairLists) {
-    const n = repairRarityNames(list);
-    if (n) console.info(`[save] DISC29-B: ${n} item name(s) given back the word their make wrote`);
-  }
-  // WB12a: the Sigil Stones a save kept under their old name are Deadlands Embers - every list, as the names above
-  for (const list of repairLists) {
-    const n = nameEmbers(list);
-    if (n) console.info(`[save] WB12a: ${n} stone record(s) named Deadlands Embers`);
-  }
-  // RARITY-WEAR (FIELD BUGS 2026-10-01): a Magic, Rare or Legendary piece the spoils minted on a Wand - no slot takes it,
-  // so its tier was read by nothing - moved to its wearable home (lootRarity.js repairRarityBases: the Amulet)
-  for (const list of repairLists) {
-    const n = repairRarityBases(list);
-    if (n) console.info(`[save] RARITY-WEAR: ${n} rolled piece(s) on a base nothing can wear moved to one a slot takes`);
-  }
+  // ITEM-WALK: and every other list the save holds (savedItemLists), by the one runner (repairItemLists)
+  const repairLists = savedItemLists(snap, entity);   // BAG1: and the bag's
+  repairItemLists(repairLists);
   entity.rentedRooms = (snap.rentedRooms ?? []).map((r) => ({ ...r }));   // U39: the rented rooms (pre-U39 saves restore empty)
   // JAN1 (2026-09-18, Janome: CRASH `region 17 is outside the 0 bank accounts`, a softlock at the bank): a pre-B1 save
   // restored an EMPTY table, which is truthy, so worldModes' `??= createBankAccounts` never minted one and every bank
@@ -689,8 +829,12 @@ export function restorePlayer(entity, snap, spellsByIndex = null) {
   entity.sceneCache = restoreSceneCache(createSceneCache(), snap.sceneCache);   // P1
   entity.houses = snap.houses?.length ? snap.houses.map((h) => ({ ...h })) : createHouses(entity.bankAccounts.length);   // JAN1: the same law for the house registry (H1 mints it beside the accounts)
   entity.ownedShip = snap.ownedShip ?? -1;
+  entity.boatCabinLink = readBankCabinLink(snap.boatCabinLink);
   if (snap.shipCrossed === true) entity.shipCrossed = true; else delete entity.shipCrossed;   // RESTORE: its customs mark, or none
   entity.loanAmnesty = Number.isSafeInteger(snap.loanAmnesty) ? snap.loanAmnesty : 0;   // LOAN-AMNESTY: a save from before the first amnesty has had none
+  entity.portalGift = Number.isSafeInteger(snap.portalGift) ? snap.portalGift : 0;   // PORTAL-GIFT: a save from before the gift has had none
+  entity.walletGift = Number.isSafeInteger(snap.walletGift) ? snap.walletGift : 0;   // WALLET1: a save from before the wallet has had none
+  entity.binderGift = Number.isSafeInteger(snap.binderGift) ? snap.binderGift : 0;   // CARDS8
   entity.boardShipPosition = snap.boardShipPosition ?? null;   // TR4 (:425)
   entity.anchorPosition = snap.anchorPosition ? { ...snap.anchorPosition } : null;   // TP-slice
   // A4: the three stragglers' restore arms (see the snapshot side).
@@ -759,6 +903,10 @@ export function restorePlayer(entity, snap, spellsByIndex = null) {
     const n = restackStones(list);
     if (n) console.info(`[save] SS1: ${n} Deadlands Ember record(s) folded into their stacks`);
   }
+  givePortalGift(entity);   // PORTAL-GIFT: a character from before the gift is given its stones once - below the relinks and the fold, onto the pack's stack
+  giveWalletGift(entity);   // WALLET1: and a character from before the wallet, one - at the pack's end, below the relinks (no index above it moves)
+  cleanBinders(entity.items);   // AUDIT CARDS-5 C1: a binder's decks from an old, foreign or edited save made sound (the load copies a record whole)
+  giveBinderGift(entity);   // CARDS8: and the Card Binder and its starter deck, once - at the pack's end too
   entity.activeEffects = (snap.activeEffects ?? []).filter((a) => !a.heldItem && !a.bundleDuel).filter((a) => effectKindLoaded(a.kind)).map(copyEffectEntry);   // E2: a stale pin in an old snapshot cannot re-link - drop it (DFU :2312); AUDIT DUEL1 B4: nor a duel's spell a save from before the filter kept; AUDIT PRE-MERGE 0928 S3: nor an effect of a mod not loaded (Come Sail Away's water walk)
   // DISC10-D/E V11: THE DREAM'S PUSH IS NOT SAVED. CustomSaveData_v1 keeps
   // the two PLAYED flags and the day (VampirismInfection.cs:221-251,
@@ -788,6 +936,11 @@ export function restorePlayer(entity, snap, spellsByIndex = null) {
   // marker and the entry can never disagree (the gates - a second
   // infection, the disease immunity - read the marker).
   entity.racialOverride = entity.activeEffects.find((a) => a.kind === 'racialOverride' && !a.ended) ?? null;
+  // AUDIT CLAWS A2: and the beast-form flag, the curse entry's mirror (lycanthropy.js writes it from `isTransformed` at
+  // each change and each round) - a load onto the same entity left the last game's: a man loaded over a transformed
+  // werewolf kept it (the round returns at once for a character with no curse), and a transformed save on a fresh page
+  // waited a round for it. Its readers - the claws' metal, the street's politeness gate, the tells - read it at once.
+  entity.isInBeastForm = !!(entity.racialOverride?.racial === 'lycanthropy' && entity.racialOverride.isTransformed);
   // DISC19-C: the revival decided above, now that the poison, the
   // continuous damage and the exposure it ends are the save's own.
   if (loadDeadOnline) reviveForPlay(entity);
@@ -848,6 +1001,11 @@ export function restorePlayer(entity, snap, spellsByIndex = null) {
   entity.timeForDarkBrotherhoodLetter = snap.timeForDarkBrotherhoodLetter ?? 0;
   entity.legalRep = snap.legalRep ? { ...snap.legalRep } : {};
   restoreStanding(entity, snap.standing);   // REP: a pre-REP save restores an empty book
+  entity.arenaLadder = arenaLadderRestore(snap.arena);   // ARENA2: a save from before the ladder climbs from tier 1
+  entity.cardRegulars = regularsBookRestore(snap.cardRegulars);   // AUDIT CARDS-2 H2: a save from before the book seats fresh regulars
+  entity.iliacForfeits = forfeitsBookRestore(snap.iliacForfeits);   // CARDS10: a save from before the book owes no regular's card
+  entity.arenaReplays = arenaReplaysRestore(snap.arena?.replays);   // ARENA5: a save from before the replays keeps none
+  entity.arenaLeague = arenaLeagueRestore(snap.arenaLeague);   // ARENA3: a save from before the banners wears none
   // AUDIT 23 (C4/guilds-4): DFU clamps every region's LegalRep right
   // after restoring it (SerializablePlayer -> ClampLegalReputations) -
   // a save carrying a beyond-band value loads back into the band.
@@ -1035,7 +1193,7 @@ export function clampMarkersAheadOf(entity, own) {
     if (!a || typeof a !== 'object') continue;
     if (a.kind === 'disease') { cap(a, 'lastDay', day); cap(a, 'startingDay', day); }
     cap(a, 'lastMinute', own);   // a poison's
-    for (const k of ['lastKilledInnocent', 'lastCastMorphSelf', 'lastUrgeNotify', 'lastTimeFed']) cap(a, k, own);   // the curses'
+    for (const k of ['lastKilledInnocent', 'lastCastMorphSelf', 'lastMorphHeal', 'lastUrgeNotify', 'lastTimeFed']) cap(a, k, own);   // the curses'
   }
   return n;
 }
@@ -1052,9 +1210,9 @@ export function clampMarkersAheadOf(entity, own) {
  *  save was for a different dungeon. The saved dungeon's own door
  *  first (by `dungeon:<locationId>`), then a door on the player's own
  *  pixel (the `site`'s group, DFU's GetLocation), then the doorless
- *  site itself, and only for a pixel with no dungeon at all the first
- *  door there is (a site with no dungeon of its own is the fallback the
- *  respawn keeps). Null when there is nothing to enter.
+ *  site itself (AUDIT SD II: never a neighbour's door - a pixel with
+ *  no dungeon of its own enters nothing). Null when there is nothing
+ *  to enter.
  *  @param {Array<{door:{doorType:number}, group?:string, dfLocation?:any}>} doors  the DUNGEON_ENTRANCE doors alone
  *  @param {{group?:string}|null} site  host.dungeonStartSite()'s answer
  *  @param {string|null} locationKey  the save's `dungeon:<id>` */
@@ -1064,7 +1222,11 @@ export function dungeonStartDoorFor(doors, site, locationKey = null) {
   const own = id != null ? list.find((e) => String(e?.dfLocation?.dungeon?.recordElement?.header?.locationId ?? '') === id) : null;
   if (own) return own;
   const here = site?.group != null ? list.find((e) => e?.group === site.group) : null;
-  return here ?? site ?? list[0] ?? null;
+  // AUDIT SD II (L1 F8): and NEVER a neighbour's - a pixel with no dungeon of its own enters nothing (DFU's
+  // StartDungeonInterior builds the player's own location or fails, and every caller has its "all else fails" arm). The
+  // first door in the stream was kept here for such a pixel, and a Mark or a save inside a Super dungeon that had gone
+  // since (the Hollow taken down, its pixel bare) entered whatever dungeon stood nearest, at the Hollow's own position
+  return here ?? site ?? null;
 }
 
 /** MAC6 #1: the dungeon a save was taken in, found by its id across
@@ -1183,6 +1345,7 @@ export function removeAllOrphanedItems(entity, getQuest) {
   let count = 0;
   count += removeOrphanedItems(entity, entity.items, getQuest);
   count += removeOrphanedItems(entity, entity.wagonItems, getQuest);
+  count += removeOrphanedItems(entity, entity.bagItems ?? [], getQuest);   // BAG1: the port's own list, beside DFU's three
   count += removeOrphanedItems(entity, entity.otherItems, getQuest);
   if (count > 0) console.log(`Removed ${count} orphaned items.`);
   return count;

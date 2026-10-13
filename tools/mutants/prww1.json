@@ -11,8 +11,8 @@
   {
     "name": "PRWW1-form-not-handed-to-spriteFor",
     "file": "src/net/peerRiders.js",
-    "old": "{ onHorse: pose.rv | 0, lycanthropyType: beast }",
-    "new": "{ onHorse: pose.rv | 0 }",
+    "old": "{ onHorse: pose.rv | 0, lycanthropyType: beast, horse: pose.rc | 0 }",
+    "new": "{ onHorse: pose.rv | 0, horse: pose.rc | 0 }",
     "tests": [
       "test/prww1_werewolf.test.js"
     ]
@@ -92,17 +92,18 @@
   {
     "name": "PRWW1-modal-hook-narrowed-back",
     "file": "src/scenes/world.js",
-    "old": "    extraBillboards: () => [...(remotePlayers?.batches() ?? []), ...(peerRiders?.batches() ?? []), ...(peerWalkers?.batches() ?? []), ...(gateCourt?.batches() ?? []), ...(csaOn() ? csa.batches() : [])],",
-    "new": "    extraBillboards: () => [...(remotePlayers?.batches() ?? []), ...(gateCourt?.batches() ?? []), ...(csaOn() ? csa.batches() : [])],",
+    "old": "    extraBillboards: () => [...(remotePlayers?.batches() ?? []), ...(peerRiders?.batches() ?? []), ...(peerWalkers?.batches() ?? []), ...(gateCourt?.batches() ?? []), ...(sdSpoilsPool?.batches() ?? []), ...(csaOn() && !modes?.sailingCabin ? csa.batches() : []), ...((modes?.mode ?? 'exterior') === 'dungeon' ? arenaBouts.batches() : [])],",
+    "new": "    extraBillboards: () => [...(remotePlayers?.batches() ?? []), ...(gateCourt?.batches() ?? []), ...(sdSpoilsPool?.batches() ?? []), ...(csaOn() && !modes?.sailingCabin ? csa.batches() : []), ...((modes?.mode ?? 'exterior') === 'dungeon' ? arenaBouts.batches() : [])],",
     "tests": [
       "test/prww1_werewolf.test.js"
-    ]
+    ],
+    "note": "SD9e (PIN MOVED): the Brass Remnant's spoils stand among the billboards - re-aimed by content."
   },
   {
     "name": "PRWW1-local-body-on-the-settings-alone",
     "file": "src/player/eotbBody.js",
-    "old": "  const lookNow = () => ({ ...cfg, lycanthropyType: last.lycanthropyType });\n",
-    "new": "  const lookNow = () => cfg;\n",
+    "old": "  const lookNow = () => ({ ...cfg, lycanthropyType: last.lycanthropyType, horse: last.horseLook ?? 0 });",
+    "new": "  const lookNow = () => ({ ...cfg, horse: last.horseLook ?? 0 });",
     "tests": [
       "test/prww1_werewolf.test.js"
     ]

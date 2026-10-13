@@ -92,7 +92,7 @@ test('JAN1 (fist): THE POSE IS THE PLAYER\'S, NOT THE RIG\'S - the port has four
   const body = (name, endAt) => { const i = wm.indexOf(name); assert.ok(i > 0, name); return wm.slice(i, wm.indexOf(endAt, i)); };
   assert.match(body("function tryExit(", "mwViewTransition('Exterior')"), /host\.applyWeaponPose\?\.\(weaponPoseOf\(interiorWeapon\.playerWeapon\)\)/, 'a building\'s exit hands the pair to the exterior rig');
   assert.match(body("function exitDungeonNow()", "mwViewTransition('Exterior')"), /const pose = dungeonPose\(\);[^\n]*\n\s*host\.onDungeonLeave\?\.\(\);[^\n]*\n\s*teardownDungeonQuestFlats\(\);[^\n]*\n\s*dungeonCtx\.destroy\(\);[\s\S]*?host\.applyWeaponPose\?\.\(pose\);/, 'a dungeon\'s exit reads the pair BEFORE the leave hook and the teardown (WORLD1 pins that triple) and hands it over after the mode');
-  assert.match(body("forceExitToExterior({ cacheScene = true } = {}) {", "AUDIT 63r F30"), /const pose = mode === 'dungeon' \? dungeonPose\(\) : mode === 'interior' \? weaponPoseOf\(interiorWeapon\.playerWeapon\) : null;[\s\S]*?if \(pose\) host\.applyWeaponPose\?\.\(pose\);/, 'the forced exit (a load, a teleport) the same, from whichever rig is live');
+  assert.match(body("forceExitToExterior({ cacheScene = true, load = false } = {}) {", "AUDIT 63r F30"), /const pose = mode === 'dungeon' \? dungeonPose\(\) : mode === 'interior' \? weaponPoseOf\(interiorWeapon\.playerWeapon\) : null;[\s\S]*?if \(pose\) host\.applyWeaponPose\?\.\(pose\);/, 'the forced exit (a load, a teleport) the same, from whichever rig is live');
   assert.match(wm, /setMode\('interior'\);\n\s*host\.unlockOn\?\.\(\);[^\n]*\n\s*mwViewTransition\('Interior'\);[^\n]*\n\s*setWeaponPose\(interiorWeapon\.playerWeapon, host\.weaponPose\?\.\(\) \?\? null\);/, 'a building\'s entry seeds the interior rig from the exterior\'s');
   assert.match(wm, /const dungeonPose = \(\) => weaponPoseOf\(dungeonCtx\?\.weaponRig\?\.\(\)\?\.playerWeapon \?\? null\);/, 'the dungeon rig\'s pair has one reader');
   assert.match(wm, /setMode\('dungeon'\);\n\s*host\.unlockOn\?\.\(\);[^\n]*\n\s*mwViewTransition\('Interior'\);[^\n]*\n\s*setWeaponPose\(dungeonCtx\?\.weaponRig\?\.\(\)\?\.playerWeapon \?\? null, host\.weaponPose\?\.\(\) \?\? null\);/, 'a dungeon\'s entry seeds the dungeon rig');
@@ -125,7 +125,9 @@ test('JAN1 (sky): the streaming host grounds a walker on the TERRAIN, not the lo
   assert.equal(tileWeight(56), 7); assert.equal(tileWeight(63), 7, 'an unstamped marker tile is walkable, which is how a walker reaches the band');
   const w = rd('src/scenes/world.js');
   assert.equal(/groundY: \(\) => locOrigin\[1\],/.test(w), false, 'no constant groundY for the wandering pool');
-  assert.match(w, /groundY: \(x, z\) => \{\s*\n\s*const t = state\.pixelTranslation\(px, py\);\s*\n\s*const h = heightAt\(x \+ locOrigin\[0\] \+ t\[0\], z \+ locOrigin\[2\] \+ t\[2\]\);\s*\n\s*return Number\.isFinite\(h\) \? h - t\[1\] \+ 2\.0 \* 0\.025 : locOrigin\[1\];/, 'the terrain floor, out of the pixel\'s vertical frame, with locOrigin\'s own lift; a pixel not built answers the old constant');
+  assert.match(w, /const personGroundY = \(x, z\) => \{\s*\n\s*const t = state\.pixelTranslation\(px, py\);\s*\n\s*const h = heightAt\(x \+ locOrigin\[0\] \+ t\[0\], z \+ locOrigin\[2\] \+ t\[2\]\);\s*\n\s*return Number\.isFinite\(h\) \? h - t\[1\] \+ 2\.0 \* 0\.025 : locOrigin\[1\];/, 'the terrain floor, out of the pixel\'s vertical frame, with locOrigin\'s own lift; a pixel not built answers the old constant');
+  // LW2 (2026-10-04): the closure is ONE for both of the host's pools - DFU's walkers and the living world's residents
+  assert.equal((w.match(/groundY: personGroundY/g) ?? []).length, 2, 'both pools stand their bodies on it');
   assert.match(rd('src/scenes/exterior.js'), /groundY: \(x, z\) => collider\.heightAt\(x, z\)/, 'both hosts on one law: the collider\'s floor');
 });
 

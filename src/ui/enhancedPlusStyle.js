@@ -18,15 +18,22 @@ import { CURSOR_CSS } from './plusCursor.js';   // PLUS7: the gauntlet pointer
 import { SIGIL_RUNE_TILE_URL } from './sigilRune.js';   // SIGIL-UI: the rune in a sigil weapon's tile corner (AUDIT MERGE-PLUS D5: a picture, its outline drawn in)
 import { PROF_ACT_CSS } from './profActStyle.js';   // PROF-RETICLE: the acts on the crosshair, dressed
 import { PROF_STATION_CSS } from './profStationStyle.js';   // PROF-STATIONS: the stations' acts, dressed
+import { plusDress, GRIMOIRE_DRESS, mountGrimoireDress } from './grimoireDress.js';   // GRIM1: the DFO Grimoire dress over the kit
+import { mountTextFont } from './textFont.js';   // TEXT-FONT: the words' face and the names'
 
 export const PLUS_STYLE_ID = 'enhanced-plus-style';
 
 /** PLUS2: the colour in effect - the stored one if it is a theme, else Slate. */
 export const plusTheme = () => (Object.hasOwn(PLUS_THEMES, getPref('plusTheme')) ? getPref('plusTheme') : DEFAULT_PLUS_THEME);
-/** Wear the stored colour on the page (the theme rules key on the root's data-plus-theme). */
+/** Wear the stored colour on the page (the theme rules key on the root's data-plus-theme). GRIM1: under the DFO
+ *  Grimoire dress (ui/grimoireDress.js) the colour stands at Slate - the bare kit the dress repaints - and the dress is
+ *  laid; the player's own colour stays on the shelf for when they wear Enhanced Plus again. */
 export function applyPlusTheme(doc = globalThis.document) {
   const root = doc?.documentElement;
-  if (root?.dataset) root.dataset.plusTheme = plusTheme();
+  if (!root?.dataset) return;
+  mountTextFont(doc);   // TEXT-FONT: under either look
+  if (plusDress() === GRIMOIRE_DRESS) { root.dataset.plusTheme = DEFAULT_PLUS_THEME; mountGrimoireDress(doc); return; }
+  root.dataset.plusTheme = plusTheme();
 }
 /** Choose a colour: stored, and worn at once - no reload, the rules are already on the page. */
 export function setPlusTheme(id, doc = globalThis.document) {
@@ -186,6 +193,10 @@ body .dfchat-form .dfchat-close { min-width: 32px; padding: 4px 8px; }
   background: rgba(12,14,18,0.6); border: 2px solid rgba(125,116,96,0.45); }
 .look-colour[aria-pressed="true"] { border-color: #c08a3e; color: rgb(243,239,44); }
 .look-colour:hover, .look-colour:focus-visible { border-color: #c08a3e; outline: none; }
+/* TEXT-FONT: the installed font's name, typed in a field written in that font */
+.look-fontname { flex: 1 1 180px; min-width: 0; min-height: 32px; padding: 4px 8px; font-size: 15px; color: #1d150b;
+  background: rgba(255,250,236,0.9); border: 2px solid rgba(125,116,96,0.6); }
+.look-fontname:focus { outline: none; border-color: #c08a3e; }
 .look-colour-chip { display: inline-block; width: 16px; height: 16px; box-shadow: 0 0 0 1px #050608, inset 0 0 0 1px rgba(255,255,255,0.15); }
 /* (PLUS1b's one status row under the vitals is gone - UI3: its effects and needs are the status widget's tiles,
    ui/hudStatus.js, on the quickslot block at the left edge.) */
@@ -276,6 +287,10 @@ body .dfchat-form .dfchat-close { min-width: 32px; padding: 4px 8px; }
   text-transform: uppercase; color: #efe8d6; text-shadow: 1px 1px 0 #050608, 2px 2px 0 rgba(0,0,0,0.5); }
 .lvl-lead { margin: 0 0 18px; text-align: center; font-size: 14px; color: #c9bfa4; text-shadow: 1px 1px 0 #050608; }
 .lvl-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+/* LEGACY-CHOICE: Project Legacy's online popup puts three answers - the window widens so the three stand in one row
+   (each tile no narrower than 210px), and a narrower screen wraps them as the grid does two */
+.lvl-shell .px-win.lvl-three { width: min(1000px, 100%); }
+.lvl-three .lvl-opts { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
 .lvl-opt { font: inherit; text-align: left; color: #d8cfae; cursor: pointer; display: flex; flex-direction: column; gap: 10px;
   padding: 14px 16px 12px; background: rgba(0,0,0,0.32); border: 2px solid;
   border-color: ${FRAME_TONES.stoneDark} ${FRAME_TONES.stoneMid} ${FRAME_TONES.stoneLit} ${FRAME_TONES.stoneDim};
@@ -283,13 +298,13 @@ body .dfchat-form .dfchat-close { min-width: 32px; padding: 4px 8px; }
 .lvl-opt.is-on, .lvl-opt:focus-visible { outline: none; background: rgba(192,138,62,0.12);
   border-color: ${FRAME_TONES.brassHi} ${FRAME_TONES.brassLo} #5c3f1a ${FRAME_TONES.brass};
   box-shadow: 0 0 0 1px #050608, 0 0 14px rgba(243,207,134,0.18), inset 0 1px 0 rgba(255,244,210,0.18); }
-.lvl-opt-head { display: flex; align-items: baseline; gap: 10px; }
+.lvl-opt-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }   /* AUDIT LEGACY II U10: a long tag wraps under the title, never past the card */
 .lvl-key { flex: 0 0 auto; min-width: 22px; text-align: center; font-size: 12px; padding: 1px 4px; color: #a89f88;
   border: 1px solid rgba(125,116,96,0.55); }
 .lvl-opt.is-on .lvl-key { color: rgb(243,239,44); border-color: ${FRAME_TONES.brass}; }
 .lvl-opt-title { font-size: 18px; letter-spacing: 0.08em; text-transform: uppercase; color: #efe8d6; text-shadow: 1px 1px 0 #050608; }
 .lvl-opt.is-on .lvl-opt-title { color: rgb(243,239,44); text-shadow: 1px 1px 0 rgb(93,77,12); }
-.lvl-tag { margin-left: auto; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #9c937d; white-space: nowrap; }
+.lvl-tag { margin-left: auto; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #9c937d; white-space: normal; text-align: right; }
 .lvl-opt-body { margin: 0; font-size: 14px; line-height: 1.5; color: #c5bda2; text-shadow: 1px 1px 0 #050608; }
 .lvl-opt-foot { margin-top: auto; padding-top: 10px; border-top: 2px solid rgba(5,6,8,0.5); box-shadow: inset 0 1px 0 rgba(163,152,128,0.16);
   display: flex; justify-content: flex-end; }
@@ -558,19 +573,19 @@ body:has(.hud-foe.on.blade) .travelpanel { --tp-top: calc(18px + 28px * var(--hu
 .travelpanel-speed, .travelpanel-acts { border-left: 2px solid rgba(5,6,8,0.55); box-shadow: inset 1px 0 0 rgba(163,152,128,0.18); }
 .travelpanel-speed { align-items: center; gap: 6px; padding: 8px 18px; }
 .travelpanel-speed > .travelpanel-label { text-indent: 0.2em; }
-.travelpanel-stepper { gap: 6px; }
-.travelpanel-step { width: 30px; height: 30px; padding: 0; display: grid; place-items: center; border: 2px solid; border-radius: 0;
-  font: inherit; font-size: 17px; line-height: 1; color: #e6dec6; text-shadow: 1px 1px 0 #050608; }
 .travelpanel-accel { min-width: 64px; height: 30px; box-sizing: border-box; display: grid; place-items: center; padding: 0 8px;
   border: 2px solid; background: rgba(0,0,0,0.38); font-family: inherit; font-size: 17px; letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums; color: rgb(243,239,44); text-shadow: 1px 1px 0 rgb(93,77,12); }
-/* TV2: the clock held under the spinner while the land loads (systems/travelGovernor.js) - the rate that runs first */
+/* TV2: the clock held under the ground's rate while the land loads (systems/travelGovernor.js; OW6: or an alerted enemy
+   near) - the rate that runs first */
 .travelpanel-accel.held { min-width: 92px; color: rgb(236,160,60); }
+/* RATE-LAW: the ground's word under the socket */
+.travelpanel-ground { font-size: 11px; letter-spacing: 0.06em; color: #c9bfa4; text-shadow: 1px 1px 0 #050608; }
 .travelpanel-acts { gap: 8px; padding: 8px 16px; }
 .travelpanel-act { min-width: 78px; min-height: 36px; padding: 6px 14px; border: 2px solid; border-radius: 0;
   font-family: inherit; font-size: 13px; letter-spacing: 0.14em; text-indent: 0.14em; text-align: center; color: #e6dec6;
   text-shadow: 1px 1px 0 #050608, 2px 2px 0 rgba(0,0,0,0.45); }
-.travelpanel-step:hover, .travelpanel-step:focus-visible, .travelpanel-act:hover, .travelpanel-act:focus-visible {
+.travelpanel-act:hover, .travelpanel-act:focus-visible {
   outline: none; color: rgb(243,239,44); text-shadow: 1px 1px 0 rgb(93,77,12); }
 /* the journey's word (a stop, a speed refused): outlined gold words under the bar, the HUD lines' own face */
 .travelpanel-msg { top: calc(var(--tp-top) + 104px); max-width: calc(100vw - 48px); text-align: center; font-size: 14px;
@@ -603,6 +618,7 @@ body:has(.hud-foe.on.blade) .travelpanel { --tp-top: calc(18px + 28px * var(--hu
   .travelpanel-bar { flex-wrap: wrap; }
   .travelpanel-dest { flex: 1 1 100%; border-bottom: 2px solid rgba(5,6,8,0.55); box-shadow: 0 1px 0 rgba(163,152,128,0.18); }
   .travelpanel-speed { flex-direction: row; padding: 8px 8px 8px 12px; border-left: 0; box-shadow: none; }
+  .travelpanel-speed { flex-direction: column; align-items: flex-start; }
   .travelpanel-speed > .travelpanel-label { display: none; }   /* the x40 in its socket says what it is; the row needs the room */
   .travelpanel-accel { min-width: 52px; }
   .travelpanel-acts { flex: 1 1 auto; padding: 8px 12px 8px 8px; }
@@ -639,6 +655,52 @@ body:has(.hud-foe.on.blade) .travelpanel { --tp-top: calc(18px + 28px * var(--hu
 .tview-map:hover, .tview-map:focus-visible, .tview-back:hover, .tview-back:focus-visible, .tview-mode:hover, .tview-mode:focus-visible {
   outline: none; color: rgb(243,239,44); text-shadow: 1px 1px 0 rgb(93,77,12); }
 .tview-filters { padding: 9px 12px 11px; gap: 5px; }
+/* FILTERS-LEFT: the filters' own block, bottom left - the right's block's stone and face */
+.tview-side { font-family: ${PIXEL_STACK}; -webkit-font-smoothing: none; font-variant-ligatures: none;
+  font-feature-settings: 'liga' 0, 'clig' 0; color: #d8cfae; border: 2px solid; border-radius: 0; width: 292px; }
+.tview-side-head { font-family: inherit; font-size: 11px; padding: 8px 14px; color: #a89f88; text-shadow: 1px 1px 0 #050608; }
+.tview-side-head:hover, .tview-side-head:focus-visible { outline: none; color: rgb(243,239,44); text-shadow: 1px 1px 0 rgb(93,77,12); }
+.tview-side > .tview-filters { border-top: 2px solid rgba(5,6,8,0.55); box-shadow: inset 0 1px 0 rgba(163,152,128,0.18); }
+:root[data-plus-theme="stone"] .tview-side > .tview-filters { border-top-color: rgba(5,6,8,0.5); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16); }
+:root[data-plus-theme="stone"] .tview-side-head { color: #15130f; text-shadow: 1px 1px 0 rgba(255,255,255,0.36); }
+.tview-mode.tview-wp-go, .tview-mode.tview-wp-x { min-width: 0; min-height: 26px; height: 26px; padding: 0 9px; border: 2px solid; font-size: 11px; }
+.tview-mode.tview-wp-x { width: 26px; padding: 0; font-size: 14px; text-indent: 0; }
+.tview-wp-pick:disabled { color: #6c6552; text-shadow: none; }
+#wp-menu { font-family: ${PIXEL_STACK}; -webkit-font-smoothing: none; font-variant-ligatures: none; border-radius: 0; }
+#wp-menu { color: #d8cfae; border: 2px solid; padding: 12px 14px 14px; }
+#wp-menu .wpm-title { font-size: 15px; letter-spacing: 0.04em; color: #efe8d6; text-shadow: 1px 1px 0 #050608, 2px 2px 0 rgba(0,0,0,0.5); }
+#wp-menu .wpm-sub, #wp-menu .wpm-label { font-size: 11px; letter-spacing: 0.18em; color: #a89f88; text-shadow: 1px 1px 0 #050608; }
+#wp-menu .wpm-btn, #wp-menu .wpm-kind { min-height: 30px; border: 2px solid; border-radius: 0; font-family: inherit; font-size: 12px;
+  letter-spacing: 0.12em; text-indent: 0.12em; text-transform: uppercase; color: #e6dec6; text-shadow: 1px 1px 0 #050608, 2px 2px 0 rgba(0,0,0,0.45); }
+#wp-menu .wpm-kind + .wpm-kind { border-left: 2px solid; }
+#wp-menu .wpm-kind { color: #a89f88; }
+#wp-menu .wpm-kind.on, #wp-menu .wpm-btn.main, #wp-menu .wpm-btn:hover, #wp-menu .wpm-btn:focus-visible, #wp-menu .wpm-kind:not(:disabled):hover {
+  outline: none; color: rgb(243,239,44); text-shadow: 1px 1px 0 rgb(93,77,12); }
+#wp-menu .wpm-kind:disabled { color: #6c6552; text-shadow: none; }
+#wp-menu input.wpm-name { min-height: 30px; border: 2px solid; border-radius: 0; font-family: inherit; font-size: 13px; color: #efe8d6; }
+#wp-menu .wpm-x { font-family: inherit; color: #a89f88; }
+#wp-menu .wpm-x:hover { color: rgb(243,239,44); }
+#wp-menu .wpm-swatch { height: 22px; border-radius: 0; border: 2px solid #050608; }
+#wp-menu .wpm-swatch.on { border-color: rgb(243,239,44); box-shadow: 0 0 0 1px #050608; }
+#wp-menu .wpm-note { color: #c9bfa4; text-shadow: 1px 1px 0 #050608; }
+.tview-wp-row { border: 2px solid rgba(5,6,8,0.55); border-radius: 0; }
+.tview-wp-name { color: #efe8d6; text-shadow: 1px 1px 0 #050608; }
+.tview-wp-dist { color: #a89f88; text-shadow: 1px 1px 0 #050608; }
+/* PACE-DIALS: THE SPEED DIALS, the kit's own - two stone presses round a sunk socket with the rate in the journey's gold
+   numerals (the old spinner's dress, PLUS8's .travelpanel-accel), the dial's word in the block's lettering. The kit paints
+   the stone (FRAME_ROLES: the presses are buttons, the socket a well); these place, size and letter. */
+.tview-pace, .travelpanel-pace, .pbox-pace { font-family: ${PIXEL_STACK}; -webkit-font-smoothing: none; font-variant-ligatures: none;
+  font-feature-settings: 'liga' 0, 'clig' 0; }
+.tview-pace-word, .travelpanel-pace-word, .pbox-pace-word { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #d8cfae;
+  text-shadow: 1px 1px 0 #050608; }
+.tview-pace-num, .travelpanel-pace-num, .pbox-pace-num { height: 30px; border: 2px solid; font-family: inherit; font-size: 16px;
+  color: rgb(243,239,44); text-shadow: 1px 1px 0 rgb(93,77,12); }
+.tview-pace-step, .travelpanel-pace-step, .pbox-pace-step { height: 30px; min-width: 30px; border: 2px solid; border-radius: 0;
+  font-family: inherit; font-size: 15px; color: #e6dec6; text-shadow: 1px 1px 0 #050608, 2px 2px 0 rgba(0,0,0,0.45); }
+.tview-pace-step:hover:not(:disabled), .travelpanel-pace-step:hover:not(:disabled), .pbox-pace-step:hover:not(:disabled),
+.tview-pace-step:focus-visible, .travelpanel-pace-step:focus-visible, .pbox-pace-step:focus-visible {
+  outline: none; color: rgb(243,239,44); text-shadow: 1px 1px 0 rgb(93,77,12); }
+.tview-pace-step:disabled, .travelpanel-pace-step:disabled, .pbox-pace-step:disabled { color: #6c6552; text-shadow: none; cursor: default; }
 .tview-filter { border: 2px solid; border-radius: 0; font-family: inherit; font-size: 11px; letter-spacing: 0.05em; padding: 4px 7px;
   color: #8f8772; text-shadow: 1px 1px 0 #050608; }
 .tview-filter.on { color: #efe8d6; }
@@ -662,8 +724,8 @@ body:has(.hud-foe.on.blade) .travelpanel { --tp-top: calc(18px + 28px * var(--hu
  *  one bevelled in the tier's colour (lit top-left, shaded bottom-right, the kit's light) with the colour's glow sunk
  *  inside, brighter under the pointer. NEVER BY COLOUR ALONE (AUDIT INV2 A8/A9's law): a tile carries its tier's
  *  pips in the free corner - one magic, two rare, three legendary, a diamond within a diamond for an Aetheric (SET6),
- *  a star for an artifact - and the card says the word. The five hues are lootRarity.js RARITIES' own, pinned against
- *  that table. A weapon that carries a sigil
+ *  a star for an artifact, two for the Gilded rung (GILDED1) - and the card says the word. The six hues are lootRarity.js
+ *  RARITIES' own, pinned against that table. A weapon that carries a sigil
  *  wears the rune (ui/sigilCard.js) in the tile's other free corner, in the arcane teal no tier wears, and its card
  *  draws the sigil's own block. Laid AFTER the kit so a tier outranks the kit's stone at the same weight. */
 /** LOCK1: the padlock a locked piece wears - a shackle and a body with a keyhole, pixel for pixel, in brass with its
@@ -678,6 +740,7 @@ const RARITY_VARS = Object.freeze({
   legendary: `--rar: #e07a2e; --rar-hi: #f7b684; --rar-lo: #8e4518; --rar-rgb: 224,122,46; --rar-pips: '\\25c6\\25c6\\25c6';`,
   aetheric: `--rar: #bfe8ff; --rar-hi: #f0faff; --rar-lo: #4d7fa3; --rar-rgb: 191,232,255; --rar-pips: '\\25c8';`,
   artifact: `--rar: #b57bee; --rar-hi: #dcbcf8; --rar-lo: #683a9c; --rar-rgb: 181,123,238; --rar-pips: '\\2726';`,
+  gilded: `--rar: #ffcf4d; --rar-hi: #fff1b8; --rar-lo: #8f6410; --rar-rgb: 255,207,77; --rar-pips: '\\2726\\2726';`,   // GILDED1: gold leaf, two stars over the artifact's one
 });
 /** LOOT2 (bible/06-Systems/Loot-Arc.md section 4): an EXALTED Legendary's pips - its three diamonds and a star. */
 export const EXALTED_PIPS = `--rar-pips: '\\25c6\\25c6\\25c6\\2605';`;
@@ -794,6 +857,60 @@ export const SET_BLOCK_CSS = `.setbox { position: relative; margin: 8px 0 10px; 
 /* a power's recovery, on its name's line, in the dashed frame the HUD's recovering chip wears */
 .setbox.compact .set-tier-every { flex: 0 0 auto; margin-left: auto; padding: 0 3px; font-size: 11px;
   line-height: 13px; color: var(--set-hi); border: 1px dashed var(--set-lo); font-variant-numeric: tabular-nums; }`;
+/** TECH-CARD: a technique's block on a card (ui/techniqueCard.js) - the sigil's and the set's kind, in the blue the
+ *  technique's marks wear on the ground (combat/techniqueRoster.js TECH_CHIP_COLOUR, which `--tech` is - pinned), every
+ *  rule its own class (`.techbox`, `.tech-*`), so a sheet lays it where nothing else is dressed. FINAL AUDIT: the card's
+ *  dress one row at the head and its glyph on its own grid (16px), the price one group, and the shrink steps' share. */
+export const TECH_BLOCK_CSS = `.techbox { --tech: #59c7ff; --tech-hi: #c4ecff; --tech-mid: #2f8fc8; --tech-lo: #12405e; --tech-rgb: 89,199,255;
+  position: relative; margin: 8px 0 10px; padding: 8px 10px 7px; text-align: left; border: 2px solid;
+  border-color: #4fb0e6 var(--tech-lo) var(--tech-lo) #4fb0e6;
+  background: radial-gradient(ellipse at 12% 0%, rgba(var(--tech-rgb),0.2), transparent 60%), rgba(6,14,22,0.84);
+  box-shadow: 0 0 0 1px #050608, inset 0 0 14px rgba(var(--tech-rgb),0.14), 0 0 10px rgba(var(--tech-rgb),0.16); }
+.techbox[data-state="asleep"] { filter: saturate(0.35); }
+/* the Info box's head: the glyph beside two rows - the word and the roll, then the name the whole width */
+.tech-head { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "glyph word roll" "glyph name name";
+  align-items: center; column-gap: 8px; row-gap: 1px; margin-bottom: 5px; }
+.tech-glyph { grid-area: glyph; display: inline-flex; width: 20px; height: 20px; color: var(--tech);
+  filter: drop-shadow(0 0 4px rgba(var(--tech-rgb),0.8)) drop-shadow(1px 1px 0 #050608); }
+.tech-glyph svg { width: 100%; height: 100%; }
+.tech-word { grid-area: word; font-size: 11px; line-height: 12px; letter-spacing: 0.3em; text-transform: uppercase; color: #9fd3f0; }
+.tech-name { grid-area: name; min-width: 0; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tech);
+  text-shadow: 1px 1px 0 #050608, 0 0 8px rgba(var(--tech-rgb),0.55); }
+.tech-roll { grid-area: roll; white-space: nowrap; font-size: 11px; color: var(--tech-hi); font-variant-numeric: tabular-nums;
+  text-shadow: 1px 1px 0 #050608; }
+.tech-band { color: #7fa9c2; }
+.tech-effect { margin: 0 0 6px; font-size: 13px; line-height: 1.35; color: #e6f6ff; text-shadow: 1px 1px 0 #050608; }
+/* the foot: the key as a keycap and how it is pressed, then the price - the fatigue and the recovery, in the dashed
+   frame the HUD's recovering chip wears (the set block's .set-tier-every) - one group at the right that wraps whole */
+.tech-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-size: 11px; color: #9fc4da;
+  font-variant-numeric: tabular-nums; }
+.tech-key { padding: 0 4px; line-height: 14px; letter-spacing: 0.04em; color: #050608; background: var(--tech); border: 1px solid;
+  border-color: var(--tech-hi) var(--tech-lo) var(--tech-lo) var(--tech-hi); box-shadow: 0 0 0 1px #050608; }
+.tech-key.unbound { color: #9fc4da; background: rgba(0,0,0,0.5); border-color: #3c5566 #121c22 #121c22 #3c5566; box-shadow: none; }
+.tech-price { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.tech-cost { color: #cfe6f3; }
+.tech-every { padding: 0 3px; line-height: 13px; color: var(--tech-hi); border: 1px dashed var(--tech-mid); }
+.tech-power, .tech-press { margin: 5px 0 0; font-size: 12px; line-height: 1.35; color: #cfe6f3; }
+.tech-note { margin: 4px 0 0; font-size: 11px; color: #85a3b5; font-style: italic; }
+/* CARD-FIT: THE CARD'S DRESS (ui/techniqueCard.js, the default) - one row at the head (the glyph, the name, the roll at
+   the right; a name too long for it puts the roll under it, never the name), the glyph on its own 16px grid */
+.techbox.compact { margin: 6px 0 8px; padding: 5px 8px 6px; }
+.techbox.compact .tech-head { display: flex; align-items: center; flex-wrap: wrap; column-gap: 7px; row-gap: 1px; margin-bottom: 3px; }
+.techbox.compact .tech-glyph { width: 16px; height: 16px; }
+.techbox.compact .tech-name { font-size: 13px; letter-spacing: 0.04em; }
+.techbox.compact .tech-roll { margin-left: auto; }
+/* AUDIT SET U9's law: the pack card's own paragraph rule (.pack-shell .card p: centred, 14px, its parchment colour)
+   outranks a bare class - the block's lines say whose they are (the pack's cards draw the card's dress alone; the Info
+   box stands outside the pack) */
+.pack-shell .card .techbox.compact p.tech-effect, .techbox.compact p.tech-effect { margin: 0 0 4px; font-size: 12px; color: #e6f6ff;
+  text-align: left; text-shadow: 1px 1px 0 #050608; }
+.pack-shell .card .techbox p.tech-note { font-size: 11px; color: #85a3b5; text-align: left; text-shadow: none; }
+/* THE SHRINK STEPS' SHARE (CARD-FIT, AUDIT SET U13): a card that will not fit sheds what a glance can spare - how the key
+   is pressed and the duel's note first, then the whole foot (the Info box carries every word) */
+.inv-tip.tip-compact .techbox .tech-how, .pack-shell .packtip.packdetail .card.card-compact .techbox .tech-how,
+.inv-tip.tip-compact .techbox .tech-note, .pack-shell .packtip.packdetail .card.card-compact .techbox .tech-note { display: none; }
+.inv-tip.tip-tight .techbox .tech-foot, .pack-shell .packtip.packdetail .card.card-tight .techbox .tech-foot { display: none; }
+.inv-tip.tip-tight .techbox.compact p.tech-effect, .pack-shell .packtip.packdetail .card.card-tight .techbox.compact p.tech-effect { margin: 0; }`;
 /** SET7: the Sigil Broker's window (ui/brokerWindow.js) - every rule the window's own class; the window lays it itself on the classic skin (AUDIT SET U1), with the kit made for its roles alone. */
 export const BROKER_CSS = `/* ── SET7: THE SIGIL BROKER'S WINDOW (ui/brokerWindow.js) - the Info box's kind: a stone window over the world, the
    day's six offers in a list, the one pressed shown whole beside it (under it on a phone). The kit dresses the window,
@@ -873,7 +990,8 @@ export const BROKER_CSS = `/* ── SET7: THE SIGIL BROKER'S WINDOW (ui/brokerW
 }`;
 /** AUDIT LOOT F6: THE REFORGE'S WINDOW (ui/reforgeWindow.js) - the Broker's shape, so his sheet lays it; these are the rules
  *  his window never needed: the pages' tabs (the chosen one the kit's brass `.on`), the Codex's rows of words alone (his
- *  grid put them in its 48px picture column), the salvage's Keep under its Break, and a card's line with its press. The
+ *  grid put them in its 48px picture column) and the Scry page's (LOOT19), the salvage's Keep under its Break, and a
+ *  card's line with its press. The
  *  classic skin lays it beside his sheet (reforgeWindow.js), the Plus sheet carries it. */
 export const REFORGE_CSS = `/* ── LOOT9/LOOT10: THE REFORGE'S WINDOW (ui/reforgeWindow.js) ── */
 .reforge-tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px 0; }
@@ -882,9 +1000,32 @@ export const REFORGE_CSS = `/* ── LOOT9/LOOT10: THE REFORGE'S WINDOW (ui/ref
 .broker-offer.codex-set { cursor: default; }
 .broker-offer.codex-row .broker-set, .broker-offer.codex-set .broker-set { white-space: normal; }   /* a hint and a set's pieces read whole, a phone's too */
 .broker-offer.codex-row:not(.found) .broker-name { color: #8d8270; }
+.broker-offer.codex-gilded { grid-template-columns: minmax(0, 1fr); }   /* GILDED1: the Gilded rung's rows, at the page's head - a Legendary's row's shape */
+.broker-offer.codex-gilded .broker-set { white-space: normal; }
+.broker-offer.codex-gilded:not(.found) .broker-name { color: #8d8270; }
+.broker-offer.codex-gilded.found .broker-name { color: #ffcf4d; }
+.broker-offer.scry-row > .broker-offer-body { grid-column: 1 / span 2; }   /* AUDIT LOOT II B2: a family's row has no picture - its words take the frame's column too (a phone's as well), its price and press where his stand */
+.broker-offer.scry-row .broker-set { white-space: normal; }   /* the haunts read whole */
+/* SCRY-FIT (2026-10-12, a player: "the text is all scrunched - so you cannot purchase any of the actual scry readings"):
+   the price of a reading - "3 Welkynd Shards and 500 gold" - is twice the Broker's 124px price column, and it ran on
+   over the press beside it: the Scry word (or its "Need 378 more gold") drawn on top of the price, neither readable.
+   A row of the Reforge's sizes its price and its press to their words, and the row's own words give way. A family's row
+   has no picture, so its words take the first column alone. */
+.reforge-shell .broker-offer:not(.codex-row):not(.codex-set):not(.codex-gilded):not(.scry-row) { grid-template-columns: 48px minmax(0, 1fr) max-content minmax(112px, max-content); }
+.reforge-shell .broker-offer.scry-row { grid-template-columns: minmax(0, 1fr) max-content minmax(112px, max-content); }
+.reforge-shell .broker-offer.scry-row > .broker-offer-body { grid-column: 1; }
+.reforge-shell .broker-offer .broker-price { text-align: right; }
+@media (max-width: 720px) {
+  .reforge-shell .broker-offer:not(.codex-row):not(.codex-set):not(.codex-gilded):not(.scry-row) { grid-template-columns: 44px minmax(0, 1fr) minmax(112px, max-content); }
+  .reforge-shell .broker-offer.scry-row { grid-template-columns: minmax(0, 1fr) minmax(112px, max-content); }
+  .reforge-shell .broker-offer.scry-row .broker-price { grid-column: 1; grid-row: 2; text-align: left; }
+  .reforge-shell .broker-offer.scry-row .broker-buy { grid-column: 2; grid-row: 1 / span 2; }
+}
 .broker-offer > .reforge-keep { grid-column: 4; }
 .reforge-card .reforge-line, .imprint-card .imprint-choice { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; margin: 2px 0; }
 .reforge-card .reforge-press, .imprint-card .imprint-press { width: auto; flex: 0 0 auto; }
+.reforge-card .hone-press { width: auto; flex: 0 0 auto; }   /* LOOT17: the hone's press, beside the line's Reforge */
+.reforge-card .reforge-detail { order: 1; flex: 1 0 100%; font-size: 0.85em; opacity: 0.8; }   /* AUDIT TECH1: a technique's "what a press does", the row under its line */
 @media (max-width: 720px) {
   .reforge-tabs { padding: 6px 12px 0; }
   .broker-offer > .reforge-keep { grid-column: 3; grid-row: 3; }   /* the Broker's phone rule spans every press over two rows: Keep sat on Break it */
@@ -899,6 +1040,11 @@ export const BOUNTY_CSS = `/* ── BOUNTY1: THE BOUNTY BOARD ── */
 .bounty-win { width: min(960px, 96vw); max-height: 92vh; display: flex; flex-direction: column; overflow: hidden;
   border: 2px solid; background: rgba(14,12,11,0.96); }
 .bounty-win.bounty-noticewin { width: min(560px, 94vw); }
+/* AUDIT FB1010 A3: the board's window is one height whatever it holds - the note line, a list grown by a take, a long
+   story - so a press at Take's place stays on Take; the list and the notice's page scroll inside it */
+.bounty-win:not(.bounty-noticewin) { height: min(600px, 92vh); }
+.bounty-win:not(.bounty-noticewin) .bounty-body { flex: 1 1 auto; overflow: hidden; }
+.bounty-win:not(.bounty-noticewin) .bounty-side { min-height: 0; overflow: auto; }
 .bounty-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 16px; border-bottom: 2px solid rgba(5,6,8,0.6); }
 .bounty-title { flex: 1 1 280px; min-width: 0; }
 .bounty-title h2 { margin: 0; font-size: 20px; letter-spacing: 0.12em; text-transform: uppercase; color: #efe0b8; text-shadow: 2px 2px 0 #050608; }
@@ -923,7 +1069,9 @@ export const BOUNTY_CSS = `/* ── BOUNTY1: THE BOUNTY BOARD ── */
 .bounty-empty { padding: 10px; font-size: 13px; color: #b9ab93; font-style: italic; }
 .bounty-heldhead { margin: 10px 0 2px; font-family: inherit; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #b9ab93; }
 .bounty-heldrow { display: flex; flex-direction: column; padding: 4px 10px; border-left: 2px solid #c08a3e; background: rgba(243,207,134,0.05); }
-.bounty-card { flex: 1 1 50%; min-width: 0; margin: 0; padding: 12px 14px; border: 2px solid; align-self: flex-start; }
+.bounty-card { flex: 1 1 50%; min-width: 0; min-height: 0; margin: 0; padding: 12px 14px; border: 2px solid; align-self: stretch;
+  display: flex; flex-direction: column; gap: 8px; }
+.bounty-cardpage { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .bounty-card h3 { margin: 0 0 8px; font-family: inherit; font-size: 16px; color: #efe8d6; }
 .bounty-tier { margin: -4px 0 8px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #c9a86a; }
 .bounty-story { margin: 0 0 6px; font-size: 13px; line-height: 1.5; color: #e6dccb; }
@@ -936,6 +1084,7 @@ export const BOUNTY_CSS = `/* ── BOUNTY1: THE BOUNTY BOARD ── */
 .bounty-progress, .bounty-mates, .bounty-why { margin: 0 0 8px; font-size: 12px; color: #9fe8b4; }
 .bounty-why { color: #b9ab93; }
 .bounty-acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.bounty-acts .bounty-drop { margin-right: auto; }
 .bounty-noticebody { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 16px; overflow: auto; }
 .bounty-noticebody .bounty-story { font-size: 14px; }
 .bounty-rewardbox { display: flex; flex-direction: column; gap: 3px; align-self: stretch; }
@@ -943,48 +1092,66 @@ export const BOUNTY_CSS = `/* ── BOUNTY1: THE BOUNTY BOARD ── */
 @media (max-width: 720px) {
   .bounty-shell { padding: 8px; }
   .bounty-body { flex-direction: column; padding: 10px 12px 12px; }
+  .bounty-win:not(.bounty-noticewin) .bounty-side { flex: 0 1 auto; max-height: 45%; }
+  .bounty-card { flex: 1 1 auto; }
   .bounty-title h2 { font-size: 17px; letter-spacing: 0.08em; }
 }
 @media (pointer: coarse) { .bounty-post { min-height: 44px; } }`;
 /** NOTICE1 (PROF0 10.1): THE NOTICE BOARD (ui/noticeWindow.js) - a corkboard in the stone window: pinned parchment in a
- *  grid, each card tilted a hair, a pin at its head and a wax seal at its foot whose colour says who posted it (the
- *  town bone, the server red, a player amber, a guild steel, the bounty board black), opened large on a press. The kit
- *  dresses the window, the header and the presses (ui/enhancedFrame.js); this is the cork and the parchment. */
+ *  grid, a pin at each card's head and a wax seal at its foot whose colour says who posted it (the town bone, the server
+ *  red, a player amber, a guild steel, the bounty board black), opened large on a press. The kit dresses the window, the
+ *  header and the presses (ui/enhancedFrame.js); this is the cork and the parchment.
+ *  BOARD-UI (2026-10-06, Mac: "overhaul the notice boards to enhance readability"): the cards stand straight (a tilted
+ *  pixel face blurs), each as tall as its own words (a row stretched every card to its tallest), the type a step larger;
+ *  words that sit on the cork sit on a dark panel (`.notice-panel`); the tabs scroll sideways on a phone (the last two
+ *  ran off its edge), each with its count. */
 export const NOTICE_CSS = `/* ── NOTICE1: THE NOTICE BOARD ── */
 .notice-shell { position: fixed; inset: 0; z-index: 39; display: flex; align-items: center; justify-content: center;
   padding: 16px; background: rgba(0,0,0,0.46); font-family: ${PIXEL_STACK}; -webkit-font-smoothing: none; }
 .notice-win { width: min(1040px, 96vw); max-height: 92vh; display: flex; flex-direction: column; overflow: hidden;
   border: 2px solid; background: rgba(14,12,11,0.96); }
-.notice-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 16px 8px; }
-.notice-title { flex: 1 1 300px; min-width: 0; }
-.notice-title h2 { margin: 0; font-size: 20px; letter-spacing: 0.12em; text-transform: uppercase; color: #efe0b8; text-shadow: 2px 2px 0 #050608; }
-.notice-sub { margin: 2px 0 0; font-size: 12px; color: #b9ab93; }
-.notice-word { margin: 4px 0 0; font-size: 12px; color: #e59a8e; }
+.notice-head { flex: none; display: flex; align-items: flex-start; gap: 10px 14px; padding: 12px 16px 8px; }
+.notice-title { flex: 1 1 auto; min-width: 0; }
+.notice-title h2 { margin: 0; font-size: 20px; letter-spacing: 0.12em; text-transform: uppercase; color: #efe0b8; text-shadow: 2px 2px 0 #050608;
+  overflow-wrap: anywhere; }
+.notice-sub { margin: 3px 0 0; font-size: 13px; color: #c9bba1; }
+.notice-word { margin: 4px 0 0; font-size: 13px; color: #f0a597; }
 .notice-word:empty { display: none; }
 .notice-word.ok { color: #9fe8b4; }
-.notice-headacts { display: flex; flex-wrap: wrap; gap: 8px; }
-.notice-tabs { display: flex; gap: 4px; padding: 0 16px; border-bottom: 2px solid rgba(5,6,8,0.6); }
-.notice-tab { padding: 6px 14px 5px; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #b9ab93; }
-.notice-tab.on { color: #f3cf86; border-bottom: 2px solid #c08a3e; margin-bottom: -2px; }
+.notice-headacts { flex: none; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+/* the strip scrolls sideways, so it is no longer free to shrink: a tall tab's cork squeezed it to a sliver */
+.notice-tabs { flex: none; display: flex; gap: 2px; padding: 0 12px; border-bottom: 2px solid rgba(5,6,8,0.6); overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none; }
+.notice-tab { flex: none; padding: 8px 12px 6px; font-family: inherit; font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase;
+  white-space: nowrap; color: #b9ab93; background: none; border: 0; }
+.notice-tab.on { color: #f3cf86; box-shadow: inset 0 -2px 0 #c08a3e; }
+/* AUDIT 657 B1: the chosen tab's line and the focus ring inside the tab - the strip scrolls sideways now, so it clips
+   whatever stands past it (the line was a border pulled 2px below the strip, and drew nothing) */
+.notice-tab:focus-visible { outline: 2px solid #f3cf86; outline-offset: -2px; }
+@media (forced-colors: active) { .notice-tab.on { outline: 2px solid Highlight; outline-offset: -2px; } }   /* a shadow is painted over there */
+.notice-tabcount { margin-left: 6px; padding: 0 5px; font-size: 11px; letter-spacing: 0.04em; color: #fff4dc; background: #9b2d1f; }
 /* TOAST-SPLIT: the cork and the italic line are the board's own classes - .notice-body and .notice-hint are the HUD
    toasts' (ui/enhancedNotice.js), and a rule on either dressed both. */
 .notice-cork { padding: 14px 16px 16px; min-height: 0; overflow: auto;
   background: radial-gradient(circle at 20% 30%, rgba(0,0,0,0.18) 0 1px, transparent 2px) 0 0 / 7px 7px,
     radial-gradient(circle at 70% 60%, rgba(255,220,160,0.05) 0 1px, transparent 2px) 0 0 / 11px 11px,
     linear-gradient(160deg, #5b3f26, #47301c 60%, #3b2816); }
-.notice-grid { list-style: none; margin: 0; padding: 4px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
-.notice-card { position: relative; display: flex; flex-direction: column; gap: 6px; min-height: 150px; padding: 18px 14px 26px;
-  cursor: pointer; transform: rotate(var(--tilt, 0deg)); color: #2a1f12;
+.notice-grid { list-style: none; margin: 0 0 16px; padding: 4px; display: grid; gap: 14px; align-items: start;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.notice-grid:last-child { margin-bottom: 0; }
+.notice-card { position: relative; display: flex; flex-direction: column; gap: 6px; min-height: 110px; padding: 18px 14px 28px;
+  cursor: pointer; color: #2a1f12;
   background: linear-gradient(175deg, #efe2c2, #e2d1aa 70%, #d6c294); box-shadow: 3px 4px 0 rgba(5,6,8,0.45), inset 0 0 18px rgba(120,84,40,0.25); }
-.notice-card:hover, .notice-card:focus-visible { transform: rotate(0deg) scale(1.02); outline: 2px solid #f3cf86; }
-.notice-card h4 { margin: 0; font-family: inherit; font-size: 14px; color: #1d150b; }
-.notice-snippet { margin: 0; font-size: 12px; line-height: 1.45; white-space: pre-wrap; overflow: hidden; display: -webkit-box;
+.notice-card:hover, .notice-card:focus-visible { outline: 2px solid #f3cf86; outline-offset: 1px; }
+.notice-card h4 { margin: 0; font-family: inherit; font-size: 15px; line-height: 1.3; color: #1d150b; overflow-wrap: anywhere; }
+.notice-snippet { margin: 0; font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box;
   -webkit-line-clamp: 5; -webkit-box-orient: vertical; }
-.notice-foot { margin-top: auto; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-size: 11px; color: #5a4630; }
+.notice-foot { margin-top: auto; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; padding-right: 22px;
+  font-size: 12px; color: #5a4630; }
 .notice-new { padding: 0 5px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #fff4dc; background: #9b2d1f; }
 .notice-pin { position: absolute; top: 5px; left: 50%; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%;
   background: radial-gradient(circle at 35% 35%, #f5d9a0, #9a6a2a 60%, #3c2610); box-shadow: 1px 2px 0 rgba(0,0,0,0.5); }
-.notice-seal { position: absolute; right: 10px; bottom: 6px; width: 18px; height: 18px; border-radius: 50%;
+.notice-seal { position: absolute; right: 10px; bottom: 7px; width: 18px; height: 18px; border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.35), transparent 45%), var(--seal, #b89b6a);
   box-shadow: 0 0 0 2px rgba(0,0,0,0.18); }
 .notice-card.seal-town, .notice-read.seal-town { --seal: #cbb892; }
@@ -993,66 +1160,411 @@ export const NOTICE_CSS = `/* ── NOTICE1: THE NOTICE BOARD ── */
 .notice-card.seal-guild, .notice-read.seal-guild { --seal: #4f6f8f; }
 .notice-card.seal-bounty, .notice-read.seal-bounty { --seal: #161311; }
 .notice-card.hidden { opacity: 0.6; }
-.notice-empty { grid-column: 1 / -1; padding: 12px; font-size: 13px; color: #e6dccb; font-style: italic; text-shadow: 1px 1px 0 #050608; }
+/* BOARD-UI: whatever stands on the cork itself stands on a dark panel - the cork's grain under bone ink read 3:1 */
+.notice-empty { grid-column: 1 / -1; margin: 0; padding: 10px 12px; font-size: 15px; line-height: 1.5; color: #e6dccb; font-style: italic;
+  background: rgba(12,10,8,0.72); border-left: 2px solid rgba(192,138,62,0.6); }
+.notice-panel { margin: 0 0 12px; padding: 12px 14px; font-size: 15px; line-height: 1.55; color: #e9e1cf;
+  background: rgba(12,10,8,0.8); border: 1px solid rgba(192,138,62,0.32); }
+.notice-panel > h3, .notice-panel > summary { margin: 0 0 8px; font-family: inherit; font-size: 14px; font-weight: normal; letter-spacing: 0.14em;
+  text-transform: uppercase; color: #f3cf86; }
+/* AUDIT PLAIN-UI U3: a fold's line a finger's target (44px with its padding, drawn where it stood) and a ring of its own */
+.notice-panel > summary { margin: -11px 0; padding: 11px 0; cursor: pointer; }
+.notice-panel[open] > summary { margin-bottom: -3px; }
+.notice-panel > summary:focus-visible { outline: 2px dashed #f3cf86; outline-offset: 2px; }
+.notice-panel p { margin: 0 0 6px; }
+.notice-panel p:last-child { margin-bottom: 0; }
 .notice-read { position: relative; max-width: 640px; margin: 0 auto; padding: 22px 20px 18px; color: #2a1f12;
   background: linear-gradient(175deg, #efe2c2, #e2d1aa 70%, #d6c294); box-shadow: 4px 5px 0 rgba(5,6,8,0.45), inset 0 0 22px rgba(120,84,40,0.25); }
-.notice-read h3 { margin: 0 0 8px; font-family: inherit; font-size: 18px; color: #1d150b; }
+.notice-read h3 { margin: 0 0 8px; font-family: inherit; font-size: 18px; color: #1d150b; overflow-wrap: anywhere; }
 .notice-guild { margin: 0 0 8px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #34506c; }
-.notice-text { margin: 0 0 10px; font-size: 14px; line-height: 1.55; white-space: pre-wrap; }
-.notice-meta { margin: 0 0 10px; font-size: 12px; color: #5a4630; font-style: italic; }
-.notice-mod { margin: 0 0 10px; font-size: 11px; color: #8a2c1f; }
+.notice-text { margin: 0 0 12px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.notice-meta { margin: 0 0 12px; font-size: 12px; color: #5a4630; }
+.notice-mod { margin: 0 0 10px; font-size: 12px; color: #8a2c1f; }
 .notice-acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
-.notice-form { max-width: 640px; margin: 0 auto; padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 10px; color: #2a1f12;
+.notice-form { max-width: 640px; margin: 0 auto; padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 12px; color: #2a1f12;
   background: linear-gradient(175deg, #efe2c2, #e2d1aa 70%, #d6c294); box-shadow: 4px 5px 0 rgba(5,6,8,0.45); }
-.notice-field { display: flex; flex-direction: column; gap: 3px; }
+.notice-field { display: flex; flex-direction: column; gap: 4px; }
 .notice-label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #5a4630; }
 .notice-input, .notice-textarea, .notice-select { font: inherit; font-size: 14px; color: #1d150b; background: rgba(255,250,236,0.7);
-  border: 1px solid #9c8358; padding: 6px 8px; }
+  border: 1px solid #9c8358; padding: 6px 8px; min-height: 32px; box-sizing: border-box; }
 .notice-textarea { resize: vertical; min-height: 120px; line-height: 1.45; }
 .notice-days { width: 6em; }
-.notice-count { align-self: flex-end; font-size: 11px; color: #5a4630; }
+.notice-count { align-self: flex-end; font-size: 12px; color: #5a4630; }
 .notice-tip { margin: 0; font-size: 12px; color: #5a4630; font-style: italic; }
-/* GUILD1e: the Guilds tab - a guild's own notes under its banner, and the town's recruitment posters */
-.notice-section { margin: 4px 4px 12px; display: flex; align-items: center; gap: 10px; font-size: 13px; letter-spacing: 0.1em;
-  text-transform: uppercase; color: #f3cf86; text-shadow: 1px 1px 0 #050608; }
-.notice-section + .notice-grid { margin-bottom: 18px; }
-.notice-banner { flex: none; width: 30px; height: auto; filter: drop-shadow(2px 3px 0 rgba(5,6,8,0.45)); }
-.notice-poster .notice-banner { width: 38px; align-self: center; }
+/* GUILD1e: the Guilds tab - a guild's own notes under its banner, and the town's recruitment posters. BOARD-UI: a section's
+   name over its own grid, ruled, so the Notices tab's two kinds and the Guilds tab's two lists read apart */
+.notice-section { margin: 4px 4px 10px; padding-bottom: 4px; display: flex; align-items: center; gap: 10px; font-family: inherit; font-size: 13px;
+  font-weight: normal; letter-spacing: 0.1em; text-transform: uppercase; color: #f3cf86; text-shadow: 1px 1px 0 #050608;
+  border-bottom: 1px solid rgba(243,207,134,0.25); }
+.notice-section .notice-sectioncount { margin-left: auto; font-size: 12px; letter-spacing: 0.04em; text-transform: none; color: #c9bba1; }
+.notice-banner { flex: none; width: 22px; height: auto; filter: drop-shadow(2px 3px 0 rgba(5,6,8,0.45)); }
+.notice-poster .notice-banner { width: 30px; align-self: center; }
 /* SEAT1b: the Seat tab - the week's clock, the standings (each guild under its banner, the reader's own marked), the
-   reader's own lines and the levers (ui/seatTab.js) */
-.notice-seat-week, .notice-seat-mine { margin: 4px 6px 10px; font-size: 13px; color: #e6dccb; text-shadow: 1px 1px 0 #050608; }
-.notice-standings { list-style: none; margin: 0 4px 14px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.notice-standing { display: flex; align-items: center; gap: 10px; padding: 6px 10px; font-size: 14px; color: #f3ead8;
-  background: rgba(5,6,8,0.35); text-shadow: 1px 1px 0 #050608; }
-.notice-standing.mine { outline: 1px solid rgba(243,239,44,0.55); }
-.notice-standing .notice-banner { width: 26px; }
-.notice-seat-levers { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 4px 12px; }
+   reader's own lines and the levers (ui/seatTab.js). BOARD-UI: each part its own panel, under its own name */
+.notice-seat-week, .notice-seat-mine { margin: 0 0 6px; font-size: 15px; color: #e9e1cf; }
+.notice-standings { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.notice-standing { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; gap: 2px 10px; padding: 6px 10px; font-size: 15px;
+  color: #f3ead8; background: rgba(255,255,255,0.04); border-left: 2px solid transparent; }
+.notice-standing.mine { border-left-color: #f3cf86; background: rgba(243,207,134,0.1); }
+.notice-standing .notice-banner { width: auto; height: 32px; grid-row: 1 / span 2; justify-self: center; }
+.notice-standing .seat-bar { grid-column: 2; height: 5px; background: rgba(5,6,8,0.7); }
+.notice-standing .seat-bar > i { display: block; height: 100%; background: linear-gradient(180deg, #f5dfa8 0 1px, #c08a3e 1px); }
+.notice-standing .seat-bar.past > i { background: linear-gradient(180deg, #b6f0c6 0 1px, #4f9a63 1px); }
+.notice-seat-levers { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 4px; }
+.notice-seat-levers .notice-input { width: 7em; }
 .notice-seat-drakes { width: 7em; }
 /* SEAT1c: this week's battle, and the Chronicle */
-.notice-seat-battle { margin: 4px 6px 10px; font-size: 13px; color: #f3ef2c; text-shadow: 1px 1px 0 #050608; }
-.notice-chronicle { margin: 0 6px 14px 22px; padding: 0; font-size: 13px; color: #e6dccb; line-height: 1.45; text-shadow: 1px 1px 0 #050608; }
+.notice-seat-battle { margin: 0 0 6px; font-size: 15px; color: #f3e36a; }
+.notice-chronicle { margin: 0 0 8px; padding: 0 0 0 4px; list-style: none; font-size: 14px; color: #e6dccb; line-height: 1.5; }
+.notice-chronicle li { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; }
+.seat-head { display: flex; align-items: center; gap: 12px; }
+.seat-head .notice-banner { width: auto; height: 56px; }
+.seat-head .seat-charter { margin: 0; font-size: 17px; letter-spacing: 0.08em; text-transform: uppercase; color: #f3cf86; }
+.seat-phases { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; padding: 0; list-style: none; }
+.seat-phases li { padding: 3px 10px; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #9d9180; border: 1px solid rgba(192,138,62,0.25); }
+.seat-phases li.on { color: #1d150b; background: #f3cf86; border-color: #f3cf86; }
+.seat-guide ol { margin: 0; padding: 0 0 0 20px; }
+.seat-guide li { margin: 0 0 6px; }
+.seat-guide b { color: #f3cf86; font-weight: normal; }
+/* PLAIN-UI (bible/10-UI/Plain-Words.md): what the seat is and the reader's next step, first; the board's words under the
+   guide, each word in brass over its meaning. The chapters' guide and words on the Work tab wear the same (board-) */
+.seat-about { margin: 0 0 8px; }
+.seat-next { margin: 0; padding: 6px 10px; color: #f3ead8; background: rgba(243,207,134,0.1); border-left: 2px solid #f3cf86; }
+.seat-next .seat-next-pledge { display: block; margin-top: 8px; }
+.board-guide ol { margin: 0; padding: 0 0 0 22px; }
+.board-guide li { margin: 0 0 8px; }
+.board-guide li:last-child { margin-bottom: 0; }
+.board-guide b, .board-words dt { color: #f3cf86; font-weight: normal; }
+.board-words dl { margin: 0; display: grid; grid-template-columns: minmax(8em, max-content) minmax(0, 1fr); gap: 6px 14px; }
+.board-words dd { margin: 0; }
+.seat-who { min-width: 0; }
+.seat-who p { margin: 0 0 4px; }
+.notice-standing .seat-nobanner { grid-row: 1 / span 2; }
+.notice-seat-towers { padding: 4px 10px; font-size: 15px; color: #e9e1cf; }
+.notice-seat-fight, .notice-seat-royal, .notice-seat-politics { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.notice-seat-fight p, .notice-seat-royal p, .notice-seat-politics p { margin: 0; }
+.notice-seat-politics { margin-top: 10px; }
+.notice-seat-works > .notice-seat-head { margin: 0 0 8px; font-family: inherit; font-size: 14px; font-weight: normal; letter-spacing: 0.14em;
+  text-transform: uppercase; color: #f3cf86; }
+.notice-seat-works-line, .notice-seat-works-stock { margin: 0 0 6px; }
+.notice-seat-works .act { margin: 0 0 8px; }
 @media (max-width: 720px) {
   .notice-shell { padding: 8px; }
   .notice-cork { padding: 10px; }
+  .board-words dl { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .board-words dd { margin: 0 0 8px; }
   .notice-grid { grid-template-columns: 1fr; }
+  .notice-head { flex-wrap: wrap; }
   .notice-title h2 { font-size: 17px; letter-spacing: 0.08em; }
 }
-@media (pointer: coarse) { .notice-card { min-height: 120px; } }
-@media (prefers-reduced-motion: reduce) { .notice-card { transform: none; } .notice-card:hover, .notice-card:focus-visible { transform: none; } }`;
+@media (pointer: coarse) { .notice-card { min-height: 96px; } .notice-tab { padding: 12px 12px 10px; } }`;
+/** ARENA3: THE ARENA WINDOW (ui/arenaWindow.js) - the Notice Board's kind: a stone window over the world, six pages under a
+ *  tab bar, the cards panels, the presses the kit's. The banners' colours (`data-banner` red | blue) on the pennants, the
+ *  fighters, the rows and the season's split bar; brass for the chosen and for what you have won. Its classes are `aw-`
+ *  (the bout's HUD's are `arena-`). The kit dresses the window, the header, the cards, the presses and the chips
+ *  (ui/enhancedFrame.js); this is the layout and the arena's own ink. The classic skin lays it with the kit cut to it. */
+export const ARENA_WINDOW_CSS = `/* ── ARENA3: THE ARENA WINDOW ── */
+.aw-shell { position: fixed; inset: 0; z-index: 39; display: flex; align-items: center; justify-content: center;
+  padding: 16px; background: rgba(0,0,0,0.5); font-family: ${PIXEL_STACK}; -webkit-font-smoothing: none; color: #efe8d6; }
+.aw-win { --red: #c23a2b; --red-hi: #f2a597; --red-lo: #6e1a12; --blue: #3768b8; --blue-hi: #a9c8f2; --blue-lo: #172f5c;
+  --brass: #c08a3e; --brass-hi: #f3cf86; --bone: #efe8d6; --mute: #b9ab93;
+  position: relative; width: min(1040px, 96vw); height: min(760px, 92vh); display: flex; flex-direction: column; overflow: hidden;
+  border: 2px solid; background: rgba(14,12,11,0.97); }
+.aw-win[data-banner="red"] { box-shadow: inset 0 3px 0 -1px var(--red); }
+.aw-win[data-banner="blue"] { box-shadow: inset 0 3px 0 -1px var(--blue); }
+.aw-pennant { display: inline-block; flex: 0 0 auto; width: 9px; height: 13px; vertical-align: -2px;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 74%, 0 100%); background: #5d5447; box-shadow: 1px 1px 0 #050608; }
+.aw-pennant[data-banner="red"] { background: linear-gradient(180deg, var(--red-hi) 0 2px, var(--red) 2px 70%, var(--red-lo)); }
+.aw-pennant[data-banner="blue"] { background: linear-gradient(180deg, var(--blue-hi) 0 2px, var(--blue) 2px 70%, var(--blue-lo)); }
+.aw-pennant[data-banner=""] { background: linear-gradient(180deg, #8d8270 0 2px, #4a4237 2px); }
+.aw-head { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 16px 10px; border-bottom: 2px solid rgba(5,6,8,0.6); }
+.aw-crest { width: 26px; height: 38px; }
+.aw-title { flex: 1 1 300px; min-width: 0; }
+.aw-title h2 { margin: 0; font-size: 20px; letter-spacing: 0.12em; text-transform: uppercase; color: #efe0b8; text-shadow: 2px 2px 0 #050608; }
+.aw-sub { margin: 2px 0 0; font-size: 12px; color: var(--mute); }
+.aw-note { margin: 4px 0 0; font-size: 12px; color: #e59a8e; }
+.aw-note:empty { display: none; }
+.aw-note.ok { color: var(--brass-hi); }
+.aw-id { order: 3; flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0;
+  padding: 7px 0 0 42px; border-top: 1px solid rgba(243,207,134,0.14); }
+.aw-name { font-size: 15px; color: var(--bone); text-shadow: 1px 1px 0 #050608; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aw-rec { margin-left: auto; }
+.aw-rec { font-size: 12px; color: var(--mute); white-space: nowrap; }
+.aw-chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; font-size: 11px; letter-spacing: 0.08em; white-space: nowrap;
+  color: var(--bone); border: 1px solid #5a5446; background: rgba(5,6,8,0.55); }
+.aw-titlechip { color: var(--brass-hi); border-color: #7a5424; text-transform: uppercase; }
+.aw-bannerchip.b-red { color: var(--red-hi); border-color: var(--red); }
+.aw-bannerchip.b-blue { color: var(--blue-hi); border-color: var(--blue); }
+.aw-laurel { color: #d9f0a8; border-color: #6f8a32; text-transform: uppercase; }
+.aw-laurel::before { content: ''; width: 9px; height: 9px; border-radius: 50% 50% 50% 0; border: 2px solid #9cc04a; border-right-color: transparent; border-bottom-color: transparent; transform: rotate(-45deg); }
+.aw-close { flex: 0 0 auto; align-self: flex-start; }
+.aw-tabs { flex: 0 0 auto; display: flex; gap: 4px; padding: 8px 16px 0; border-bottom: 2px solid rgba(5,6,8,0.6); overflow-x: auto; scrollbar-width: none; }
+.aw-tabs::-webkit-scrollbar { display: none; }
+/* AUDIT PRE-MERGE 1003 U13: the six tabs need about 520 pixels - under it Records and Rules stood past the edge with the
+   scrollbar hidden and nothing to say they were there (a selected one too). They wrap to a second row instead */
+@media (max-width: 520px) { .aw-tabs { flex-wrap: wrap; row-gap: 4px; overflow-x: visible; } }
+.aw-tab { flex: 0 0 auto; padding: 6px 14px 5px; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: -2px; }
+.aw-tab.on { color: var(--brass-hi); }
+.aw-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 12px; overscroll-behavior: contain; }
+.aw-card { margin: 0; padding: 12px 14px; border: 2px solid; min-width: 0; }
+.aw-card h3 { margin: 0; font-family: inherit; font-size: 15px; letter-spacing: 0.06em; color: #efe0b8; text-shadow: 1px 1px 0 #050608; }
+.aw-card h4 { margin: 10px 0 6px; font-family: inherit; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--mute); }
+.aw-cardhead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; margin-bottom: 8px; }
+.aw-state { color: var(--brass-hi); border-color: #7a5424; }
+.aw-line { margin: 6px 0 0; font-size: 13px; line-height: 1.45; color: #e6dccb; }
+.aw-gives { color: var(--brass-hi); }
+.aw-warn { color: #e8b0a4; }
+.aw-empty { margin: 8px 0 0; font-size: 13px; color: var(--mute); font-style: italic; }
+.aw-cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.aw-bout-card.k-exhibition { grid-column: 1 / -1; }
+/* AUDIT PRE-MERGE 1003b U1: a private session's card spans the page too - in one 300 px cell its member rows gave the
+   three presses every pixel and the names none (48 of 62 names 0 px wide at 1280) */
+.aw-bout-card.k-session { grid-column: 1 / -1; }
+.aw-tierline { margin: -4px 0 8px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mute); }
+.aw-versus { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; gap: 10px; }
+.aw-fighter { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 10px 12px; border: 1px solid #3a352a; background: rgba(5,6,8,0.4); }
+.aw-fighter[data-banner="red"] { border-left: 3px solid var(--red); background: linear-gradient(90deg, rgba(194,58,43,0.16), rgba(5,6,8,0.4) 60%); }
+.aw-fighter[data-banner="blue"] { border-right: 3px solid var(--blue); text-align: right; align-items: flex-end;
+  background: linear-gradient(270deg, rgba(55,104,184,0.18), rgba(5,6,8,0.4) 60%); }
+.aw-fname { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
+.aw-fighter[data-banner="blue"] .aw-fname { flex-direction: row-reverse; }
+.aw-fn { font-size: 15px; color: var(--bone); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-shadow: 1px 1px 0 #050608; }
+.aw-fbill, .aw-fkind { font-size: 11px; color: var(--mute); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aw-fnums { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.aw-fighter[data-banner="blue"] .aw-fnums { justify-content: flex-end; }
+.aw-odds { color: var(--brass-hi); border-color: #7a5424; font-variant-numeric: tabular-nums; }
+.aw-fav { color: #d9f0a8; border-color: #6f8a32; text-transform: uppercase; }
+.aw-vs { align-self: center; font-size: 13px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--brass-hi); text-shadow: 1px 1px 0 #050608; }
+.aw-wagerline { margin: 8px 0 0; font-size: 12px; color: var(--brass-hi); }
+.aw-opp { margin: 0; font-size: 14px; color: var(--bone); }
+.aw-acts { display: flex; flex-wrap: wrap; gap: 8px 10px; margin-top: 10px; }
+.aw-press { display: inline-flex; flex-direction: column; gap: 3px; }
+.aw-act { min-width: 96px; }
+.aw-why { font-size: 11px; color: var(--mute); max-width: 180px; }
+.aw-wager { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding: 10px; border: 1px dashed #7a5424; background: rgba(243,207,134,0.04); }
+.aw-wager-sides, .aw-stakes { display: flex; flex-wrap: wrap; gap: 6px; }
+.aw-side[data-banner="red"].on { box-shadow: inset 3px 0 0 var(--red); }
+.aw-side[data-banner="blue"].on { box-shadow: inset 3px 0 0 var(--blue); }
+.aw-stake { min-width: 64px; }
+.aw-place { align-self: flex-start; }
+.aw-owed { margin: 0; padding: 6px 10px; font-size: 13px; color: var(--brass-hi); border-left: 2px solid var(--brass); background: rgba(243,207,134,0.06); }
+/* ARENA4: online - the bouts on the sand now, the challenge's offer, the rating and rank chips */
+.aw-live { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.aw-liveb { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 6px 8px;
+  border-left: 2px solid #3a352a; background: rgba(5,6,8,0.38); }
+.aw-liveb[data-kind="pvp"] { border-left-color: #e05a3a; }
+.aw-livewho { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+.aw-livef { display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%; }
+.aw-livemeta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; grid-column: 1; font-size: 11px; color: var(--mute); }
+.aw-liveb .aw-acts { grid-column: 2; grid-row: 1 / span 2; margin: 0; }
+.aw-offer { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; padding: 8px 10px; border: 1px solid #e05a3a; background: rgba(224,90,58,0.08); }
+.aw-rating { color: #cfe3ff; border-color: #4a6a98; font-variant-numeric: tabular-nums; }
+.aw-rankchip { color: var(--brass-hi); border-color: #7a5424; }
+.aw-rankchip.champ { color: #d9f0a8; border-color: #6f8a32; }
+.aw-champline { padding: 4px 8px; border-left: 2px solid #6f8a32; background: rgba(111,138,50,0.1); }
+.aw-online { color: #cfe3ff; }
+@media (max-width: 520px) { .aw-liveb { grid-template-columns: minmax(0, 1fr); } .aw-liveb .aw-acts { grid-column: 1; grid-row: auto; } }
+/* ARENA6: a private session - its code large enough to read off a stream, its members (the Red's and the Blue's marked in
+   words and at the edge), its results, and the join field */
+.aw-privcode { margin: 8px 0 2px; font-size: 26px; letter-spacing: 0.3em; font-variant-numeric: tabular-nums; color: var(--brass-hi);
+  text-shadow: 1px 1px 0 #050608; overflow-wrap: anywhere; }
+.aw-privmembers { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
+.aw-privm { display: grid; grid-template-columns: minmax(12ch, 1fr) auto; gap: 4px 10px; align-items: center; padding: 5px 8px;   /* AUDIT PRE-MERGE 1003b U1: a name keeps twelve characters */
+  border-left: 2px solid #3a352a; background: rgba(5,6,8,0.38); }
+.aw-privm.red { border-left-color: var(--red, #c23a2b); }
+.aw-privm.blue { border-left-color: var(--blue, #3768b8); }
+.aw-privm.me .aw-fn { color: var(--brass-hi); }
+.aw-privwho { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; }
+.aw-privrole { font-size: 11px; }
+.aw-privm .aw-acts { margin: 0; justify-content: flex-end; }
+.aw-privm .aw-act { min-width: 0; }
+/* AUDIT PRE-MERGE 1003b U4: a session's press shut by aria-disabled (it keeps the focus) looks shut, as a disabled one */
+.aw-act[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
+/* AUDIT PRE-MERGE 1003b U10: what a screen reader reads and nobody sees */
+.aw-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.aw-privcode { position: relative; }
+.aw-privresults { list-style: none; margin: 0; padding: 0; }
+.aw-privjoin { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0 0; }
+.aw-privlabel { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mute); }   /* AUDIT PRE-MERGE 1003b U11 */
+.aw-privinput::placeholder { letter-spacing: normal; text-transform: none; }
+.aw-privinput { min-width: 0; width: 15ch; padding: 6px 8px; font: inherit; font-size: 16px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: #efe0b8; background: rgba(5,6,8,0.6); border: 1px solid #5a4a2a; }
+.aw-privinput:focus-visible { outline: 2px solid var(--brass-hi); outline-offset: 1px; }
+@media (max-width: 520px) { .aw-privm { grid-template-columns: minmax(0, 1fr); } .aw-privcode { font-size: 22px; } }
+/* the ladder: the ten tiers as a column, the one picked whole beside it */
+.aw-ladder { display: grid; grid-template-columns: minmax(240px, 0.85fr) minmax(0, 1.4fr); gap: 14px; align-items: start; }
+.aw-tiers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column-reverse; gap: 3px; }
+/* AUDIT PRE-MERGE 1003 U14: a tier is a list item holding its press - the press a button, laid as the row was */
+.aw-tier { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center; gap: 0 8px;
+  padding: 5px 8px; cursor: pointer; border: 1px solid transparent;
+  width: 100%; margin: 0; font: inherit; color: inherit; text-align: left; background: transparent; }
+.aw-tier.on { background: linear-gradient(90deg, rgba(243,207,134,0.14), transparent 85%); }
+.aw-tiern { grid-row: 1 / span 2; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; font-size: 13px;
+  color: var(--mute); border: 1px solid #4a4438; background: rgba(5,6,8,0.6); }
+.aw-tier[data-state="cleared"] .aw-tiern { color: #1d150b; background: linear-gradient(180deg, var(--brass-hi), var(--brass)); border-color: #5c3f1a; }
+.aw-tier[data-state="current"] .aw-tiern { color: var(--brass-hi); border-color: var(--brass); box-shadow: 0 0 6px rgba(243,207,134,0.35); }
+.aw-tiername { font-size: 14px; color: var(--bone); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aw-tier[data-state="locked"] .aw-tiername { color: #8d8270; }
+.aw-tierstate { grid-column: 3; grid-row: 1 / span 2; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mute); }
+.aw-tier[data-state="current"] .aw-tierstate { color: var(--brass-hi); }
+.aw-pips { display: inline-flex; align-items: center; gap: 4px; }
+.aw-pips i { width: 7px; height: 7px; transform: rotate(45deg); background: rgba(0,0,0,0.6); border: 1px solid #5d5245; }
+.aw-pips i.on { background: var(--brass-hi); border-color: #5c3f1a; }
+.aw-pips i.crown { width: 9px; height: 9px; margin-left: 3px; }
+.aw-pips i.crown.on { background: #e05a3a; border-color: #ffb08e; box-shadow: 0 0 4px rgba(224,90,58,0.6); }
+.aw-tierbouts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.aw-tb { display: grid; grid-template-columns: 120px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 5px 8px; font-size: 13px;
+  border-left: 2px solid #3a352a; background: rgba(5,6,8,0.35); }
+.aw-tb.won { border-left-color: var(--brass); }
+.aw-tb.next { border-left-color: #e05a3a; background: rgba(224,90,58,0.08); }
+.aw-tb.champ .aw-tbl { color: #ffb08e; }
+.aw-tbl { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mute); }
+.aw-tbo { color: var(--bone); }
+.aw-tbm { font-size: 11px; color: var(--brass-hi); text-transform: uppercase; letter-spacing: 0.08em; }
+.aw-tb.next .aw-tbm { color: #ffb08e; }
+.aw-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+/* the team: the season's split, the banner, the roster */
+.aw-split-nums { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 4px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.aw-split-n { display: inline-flex; align-items: center; gap: 6px; }
+.aw-split-n.b-red { color: var(--red-hi); }
+.aw-split-n.b-blue { color: var(--blue-hi); flex-direction: row-reverse; }
+.aw-split { position: relative; height: 14px; border: 2px solid; border-color: #25221b #6e6755 #9a9079 #3a352a;
+  background: linear-gradient(180deg, var(--blue-hi) 0 2px, var(--blue) 2px 9px, var(--blue-lo)); }
+.aw-split-red { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(180deg, var(--red-hi) 0 2px, var(--red) 2px 9px, var(--red-lo)); }
+.aw-split-mid { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--brass-hi); box-shadow: 0 0 0 1px #050608; }
+.aw-bannerhead { display: flex; align-items: center; gap: 12px; }
+.aw-flag { width: 28px; height: 42px; }
+.aw-bannerwords { flex: 1 1 auto; min-width: 0; }
+.aw-motto { margin: 2px 0 0; font-size: 12px; font-style: italic; color: var(--mute); }
+.aw-bannercard[data-banner="red"] { box-shadow: inset 3px 0 0 var(--red); }
+.aw-bannercard[data-banner="blue"] { box-shadow: inset 3px 0 0 var(--blue); }
+.aw-mini { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.aw-mini li { display: flex; justify-content: space-between; gap: 8px; }
+.aw-pts { color: var(--brass-hi); font-variant-numeric: tabular-nums; }
+.aw-stats { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+.aw-stat { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid #3a352a; background: rgba(5,6,8,0.45); }
+.aw-stat .k { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mute); }
+.aw-stat .v { font-size: 18px; color: var(--bone); font-variant-numeric: tabular-nums; text-shadow: 1px 1px 0 #050608; }
+/* the boards */
+.aw-subtabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.aw-subtab { font-size: 12px; }
+.aw-boardsub { margin: 2px 0 10px; font-size: 12px; color: var(--mute); }
+.aw-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.aw-table th { padding: 4px 8px; text-align: left; font-size: 11px; font-weight: 400; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mute);
+  border-bottom: 1px solid rgba(243,207,134,0.25); }
+.aw-table td { padding: 5px 8px; border-bottom: 1px solid rgba(5,6,8,0.6); white-space: nowrap; }
+.aw-rank { width: 36px; color: var(--mute); }
+.aw-row:nth-child(-n+3) .aw-rank { color: var(--brass-hi); }
+.aw-table .aw-nm { width: 46%; }
+.aw-who { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 360px; }
+.aw-who .aw-n { overflow: hidden; text-overflow: ellipsis; }
+.aw-home { font-size: 11px; color: #8d8270; overflow: hidden; text-overflow: ellipsis; }
+.aw-row.you td { background: rgba(243,207,134,0.1); color: var(--brass-hi); }
+.aw-row.you td:first-child { box-shadow: inset 2px 0 0 var(--brass-hi); }
+.aw-gap td { padding: 0 8px; color: #8d8270; text-align: center; letter-spacing: 0.3em; }
+/* the records */
+.aw-bouts { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.aw-bout { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 5px 8px;
+  border-left: 2px solid #3a352a; background: rgba(5,6,8,0.35); }
+.aw-bout.won { border-left-color: var(--brass); }
+.aw-bout.lost { border-left-color: #8a2820; }
+.aw-res { justify-content: center; text-transform: uppercase; }
+.aw-res.won { color: var(--brass-hi); border-color: #7a5424; }
+.aw-res.lost { color: #ff9a8a; border-color: #7a2a24; }
+.aw-boutwhat { display: flex; flex-direction: column; min-width: 0; }
+.aw-bo { font-size: 13px; color: var(--bone); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aw-bt { font-size: 11px; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aw-bouttail { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; font-size: 11px; color: var(--mute); white-space: nowrap; }
+.aw-bp { color: var(--brass-hi); }
+.aw-bpts { color: #d9f0a8; }
+/* ARENA5: a kept bout's Watch the replay, under its row - a small press, so a kept row stays a row */
+.aw-boutacts { grid-column: 2 / -1; display: flex; justify-content: flex-end; margin-top: -4px; }
+body .aw-shell .aw-boutacts .act { min-width: 0; padding: 3px 12px; font-size: 12px; }
+.aw-wagerlist { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.aw-wl { padding: 3px 8px; border-left: 2px solid #3a352a; }
+.aw-wl.s-won { border-left-color: var(--brass); color: var(--brass-hi); }
+.aw-wl.s-lost { color: var(--mute); }
+.aw-wl.s-open { border-left-color: #e05a3a; }
+/* the rules */
+.aw-rules { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.aw-rule ul { margin: 8px 0 0; padding: 0 0 0 16px; display: flex; flex-direction: column; gap: 5px; font-size: 13px; line-height: 1.45; color: #e6dccb; }
+.aw-rule li::marker { color: var(--brass); }
+@media (max-width: 720px) {
+  .aw-shell { padding: 6px; }
+  .aw-win { width: 100%; height: 96vh; }
+  .aw-head { padding: 10px 12px 8px; gap: 6px 10px; }
+  .aw-crest { width: 18px; height: 27px; }
+  .aw-title { flex: 1 1 0; }
+  .aw-close { padding-left: 10px; padding-right: 10px; }
+  .aw-title h2 { font-size: 16px; letter-spacing: 0.06em; }
+  .aw-id { padding-left: 0; }
+  .aw-rec { margin-left: 0; }
+  .aw-tabs { padding: 6px 10px 0; }
+  .aw-tab { padding: 6px 10px 5px; letter-spacing: 0.08em; }
+  .aw-body { padding: 10px 10px 14px; }
+  .aw-cards, .aw-rules { grid-template-columns: minmax(0, 1fr); }
+  .aw-versus { grid-template-columns: minmax(0, 1fr); }
+  .aw-vs { justify-self: center; }
+  .aw-fighter[data-banner="blue"] { text-align: left; align-items: flex-start; border-right: 1px solid #3a352a; border-left: 3px solid var(--blue); }
+  .aw-fighter[data-banner="blue"] .aw-fname { flex-direction: row; }
+  .aw-fighter[data-banner="blue"] .aw-fnums { justify-content: flex-start; }
+  .aw-ladder { grid-template-columns: minmax(0, 1fr); }
+  .aw-tb { grid-template-columns: minmax(0, 1fr) auto; }
+  .aw-tbl { grid-column: 1 / -1; }
+  .aw-table { table-layout: fixed; }
+  .aw-table .opt { display: none; }
+  .aw-table td, .aw-table th { padding: 5px 4px; overflow: hidden; text-overflow: ellipsis; }
+  /* AUDIT PRE-MERGE 1003 U5: by the column's class, the header's own now (ui/arenaWindow.js table) - a board with no rank
+     column (the banners') keeps its first column; the header's word whole in it ("R..." before) */
+  .aw-table .aw-rank { width: 34px; }
+  .aw-table th.aw-rank { padding-left: 2px; padding-right: 2px; letter-spacing: 0; text-overflow: clip; }
+  .aw-table .aw-nm { width: 48%; }
+  .aw-home { display: none; }
+  .aw-bout { grid-template-columns: 52px minmax(0, 1fr); }
+  .aw-bt { white-space: normal; }   /* AUDIT PRE-MERGE 1003 U5: how each bout ended, whole - it was cut at "on t..." */
+  .aw-bouttail { grid-column: 2; flex-direction: row; flex-wrap: wrap; gap: 2px 8px; justify-content: flex-start; white-space: normal; }
+  .aw-boutacts { grid-column: 2; justify-content: flex-start; }
+}
+@media (pointer: coarse) { .aw-tier, .aw-tab, .aw-subtab, .aw-stake, .aw-side, .aw-boutacts .aw-act { min-height: 40px; } }
+@media (prefers-reduced-motion: reduce) { .aw-tier, .aw-card { transition: none; } }
+/* AUDIT PRE-MERGE 1003 U9: UNDER FORCED COLOURS every chosen state was a colour or a shadow the system paints over - the
+   page, the side and the stake backed, the board, the tier - and a won pip drew as hollow as one to win. The chosen
+   carry the system's Highlight as an outline; a won pip is filled with the system's own ink */
+@media (forced-colors: active) {
+  .aw-tab.on, .aw-side.on, .aw-stake.on, .aw-subtab.on, .aw-tier.on { outline: 2px solid Highlight; outline-offset: -2px; }
+  .aw-pips i.on { background: CanvasText; forced-color-adjust: none; }
+  .aw-privm.red, .aw-privm.blue { border-left-color: Highlight; }   /* ARENA6: a session's picked fighters */
+}`;
+
 /** PROF1 (PROF0 8, 21): THE PROFESSIONS' FACES - the Work tab's writs on the Notice Board (the Court's purple seal), the
  *  Professions and Stores pages on the character sheet's rail, and in the world the prompt, the act's meter, the toasts,
  *  the day's chip under the compass and the rank's banner. The stone, the brass and the bone of the rest; the meters'
  *  still forms under the system's reduced motion. */
 export const PROF_CSS = `/* ── PROF1: THE PROFESSIONS ── */
-.notice-tab { cursor: pointer; background: none; border: 0; font: inherit; }
+.notice-tab { cursor: pointer; }
 .notice-card.seal-court, .notice-read.seal-court { --seal: #6b3fa0; }
 .notice-writ { cursor: default; }
 .notice-writ .writ-kind { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #5b3c86; }
-.notice-writ .writ-need { margin: 0; font-size: 15px; color: #1d150b; }
-.notice-writ .writ-pay, .notice-writ .writ-left { margin: 0; font-size: 12px; color: #4a3a25; }
-.notice-writ .writ-take { display: flex; align-items: center; gap: 8px; margin-top: auto; font-size: 11px; color: #5a4630; }
+.notice-writ .writ-need { margin: 0; font-size: 15px; line-height: 1.3; color: #1d150b; }
+.notice-writ .writ-pay, .notice-writ .writ-left { margin: 0; font-size: 13px; color: #4a3a25; }
+.notice-writ .writ-take { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 6px; font-size: 12px; color: #5a4630; }
 .notice-writ.done { opacity: 0.62; }
-.notice-worktoday { margin: 10px 0 0; font-size: 12px; letter-spacing: 0.08em; color: #e6dccb; text-shadow: 1px 1px 0 #050608; }
+/* BOARD-UI: the day's count over the cards, on its own dark strip */
+.notice-worktoday { margin: 0 4px 12px; padding: 6px 10px; font-size: 15px; letter-spacing: 0.04em; color: #e9e1cf;
+  background: rgba(12,10,8,0.72); border-left: 2px solid rgba(192,138,62,0.6); }
+/* CHAP3a: the account's Merit in a chapter here, under the day's count, on the guild seal's strip */
+.notice-merit { margin: -8px 4px 12px; padding: 4px 10px; font-size: 14px; letter-spacing: 0.03em; color: #e9e1cf;
+  background: rgba(12,10,8,0.6); border-left: 2px solid rgba(120,150,190,0.6); }
+/* CHAP3b: a chapter of the region, its band and Strength, under the Merit lines */
+.notice-merit + .notice-chapter, .notice-worktoday + .notice-chapter { margin-top: -8px; }
+.notice-chapter { margin: 0 4px 12px; padding: 4px 10px; font-size: 14px; letter-spacing: 0.03em; color: #d8cfbb;
+  background: rgba(12,10,8,0.5); border-left: 2px solid rgba(79,111,143,0.5); }
+/* GUILD3d (bible/11-Multiplayer/Guilds-Made-Plain.md): a chapter's card - one panel a chapter, its lines on the panel's
+   own dark ground (no strip of their own), its band's effects the brightest line, its duties the quietest */
+.notice-chapter-card { border-left: 2px solid rgba(79,111,143,0.6); }
+.notice-chapter-card .notice-chapter, .notice-chapter-card .notice-merit { margin: 0 0 6px; padding: 0; background: none; border-left: 0; }
+.notice-chapter-card .notice-band { color: #e9e1cf; }
+.notice-chapter-card .notice-duties { color: #b9ab93; }
 .prof-cols { display: grid; grid-template-columns: minmax(180px, 0.9fr) 1.4fr; gap: 14px; }
 .prof-list { display: flex; flex-direction: column; gap: 4px; }
 .prof-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 4px 8px; text-align: left; font: inherit; font-size: 12px;
@@ -1074,6 +1586,7 @@ export const PROF_CSS = `/* ── PROF1: THE PROFESSIONS ── */
 .prof-spec:disabled { cursor: default; opacity: 0.72; }
 .prof-spec.on:disabled { opacity: 1; }
 .prof-cost { font-style: normal; font-size: 11px; color: #e8b872; }
+.prof-of { font-style: normal; font-size: 11px; color: #9c8f78; }   /* CRAFT3: whose choice a merged craft's card is */
 .prof-locked { opacity: 0.55; }
 .prof-word { margin: 8px 0 0; font-size: 12px; color: #e59a8e; }
 .prof-gentle { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; font-size: 12px; color: #b9ab93; cursor: pointer; }
@@ -1089,7 +1602,9 @@ export const PROF_CSS = `/* ── PROF1: THE PROFESSIONS ── */
   color: var(--bone, #e9e4d9); background: rgba(10,8,6,0.6); border: 1px solid rgba(192,138,62,0.25); cursor: pointer; }
 .prof-mat.on { border-color: var(--brass, #c08a3e); background: rgba(192,138,62,0.16); }
 .prof-count { color: #f3cf86; font-variant-numeric: tabular-nums; }
-.prof-split { grid-column: 1 / -1; font-size: 11px; color: #9d917d; }
+.prof-split { grid-column: 1 / -1; font-size: 11px; color: var(--bone); }
+/* Existing readable text roles follow the active theme rather than one hard-coded Stone palette. */
+.px-qdetail.prof-detail .px-note { color: var(--bone); }
 .prof-matbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0 4px; font-size: 12px; color: #d9cfbd; }
 .prof-smelt { display: grid; grid-template-columns: minmax(0, 1fr) 64px auto; align-items: center; gap: 4px 8px;
   padding: 4px 0; border-bottom: 1px solid rgba(192,138,62,0.18); font-size: 12px; color: #d9cfbd; }
@@ -1221,33 +1736,57 @@ export const PROF_CSS = `/* ── PROF1: THE PROFESSIONS ── */
 .prof-grain { fill: none; stroke: #3b2a18; stroke-width: 1.6; vector-effect: non-scaling-stroke; }
 .prof-trail { fill: none; stroke: #f3cf86; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .prof-boardhead { fill: rgba(239,224,184,0.22); stroke: none; }
-/* ── PROF5: THE MARKET TAB ── */
-.market-body { display: flex; flex-direction: column; gap: 8px; }
-.market-views, .market-filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+/* ── PROF5: THE MARKET TAB ── BOARD-UI: Your silver on a strip at the top, the views in their parts (Buy, Sell), the
+   columns named over the rows, the type a step larger, the forms' fields under their names */
+.market-body { display: flex; flex-direction: column; gap: 10px; }
+.market-wallet { margin: 0; padding: 6px 10px; font-size: 13px; letter-spacing: 0.04em; color: #f3cf86;
+  background: rgba(12,10,8,0.72); border-left: 2px solid rgba(192,138,62,0.6); }
+.market-views { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: center; }
+.market-viewgroup { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.market-viewpart { margin-right: 4px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #a89a84; }
+.market-filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .market-search { flex: 1 1 140px; min-width: 0; }
 .market-num { width: 5.5em; }
 .market-rows, .market-list { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
-.market-row { display: grid; grid-template-columns: minmax(0, 1.6fr) auto minmax(0, 1.4fr) auto 60px; gap: 2px 10px; align-items: center;
-  padding: 5px 8px; text-align: left; font: inherit; font-size: 12px; color: var(--bone, #e9e4d9); background: rgba(10,8,6,0.55);
-  border: 1px solid rgba(192,138,62,0.25); cursor: pointer; }
+.market-row, .market-listhead { display: grid; grid-template-columns: minmax(0, 1.6fr) auto minmax(0, 1.4fr) auto 60px; gap: 2px 12px; align-items: center;
+  padding: 6px 10px; text-align: left; font: inherit; font-size: 13px; }
+.market-row { color: var(--bone, #e9e4d9); background: rgba(10,8,6,0.62); border: 1px solid rgba(192,138,62,0.25); cursor: pointer; }
+.market-listhead { padding-top: 0; padding-bottom: 0; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #c9bba1; }
+.market-materialhead > :last-child { grid-column: 4 / span 2; }
 .market-row.on { border-color: var(--brass, #c08a3e); background: rgba(192,138,62,0.16); }
-.market-row b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.market-row b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: normal; color: #f3ead8; }
 .market-price { color: #f3cf86; white-space: nowrap; }
-.market-where, .market-quality, .market-units, .market-state { color: #b9ab93; font-size: 11px; }
-.market-median { color: #cdbd9f; font-size: 11px; white-space: nowrap; }
+.market-where, .market-quality, .market-units, .market-state { color: #c9bba1; font-size: 12px; }
+.market-median { color: #cdbd9f; font-size: 12px; white-space: nowrap; }
 .market-mine, .market-mod { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #efe0b8; }
 .market-line { width: 60px; height: 16px; }
 .market-line polyline { fill: none; stroke: #f3cf86; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
 .market-bar, .market-counterrow, .market-order, .market-listing, .market-histrow { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center;
-  padding: 5px 8px; font-size: 12px; color: var(--bone, #e9e4d9); background: rgba(10,8,6,0.4); border-left: 2px solid var(--brass, #c08a3e); }
+  padding: 6px 10px; font-size: 13px; color: var(--bone, #e9e4d9); background: rgba(10,8,6,0.55); border-left: 2px solid var(--brass, #c08a3e); }
 .market-ask { flex: 1 1 200px; }
-.market-road, .market-counter, .market-listform, .market-orderform { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center;
-  padding: 6px 10px; background: rgba(10,8,6,0.5); border: 1px solid rgba(192,138,62,0.3); color: var(--bone, #e9e4d9); font-size: 12px; }
-.market-road h4, .market-counter h4, .market-listform h4, .market-orderform h4, .market-body > h4, .market-mine-view h4, .market-history h4 {
-  flex: 1 1 100%; margin: 0; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #efe0b8; }
-.market-roadline { flex: 1 1 100%; margin: 0; }
+.market-road, .market-counter, .market-listform, .market-orderform, .market-suppliers { display: flex; flex-direction: column; gap: 8px;
+  padding: 8px 12px; background: rgba(10,8,6,0.62); border: 1px solid rgba(192,138,62,0.3); color: var(--bone, #e9e4d9); font-size: 13px; }
+.market-road h4, .market-counter h4, .market-listform h4, .market-orderform h4, .market-body > h4, .market-mine-view h4, .market-history h4,
+.market-suppliers > summary { margin: 0; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #efe0b8; }
+.market-mine-view, .market-history { display: flex; flex-direction: column; gap: 8px; }
+.market-mine-view > h4, .market-history > h4 { margin-top: 6px; }
+.market-roadline { margin: 0; }
+/* BOARD-UI: the suppliers' counters folded under one line; inside, each counter's rows in even columns */
+.market-suppliers > summary { cursor: pointer; }
+.market-suppliers .market-counter { padding: 0; background: none; border: 0; }
+.market-counter { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 6px; }
+.market-counter > h4, .market-counter > .notice-tip { grid-column: 1 / -1; }
+.market-counterrow { display: grid; grid-template-columns: minmax(0, 1fr) auto 4.5em auto; gap: 4px 10px; }
+.market-counterrow b { font-weight: normal; color: #f3ead8; overflow-wrap: anywhere; }
+/* BOARD-UI: a form's fields under their names, the press at the row's end */
+.market-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; }
+.market-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.market-field-wide { flex: 1 1 200px; }
+.market-field .notice-select { width: 100%; }
+/* in the field's column a select's own flex-basis (AUDIT 31 U14's 160px) is its HEIGHT - the field takes the row's basis */
+.market-field > * { flex: 0 0 auto; }
+.market-formnotes:empty { display: none; }
 .market-listing.state-sold, .market-listing.state-cancelled, .market-listing.state-expired, .market-listing.state-removed { opacity: 0.62; }
-.market-foot { margin: 4px 0 0; font-size: 12px; letter-spacing: 0.08em; color: #e6dccb; text-shadow: 1px 1px 0 #050608; }
 /* AUDIT 30 U5: a crafted row its own columns - its quality line the width the name gave up; at a phone's width two
    even columns, every cell able to shrink (the name drew 0px, the price over the road) */
 .market-piece { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.4fr) auto minmax(0, 1.4fr); }
@@ -1266,6 +1805,7 @@ export const PROF_CSS = `/* ── PROF1: THE PROFESSIONS ── */
 .notice-writ.seal-commission .writ-kind { color: #2f5a2b; }
 .notice-writ .writ-take { flex-wrap: wrap; }
 .notice-writ .work-num { width: 4.5em; }
+.notice-writ .writ-banner { width: auto; height: 40px; align-self: flex-start; }
 /* a card as narrow as its column - the Fill's select names a piece in full, and its longest name set the track's width */
 .notice-grid > .notice-writ { min-width: 0; }
 .notice-writ .work-select { max-width: 100%; min-width: 0; width: 100%; flex: 1 1 140px; text-overflow: ellipsis; }
@@ -1299,8 +1839,9 @@ export const PROF_CSS = `/* ── PROF1: THE PROFESSIONS ── */
 .work-fields .work-num, .notice-writ .work-num, .market-num { min-height: 32px; box-sizing: border-box; }
 .work-decline.armed { border-color: #b8563a; color: #f3cf86; }
 .notice-writ .work-label { flex: 1 1 140px; }
-/* AUDIT 31 U14: a List form's select as wide as its form - a piece's long name set the form's width past a phone's */
-.market-listform .notice-select, .market-orderform .notice-select { min-width: 0; max-width: 100%; flex: 1 1 160px; text-overflow: ellipsis; }
+/* AUDIT 31 U14: a List form's select as wide as its form - a piece's long name set the form's width past a phone's.
+   BOARD-UI: its width is its field's now (.market-field-wide) - a flex-basis here was the select's HEIGHT in the field */
+.market-listform .notice-select, .market-orderform .notice-select { min-width: 0; max-width: 100%; text-overflow: ellipsis; }
 .market-listform, .market-orderform, .market-mine-view { min-width: 0; max-width: 100%; }
 /* AUDIT 31 U3: an auction's standing bid wraps under its name at a phone's width - "opening 500 Drakes - no bids yet"
    was cut to "opening 500 Drakes - no" */
@@ -1308,7 +1849,14 @@ export const PROF_CSS = `/* ── PROF1: THE PROFESSIONS ── */
 /* a long maker's name cut the piece's own ("Silverthorn-of-the-Iliac's Mithril Longs...") - a Masterwork's name wraps */
 .market-auction b { white-space: normal; overflow-wrap: anywhere; }
 @media (max-width: 640px) { .market-row, .market-piece { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .market-row > b { grid-column: 1 / -1; }
-  .market-line { display: none; }
+  .market-line, .market-listhead { display: none; }
+  .market-counter { grid-template-columns: minmax(0, 1fr); }
+  /* AUDIT 657 B2: a counter's row on two lines at a phone's width - its name on the first, the price, the count and the
+     press under it; four columns left the name none, a letter a line */
+  .market-counterrow { grid-template-columns: minmax(0, 1fr) 4.5em auto; } .market-counterrow > b { grid-column: 1 / -1; }
+  .market-views { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  .market-viewgroup { flex: none; flex-wrap: nowrap; }
+  .market-view { flex: none; white-space: nowrap; }
   .market-auction { grid-template-columns: minmax(0, 1fr); } .market-auction > * { grid-column: 1 / -1; }
   .market-row b { white-space: normal; overflow-wrap: anywhere; } }
 @media (prefers-reduced-motion: reduce) { .prof-glint { animation: none; } .prof-toast { transition: none; } }
@@ -1317,12 +1865,14 @@ ${PROF_STATION_CSS}`;
 export const ITEM_FRAME_CSS = `
 /* ── RARITY-UI: THE TIER ON THE ICON'S FRAME ── */
 ${rarityVarsCss()}
-/* the pack's grid (and the remote pane's): the tile IS the icon's frame */
-.pack-shell .pack-dock .itemrow[data-rarity] {
+/* the pack's grid (and the remote pane's): the tile IS the icon's frame - and AUDIT 625 W3, the wallet's sheet's, whose
+   pieces are the grid's own tiles */
+.pack-shell .walletpieces .itemrow[data-rarity], .pack-shell .pack-dock .itemrow[data-rarity] {
   border-color: var(--rar-hi) var(--rar-lo) var(--rar-lo) var(--rar-hi);
   background-image: radial-gradient(ellipse at 50% 115%, rgba(var(--rar-rgb),0.26), transparent 68%),
     linear-gradient(180deg, rgba(255,255,255,0.06) 0 2px, transparent 2px);
   box-shadow: 0 0 0 1px #050608, inset 0 0 0 1px rgba(var(--rar-rgb),0.3), inset 0 0 12px rgba(var(--rar-rgb),0.2); }
+.pack-shell .walletpieces .itemrow[data-rarity]:hover, .pack-shell .walletpieces .itemrow[data-rarity]:focus-visible,
 .pack-shell .pack-dock .itemrow[data-rarity]:hover, .pack-shell .pack-dock .itemrow[data-rarity]:focus-visible {
   border-color: var(--rar-hi);
   box-shadow: 0 0 0 1px #050608, 0 0 9px rgba(var(--rar-rgb),0.6), inset 0 0 0 1px rgba(var(--rar-rgb),0.45),
@@ -1330,17 +1880,17 @@ ${rarityVarsCss()}
 .pack-shell .pack-dock .itemrow[data-rarity].on { border-color: var(--rar-hi); outline-color: rgba(var(--rar-rgb),0.7);
   box-shadow: 0 0 0 1px #050608, 0 0 12px rgba(var(--rar-rgb),0.55), inset 0 0 16px rgba(var(--rar-rgb),0.32); }
 /* the tier's pips, bottom-left - the corner the key chip (top-left) and the count (bottom-right) leave free */
-.pack-shell .pack-dock .itemrow[data-rarity]::before { content: var(--rar-pips); position: absolute; left: 3px; bottom: 1px;
+.pack-shell .walletpieces .itemrow[data-rarity]::before, .pack-shell .pack-dock .itemrow[data-rarity]::before { content: var(--rar-pips); position: absolute; left: 3px; bottom: 1px;
   font-size: 8px; line-height: 1; letter-spacing: 1px; color: var(--rar); pointer-events: none;
   text-shadow: 1px 1px 0 #050608, 0 0 4px rgba(var(--rar-rgb),0.7); }
 /* UI1 (bible/10-UI/Slots-Hotbar-Status.md): THE SLOT IS THE FRAME, AND ONLY IT (Mac: "rarity outlines ... the
    UI/Hotbar border itself instead of it being an icon within an icon") - the sprite, fitted to the slot's 52px room
    (ui/iconFit.js), stands straight on the slot's own ground under the tier's border, in no second box. The stack's
    count takes the slot's last corner. */
-.pack-shell .pack-dock .itemrow .count { right: 4px; bottom: 3px; z-index: 2; font-size: 11px; line-height: 1; color: #efe8d6;
+.pack-shell .walletpieces .itemrow .count, .pack-shell .pack-dock .itemrow .count { right: 4px; bottom: 3px; z-index: 2; font-size: 11px; line-height: 1; color: #efe8d6;
   pointer-events: none; text-shadow: -1px 0 0 #050608, 1px 0 0 #050608, 0 -1px 0 #050608, 0 1px 0 #050608, 1px 1px 0 #050608; }
-.pack-shell .pack-dock .itemrow.hasbar .count { bottom: 7px; }
-.pack-shell .pack-dock .itemrow[data-locked] .count { right: 16px; }   /* the padlock keeps the corner (LOCK1) */
+.pack-shell .walletpieces .itemrow.hasbar .count, .pack-shell .pack-dock .itemrow.hasbar .count { bottom: 7px; }
+.pack-shell .walletpieces .itemrow[data-locked] .count, .pack-shell .pack-dock .itemrow[data-locked] .count { right: 16px; }   /* the padlock keeps the corner (LOCK1) */
 /* a LIST's row keeps its engraved rule - the icon inside it is the frame (the loot window, the shop, a player trade) */
 .pack-shell .loot-win .itemrow[data-rarity] .tile, .trade-shell .itemrow[data-rarity] .tile,
 .ptrade-shell .itemrow[data-rarity] .tile {
@@ -1393,6 +1943,22 @@ ${rarityVarsCss()}
   letter-spacing: 1px; text-shadow: 0 0 4px rgba(var(--rar-rgb),0.7); }
 .inv-tip > .card[data-rarity] { border-top-color: var(--rar); }
 .bigicon[data-rarity] img { filter: drop-shadow(0 0 7px rgba(var(--rar-rgb),0.55)) drop-shadow(1px 1px 0 #050608); }
+/* GILDED1: THE GOLD LEAF CATCHES THE LIGHT. A Gilded piece's frame breathes a gold glow - stepped, so it reads as
+   pixels and not as a blur - wherever it stands: a pack tile, a worn row and socket, a hotbar slot. The states above and
+   below still win the moment they last (a drop target, a refusal); a player who asks the system for less motion gets a
+   still glow at its brighter end. */
+@keyframes gilded-glow { from { box-shadow: 0 0 0 1px #050608, 0 0 5px rgba(255,207,77,0.35), inset 0 0 9px rgba(255,207,77,0.16); }
+  to { box-shadow: 0 0 0 1px #050608, 0 0 12px rgba(255,207,77,0.72), inset 0 0 15px rgba(255,207,77,0.32); } }
+.pack-shell .pack-dock .itemrow[data-rarity="gilded"], .pack-shell .walletpieces .itemrow[data-rarity="gilded"],
+.pack-shell .equipped .wornrow[data-rarity="gilded"], .pack-shell .wornsock[data-rarity="gilded"],
+.hb .hb-slot[data-rarity="gilded"] .hb-frame, .hud-qdiamond .hud-qcell[data-rarity="gilded"]:not(.socket) .hud-qframe {
+  animation: gilded-glow 2.6s steps(8, end) infinite alternate; }
+.bigicon[data-rarity="gilded"] img { filter: drop-shadow(0 0 9px rgba(255,207,77,0.8)) drop-shadow(0 0 2px #fff1b8) drop-shadow(1px 1px 0 #050608); }
+@media (prefers-reduced-motion: reduce) {
+  .pack-shell .pack-dock .itemrow[data-rarity="gilded"], .pack-shell .walletpieces .itemrow[data-rarity="gilded"],
+  .pack-shell .equipped .wornrow[data-rarity="gilded"], .pack-shell .wornsock[data-rarity="gilded"],
+  .hb .hb-slot[data-rarity="gilded"] .hb-frame, .hud-qdiamond .hud-qcell[data-rarity="gilded"]:not(.socket) .hud-qframe {
+    animation: none; box-shadow: 0 0 0 1px #050608, 0 0 12px rgba(255,207,77,0.72), inset 0 0 15px rgba(255,207,77,0.32); } }
 /* AUDIT MERGE-PLUS D2: a list's picture keeps its icon INSIDE the tier's 2px frame - a worn pair's 28px tile is
    border-box, and its 28px icon cap painted over two of the frame's four edges */
 .pack-shell .loot-win .itemrow[data-rarity] .tile img, .trade-shell .itemrow[data-rarity] .tile img,
@@ -1401,7 +1967,7 @@ ${rarityVarsCss()}
    passing state painted on the same frame is said again here, at the tier's weight and after it: the reorder's
    insertion mark, the picked socket (and a socket as a drop target), the hotbar's strike, refusal and drop target,
    the refused drag. The state wins the moment it lasts; the tier's glow stays under it where there is room. */
-.pack-shell .pack-dock .itemrow[data-rarity].dragover {
+.pack-shell .walletpieces .itemrow[data-rarity].dragover, .pack-shell .pack-dock .itemrow[data-rarity].dragover {
   box-shadow: 0 0 0 1px #050608, inset 0 2px 0 #c08a3e, inset 0 0 12px rgba(var(--rar-rgb),0.2); }
 .pack-shell .wornsock[data-rarity].on { border-color: var(--rar-hi); outline-color: rgba(var(--rar-rgb),0.7);
   background-image: linear-gradient(180deg, rgba(243,207,134,0.14) 0 2px, rgba(192,138,62,0.08) 2px);
@@ -1455,6 +2021,7 @@ ${SIGIL_BLOCK_CSS}
 .pack-shell .loot-win .itemrow[data-set] .tile::after, .trade-shell .itemrow[data-set] .tile::after,
 .ptrade-shell .itemrow[data-set] .tile::after, .dragghost[data-set] .tile::after { background-image: var(--set-rune); }
 ${SET_BLOCK_CSS}
+${TECH_BLOCK_CSS}
 .setstrip { display: flex; flex-direction: column; gap: 4px; margin: 8px 0 0; flex: 0 0 auto;
   max-height: 136px; overflow-y: auto; overscroll-behavior: contain; }   /* CARD-FIT U16: five lines, then it scrolls - eight sets can be worn at once, and the column clips */
 .setline { display: flex; align-items: center; gap: 8px; min-height: 24px; padding: 2px 8px; cursor: pointer; text-align: left;
@@ -1474,6 +2041,7 @@ ${REFORGE_CSS}
 ${BOUNTY_CSS}
 ${NOTICE_CSS}
 ${PROF_CSS}
+${ARENA_WINDOW_CSS}
 /* ── WEAR-UI: THE HOTBAR'S WEAR BAR, ON EVERY PICTURE OF A PIECE THAT WEARS (ui/enhancedInventory.js wearBar) ──
    The hotbar's own bar (3px, a hard black ring, its green and its red under 40), a lit pixel on top like every fill
    here. Along the foot of a grid tile or a socket; inside the foot of a list's picture. A broken piece's track goes
@@ -1486,7 +2054,7 @@ ${PROF_CSS}
 .pack-shell .wear.broken, .trade-shell .wear.broken, .ptrade-shell .wear.broken { background: rgba(122,29,22,0.9); }
 .pack-shell .loot-win .itemrow .tile, .pack-shell .wornrow .tile, .trade-shell .itemrow .tile, .ptrade-shell .itemrow .tile { position: relative; }
 .pack-shell .loot-win .itemrow .wear, .pack-shell .wornrow .wear, .trade-shell .itemrow .wear, .ptrade-shell .itemrow .wear { left: 2px; right: 2px; bottom: 0; }
-.pack-shell .pack-dock .itemrow.hasbar[data-rarity]::before { bottom: 6px; }
+.pack-shell .walletpieces .itemrow.hasbar[data-rarity]::before, .pack-shell .pack-dock .itemrow.hasbar[data-rarity]::before { bottom: 6px; }
 /* ── LOCK1: THE PADLOCK ON A LOCKED PIECE (systems/itemLock.js) - bottom-right of a grid tile or a socket (above the
    wear bar's end when there is one; the key chip has the top-left), the top-left corner of a list's picture (the
    rune has its top-right). The card says it in words. */
@@ -1503,6 +2071,10 @@ ${PROF_CSS}
 .card .lockline, .card .boundline, .pack-shell .card p.lockline, .pack-shell .card p.boundline { margin: 6px 0 4px; font-size: 12px; letter-spacing: 0.04em; color: #f3cf86; text-shadow: 1px 1px 0 #050608; }
 .card .lockline::before { content: ''; display: inline-block; width: 11px; height: 11px; margin-right: 6px; vertical-align: -1px;
   background: ${LOCK_GLYPH_URL} center / contain no-repeat; }
+/* ── LOOT18: A JUNK PIECE (systems/itemJunk.js) - its picture dimmed and greyed wherever it is drawn; the card says it in
+   words, in the lock's line style without the padlock, muted. */
+.pack-shell [data-junk] .tile > *, .trade-shell [data-junk] .tile > *, .ptrade-shell [data-junk] .tile > * { opacity: 0.5; filter: grayscale(0.7); }
+.card .junkline, .pack-shell .card p.junkline { color: #a89f88; }
 `;
 
 /** AUDIT MERGE-PLUS D3: the lane's words on Stone's light grey (ONLINE_DRESS_CSS, last) - each 4.5:1 or better over
@@ -1532,12 +2104,12 @@ body .dfpeer-btn.cancel:hover:not([disabled]) { background: none; color: var(--b
 /* The lane drew its presses borderless or on a 1px line, so the kit's bevel had no edge to paint: a 2px edge (width
    and style only - the kit owns the colour), taken out of the padding so each press keeps its size (the sheet is
    border-box). The touch skin's own paddings outweigh these and stand. */
-body .dfsocial-btn, body .dfsocial-close, body .dfprofile-close, body .dfprofile-duel, body .dfpage-btn, body .dfpeer-btn:not(.cancel),
+body .dfsocial-btn, body .dfsocial-close, body .dfprofile-close, body .dfprofile-duel, body .dfprofile-wed, body .dfpage-btn, body .dfpeer-btn:not(.cancel),
 body .dfduel-btn, body .dfdecor-btn, body .dfdecor-open { border-width: 2px; border-style: solid; }
 body .dfsocial-btn { padding: 2px 6px; }
 body .dfsocial-close { padding: 0 6px; }
 body .dfprofile-close, body .dfpage-btn { padding: 4px 10px; }
-body .dfprofile-duel { padding: 5px 11px; }
+body .dfprofile-duel, body .dfprofile-wed { padding: 5px 11px; }
 body .dfpeer-btn:not(.cancel) { padding: 4px 6px; }
 body .dfduel-btn { padding: 3px 11px; }
 body .dfdecor-btn { padding: 3px 13px; }
@@ -1617,6 +2189,7 @@ body .wb-boss-wrath { color: #ff9a7a; border-color: #8a2820; }
 body .wb-boss-wrath.near { color: #fff6e4; }
 @media (max-width: 640px) { body .wb-boss-chip-head, body .wb-boss-chip-name { font-size: 11px; letter-spacing: 0; } }   /* FONT3's floor: a phone narrows the chip by its tracking, not under 11px */
 body .wb-gate-banner { ${PIXEL_FONT_CSS} font-size: 14px; letter-spacing: 0.14em; text-shadow: ${OUTLINED}; }
+body .wb-gate-banner.sd-brass { text-shadow: ${OUTLINED}; }   /* AUDIT SD III (T3): an Abyss Dungeon's door outlined as the gate's, in its own brass - its glow is the classic skin's */
 /* WB13e: the fight's beats in the HUD's face, outlined - the name large, the rule a brass line */
 body .wb-title-card { ${PIXEL_FONT_CSS} color: #efe8d6; text-shadow: ${OUTLINED}; }
 body .wb-title-kicker { font-size: 12px; letter-spacing: 0.3em; color: ${FRAME_TONES.brassHi}; }
@@ -1624,6 +2197,14 @@ body .wb-title-main { font-size: 34px; letter-spacing: 0.12em; color: #fff6e4; t
 body .wb-title-rule { height: 2px; background: linear-gradient(90deg, transparent, ${FRAME_TONES.brass}, transparent); box-shadow: 0 1px 0 #050608; }
 body .wb-title-sub { font-size: 14px; letter-spacing: 0.06em; color: #d8cfae; }
 @media (max-width: 640px), (max-height: 480px) { body .wb-title-main { font-size: 24px; } body .wb-title-sub { font-size: 12px; } }
+/* AUDIT SD III (T4): the Hour's card the same way - the HUD's face, outlined - in its own brass and light (it stood in the
+   serif on the Plus skin, the one readout of the fight's that did) */
+body .sd-title-card { ${PIXEL_FONT_CSS} color: #efe8d6; text-shadow: ${OUTLINED}; }
+body .sd-title-kicker { font-size: 12px; letter-spacing: 0.3em; color: ${FRAME_TONES.brassHi}; }
+body .sd-title-main { font-size: 34px; letter-spacing: 0.12em; color: #fff1cf; text-shadow: ${OUTLINED}, 0 0 14px rgba(232,192,96,0.45); }
+body .sd-title-rule { height: 2px; background: linear-gradient(90deg, transparent, ${FRAME_TONES.brass}, transparent); box-shadow: 0 1px 0 #050608; }
+body .sd-title-sub { font-size: 14px; letter-spacing: 0.06em; color: #d8cfae; }
+@media (max-width: 640px), (max-height: 480px) { body .sd-title-main { font-size: 24px; } body .sd-title-sub { font-size: 12px; } }
 /* FONT3 + WB13c (both 2026-10-02, the same surface found from two sides; the dress is WB13c's, the weight FONT3's
    reading 500): the ground's warning in the HUD's face, outlined on a dark band (it stood in the serif among pixel words, orange
    on the orange rim); the way out's arrow in a hard black edge */
@@ -1657,6 +2238,31 @@ body .wb-dmg-track { background: rgba(5,6,8,0.72); box-shadow: 0 0 0 1px #050608
 body .wb-dmg-fill { background: linear-gradient(180deg, #ffc08a 0 1px, #ff7a3a 1px 2px, #d8341a 2px); border-radius: 0; }
 body .wb-dmg-mine { outline: 1px solid ${FRAME_TONES.brassHi}; background: rgba(192,138,62,0.14); }
 body .wb-dmg-more { font-size: 11px; font-style: normal; color: #b9ab86; opacity: 1; }
+/* ARENA2: THE BOUT'S HUD (ui/arenaHud.js) - the plate is a panel and the clock and the crowd's marks chips (the kit's
+   roles); here what a role cannot say: the HUD's words in the pixel face outlined, each track a vital's stone bevel
+   with its fill banded from a lit top (health the vitals' red, stamina their green, the crowd's mood brass), the
+   crowd's middle a brass tick, the darling's mark brass and the villain's blood, my own name brass, a banner's mark
+   down the plate's inner edge (ARENA3's teams paint it; today mine brass, theirs blood). */
+body .arena-hud { ${PIXEL_FONT_CSS} font-weight: 400; color: #efe8d6; text-shadow: ${OUTLINED}; }
+body .arena-plate { padding: 7px 12px 8px; }
+body .arena-track { border: 2px solid; border-color: #9a9079 #3a352a #25221b #6e6755; background: rgba(5,6,8,0.78);
+  box-shadow: 0 0 0 1px #050608; }
+body .arena-fill { background: linear-gradient(180deg, #f2a597 0 2px, #d8685a 2px 4px, #b53a2e 4px 8px, #8a2820 8px); }
+body .arena-stam .arena-fill { background: linear-gradient(180deg, #b9f0c4 0 1px, #49b06a 1px 3px, #2f9152 3px); }
+body .arena-crowd .arena-fill { background: linear-gradient(180deg, #fff0b8 0 1px, #f2c46b 1px 3px, #d9a441 3px 5px, #a87a2a 5px); }
+body .arena-crowd-mid { background: ${FRAME_TONES.brassHi}; box-shadow: 0 0 0 1px #050608; }
+body .arena-ftr[data-you="1"] .arena-ftr-name { color: ${FRAME_TONES.brassHi}; }
+body .arena-ftr[data-banner="you"] .arena-track, body .arena-ftr[data-banner="a"] .arena-track { box-shadow: 0 0 0 1px #050608, inset 2px 0 0 ${FRAME_TONES.brass}; }
+body .arena-ftr[data-banner="them"] .arena-track, body .arena-ftr[data-banner="b"] .arena-track { box-shadow: 0 0 0 1px #050608, inset -2px 0 0 #b83a2e; }
+body .arena-tag[data-tag="darling"] { color: ${FRAME_TONES.brassHi}; }
+body .arena-tag[data-tag="villain"] { color: #ff9a8a; }
+body .arena-out { color: #ff9a8a; }
+body .arena-timer { font-size: 17px; letter-spacing: 0.1em; color: #fffaf0; }
+body .arena-vs { color: #d8cfae; opacity: 1; }
+body .arena-crowd-word[data-band="roar"], body .arena-crowd-word[data-band="cheer"] { color: ${FRAME_TONES.brassHi}; }
+body .arena-crowd-word[data-band="boo"], body .arena-crowd-word[data-band="jeer"] { color: #ff9a8a; }
+body .arena-bark { font-size: 14px; letter-spacing: 0.08em; }
+body .arena-hint { color: ${FRAME_TONES.brassHi}; }
 /* AUDIT MERGE-PLUS D3: STONE'S LIGHT GROUND. The lane's newer surfaces joined the window and panel roles above, and
    Stone paints those a light grey their words were never chosen for - they had kept their own dark ground on every
    theme until then (the F-menu's Cancel read at 2.3:1, a refused row's reason at 4.1:1). On Stone the lane's dim
@@ -1670,6 +2276,8 @@ body .wb-dmg-more { font-size: 11px; font-style: normal; color: #b9ab86; opacity
 :root[data-plus-theme="stone"] body .dfpage-note, :root[data-plus-theme="stone"] body .dfduel-sub { color: ${STONE_WORD}; }
 :root[data-plus-theme="stone"] body .dfdecor-pick-why, :root[data-plus-theme="stone"] body .dfdecor-bar-why { color: ${STONE_AMBER}; }
 :root[data-plus-theme="stone"] body .dfdecor-row.dim .dfdecor-row-price { color: ${STONE_RED}; }
+/* Profession status uses the existing Stone red word role on its lighter panel. */
+:root[data-plus-theme="stone"] body .px-qdetail.prof-detail .prof-word { color: ${STONE_RED}; }
 /* AUDIT NAV1 (the presentation): the sea fight's dim words join them - on Stone the plate's hint (the board key's line)
    read 1.9:1, its waters 2.9, its labels and the card's sub-line 3.8, the plunder window's sub-line, lede and counts
    3.3-3.5 */
@@ -1720,10 +2328,45 @@ export const ARMOUR_CSS = `
 .card .cmp .cmp-d.up { color: #74d9a0; }
 .card .cmp .cmp-d.down { color: #d98074; }
 .card .cmp .cmp-d.same { color: #a89f88; }
+/* LOOT18: the lines a wear would change - a line a row, its chip at its end; a lost line struck through */
+.card .cmp-lines .cmp-linelist { list-style: none; margin: 0; padding: 0; }
+.card .cmp-lines .cmp-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; margin: 1px 0; }
+.card .cmp-lines .cmp-d.new { color: #f3cf86; }
+.card .cmp-lines .cmp-line.lost .cmp-v { text-decoration: line-through; color: #a89f88; }
+.card .cmp-lines .cmp-note { flex-basis: 100%; font-size: 11px; color: #a89f88; }
 `;
 
 /** The layers that stand OVER the kit on purpose, in order - each outranks the kit's stone at the same weight. */
 export const OVER_KIT_CSS = [ITEM_FRAME_CSS, ONLINE_DRESS_CSS];
+
+/** PLUS-MENU (2026-10-07, Mac: "give the main menu the enhanced plus UI treatment"): THE FRONT DOOR IN STONE AND BRASS.
+ *  The door was the one enhanced screen the kit never reached - eight words floating on the night, the About plaque and
+ *  the profile mark carved while the doors themselves were bare. The doors play the kit's BUTTON role now
+ *  (ui/enhancedFrame.js: raised stone, brass under the pointer and the pad, sunk while held, every Plus colour's
+ *  ground), one width a column so the list reads as one carved rail; this gives them the 2px edge the role paints (the
+ *  padding gives back what the edge takes, so a door is the box it was) and keeps the diamonds standing, dim stone at
+ *  rest and the classic gold on the door under the pointer. The rule under the wordmark is gilt. */
+export const MENU_CSS = `
+/* ── PLUS-MENU: THE DOORS ── */
+/* AUDIT PLUS-MENU M1: the stage's own width, never the viewport's - a phone's stage keeps 24px a side, and 100vw - 32px
+   ran the rail 8px past it, so the whole door panned sideways under a thumb */
+.px-home .px-menu { width: min(384px, 100%); align-items: stretch; gap: 8px; }
+.px-menu .doorbtn { justify-content: space-between; border: 2px solid; padding: 6px 24px; }
+.px-menu .doorbtn .px-c { visibility: visible; color: #5a5446; text-shadow: 1px 1px 0 #050608; }
+.px-menu .doorbtn:hover .px-c, .px-menu .doorbtn:focus-visible .px-c { color: rgb(243,239,44); text-shadow: 2px 2px 0 rgb(93,77,12); }
+/* AUDIT PLUS-MENU M4: on Stone's light ground the dim stone diamond was gone (1.2:1) - the lit stone, at rest only */
+:root[data-plus-theme="stone"] .px-menu .doorbtn:not(:hover):not(:focus-visible) .px-c { color: #9a9079; }
+/* a phone: the doors at the 44px tap floor and a size down, so the rail stands above the foot's plaques on a tall phone
+   (the stage still scrolls where it cannot - PX8) */
+@media (max-width: 480px) {
+  .px-home .px-menu { gap: 6px; }
+  .px-menu .doorbtn { padding: 2px 16px; min-height: 44px; font-size: 22px; }
+}
+/* the rule under the wordmark: two gilt bars fading out from the gem */
+.px-home .px-rule::before, .px-home .px-rule::after { height: 2px; opacity: 1; box-shadow: 0 1px 0 #050608; }
+.px-home .px-rule::before { background: linear-gradient(90deg, transparent, #7a5424 45%, #f3cf86); }
+.px-home .px-rule::after { background: linear-gradient(90deg, #f3cf86, #7a5424 55%, transparent); }
+`;
 
 export const PLUS_CSS = `${VITALS_CSS}
 ${PLUS_FIX_CSS}
@@ -1735,6 +2378,7 @@ ${LV2_CSS}
 ${MOTION_CSS}
 ${LAYOUT_CSS}
 ${ARMOUR_CSS}
+${MENU_CSS}
 /* FRAME1: LAST, on purpose - see ui/enhancedFrame.js */
 ${FRAME_CSS}
 /* RARITY-UI + SIGIL-UI, then PLUS-DRESS: after the kit - each outranks the kit's stone at the same weight */

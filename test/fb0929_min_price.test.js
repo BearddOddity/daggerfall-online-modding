@@ -26,6 +26,7 @@ import { HOLIDAYS } from '../src/systems/holidays.js';
 import { GUILDS } from '../src/systems/guilds.js';
 import { reducedRepairCost } from '../src/systems/guildServices.js';
 import { BUILDING_TYPES } from '../src/world/buildingNames.js';
+import { yardStock } from '../src/systems/merchantYards.js';   // MERCHANT-YARDS: the horse is the Stable's now
 import { NativeTradeWindow } from '../src/ui/nativeTrade.js';
 import { mountEnhancedTrade } from '../src/ui/enhancedTrade.js';
 
@@ -109,10 +110,11 @@ test('FB0929: a stack pays a gold a piece - Roleplay & Realism: Items\' shelf of
     assert.deepEqual([fest.cost, calculateTradePrice(fest.cost, STACK_Q, HAGGLER, false)], [7, 3]);
     assert.equal(getTradePrice('Buy', fest.cost, STACK_Q, HAGGLER, fest.pieces), 7);
     // the lot is haggled ONCE, as DFU haggles it (GetTradePrice over UpdateCostAndGold's total): the floor is the
-    // LOT's pieces, and a lot dearer than that is Daggerfall's own number - so a cheap piece beside the General
-    // Store's horse rounds into the horse's price like any piece of a lot (the reason the SALE is not floored)
+    // LOT's pieces, and a lot dearer than that is Daggerfall's own number - so a cheap piece beside a horse rounds
+    // into the horse's price like any piece of a lot (the reason the SALE is not floored). PIN MOVED (MERCHANT-YARDS,
+    // 2026-10-10): the horse was the General Store shelf's own; it is the Stable's now, minted as a shelf mints it
     const shelf = rriShelf();
-    const horse = shelf.find((it) => it.name === 'Horse');
+    const horse = yardStock('stable')[0];
     const candle = shelf.find((it) => it.name === 'Candle');
     const price = (lot) => { const w = tradeCost('Buy', lot, STACK_CTX); return getTradePrice('Buy', w.cost, STACK_Q, HAGGLER, w.pieces); };
     assert.equal(price([candle]), 1, 'a candle alone: a gold');
@@ -233,7 +235,10 @@ test('FB0929: one law at every counter - the keyed shelf and repair rows price t
   assert.match(fn('buyPrice'), /return getTradePrice\('Buy', lot\.cost, /);
   assert.match(fn('repairPrice'), /const lot = tradeCost\('Repair', \[it\], /, 'the keyed repair list');
   assert.match(fn('repairPrice'), /return getTradePrice\('Repair', lot\.cost, /);
-  for (const f of ['buyPrice', 'repairPrice']) assert.doesNotMatch(fn(f), /calculateTradePrice|calculateCost|calculateItemRepairCost/, `${f} keeps no copy of the haggle`);
+  // CRAFT-WORTH (2026-10-11): and the keyed SALE too - it priced the raw value at the region's index with no condition
+  assert.match(fn('sellPrice'), /const lot = tradeCost\('Sell', \[it\], \{ quality: b\.quality, priceAdjustment: shopAdjustment\(b, 'Sell'\) \}\);/, 'the keyed sale row');
+  assert.match(fn('sellPrice'), /return getTradePrice\('Sell', lot\.cost, /);
+  for (const f of ['buyPrice', 'repairPrice', 'sellPrice']) assert.doesNotMatch(fn(f), /calculateTradePrice|calculateCost|calculateItemRepairCost/, `${f} keeps no copy of the haggle`);
   const calls = [];
   for (const f of readdirSync(new URL('../src/', import.meta.url), { recursive: true })) {
     if (!f.endsWith('.js') || !rd(`src/${f}`).includes('getTradePrice(')) continue;

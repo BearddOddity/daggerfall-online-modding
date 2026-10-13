@@ -265,7 +265,10 @@ test('FB1001 YARD-CORNER: a piece turned across the house\'s corner - none of it
   const lot = yardLot([0, 0, 0], HOUSE_BOX);
   const foot = turned(BENCH_BOX, 45);
   assert.equal(yardWhyNot([6.9, 0, 1.9], lot, [[7, 2, 9, 5]], foot), 'That is another building\'s ground.');
-  assert.equal(yardWhyNot([6.6, 0, 1.6], lot, [[7, 2, 9, 5]], foot), null, 'off its corner');
+  // PIN MOVED (HOME-LINE, FIELD BUGS 2026-10-11b): off its corner the bench meets none of its ground - and stands nearer
+  // it than the house's, the neighbour's side of the line the ground between them is split by
+  assert.equal(homeYards.yardFootMeets(foot.map(([dx, dz]) => [6.6 + dx, 1.6 + dz]), [7, 2, 9, 5], homeYards.YARD_EDGE_PAD), false, 'off its corner');
+  assert.equal(yardWhyNot([6.6, 0, 1.6], lot, [[7, 2, 9, 5]], foot), 'That is another building\'s ground.', 'and on the neighbour\'s side of the line');
   // the ground as the law asks it: across both boxes' axes and every edge of the piece's - a diagonal whose box meets a
   // rect, itself clear of it, is clear (a segment's one axis too)
   assert.equal(homeYards.yardFootMeets([[0, 0], [2, 2]], [1.5, 0, 3, 0.4]), false);
@@ -294,6 +297,9 @@ test('FB1001 YARD-STALE: the town\'s yards read before the owner\'s writes and a
   await r.ghostAt(CHAIR_MODEL, 0, -5);
   assert.equal(await r.tool.commit(), true, 'the second piece');
   await r.removeVia(first);
+  // Wait for the removal's service write, not a fixed number of scheduler turns.
+  const removedBy = performance.now() + 5000;
+  while (rows().some((p) => p.pos[2] === 5) && performance.now() < removedBy) await r.frames(1);
   r.tool.close();
   await r.frames(2);
   const zs = () => r.yards.here().yard.pool.list().map((p) => p.pos[2]);

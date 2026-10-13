@@ -61,13 +61,16 @@ export const TOAST_FADE_MS = 700;
  *  per entry, exactly as their rules write them. */
 export const FRAME_ROLES = {
   window: ['.dlg-win', '.px-win', '.pack-win', '.loot-win', '.px-about', '.px-profile', '.hmbox',
+    '.px-support',   // SUPPORT1: the door's asks - the About plaque's and the profile mark's carved frame
     // PLUS8: the journey's bar (ui/enhancedTravelControl.js) - carved stone, brass fittings, the theme's ground
     '.travelpanel-bar',
     // OW-THEME (2026-09-28, Mac: "The overworld ui needs to follow enhanced ui theme"): the Overworld's bar - the
     // journey bar's own carved stone and brass, in the theme's ground
-    '.tview-bar', '.tview-confirm',   // OW-BLOCK: the Overworld's block (its filters are inside it); OW-CONFIRM: its question
+    '.tview-bar', '.tview-side', '.tview-confirm', '#wp-menu', '#travel-pace-box',   // OW-BLOCK: the Overworld's block; FILTERS-LEFT: its filters, their own block at the bottom left; OW-CONFIRM: its question; WAYPOINTS: the right-click menu; PACE-DIALS: the other skins' dials
     // CSA-L: the helm's bar (ui/enhancedHelm.js) - the journey bar's kind, under the compass where it stands
     '.helmpanel-bar',
+    // STEED-UI: the saddle's bar (ui/enhancedSaddle.js) - the helm's kind, where the helm stands (the two never up together)
+    '.saddlepanel-bar',
     // PLUS-MAP: the 3D dungeon map's control bar - the journey bar's carved stone, the same fittings
     '.hmroot .hmtools',
     // PLUS-DRESS (2026-09-26, Mac: "ensure any of the new UI elements are also a part of how enhanced plus looks"): the
@@ -80,10 +83,16 @@ export const FRAME_ROLES = {
     // BOUNTY1: the bounty board and its payday notice - the Broker's carved frame
     'body .bounty-win',
     // NOTICE1: the Notice Board - the cork sits inside the same carved frame
-    'body .notice-win'],
+    'body .notice-win',
+    'body .aw-win',   // ARENA3: the Arena window - the Notice Board's carved frame
+    'body .lgs-win'],   // LEGACY3: the Succession - who carries the line on
   // the talk panel is a .px-win whose own ground rule outweighs .px-win's
   windowGround: ['.talk-shell .talk-panel'],
-  panel: ['body .rvncard', '.pack-shell .fate-confirm', '.px-sys .rvn-row', '.px-sys .cmp-row',   // REVENANT-PAGE / COMPANION-ROSTER: a row is a card, never a press (the 2026-10-02 audit: the tile's hover and its sink) '.port-host .port-card', '.pack-shell .statflip-back', '.pack-shell .packdetail .card', '.pack-shell .card', '.hmcard', '.px-sys .card', '.px-sys .dcard',
+  // REVENANT-PAGE / COMPANION-ROSTER: a row is a card, never a press (the 2026-10-02 audit: the tile's hover and its sink);
+  // HOLDINGS: a horse's, a wagon's, a ship's card and a refit's - cards, never presses. AUDIT HOLDINGS C1: each note on a
+  // line of its own - one written mid-line made every selector after it a comment
+  panel: ['body .rvncard', '.pack-shell .fate-confirm', '.px-sys .rvn-row', '.px-sys .cmp-row', '.px-sys .hld-row', '.px-sys .hld-refit', '.px-sys .fam-node', '.px-sys .fam-card', '.px-sys .fam-hallrow', 'body .lgs-card',   // LEGACY3: a person's plate, their card, a house in the Hall
+     '.port-host .port-card', '.pack-shell .statflip-back', '.pack-shell .packdetail .card', '.pack-shell .card', '.hmcard', '.px-sys .card', '.px-sys .dcard',
     '.shell .card', '.shell .dcard', '.notice', '.inputbox', '.lv-note', '.cr-shell .cr-entry',
     '.cr-shell .cr-sharebox', '.shell .ft-rail', '.shell .look-panel',
     // PLUS3: the trade counter's item-detail readout and the trade/tavern confirm boxes - the same
@@ -109,7 +118,10 @@ export const FRAME_ROLES = {
     'body .broker-card',
     // NAV-F: the helm's readout (ui/navalHud.js) - the ship's plate and the target card, boxes over the sea
     'body .dfnaval-plate', 'body .dfnaval-card',
-    'body .bounty-card'],   // BOUNTY1: the notice read whole, the reward box
+    'body .bounty-card',   // BOUNTY1: the notice read whole, the reward box
+    'body .arena-plate',   // ARENA2: the versus bar's plate - a stone panel over the sand
+    'body .aw-card',
+    '.px-win .card.acctin ul.acctfacts.acctrecord li'],   // PROFILE-MENU: the profile's record, a tile a deed   // ARENA3: the Arena window's cards - a bout, a tier, a banner, a board, a rule   // ARENA2: the versus bar's plate - a stone panel over the sand
   // panels that carry a brass edge on the left as their own mark
   panelAccent: ['body .rvncard', '.notice', '.inputbox', 'body .dfsocial-toast', 'body .dfdecor-bar'],   // PLUS-DRESS: the two that wore a brass line
   button: ['.port-host .port-btn', '.pack-shell .statflip-btn', '.inv-info .act', '.pbind .act', '.px-sys .act', '.shell .act', '.px-win .card .act', '.pack-shell .act', '.px-setwrap .act',
@@ -120,7 +132,10 @@ export const FRAME_ROLES = {
     'body .dfsocial-btn', 'body .dfsocial-close', 'body .dfprofile-close', '.dlg-shell .dlg-btn',
     'body .broker-shell .act',   // SET7: the Broker's Buy and Close
     'body .bounty-shell .act',   // BOUNTY1: Take, Give up, Share, Close, Take the reward
+    'body .lgs-shell .act',   // LEGACY3: the Succession's choices and the line's end
     'body .notice-shell .act',   // NOTICE1: Pin a note, Pin it up, Report, Take it down, Close
+    'body .aw-shell .act',   // ARENA3: the Arena window's tabs, Watch, Wager, Fight, the stakes, Close
+    'body .arena-shout',   // ARENA4b: the stands' Cheer and Boo under the versus bar (ui/arenaHud.js)
     // PLUS3: the trade counter and the tavern panel (and the merchant/repair popup, which shares
     // .tavern-shell) never picked up a scoped role - their `.act` buttons fell through to the bare
     // base rule (flat outline, no bevel), which is the "still looks native" the shelf and the
@@ -133,18 +148,30 @@ export const FRAME_ROLES = {
     '.sb-shell .act', '.cr-shell .act',
     // PLUS6: the shop's category tabs are buttons now (the examples' stone buttons), the chosen one brass
     '.trade-shell .packtab',
-    // PLUS8: the journey bar's Map / Camp / Exit and the time stepper's two presses
-    '.travelpanel-act', '.travelpanel-step',
+    // PLUS8: the journey bar's Map / Camp / Exit (RATE-LAW: the time stepper's two presses are gone)
+    '.travelpanel-act',
     // OW-THEME: the Overworld's Return; OW-PATH: and its Roads / Free switch
     '.tview-back', '.tview-mode', '.tview-filter', '.tview-map',
+    // PACE-DIALS: the speed dials' steps (the Overworld's block, the journey bar, the other skins' box); WAYPOINTS: the
+    // followed rows' Go and unfollow, the right-click menu's presses, its kinds and its swatches
+    '.tview-pace-step', '.travelpanel-pace-step', '.pbox-pace-step', '.tview-wp-go', '.tview-wp-x',
+    '#wp-menu .wpm-btn', '#wp-menu .wpm-kind',
     // CSA-L: the helm's presses - the sails, the trim, the lanterns, the time, the position, leaving
     '.helmpanel-btn',
+    // STEED-UI: the saddle's presses - the feed, the apple, the kit, the cargo, the Stable, the view, getting down
+    '.saddlepanel-btn',
     // PLUS-MAP: the 3D map's turn, tilt, floor and view buttons
     '.hmroot .hmtool',
     // PLUS-DRESS: the page's, the F-menu's (its Cancel stays a line of text), the duel's and the decorator's
     'body .dfpage-btn', 'body .dfpeer-btn:not(.cancel)', 'body .dfduel-btn', 'body .dfprofile-duel', 'body .dfdecor-btn', 'body .dfdecor-open',
-    'body .dfnaval-btn'],   // NAV-F: the plunder window's presses
-  primary: ['.lv-ok', '.hmroot .act:not(.hmtool)', 'body .dfdecor-place', 'body .bounty-shell .act.primary', 'body .notice-shell .act.primary',   // BOUNTY1: Take bounty and Take the reward in brass   // PLUS-MAP: the map's tools are plain stone   // PLUS-DRESS: Place is what the decorator is for
+    'body .dfprofile-wed',   // LEGACY7 part three: the inspect card's Propose
+    'body .dfnaval-btn',   // NAV-F: the plunder window's presses
+    // PLUS-MENU (2026-10-07, Mac: "give the main menu the enhanced plus UI treatment"): the front door's doors - stone
+    // slabs that go brass under the pointer, as every other Plus press does (AUDIT PLUS-MENU M3: the System tab's list
+    // named beside them was `.px-menu.px-compact`, which nothing builds - that list is the rail's rows, the qrow role)
+    '.px-menu .doorbtn'],
+  primary: ['.lv-ok', '.hmroot .act:not(.hmtool)', 'body .dfdecor-place', 'body .bounty-shell .act.primary', 'body .lgs-shell .act.primary', 'body .notice-shell .act.primary',
+    'body .aw-shell .act.primary',   // ARENA3: Fight and the wager placed - what the window is for   // BOUNTY1: Take bounty and Take the reward in brass   // PLUS-MAP: the map's tools are plain stone   // PLUS-DRESS: Place is what the decorator is for
     'body .dfnaval-take'],   // NAV-F: Take all (and a raid's Sail on) - what the plunder window is for
   // PLUS-DRESS: a press that COSTS something - leave or disband a guild, remove a member, challenge a player - the
   // button in blood rather than brass (the low-health frame's red). Each is a button above as well; this is its edge.
@@ -162,28 +189,38 @@ export const FRAME_ROLES = {
     '.hmpick',
     'body .dfdecor-chip',   // PLUS-DRESS: the decorator's filters and modes - pickable cells, the chosen one brass
     'body .dfnaval-choice'],   // NAV-F: the captor's three choices - the one taken brass
-  chip: ['body .rvncard-rank', '.px-sys .rvn-rank', 'body .rvncard-mood', '.px-sys .rvn-mood', '.pack-shell .fate-mood', '.px-sys .cmp-rank', '.px-sys .cmp-mood', '.hud-qspell', '.pack-shell .sf-tile', '.pack-shell .sf-pill', '.hud-qstag', '.hud-readied', '.lv-note-key',   // (UI3: the effect and need chips are the status widget's tiles now)
+  // HOLDINGS: where a holding is (`.hld-state`)
+  chip: ['body .rvncard-rank', '.px-sys .rvn-rank', '.px-sys .hld-state', '.px-sys .fam-chip',   // LEGACY3: a person's state
+     'body .rvncard-mood', '.px-sys .rvn-mood', '.pack-shell .fate-mood', '.px-sys .cmp-rank', '.px-sys .cmp-mood', '.hud-qspell', '.pack-shell .sf-tile', '.pack-shell .sf-pill', '.hud-qstag', '.hud-readied', '.lv-note-key',   // (UI3: the effect and need chips are the status widget's tiles now)
     '.shell .subbtn .count', '.hb .hb-caption',
-    'body .dfnaval-chip', 'body .dfnaval-gun'],   // NAV-F: the plate's fire/brace chips and the battery rose - readouts, never pressed
-  well: ['body .rvncard-face', '.px-sys .rvn-face', '.pack-shell .fate-face', '.px-sys .cmp-face', '.px-sys .cmp-slot', '.trade-shell .packcol', '.pack-shell .sf-sec', '.shell .ft-search', '.shell .ft-tile-drawer',   // FT18: the Features search and a tile's opened drawer
+    'body .dfnaval-chip', 'body .dfnaval-gun',   // NAV-F: the plate's fire/brace chips and the battery rose - readouts, never pressed
+    'body .arena-timer', 'body .arena-tag',
+    'body .aw-chip'],   // ARENA3: the Arena window's titles, banners, laurels, odds and states - readouts   // ARENA2: the bout's clock and the crowd's darling/villain marks - readouts
+  // HOLDINGS: a holding's picture, a name's field (`.hld-art`, `.hld-field`)
+  well: ['body .rvncard-face', '.px-sys .rvn-face', '.px-sys .hld-art', '.px-sys .hld-field', '.px-sys .fam-view', '.px-sys .fam-card .fam-face', 'body .lgs-face',   // LEGACY3: the tree's ground, the card's portrait
+     '.pack-shell .fate-face', '.px-sys .cmp-face', '.px-sys .cmp-slot', '.trade-shell .packcol', '.pack-shell .sf-sec', '.shell .opt-search', '.shell .ft-tile-drawer',   // FT18: the Features search and a tile's opened drawer
     '.port-host .port-field', '.port-host .port-canvas', '.port-host .port-picture img', '.port-host .port-pictureword', '.wizard .namebox', '.sb-shell .sb-rename input', '.cr-shell .cr-compose input', '.hmsearch input',
     '.talk-face', '.pack-shell .figure-doll', '.pack-shell .wornmap-doll.noart', '.shell .look-pic',
     '.shell .dcard code', '.px-setwrap .dcard code', '.px-meter', '.shell .swatch', '.px-setwrap .swatch',
-    // PLUS8: the journey bar's time readout - the x40 sits in a socket between its two presses
+    // PLUS8: the journey bar's time readout - the x100 sits in a socket (RATE-LAW: its two presses are gone)
     '.travelpanel-accel',
+    // PACE-DIALS: the speed dials' rate, in the same socket
+    '.tview-pace-num', '.travelpanel-pace-num', '.pbox-pace-num',
     // OW-THEME: the Overworld's compass - its needle sunk in a socket, as the journey bar's clock is
     '.tview-compass',
     // PLUS-DRESS: the page's leaf, the decorator's list, preview, thumbnails and search, the party's portraits
     'body .dfpage-leaf', 'body .dfdecor-list', 'body .dfdecor-preview', 'body .dfdecor-thumb', 'body .dfdecor-search', 'body .dfparty-face',
     'body .dfnaval-holdlist'],   // NAV-F: a taken ship's hold, sunk into her window
-  input: ['.shell .ft-search', '.wizard .namebox', '.sb-shell .sb-rename input', '.cr-shell .cr-compose input', '.hmsearch input',
-    'body .dfsocial-field', 'body .dfchat-input', 'body .dfdecor-search'],
+  input: ['.shell .opt-search', '.wizard .namebox', '.sb-shell .sb-rename input', '.cr-shell .cr-compose input', '.hmsearch input',
+    'body .dfsocial-field', 'body .dfchat-input', 'body .dfdecor-search',
+    '.tview-wp-pick', '#wp-menu input.wpm-name'],   // WAYPOINTS: the follow dropdown and the menu's name
   meterFill: ['.px-fill'],
   header: ['.port-host .port-head', '.px-win .px-tabs', '.talk-head', '.sb-shell .sb-top', '.cr-shell .sb-top', '.trade-shell .sb-top',
     'body .broker-head',   // SET7: the Broker's header - who, the purse, the turn of the day
     'body .dfnaval-winhead',   // NAV-F: the prize's name, her colours and her captain
     'body .bounty-head',   // BOUNTY1: the board's header - the town, the day's turn
     'body .notice-head',   // NOTICE1: the Notice Board's header - the town, the notes up
+    'body .aw-head',   // ARENA3: the Arena window's header - the season, your name, your title and banner
     '.tavern-shell .sb-top', '.pack-shell .pack-id', '.hmbox-title', '.loot-win .remotehead',
     // PLUS4: the shelf's own "On the shelf / N items" band - the same header a loot window's
     // remotehead already wears, just never scoped for the trade counter's own copy of that markup
@@ -205,7 +242,8 @@ export const FRAME_ROLES = {
     'body .dfdecor-row',   // PLUS-DRESS: the decorator's catalogue
     'body .broker-offer',   // SET7: the Broker's offers
     'body .dfnaval-item',   // NAV-F: a taken ship's hold, a line a piece
-    'body .bounty-post'],   // BOUNTY1: the board's notices
+    'body .bounty-post',   // BOUNTY1: the board's notices
+    'body .aw-tier'],   // ARENA3: the ladder's ten tiers, a line each
   // the fading wing rules and dividers of the quest page
   wing: ['.px-qwing'],
   wingFlip: ['.px-qwing.px-flip'],
@@ -222,7 +260,7 @@ export const FRAME_ROLES = {
   square: ['body .dfsocial', 'body .dfprofile-card', 'body .dfchat-box', 'body .dfsocial-btn', 'body .dfsocial-close',
     'body .dfprofile-close', 'body .dfsocial-field', 'body .dfchat-input',
     // PLUS-DRESS: and everything the lane grew since
-    'body .dfsocial-toast', 'body .dfsocial-badge', 'body .dfsocial-letter', 'body .dfprofile-renown', 'body .dfprofile-duel',
+    'body .dfsocial-toast', 'body .dfsocial-badge', 'body .dfsocial-letter', 'body .dfprofile-renown', 'body .dfprofile-duel', 'body .dfprofile-wed',
     'body .dfpage-card', 'body .dfpage-leaf', 'body .dfpage-btn', 'body .dfpeer-card', 'body .dfpeer-btn',
     'body .dfduel-toast', 'body .dfduel-btn', 'body .dfdecor-card', 'body .dfdecor-open', 'body .dfdecor-search', 'body .dfdecor-chip',
     'body .dfdecor-list', 'body .dfdecor-thumb', 'body .dfdecor-preview', 'body .dfdecor-btn', 'body .dfdecor-bar'],
@@ -457,6 +495,7 @@ ${list(r.wingFlip)} { -webkit-mask-image: linear-gradient(90deg, #000, transpare
 /* THE HUD'S OTHER TRACKS (target, breath) wear the vitals' frame */
 .hud-track { border-color: ${RAISED}; background-color: rgba(8,9,12,0.85);
   box-shadow: ${RING}, 2px 2px 0 1px rgba(0,0,0,0.45); }
+.hud-foe .hud-track { box-shadow: ${RING}; }   /* FOE-SHADOW (2026-10-06, the player: "dont let the foe health bar have 2 shadows"): the ring alone */
 .hud-foe .hud-fill { background: linear-gradient(180deg, #f2a597 0 1px, #c8483a 1px calc(100% - 1px), #7a2019 calc(100% - 1px)); }
 .hud-breath .hud-fill { box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.35); }
 .hud-compass { border-bottom-color: ${T.stoneLit}; box-shadow: 0 2px 0 rgba(5,6,8,0.55); }
@@ -565,6 +604,18 @@ const rgbOf = (hex) => {
   const h = hex.replace('#', '');
   return `${parseInt(h.slice(0, 2), 16)}, ${parseInt(h.slice(2, 4), 16)}, ${parseInt(h.slice(4, 6), 16)}`;
 };
+/** AUDIT HAUL-CARDS C4 (moved here from ui/pickupFeed.js at LOOT-BANNER, its second reader - ui/lootBanner.js): a HUD
+ *  surface that is words over the world (brass, parchment, the tiers' colours) on a veil lighter than this - Stone's panel,
+ *  0.10 relative luminance - reads at 2:1; such a theme's veil is its ink, every other its panel. */
+export const HUD_VEIL_LIGHT = 0.06;
+/** A colour's relative luminance (WCAG). */
+const luminance = (hex) => {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(String(hex).slice(i, i + 2), 16) / 255).map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+/** The veil a theme lays under a HUD surface's words: its panel, or its ink where the panel is too light. */
+export const hudVeil = (th) => (th.ink && luminance(th.panel) > HUD_VEIL_LIGHT ? th.ink : th.panel);
+
 export const PLUS_THEMES = Object.freeze({
   slate: { name: 'Slate', swatch: '#171b21' },   // the kit as it stands
   stone: { name: 'Stone', swatch: '#6a6a64', ink: '#3c3c38', slate: '#4a4a45', iron: '#77776f',
@@ -647,6 +698,86 @@ export const FRAME_CSS = `${frameCss()}
 /* ── PLUS2: THE COLOURS (after the kit, so a theme's ground wins by the page attribute) ── */
 ${THEME_CSS}
 `;
+
+/**
+ * PLUS-SITE (2026-10-07, Mac: "do the same thing for our website. A proper detailed overhaul"): THE KIT, FOR THE PAGE
+ * THAT RUNS NO SCRIPT AND CARRIES NO PICTURE.
+ *
+ * The website (index.html) wears the game's tokens, faces and night, injected at serve and build by
+ * scripts/landingHtml.mjs - and now the game's stone and brass too, the same roles in the same tones as this kit: what
+ * you PRESS is a raised stone slab that goes brass (Play, the one press the page is for, in brass), a section is a
+ * carved window, a box inside it a panel, a figure's socket a well. Generated here from FRAME_TONES, so the site and
+ * the game cannot carve two different stones.
+ *
+ * ONE DIFFERENCE, AND IT IS THE PAGE'S LAW: the site may carry no url() (test/landing.test.js - a page about the game
+ * draws nothing but CSS), and the game's window frame is a picture (frameSvg's border-image). So a window here is cut
+ * from borders and shadows - the lit and shaded bevel, the outline, the engraved inner line, the hard drop - and its
+ * brass fittings, rivet and all, are solid gradients laid at its four corners on a pseudo-element. Paint, like the kit:
+ * no width, padding or size is written here; the page's own sheet gives each box its edge and room.
+ */
+export const SITE_ROLES = Object.freeze({
+  window: ['main > section'],
+  header: ['main > section > h2'],
+  panel: ['.cols > div', '.grid > div', '.step', '.qa > div'],
+  button: ['.plaque', '.ask', '.doorlinks a'],
+  primary: ['.doorplaques .plaque:first-child'],
+  well: ['.step::before'],
+});
+/** The fitting's side: frameSvg's own F (11) and its outline, at the site's scale - large enough to read at a corner. */
+export const SITE_FITTING = 16;
+/** One brass fitting's layers at a corner (`x`, `y` the background-position keywords), top first: the rivet's lit
+ *  pixel and its dark ring, the brass body lit along its top and left and shaded along its bottom and right, and the
+ *  outline under all of it - frameSvg's fitting, drawn square in solid gradients. */
+const fittingAt = (x, y, t = T) => {
+  const F = SITE_FITTING;
+  const at = (c, dx, dy, w, h) => `linear-gradient(${c}, ${c}) ${x} ${dx}px ${y} ${dy}px / ${w}px ${h}px no-repeat`;
+  const r = F / 2 - 3;   // the rivet's ring, 6px, centred
+  return [
+    at(t.brassHi, r + 2, r + 2, 2, 2), at(t.brassDark, r, r, 6, 6),
+    at(t.brassHi, 1, 1, F - 2, 2), at(t.brassHi, 1, 1, 2, F - 2),
+    at(t.brassLo, 1, F - 3, F - 2, 2), at(t.brassLo, F - 3, 1, 2, F - 2),
+    at(t.brass, 1, 1, F - 2, F - 2), at(t.outline, 0, 0, F, F),
+  ];
+};
+export function siteKitCss(r = SITE_ROLES, t = T) {
+  const pressable = [...r.button, ...r.primary];
+  const fittings = [['left', 'top'], ['right', 'top'], ['left', 'bottom'], ['right', 'bottom']].flatMap(([x, y]) => fittingAt(x, y, t));
+  return `/* ── PLUS-SITE: THE STONE-AND-BRASS KIT (ui/enhancedFrame.js siteKitCss), the game's tones ── */
+/* WINDOW - carved stone: the bevel lit from the top left, the outline, the engraved line inside, the hard drop */
+${list(r.window)} {
+  border-color: ${t.stoneHi} ${t.stoneDim} ${t.stoneDark} ${t.stoneLit};
+  background: ${GRAIN}, ${t.ground};
+  box-shadow: 0 0 0 1px ${t.outline}, 0 0 0 3px ${t.stoneLo}, 0 0 0 4px ${t.outline}, inset 0 0 0 1px ${t.outline},
+    inset 0 0 0 2px #16140f, 6px 6px 0 4px rgba(0,0,0,0.42); }
+/* ...and its brass fittings, one at each corner, standing over the stone as the game's do */
+${list(r.window, '::before')} {
+  content: ''; position: absolute; inset: -${SITE_FITTING / 2 + 2}px; pointer-events: none;
+  background: ${fittings.join(',\n    ')}; }
+/* HEADER - the band that names a window: a lit ground over a groove */
+${list(r.header)} {
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0) 70%);
+  box-shadow: 0 2px 0 ${t.outline}, 0 3px 0 ${t.groove}; }
+/* PANEL - a box inside a window: a stone bevel and an engraved inner line */
+${list(r.panel)} {
+  border-color: ${RAISED};
+  background-color: ${t.groundPanel};
+  box-shadow: ${RING}, inset 0 0 0 1px rgba(5,6,8,0.75), inset 0 3px 0 -1px rgba(255,255,255,0.04), 3px 3px 0 1px rgba(0,0,0,0.4); }
+/* BUTTON + PRIMARY - raised; brass under the pointer and the keyboard; sunk while held */
+${list(pressable)} {
+  border-color: ${RAISED};
+  background-color: ${t.groundButton}; background-image: ${LIT_BAND};
+  box-shadow: ${RING}, 2px 2px 0 1px rgba(0,0,0,0.45); }
+${list(r.primary)} { border-color: ${BRASS}; background-color: #2a2217; }
+${list(pressable, ':hover')},
+${list(pressable, ':focus-visible')} { border-color: ${BRASS}; background-color: ${t.groundButtonHi}; background-image: ${LIT_BAND}; }
+${list(r.primary, ':hover')}, ${list(r.primary, ':focus-visible')} { background-color: #3a2e1c; }
+${list(pressable, ':active')} { border-color: ${SUNK}; translate: 1px 1px; box-shadow: ${RING}, inset 2px 2px 0 rgba(0,0,0,0.5); }
+/* WELL - sunk into the surface */
+${list(r.well)} { border-color: ${SUNK}; background-color: rgba(4,5,7,0.7); box-shadow: ${RING}, inset 2px 2px 0 rgba(0,0,0,0.5); }
+@media (prefers-reduced-motion: reduce) { ${list(pressable, ':active')} { translate: none; } }
+`;
+}
+export const SITE_KIT_CSS = siteKitCss();
 
 /**
  * LAYOUT1: THE BUTTON ROWS. The one part of the kit that DOES move

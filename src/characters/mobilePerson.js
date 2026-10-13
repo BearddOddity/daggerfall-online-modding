@@ -21,6 +21,7 @@
 // locations - DFU samples the terrain collider).
 
 import { mobileOrientation } from './mobileUnit.js';
+import { REGION_RACES } from '../formats/mapsTables.js';   // REGIONAL-FOLK: the region's race, FALL.EXE's
 
 export const PERSON_MOVE_SPEED = 1.3;          // movementSpeed
 export const PERSON_IDLE_DISTANCE = 2.5;       // idleDistance
@@ -52,6 +53,20 @@ export const PERSON_FACE_RECORDS = Object.freeze({
   Nord: { male: [240, 264, 168, 192], female: [72, 0, 48, 0] },
   Breton: { male: [192, 216, 288, 240], female: [72, 72, 24, 72] },
 });
+/** PopulationManager.cs:94: the walkers' race is the location's CLIMATE's People (ClimateSettings.People, FactionFile's
+ *  numbering) - the tables' key above. */
+export const RACE_OF_PEOPLE = Object.freeze({ 0: 'Nord', 2: 'Redguard', 3: 'Breton' });
+/** @param {number|undefined|null} people */
+export const raceOfPeople = (people) => RACE_OF_PEOPLE[/** @type {0|2|3} */ (people)] ?? 'Breton';
+/** REGIONAL-FOLK: FALL.EXE names the region Redguard (REGION_RACES 1). @param {number|undefined|null} region */
+export const redguardRegion = (region) => Number.isInteger(region) && REGION_RACES[/** @type {number} */ (region)] === 1;
+/** REGIONAL-FOLK (FIELD BUGS 2026-10-10, the Discord's "Add Regional NPCs"; Port-Ledger A): THE RACE A TOWN'S WALKERS
+ *  WEAR. DFU dresses them by the climate (above) and names them by the REGION (MobilePersonNPC.cs:214, FALL.EXE's
+ *  REGION_RACES), so Sentinel and the Dragontail Mountains walked Breton and Nord bodies under Redguard names. A
+ *  Redguard region's walkers are Redguards; every other region's are the climate's, as DFU's. MERCHANT-YARDS: a town's
+ *  yard keepers wear it too (scenes/world.js merchantYardSitesFor).
+ *  @param {number|undefined|null} people @param {number|undefined|null} region */
+export const walkerRace = (people, region) => (redguardRegion(region) ? 'Redguard' : raceOfPeople(people));
 
 // ---- MobilePersonMotor.Update's POLITENESS GATE (:216-230) ----------
 
@@ -112,9 +127,10 @@ export function personWantsToStop({
 const DIRS = [[0, 1], [0, -1], [1, 0], [-1, 0]];
 const DIR_YAW = [0, Math.PI, Math.PI / 2, -Math.PI / 2];
 
-// The MoveAnims wheel (records 0-4 mirrored - the monster layout).
-const MOVE_RECORDS = [0, 1, 2, 3, 4, 3, 2, 1];
-const MOVE_FLIPS = [false, false, false, false, false, true, true, true];
+// The MoveAnims wheel (records 0-4 mirrored - the monster layout). Exported for the living world's resident
+// (residentWalker.js), which wears the same wheel on a yaw of its own.
+export const MOVE_RECORDS = Object.freeze([0, 1, 2, 3, 4, 3, 2, 1]);
+export const MOVE_FLIPS = Object.freeze([false, false, false, false, false, true, true, true]);
 
 export class MobilePerson {
   /**

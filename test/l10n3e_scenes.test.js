@@ -340,6 +340,7 @@ test('L10N3e scenes: the arrival line after a teleport or a journey (world.js, t
 test('L10N3e scenes: the repair, buy and sell lists and the repair note name an item as shown (worldModes.js _itemLabel; DFU\'s LongName, DaggerfallTradeWindow.cs:536) - its own name while still its template\'s, a nameless one\'s template by its index; a made name stands', () => {
   const label = mount(`${declSrc('worldModes.js', '_itemLabel')}\nreturn _itemLabel;`, {
     questLetterName, questBridge: null, shownItemName, templateByIndex, getLocalizedItemName: tm.getLocalizedItemName,
+    wagonItemName: () => null,   // WAGONS2 (main): a wagon's own name first - none of these is one
   });
   const show = () => [
     label({ group: 'Weapons', templateIndex: 113, name: 'Dagger' }),
@@ -524,6 +525,7 @@ function npcHost() {
     npcSession: { talkToStaticNPC: (t) => { partners.push(t.displayName); return { kind: 'talk', greeting: 'Well met.' }; }, startNewConversation() {} },
     openQuestOfferFor() {}, mountServiceWindow() {}, interiorOverlay: null, mode: 'exterior', staticNpcPortrait: () => null,
     localizedText: tm.localizedText, ctx: { npcTargets: () => [{ npcData: lord, archive: -1, record: -1 }] },
+    officeName: () => null,   // ARENA-FIX (main): an office's name first - the lord holds none
   });
   return { ...api, said, plates, partners };
 }
@@ -546,10 +548,11 @@ test('L10N3e scenes: a named lord is shown by a translation\'s name for his fact
   }, 'a commoner\'s seeded name is the same in every language; the partner the engine keys by is canonical');
   // the other two plaques and the other talk door sit inside flows that need the whole host: by source
   const wm = host('worldModes.js').text;
-  assert.equal((wm.match(/const display = npcShownName\(staticNpcData\(pn, staticNpcSceneCtx\(pn\)\)\);/g) ?? []).length, 3, 'all three plaques');
+  // ARENA-FIX (main): an office's name stands first where one does (officeName), the shown name else
+  assert.equal((wm.match(/const display = officeName\(pn\) \?\? npcShownName\(staticNpcData\(pn, staticNpcSceneCtx\(pn\)\)\);/g) ?? []).length, 3, 'all three plaques');
   assert.doesNotMatch(wm, /npcDisplayName\(staticNpcData\(pn, /, 'no plaque or Info line on the canonical name');
   assert.match(wm, /\{ data: npcData, isChildNPC: isChildNPCData\(npcData\), displayName \},/, 'the static door\'s partner: the canonical name');
-  assert.match(wm, /townTalk\.openTalkWindow\(talk\.greeting, \{ npcSeed: npcData\.nameSeed, npcName: npcShownName\(npcData\), portrait: staticNpcPortrait\(npcData\) \}\);/, 'and its plate, as shown');
+  assert.match(wm, /townTalk\.openTalkWindow\(talk\.greeting, \{ npcSeed: npcData\.nameSeed, npcName: officeName\(pn\) \?\? npcShownName\(npcData\), portrait: staticNpcPortrait\(npcData\) \}\);/, 'and its plate, as shown');
 });
 
 test('L10N3e scenes: the talk window\'s organizations are GetFactionName\'s (TalkManager.cs:3194, PersistentFactionData.cs:307-313) - world.js\'s dep, through the real topic tree; the revealed guild hall is GetGuildName\'s (ThievesGuild.cs:246, DarkBrotherhood.cs:255) in both hosts', () => {

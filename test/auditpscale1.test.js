@@ -17,6 +17,7 @@ import { createExteriorFoes, MAX_ACTIVE_ENCOUNTER_FOES } from '../src/scenes/ext
 import { validFoeRecord, CELL_PUPPETS_MAX, CELL_LOOSE_PUPPETS, PARTY_MAX } from '../src/net/wire.js';
 import { amGroupRollOwner, CAMP_SIZE, GROUP_ROLL_RADIUS } from '../src/systems/campEncounters.js';
 import { SOLITARY_TYPES } from '../src/characters/mobileFactions.js';
+import { trivialOnRoad, roadCompany, wandererCount } from '../src/systems/roadEncounters.js';   // WILD-ROAD (FIELD BUGS 2026-10-04e): the count's one home now
 import { registerFormulaOverride, calculateAttackDamage } from '../src/combat/formulas.js';
 import { ARTIFACTS, SPECIAL_ARTIFACT_HANDLERS, onPlayerStruckByEnemy, registerFoeDoor } from '../src/systems/artifactEffects.js';
 import { ENCHANTMENT_TYPES as T } from '../src/formats/magicDef.js';
@@ -232,7 +233,7 @@ test('AUDIT PSCALE1 the dungeon, mounted: a layout foe is as tough as the player
   assert.match(S, /if \(!f\.dead && _sharedFoe\(f\)\) \{ const n = fightN\(f\); if \(n > 1\) r\.n = n; \}/, 'the host streams n');
   assert.match(S, /f\._fightN = r\.n \?\? 1;/, 'a joiner reads n');
   assert.match(S, /if \(fromPlayer\) noteFighter\(foe, peer \? peerId : PARTY_ME, performance\.now\(\)\);/, 'the door names every player\'s blow a fighter');
-  assert.match(S, /damageFoe\(f, dmg, at, dir, \{ fromPlayer: true, peer: true, kind, peerId: id, whole: data\.z === 1 \}\);/, 'a joiner\'s kill is a kill at the host');
+  assert.match(S, /damageFoe\(f, dmg, at, dir, \{ fromPlayer: true, peer: true, kind, peerId: id, whole: data\.z === 1(?:, \.\.\.\(data\.wc != null \? \{ wc: hitClassOf\(data\) \} : \{\}\))? \}\);/, 'a joiner\'s kill is a kill at the host');
 });
 
 test('AUDIT PSCALE1 the count\'s other readers: the outdoor roll counts the partymates within the radius (outdoors only - the dungeon arm is gone), and a shared foe\'s Renown bonus counts no more partymates than fought it (mutants: strangers counted, a far mate counted, the bonus uncapped)', () => {
@@ -260,7 +261,9 @@ function stands(over = {}) {
     partyNear: () => [], walkMode: true, playerSpawned: true, intermittentEnemySpawn: () => ({ mobileType: over.mobileType ?? 7 }), _lastEncMinutes: 0,
     playerEntity: { isResting: false, level: 1 }, _musicInLocationRect: () => false, maps: { getClimateIndex: () => 0 }, playerTravelPixel: () => ({ x: 0, y: 0 }),
     SOLITARY_TYPES, partyExtraFoes, partySize: () => 1, effectiveLevel: (e) => e?.level ?? 1,   // SOFTCAP2: mentor mode's level, a leaf read
+    getPref: () => undefined, onTheRoad: () => false, trivialOnRoad, roadCompany, wandererCount,   // WILD-ROAD: off the road - DFU's wanderer, the party's count
     _standEncounterFoe: (hit) => out.push(hit.mobileType), playerFeet: [0, 0, 0],
+    wildHere: () => false, WILD_GIANT_CHANCE: 0.15, WILD_GIANT: 16,   // WILD3: not in the open zone here
     revenantToReturn: () => null, now: 0,   // REVENANT: none due here (the tick's minute, above this slice)
     sharedClockOn: () => false, worldMinutes: () => 0,   // LIVED1: the spawn roll's sky (the world's clock online)
     spawns: true,   // AUDIT LIVED1b P1: the loop's own parameter - a solo tick asks for its wanderers
@@ -300,8 +303,9 @@ test('AUDIT PSCALE1 a camp or a pack grows by its own members, mounted - one mor
     const stood = [];
     const standCamp = mount(campMembersSrc, {
       placeFoeEnv: () => ({}), collider: {}, cam: { yaw: 0 }, fieldOfView: () => 1, entityOccupancy: () => () => false, _placingPool: () => [], campAnchorSpot: () => ({ x: 20, y: 0, z: 0 }),   // CAMP-FAR: main's anchor, a hundred metres out
-      LOOSE_FOE_PLACE_ATTEMPTS: 1, placeFoeFreely: () => ({ x: 1, y: 0, z: 1 }), _inAnyLocationRect: () => false, _nearRoad: () => false, _overDeepWater: () => false, CAMP_ROAD_CLEAR_M: 4,   // ROADS-CLEAR: no road here
+      LOOSE_FOE_PLACE_ATTEMPTS: 1, placeFoeFreely: () => ({ x: 1, y: 0, z: 1 }), _inAnyLocationRect: () => false, _nearRoad: () => false, _overDeepWater: () => false, _inRock: () => false, CAMP_ROAD_CLEAR_M: 4,   // ROADS-CLEAR: no road here; BOUNTY-ROCK: no rock
       partyGroupMembers, partySize: () => n, MAX_ACTIVE_ENCOUNTER_FOES, ENEMY_BASICS: {},
+      encounterCap: () => MAX_ACTIVE_ENCOUNTER_FOES,   // PVPDUNGEONS: exteriorFoes.js's cap, the open zone off here (wildHere() false)
       exteriorFoes: { newCampId: () => 1, spawnFoe: (mobileType) => { stood.push(mobileType); return Promise.resolve(null); } },   // OW6: the pool's counter
     }, `return (hit, feet) => ${fn.slice(fn.indexOf('{'))};`);
     standCamp({ mobileTypes, minDistance: 14, maxDistance: 26, spacing: 3, alertRadius: 9 }, [0, 0, 0]);
@@ -362,9 +366,10 @@ test('AUDIT PSCALE1 DOORS-1 at the sources and NET-2/NET-3 in the host: a Disint
   assert.match(strip(read('src/systems/effects.js')), /sinks\.hurt\(left, \{ whole: true \}\);/, 'a Disintegrate is a kill');
   // NET-2
   const W = strip(read('src/scenes/world.js'));
-  const pn = W.indexOf('const peersNear = () => {');
+  const pn = W.indexOf('const peersNear = ({ presenceOnly = false } = {}) => {');
   const seen = [];
-  const peersNear = mount(balanced(W, pn, '{', '}'), {
+  const peersNear = mount(W.slice(pn, W.indexOf('=> {', pn) + 3) + balanced(W, W.indexOf('=> {', pn) + 3, '{', '}'), {
+    modes: {}, csaPeers: { isBelowDeck: () => false },
     online: { room: 'world:3,12', status: 'open', peers: new Map([['bob-0002', { id: 'bob-0002', shown: { x: 1, y: 0, z: 1 } }]]), visible: (p, now) => { seen.push(now); return true; } },
     peerBodies: null, _peerHeights: new Map(), onlineToScene: (p) => [p.x, p.y, p.z],
   }, 'return peersNear;');
@@ -376,7 +381,7 @@ test('AUDIT PSCALE1 DOORS-1 at the sources and NET-2/NET-3 in the host: a Disint
   let dropped = 0;
   const hand = (over) => mount(balanced(W, hn, '{', '}'), {
     online: { room: 'world:3,12', sendFoes: (f) => { sentFrames.push(f); return true; } }, isCellRoom: (k) => String(k).startsWith('world:'), modes: { mode: 'exterior' },
-    peersNear: () => [{ id: 'bob-0002', feet: [5, 0, 5] }], exteriorFoes: { handOverFrame: (heirOf) => ({ f: [heirOf({ ai: { feet: [4, 0, 4] } })] }), dropOwnLive: () => (dropped = 2) }, isPrivateQuestFoe, ...over,
+    peersNear: () => [{ id: 'bob-0002', feet: [5, 0, 5] }], exteriorFoes: { handOver: (heirOf, send) => send({ f: [heirOf({ ai: { feet: [4, 0, 4] } })] }) ? (dropped = 2) : 0 }, isPrivateQuestFoe, ...over,
   }, 'return handOverFoes;')();
   assert.equal(hand({}), 2, 'my foes to the nearest player outside');
   assert.deepEqual(sentFrames.at(-1), { f: ['bob-0002'] });

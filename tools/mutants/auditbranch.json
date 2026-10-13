@@ -18,10 +18,10 @@
     ]
   },
   {
-    "name": "AUDIT-BRANCH-IL3-and-for-or",
+    "name": "AUDIT-BRANCH-IL3-seed-forgets-wagon",
     "file": "src/systems/horseCart.js",
-    "old": "    if (!recorded || !hitchedWagonPathInitialized) {",
-    "new": "    if (!recorded && !hitchedWagonPathInitialized) {",
+    "old": "      seed = wagonActive() ? [...wagonPosition()] : null;",
+    "new": "      seed = null;",
     "tests": [
       "test/audit_hcc_branch.test.js"
     ]
@@ -65,8 +65,8 @@
   {
     "name": "AUDIT-BRANCH-H3-post-skipped",
     "file": "src/scenes/world.js",
-    "old": "      if (hccPostDue) hccRuntimeOn()?.handlePostFastTravel();",
-    "new": "      void hccPostDue;",
+    "old": "try { if (hccPostDue) hccRuntimeOn()?.handlePostFastTravel(); }",
+    "new": "try { void hccPostDue; }",
     "tests": [
       "test/audit_hcc_branch.test.js"
     ]

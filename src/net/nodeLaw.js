@@ -51,7 +51,8 @@ const counts = (tree, herb, vein, boulder) => Object.freeze({ tree, herb, vein, 
 /** A wilderness pixel's nodes a day, by climate. The sea has none (Fishing's alone). BOULDERS (FIELD BUGS 2026-10-01, the
  *  service's acct47): the boulders 3 / 4 / 5 where they were 1 / 2 / 3 - a field's pieces hold one on each side now.
  *  MORE-NODES (2026-10-02, Mac: "increase all profession nodes", "Double"; acct48): the trees, the herb patches and the
- *  veins twice what they were - a day's sixty a profession is the bound, so it is the walk between nodes that halves. */
+ *  veins twice what they were - the walk between nodes halves (CAP-OFF: and with no day's cap, the nodes and the walk
+ *  between them are the day's whole bound). */
 export const NODE_COUNTS = Object.freeze({
   [CLIMATES.Woodlands]: counts(12, 8, 4, 3),
   [CLIMATES.MountainWoods]: counts(10, 6, 6, 4),
@@ -139,8 +140,9 @@ export const regionOk = (r) => Number.isSafeInteger(r) && r >= 0 && r < REGION_N
 export const nodeKey = ({ kind, x, y, day, slot }) => `${kind}:${x}:${y}:${day}:${slot}`;
 export const dveinKey = ({ dungeon, day, slot }) => `dvein:${dungeon}:${day}:${slot}`;
 /** PROF7: a body's id - `body:<day>:<id>`, the UTC day of the kill and twelve hex digits the killer's client drew at it
- *  (scenes/huntHost.js). Hunting is bounded, not witnessed (PROF0 6): the id is the client's word and the day's cap
- *  its bound - so it names no pixel, no dungeon and no foe, and the service reads none of it but the day. */
+ *  (scenes/huntHost.js). Hunting is bounded, not witnessed (PROF0 6): the id is the client's word and the hour's writes
+ *  and the day's rare hides its bound (CAP-OFF) - so it names no pixel, no dungeon and no foe, and the service reads
+ *  none of it but the day. */
 export const bodyKey = ({ day, id }) => `body:${day}:${id}`;
 export const BODY_ID_RE = /^[0-9a-f]{12}$/;
 const NODE_KEY_RE = /^(tree|herb|vein|boulder):(\d{1,3}):(\d{1,3}):(\d{1,6}):(\d{1,2})$/;
@@ -148,8 +150,8 @@ const DVEIN_KEY_RE = /^dvein:(\d{1,7}):(\d{1,6}):(\d{1,2})$/;
 const BODY_KEY_RE = /^body:(\d{1,6}):([0-9a-f]{12})$/;
 /** PROF8: a haul's id - `haul:<x>:<y>:<day>:<id>`, the map pixel the net was cast from, its UTC day and twelve hex
  *  digits the angler's client drew at the cast (scenes/fishHost.js). Fishing is bounded, not witnessed (PROF0 6): the
- *  pixel is the client's word, read for its ground (the sea's finds are a confirmed pixel's) and its day - the day's
- *  forty hauls the bound. */
+ *  pixel is the client's word, read for its ground (the sea's finds are a confirmed pixel's) and its day - the hour's
+ *  writes the bound (CAP-OFF: the day's forty hauls are gone). */
 export const haulKey = ({ x, y, day, id }) => `haul:${x}:${y}:${day}:${id}`;
 const HAUL_KEY_RE = /^haul:(\d{1,3}):(\d{1,3}):(\d{1,6}):([0-9a-f]{12})$/;
 /** A dungeon's identity, DFU's own: `MapTableData.MapId & 0xfffff` (formats/mapsFile.js). */
@@ -246,6 +248,14 @@ export const VEIN_TABLES = Object.freeze({
 export const DUNGEON_VEINS = row('metal:silver', 'metal:gold', 'ore:dwarven', 'metal:platinum', 'ore:adamantium');
 export const DEEP_MOONSTONE_CLIMATES = Object.freeze([CLIMATES.Woodlands, CLIMATES.HauntedWoodlands]);
 export const dungeonVeinTable = (climate) => (DEEP_MOONSTONE_CLIMATES.includes(climate) ? [...DUNGEON_VEINS, 'ore:moonstone'] : [...DUNGEON_VEINS]);
+/** UNWITNESSED-ORE (FIELD BUGS 2026-10-09e, the Discord's "Mining veins": "I mined about 200-300 veins of iron, but
+ *  there were not a single vein of silver, gold, platinum or mithril in the mountains"): THE TIER A VEIN ON GROUND NO
+ *  THREE WITNESSES HAVE VOUCHED FOR IS HELD TO - a dungeon's, 3, where it was a herb's 2. Held to 2, the Mountain's table
+ *  (Iron, then Silver at 3) stood Iron and nothing else on every pixel nobody else had worked, and the Mountain Woods'
+ *  never stood its Silver; a lone miner's word confirms nothing, so the far mountains never came to the rest. At 3 a
+ *  claimed Mountain anywhere is worth Silver at most - what a dungeon's deep vein already gives on anyone's word - and
+ *  Gold, Platinum, Mithril and a region's signature still wait on the witnesses. The herbs and the trees keep 2. */
+export const UNCONFIRMED_VEIN_TIER = 3;
 /** A dungeon's veins a day: 1 to 4. */
 export const DUNGEON_VEINS_MAX = 4;
 /** A region's signature ore (PROF0 4.7): the crowns' - Daggerfall's Moonstone on a pixel's first TWO veins, Wayrest's
@@ -284,8 +294,8 @@ export function veinSlots({ climate, region = null, confirmed = false }) {
   return nodeCount(climate, 'vein') + (sig?.slots ?? 0);
 }
 /**
- * ONE VEIN of a pixel's day: its law point (`u`, `v`), its tier and metal. A pixel not confirmed is held to tier 2 and
- * takes no signature. A confirmed one of a signature region holds its signature ore BESIDE the climate's veins, in the
+ * ONE VEIN of a pixel's day: its law point (`u`, `v`), its tier and metal. A pixel not confirmed is held to
+ * UNCONFIRMED_VEIN_TIER (3 - UNWITNESSED-ORE; it was 2) and takes no signature. A confirmed one of a signature region holds its signature ore BESIDE the climate's veins, in the
  * slots after them (Daggerfall's two) - AUDIT 29 A6: in their place, a Swamp's one vein was Wayrest's Mithril and a
  * novice there had no ore on any witnessed ground ("the crowns sit on the richest veins", 4.7, not the only ones). Null
  * where the climate holds no veins, or past the day's slots.
@@ -300,7 +310,7 @@ export function vein({ x, y, day, slot, climate, region = null, confirmed = fals
     const sig = /** @type {{ ore: string, slots: number }} */ (regionSignature(/** @type {number} */ (region)));
     return { slot, u, v, tier: tierOfKey(sig.ore), material: sig.ore, signature: true };
   }
-  const d = drawFromTable(table, unit('vein', x, y, day, slot, 3), unit('vein', x, y, day, slot, 4), confirmed ? 7 : 2);
+  const d = drawFromTable(table, unit('vein', x, y, day, slot, 3), unit('vein', x, y, day, slot, 4), confirmed ? 7 : UNCONFIRMED_VEIN_TIER);
   return d ? { slot, u, v, tier: d.tier, material: d.material, signature: false } : null;
 }
 /** Every vein of a pixel's day, slot 0 first - the climate's, then a signature's. */
@@ -329,7 +339,7 @@ export const dungeonVeinCount = (dungeon, day) => 1 + (nodeRoll('dvein', dungeon
 export function dungeonVein({ dungeon, day, slot, climate, confirmed = false }) {
   if (!dungeonOk(dungeon) || slot >= dungeonVeinCount(dungeon, day)) return null;
   const table = dungeonVeinTable(climate);
-  const d = drawFromTable(table, unit('dvein', dungeon, 0, day, slot, 3), unit('dvein', dungeon, 0, day, slot, 4), confirmed ? 7 : 3);
+  const d = drawFromTable(table, unit('dvein', dungeon, 0, day, slot, 3), unit('dvein', dungeon, 0, day, slot, 4), confirmed ? 7 : UNCONFIRMED_VEIN_TIER);
   if (!d) return null;
   return { slot, tier: d.tier, material: d.material, marker: unit('dvein', dungeon, 0, day, slot, 1), bearing: 2 * Math.PI * unit('dvein', dungeon, 0, day, slot, 2) };
 }
@@ -623,8 +633,8 @@ export const factConfirmed = (fact) => fact?.state === 'confirmed' || fact?.stat
 
 /**
  * WHAT A REGION'S COURT MAY ASK on a day: every herb its witnessed ground grows in the day's season - a confirmed
- * pixel's whole table, an unconfirmed one's tiers 1-2 - as the region's own group's material; its veins' metals by the
- * same rule, the region's signature ore on a confirmed pixel, Rough Stone where boulders stand (PROF2); its trees' logs
+ * pixel's whole table, an unconfirmed one's tiers 1-2 - as the region's own group's material; its veins' metals as
+ * the veins stand them (an unconfirmed pixel's to UNCONFIRMED_VEIN_TIER), the region's signature ore on a confirmed pixel, Rough Stone where boulders stand (PROF2); its trees' logs
  * by the same rule and its rare wood on a confirmed pixel (PROF4); each with the
  * material's own tier and value, ordered by key (a stable input for the draw).
  * @param {number} region
@@ -641,10 +651,11 @@ export function regionWritTable(region, pixels, season) {
     for (let t = 0; t < upTo; t++) {
       for (const h of table[t]) if (herbInSeason(h, season)) { const k = herbKey(h, region); if (k) keys.add(k); }
     }
-    // PROF2: the ground's metal and stone - its veins' (a confirmed pixel's every tier, an unconfirmed one's 1-2), its
-    // region's signature on a confirmed pixel, and Rough Stone where the climate has boulders. Never an ingot, Cut
-    // Stone or a gem: those are smelted, cut or found, not the ground's.
-    for (const k of VEIN_TABLES[p.climate] ?? []) if (tierOfKey(k) <= (p.confirmed ? 7 : 2)) keys.add(k);
+    // PROF2: the ground's metal and stone - its veins' (a confirmed pixel's every tier, an unconfirmed one's to
+    // UNCONFIRMED_VEIN_TIER - UNWITNESSED-ORE: the Court asks what the vein stands), its region's signature on a
+    // confirmed pixel, and Rough Stone where the climate has boulders. Never an ingot, Cut Stone or a gem: those are
+    // smelted, cut or found, not the ground's.
+    for (const k of VEIN_TABLES[p.climate] ?? []) if (tierOfKey(k) <= (p.confirmed ? 7 : UNCONFIRMED_VEIN_TIER)) keys.add(k);
     if (sig && p.confirmed) keys.add(sig.ore);
     if (nodeCount(p.climate, 'boulder') > 0) keys.add('stone:rough');
     // PROF4: the ground's woods - its trees' logs by the same rule, its rare wood on a confirmed pixel. Never a plank,
@@ -666,7 +677,9 @@ const writUnit = (day, region, slot, k) => gateHash(WRIT_SALT, day, region, slot
  * @param {number} day @param {number} region @param {number} count
  * @param {Array<{ material: string, tier: number, value: number }>} table
  */
-export function courtWrits(day, region, count, table) {
+/** CHAP2a: `draw(slot, k)` the writ's own dice - the Court's by default; a chapter's hall writs (npcChapterLaw.js
+ *  hallWrits) draw the same law from their own salt and faction. */
+export function courtWrits(day, region, count, table, draw = (/** @type {number} */ slot, /** @type {number} */ k) => writUnit(day, region, slot, k)) {
   if (!table?.length) return [];
   const tiers = [...new Set(table.map((m) => m.tier))].sort((a, b) => a - b);
   const high = tiers.filter((t) => t >= 5);
@@ -677,15 +690,15 @@ export function courtWrits(day, region, count, table) {
     if (slot === 0 || !low.length) tier = high.length ? high[high.length - 1] : tiers[tiers.length - 1];   // AUDIT 29 A10: the highest, as said
     else {
       const w = low.map((t) => WRIT_TIER_WEIGHTS[t - 1]);
-      let at = writUnit(day, region, slot, 1) * w.reduce((a, b) => a + b, 0);
+      let at = draw(slot, 1) * w.reduce((a, b) => a + b, 0);
       tier = low[low.length - 1];
       for (let i = 0; i < low.length; i++) { if (at < w[i]) { tier = low[i]; break; } at -= w[i]; }
     }
     const of = table.filter((m) => m.tier === tier);
-    const m = of[Math.floor(writUnit(day, region, slot, 2) * of.length)];
+    const m = of[Math.floor(draw(slot, 2) * of.length)];
     const [lo, hi] = WRIT_UNITS[tier];
     const steps = (hi - lo) / 10 + 1;
-    const units = lo + 10 * Math.floor(writUnit(day, region, slot, 3) * steps);
+    const units = lo + 10 * Math.floor(draw(slot, 3) * steps);
     out.push({ slot, material: m.material, tier, units, pay: writPay(units, m.value), renown: writRenown(tier, units) });
   }
   return out;

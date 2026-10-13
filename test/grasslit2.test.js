@@ -18,6 +18,7 @@ import { elDecode, elDecode3, elDecodeN, elEncode, elTonemapRGB, elAttenuation, 
 import { buildTerrainGrid, buildTerrainIndices, surfaceNormalAt } from '../src/world/terrainSurface.js';
 import { HEIGHTMAP_DIMENSION, TERRAIN_SIZE } from '../src/world/terrainSampler.js';
 import { packAdapt, unpackAdapt } from '../src/render/airPass.js';
+import { SHADOW_POINT_CASTERS } from '../src/render/shadowPass.js';
 import { glslFunctions } from './glsl.mjs';
 
 const src = (p) => readFileSync(new URL(`../src/${p}`, import.meta.url), 'utf8');
@@ -41,7 +42,7 @@ function vertex({ w = packHeightSlope(0.5, 0, 0, 0), sunDir = [0, 1, 0], moonDir
     uGFieldOrigin: [0, 0], uGFieldM: 1, uSnowGlobal: 0, uWindV: [0, 0], uSunScale: 0.6, uCamPos: [0, 0, 0], uIndirect: [0, 0, 0, 0], uIndirectColor: [0, 0, 0],
     uCloudShadowRect: [0, 0, 0, 0], uSunVP: [Array(16).fill(0), Array(16).fill(0), Array(16).fill(0)], uSunOrigin: [0, 0, 0, 0], uSunShadowParams: [0, 0, 0, 0], uSunTexel: [0, 0, 0, 0],
     // a caster's map answers `shadow` everywhere: its params name a far plane, its taps the value
-    uPointShadowParams: [[0, 0, 0, 50], ...zeros4(7)], uShadowIndex: Array(8).fill(-1), uCasterOf: casterOf ?? Array(EL_MAX_LIGHTS).fill(-1),
+    uPointShadowParams: [[0, 0, 0, 50], ...zeros4(SHADOW_POINT_CASTERS - 1)], uShadowIndex: Array(SHADOW_POINT_CASTERS).fill(-1), uCasterOf: casterOf ?? Array(EL_MAX_LIGHTS).fill(-1),   // FLICKER-FIX: sized by the casters (twelve), not a literal
     uLane: lane, uPointCount: (cell ?? lights.map((_, k) => k)).length,
     uPointIdx: Array.from({ length: GRASS_CELL_LIGHTS }, (_, k) => (cell ?? lights.map((_, j) => j))[k] ?? 0),   // AUDIT A1: the cell's list
     uPointLights: [...lights.map((l) => [...l.at, l.range]), ...zeros4(GRASS_MAX_LIGHTS - lights.length)],
@@ -204,7 +205,7 @@ test('GRASS-LIT2: the vertex stage still fits the vectors WebGL2 promises every 
     for (const v of names.split(',')) vectors += Number(v.match(/\[(\d+)\]/)?.[1] ?? 1) * (type === 'mat4' ? 4 : 1);
   }
   assert.ok(vectors <= 256, `${vectors} vectors at most`);
-  assert.equal(vectors, 212, 'the count the docs quote');
+  assert.equal(vectors, 221, 'the count the docs quote');   // FLICKER-FIX: 212 with eight casters - uPointShadowParams and uShadowIndex are twelve now (+8); MEADOW1: 221, the meadow's switch (+1)
   // the two const face tables are 12 more if a driver keeps a dynamically indexed const array in uniform storage
   assert.ok(vectors + 12 <= 256);
   assert.ok(GAME_GRASS_VS.includes(`uniform vec4 uPointLights[${GRASS_MAX_LIGHTS}];`) && GAME_GRASS_VS.includes(`uniform vec3 uPointColors[${GRASS_MAX_LIGHTS}];`));
@@ -352,7 +353,7 @@ test('GRASS-LIT2: the host reads the slope off the near grid\'s normals it keeps
   assert.ok(w.includes('return surfaceNormalAt(p.groundNormals, x - t[0], z - t[2], grassNormalScratch);'));
   // the mod's tile set, asked before the three are learned so they land in one step
   const learn = w.slice(w.indexOf('const drawnMeans = '), w.indexOf('const terrain = renderer.createTerrainSurface('));
-  assert.ok(learn.startsWith('const drawnMeans = grassRecords.has(groundArchive) ? null\n      : groundDrawnMeans.has(groundArchive) ? groundDrawnMeans.get(groundArchive)\n      : (await dfmodGroundLayers(groundArchive, groundTex.recordCount))?.map(tileMeanColour) ?? null;'));
+  assert.ok(learn.startsWith('const drawnMeans = grassRecords.has(groundArchive) ? null\n      : groundDrawnMeans.has(groundArchive) ? groundDrawnMeans.get(groundArchive)\n      : (await dfmodGroundLayers(groundArchive, groundTex))?.map(tileMeanColour) ?? null;'));
   assert.ok(learn.indexOf('await') < learn.indexOf('grassRecords.set(') && learn.includes('groundMeanColour.set(groundArchive, drawnMeans ?? layers.map(tileMeanColour));'));
   // AUDIT GRASS-LIT2 B2: the means are the UPLOADED layers' - taken beside the upload, not asked of the door again
   assert.ok(w.includes('if (labGrass) groundDrawnMeans.set(groundArchive, modLayers ? modLayers.map(tileMeanColour) : null);'));
@@ -377,7 +378,7 @@ test('GRASS-LIT2: the host reads the slope off the near grid\'s normals it keeps
 
 test('GRASS-LIT2: the shot hooks - the classic lane\'s tones by hand, and the heart of the deepest wood to look down on', () => {
   const w = src('scenes/world.js');
-  assert.ok(w.includes("labGrass[classic ? 'tonesClassic' : 'tones'] = new Float32Array((tones ?? (classic ? GRASS_TONES_CLASSIC : GRASS_TONES)).flat())"));
+  assert.ok(w.includes("labGrass.setTones(tones ?? (classic ? GRASS_TONES_CLASSIC : GRASS_TONES), classic)"));   // PIN MOVED (AUDIT MEADOW1): through the renderer, which moves the meadow's art ground with the tones
   const hook = w.slice(w.indexOf('window.__forestSpot = (r = 10, here = false) => {'), w.indexOf('/** CSA-C probe: a land tile 3 tiles off a water tile'));
   assert.ok(hook.includes('forestAt(p.px * 128 + tx + dx, -p.py * 128 + tz + dz)'), 'FOREST1\'s field at the world tile');
   assert.ok(hook.includes('for (const p of here ? [cur] : built.values())') && hook.includes('origin: [t[0], t[2]]'), 'the player\'s own pixel on asking, and its origin - a pose off it stays in it');

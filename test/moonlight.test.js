@@ -132,7 +132,8 @@ test('EV5: the wiring - three lit shaders, the latched flat tint, the studio, th
   // both exterior hosts drive it; no interior host ever does
   for (const host of ['src/scenes/world.js', 'src/scenes/exterior.js']) {
     const src = readFileSync(host, 'utf8');
-    assert.ok(src.includes('renderer.setMoonlight(moonNow)'), `${host} sets the key`);
+    // PIN MOVED (AUDIT CAPTAIN'S SEA G14): the streaming world's key leaned past the Veil, the moon as it is else
+    assert.ok(src.includes(host === 'src/scenes/world.js' ? 'renderer.setMoonlight(moonNow && etherAirW ? { scale: moonNow.scale, dir: moonNow.dir, color: etherLight(moonNow.color, etherAirW, ETHER_KEY_TINT) } : moonNow)' : 'renderer.setMoonlight(moonNow)'), `${host} sets the key`);
     assert.ok(src.includes('withMoonAmbient(exteriorAmbient('), `${host} folds secunda into the ambient`);
   }
   for (const host of ['src/scenes/interior.js', 'src/scenes/dungeon.js']) {
@@ -150,10 +151,14 @@ test('EV5: the wiring - three lit shaders, the latched flat tint, the studio, th
   // WB6a: the one exception, and it cannot leak - the Burning Court's key light (the vortex's fire behind the boss)
   // is set on the moon's term in the dungeon arm, in the SAME frame and right after that arm's own null clear, so the
   // next frame of any arm starts dark again (WB6b: a strike in the Deadlands' sky swings it for a moment - the same call)
-  assert.equal((wm.match(/renderer\.setMoonlight\(/g) || []).length, 3, 'both modal arms clear the moon, and the court sets its key');
+  // SD5a: and the Shattered Hour's key (its clock-face's light) the same way - in the Hour alone, straight after the court's
+  // line, so the next frame of any arm starts dark again (PIN MOVED)
+  assert.equal((wm.match(/renderer\.setMoonlight\(/g) || []).length, 4, 'both modal arms clear the moon, and the court and the Hour set their keys');
   assert.equal((wm.match(/renderer\.setMoonlight\(null\);/g) || []).length, 2, 'the clears to null');
   assert.match(wm, /      renderer\.setMoonlight\(null\);\n      renderer\.setIndirectLight\(NO_INDIRECT_POS, 0, NO_INDIRECT_COLOR\);\n      if \(isGateArena\(dungeonLoc\)\) \{ const _cl = courtLighting\(deadlandsFlash\(_deadS\)\);[^\n]*renderer\.setMoonlight\(_cl\.key\); \}/,
     'the court\'s key, in the court alone, straight after the dungeon arm\'s own clear');
+  assert.match(wm, /renderer\.setMoonlight\(_cl\.key\); \}[^\n]*\n      if \(isSdRealm\(dungeonLoc\)\) \{ const _rl = realmLighting\(\);[^\n]*renderer\.setMoonlight\(_rl\.key\); \}/,
+    'the Hour\'s key, in the Hour alone, straight after the court\'s (SD5a)');
   assert.equal((wm.match(/renderer\.setIndirectLight\(NO_INDIRECT_POS, 0, NO_INDIRECT_COLOR\);/g) || []).length, 2,
     'the stale exterior indirect goes dark with it (the same leak family)');
   const am = readFileSync('src/ui/automapWindow.js', 'utf8');

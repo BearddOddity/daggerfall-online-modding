@@ -189,8 +189,8 @@ test('FIELD-CSA2: on the open sea, Iliac Puddle No More on - every deed\'s hull 
       s.frame({ press: [BOAT_ACTIONS.toggleSail] });   // stowed again, for the oars
     }
     const start = [...boat.GameObject.position];
-    s.held.add('MoveForwards');
-    for (let i = 0; i < 8; i++) s.frame();
+    s.frame({ press: ['MoveForwards'] });   // HELM-LADDER: a rung up - her oars pulling ahead
+    for (let i = 0; i < 7; i++) s.frame();
     const moved = Math.hypot(boat.GameObject.position[0] - start[0], boat.GameObject.position[2] - start[2]);
     assert.ok(s.rt.state.MoveVectorCurrent[2] > 0, `hull ${hull}: under way (a beached boat's move is zeroed each frame)`);
     assert.ok(moved > 0.25, `hull ${hull}: the oars pulled it ${moved} m in two seconds (none while beached)`);
@@ -223,8 +223,14 @@ test('FIELD-CSA2 on the retail data: the open Bay south of Daggerfall (209, 216)
   const mapDict = buildMapDict(maps);
   smoothLocationNeighbourhood(mapDict, woods);   // the boot's own repair (world.js), before any pixel streams
   // world.js's own csaIsPortTown, mounted: Daggerfall (207, 213) is a port by its byte
-  const isPortTown = new Function('travelLocationSummaryAt', 'mapDict', 'maps', `${constOf('  const csaIsPortTown = (x, y) => {')}\nreturn csaIsPortTown;`)(locationSummaryAt, mapDict, maps);
+  const { hasPortFor } = await import('../src/systems/travelPorts.js');
+  // PIN MOVED (THE CAPTAIN'S SEA, ETHER-PORTS - found by AUDIT CAPTAIN'S SEA's touched run with the data): an isle's port
+  // is a port past the Veil (`etherSea && inEther(x, y)` first), so the sea, its law and an isle's port stand in scope - the
+  // sea on, and an isle's port answering every pixel it is asked of, so a Bay pixel that asked it would read a port
+  const { inEther } = await import('../src/world/ethericSea.js');
+  const isPortTown = new Function('travelLocationSummaryAt', 'mapDict', 'maps', 'hasPortFor', 'etherSea', 'inEther', 'etherPortAt', `${constOf('  const csaIsPortTown = (x, y) => {')}\nreturn csaIsPortTown;`)(locationSummaryAt, mapDict, maps, hasPortFor, true, inEther, () => ({}));
   assert.equal(isPortTown(207, 213), true, 'Daggerfall is a port');
+  assert.equal(isPortTown(209, 216), false, 'the open Bay is none - the Bay\'s pixel never asks the sea\'s ports');
   // the Bay a pixel off the coast: every sample the sea's clamp (seen live too, the roads' pass and all: 34.000001
   // under the whole hull, the Small Ship's nodes [1, 1, 1, 1, 1] before the fix and [0, 0, 0, 0, 0] after)
   const sea = generateSamples(woods, 209, 216);

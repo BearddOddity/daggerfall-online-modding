@@ -293,8 +293,8 @@ export const READOUT = Object.freeze({
 /** The sentence that says what you get INSTEAD - shown in the detail
  *  dialog. Every unavailable key has one. */
 export const INSTEAD = Object.freeze({
-  'Enhancements/EnhancedCombatAI': "You get Daggerfall's own enemy behaviour, exactly as it shipped.",
-  'Enhancements/AdvancedClimbing': "You get Daggerfall's own climbing, exactly as it shipped.",
+  'Enhancements/EnhancedCombatAI': "You get the original game's own enemy behaviour, exactly as it shipped.",
+  'Enhancements/AdvancedClimbing': "You get the original game's own climbing, exactly as it shipped.",
   'Enhancements/LypyL_ModSystem': 'Nothing to add yet - when add-ons arrive they will be listed on this page.',
   'Enhancements/CompressModdedTextures': 'Nothing to add yet - when add-ons arrive they will be listed on this page.',
   'Experimental/CustomBooksImport': 'Nothing to add yet - when add-ons arrive they will be listed on this page.',
@@ -303,8 +303,8 @@ export const INSTEAD = Object.freeze({
   'Daggerfall/MyDaggerfallUnityScreenshotsPath': 'Pictures go wherever your browser puts downloads.',
   'Video/ResolutionWidth': 'The picture already fills the window you give it.',
   'Video/ResolutionHeight': 'The picture already fills the window you give it.',
-  'Video/ExclusiveFullscreen': "Use your browser's own fullscreen - F11 on a desktop.",
-  'Video/Fullscreen': "Use your browser's own fullscreen - F11 on a desktop.",
+  'Video/ExclusiveFullscreen': "Use your browser's own fullscreen, from its menu - F11 is the game's Quick Load. In the desktop app: View > Toggle Full Screen (Alt+Enter on Windows and Linux).",   // DEATH-LOAD (issue #642): F11 never was fullscreen here - the page and the shell spend it on QuickLoad
+  'Video/Fullscreen': "Use your browser's own fullscreen, from its menu - F11 is the game's Quick Load. In the desktop app: View > Toggle Full Screen (Alt+Enter on Windows and Linux).",   // DEATH-LOAD (issue #642): F11 never was fullscreen here - the page and the shell spend it on QuickLoad
   'Video/VSync': 'Frames always wait for your screen. To run slower than it, set a Frame Rate Cap.',
 });
 

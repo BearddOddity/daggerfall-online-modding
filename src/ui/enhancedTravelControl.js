@@ -4,7 +4,8 @@
 //
 // So this is the port's OWN, not Hazelnut's. The classic panel
 // (ui/travelControlUI.js) is his 320x27 strip, rect for rect; this is
-// the same five controls in the enhanced skin's language - the brass
+// the same controls (RATE-LAW: the rate a readout now, Map, Camp and
+// Exit) in the enhanced skin's language - the brass
 // and bone of ui/enhancedStyle.js, at the screen's own resolution,
 // with the things a 320-pixel strip had no room to say: the hours and
 // minutes still to go, how far the destination is, what the journey is
@@ -33,8 +34,22 @@ import {
   JUNCTION_HERE_PT, junctionDirectionIndex, drawMapSection, DOT_SCALE, packRGBA,
 } from './travelPathsOverlay.js';
 import { TRAVEL_OPTIONS_TEXT as T } from '../systems/travelOptionsText.js';
+import { buildPaceControls, paceControlsCss } from './travelPaceControls.js';   // PACE-DIALS: the journey's own dials again
 
 export const ENHANCED_TRAVEL_ID = 'enhanced-travel';
+/** PACE-DIALS: the steppers' own sheet - the bar's copy; docked in the Overworld it is hidden (the block has its own). */
+const PACE_STYLE_ID = 'enhanced-travel-pace-style';
+function injectPaceStyle(doc) {
+  if (doc.getElementById?.(PACE_STYLE_ID)) return;
+  const st = doc.createElement('style');
+  st.id = PACE_STYLE_ID;
+  st.textContent = `${paceControlsCss('travelpanel')}
+.travelpanel-bar > .travelpanel-pace { flex: 0 0 auto; min-width: 176px; padding: 6px 12px; border-left: 1px solid rgba(192,138,62,0.2); }
+.travelpanel-pace .travelpanel-pace-title { display: none; }
+#travel-view .tview-dock .travelpanel-pace { display: none; }
+@media (max-width: 560px) { .travelpanel-bar > .travelpanel-pace { flex: 1 1 100%; border-left: 0; } }`;
+  (doc.head ?? doc.body)?.append(st);
+}
 
 let host = null;
 let parts = null;
@@ -62,6 +77,7 @@ function cls(node, key, value) {
 function build(doc, hooks) {
   injectEnhancedStyle(doc);
   injectEnhancedFonts(doc);
+  injectPaceStyle(doc);   // PACE-DIALS
   const root = doc.createElement('div');
   root.id = ENHANCED_TRAVEL_ID;
   root.className = 'travelpanel';
@@ -74,11 +90,9 @@ function build(doc, hooks) {
       </div>
       <div class="travelpanel-speed">
         <span class="travelpanel-label">Time</span>
-        <div class="travelpanel-stepper">
-          <button type="button" class="travelpanel-step" data-act="slower" aria-label="Slower">&#8722;</button>
-          <span class="travelpanel-accel">1</span>
-          <button type="button" class="travelpanel-step" data-act="faster" aria-label="Faster">+</button>
-        </div>
+        <span class="travelpanel-accel">1</span>
+        <span class="travelpanel-ground"></span>
+        <span class="travelpanel-ground travelpanel-stranger" style="display:none;color:#ff3b2f"></span>
       </div>
       <div class="travelpanel-acts">
         <button type="button" class="travelpanel-act" data-act="map" title="${T.TipMap}">Map</button>
@@ -96,6 +110,10 @@ function build(doc, hooks) {
   // OW-DECK: the listeners stand on the BAR, not the root - every [data-act] is in it, and the Overworld's strip docks
   // the bar in itself (ui/travelViewHud.js): a press there must still reach these hooks
   const bar = root.querySelector('.travelpanel-bar');
+  // PACE-DIALS (2026-10-06, the player: "Revert back to the overworld timer multiplier"): the two dials beside the
+  // time readout - Speed and Near enemies, 5-60 and x100 on a road alone (systems/travelPace.js)
+  const pace = buildPaceControls(doc, 'travelpanel');
+  bar.querySelector('.travelpanel-speed')?.after(pace.root);
   bar.addEventListener('mousedown', (e) => { if (e.target?.closest?.('[data-act]')) e.stopPropagation(); });
   bar.addEventListener('click', (e) => {
     const act = e.target?.closest?.('[data-act]')?.dataset?.act;
@@ -109,9 +127,12 @@ function build(doc, hooks) {
     name: root.querySelector('.travelpanel-name'),
     sub: root.querySelector('.travelpanel-sub'),
     accel: root.querySelector('.travelpanel-accel'),
+    stranger: root.querySelector('.travelpanel-stranger'),
+    ground: root.querySelector('.travelpanel-ground'),
     msg: root.querySelector('.travelpanel-msg'),
     junction: root.querySelector('.travelpanel-junction'),
     bar,
+    pace,   // PACE-DIALS
   };
 }
 
@@ -163,17 +184,21 @@ export function paintJunction(canvas, buf, { mapPixel, direction, settings, deps
   const img = ctx.createImageData(w, h);
   const out = new Uint32Array(img.data.buffer);
   // the buffer is bottom-up, as every generated map texture in this
-  // port is (ui/travelMapWindow.js:"_arrowButtonClick(which) {".."}")
+  // port is (ui/travelMapWindow.js:"_upload(renderer, kind, buf, w = REGION_W, h = REGION_H)")
   for (let row = 0; row < h; row++) out.set(buf.subarray((h - row - 1) * w, (h - row) * w), row * w);
   ctx.putImageData(img, 0, 0);
   return true;
 }
 
+/** RATE-LAW: the readout's word for the ground the rate is the ground's of. */
+export const TRAVEL_GROUND_TEXT = Object.freeze({ road: 'on the road', open: 'off the road' });
+
 /** The panel's frame. `state` is what the journey knows:
- *  { showing, covered, destination, following, accel, message, minutesLeft,
+ *  { showing, covered, destination, following, accel, onRoad, message, minutesLeft,
  *    from, to, junction: { on, mapPixel, direction, settings, deps, buf }, held }
- *  (TV2: `held` the rate the travel view's governor holds the clock to, or null)
- *  `hooks` are the five controls, wired once at build.
+ *  (TV2: `held` the rate the travel view's governor holds the clock to, or null; RATE-LAW: `accel` the rate the
+ *  journey's ground runs at and `onRoad` which ground it is - a readout, no control sets it)
+ *  `hooks` are the three controls, wired once at build.
  *
  *  AUDIT-TO1 F1: THE JUNCTION MAP OUTLIVES THE BAR. In the mod the
  *  mini-map is a child of the HUD's native panel (TravelOptionsMod.cs
@@ -208,21 +233,31 @@ export function drawEnhancedTravelControl(state = {}, hooks = {}) {
   // so the clamp keeps its one home. An inline style read: no layout.
   const scale = document.querySelector('.hud')?.style?.getPropertyValue('--hud-scale') || '1';
   if (last.scale !== scale) { last.scale = scale; parts.root.style.setProperty('--hud-scale', scale); }
-  cls(parts.root, 'rootClass', `travelpanel${state.following ? ' following' : ''}${junctionOnly ? ' junction-only' : ''}`);
   cls(parts.bar, 'barClass', `travelpanel-bar${state.following ? ' following' : ''}${junctionOnly ? ' hidden' : ''}`);   // OW-DECK: `following` on the bar too - docked, it is outside the root
   put(parts.name, 'name', String(state.destination ?? ''));
   const eta = etaText(state.minutesLeft);
   const dist = distanceText(state.from, state.to);
   put(parts.sub, 'sub', [eta, dist].filter(Boolean).join('  ·  '));
-  // TV2: under the travel view the clock may be HELD under the spinner (systems/travelGovernor.js) - the rate that
-  // runs, then the one asked for; the spinner stays the player's
+  // TV2: the clock may be HELD under the ground's rate (systems/travelGovernor.js: the land loading; OW6: an alerted
+  // enemy near) - the rate that runs, then the ground's. RATE-LAW: the ground says which rate; PACE-DIALS: the player's
+  // dials (the steppers beside this readout, systems/travelPace.js) say how fast each runs
   const accel = state.accel ?? 1;
   const held = state.held != null && state.held < accel ? state.held : null;
+  const foesHold = held != null && state.heldWhy === 'foes';
   put(parts.accel, 'accel', held != null ? `×${held} / ×${accel}` : `×${accel}`);
   cls(parts.accel, 'accelClass', held != null ? 'travelpanel-accel held' : 'travelpanel-accel');
+  // PVPNEAR: the nearby stranger's timer, in this box just under the actual one
+  if (parts.stranger) {
+    // STRANGER-LINE (the owner: "Stranger nearby looks totaly missplaced"): in the time box itself, in the ground line's
+    // place and face (the held rate above it already says the pace) - red, while a stranger holds the journey
+    const sr = state.stranger ? 'stranger near' : '';
+    if (last.strangerTxt !== sr) { last.strangerTxt = sr; parts.stranger.textContent = sr; parts.stranger.style.display = sr ? '' : 'none'; if (parts.ground) parts.ground.style.display = sr ? 'none' : ''; }
+  }
+  put(parts.ground, 'ground', state.onRoad ? TRAVEL_GROUND_TEXT.road : TRAVEL_GROUND_TEXT.open);
   // AUDIT DEEP X-6: and says why, under the pointer (the travel view's own words - they were written, and never shown)
   const why = held != null ? TRAVEL_HELD_TEXT(held, accel, state.heldWhy) : '';
   if (parts.accel && last.accelTitle !== why) { last.accelTitle = why; parts.accel.title = why; }
+  cls(parts.root, 'rootFoe', `travelpanel${state.following ? ' following' : ''}${junctionOnly ? ' junction-only' : ''}${foesHold ? ' foes' : ''}`);
   put(parts.msg, 'msg', String(state.message ?? ''));
   cls(parts.msg, 'msgClass', state.message && !junctionOnly ? 'travelpanel-msg show' : 'travelpanel-msg');
   const j = state.junction;
@@ -242,6 +277,7 @@ export function drawEnhancedTravelControl(state = {}, hooks = {}) {
  *  cheap (a canvas), so this one is torn down. */
 export function hideEnhancedTravelControl() {
   if (!host) return;
+  try { parts?.pace?.dispose?.(); } catch { /* PACE-DIALS: its listener goes with it */ }
   try { host.remove(); } catch { /* already gone */ }
   try { parts?.bar?.remove(); parts?.msg?.remove(); } catch { /* OW-DECK: docked in the Overworld's strip - taken down with the journey */ }
   host = null; parts = null; last = null;

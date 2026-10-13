@@ -36,7 +36,7 @@ const code = (p) => read(p).replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]
 test('AUDIT FOES FOE4: a blow goes while my BODY is wrong - the mismatch stops the puppet looking right, never the blow landing', () => {
   const d = code('src/scenes/dungeonContext.js');
   // REST-SYNC re-aim: the number is the layout's index or, for a shared encounter's puppet, the room's (`xs`)
-  assert.match(d, /if \(fromPlayer && damage >= 0\) opts\.onFoeHit\?\.\(\{ \.\.\.\(foe\._encId != null \? \{ i: foe\._encId, xs: 1 \} : \{ i: pi \}\), dmg: damage, kind,/,
+  assert.match(d, /if \(fromPlayer && damage >= 0\) opts\.onFoeHit\?\.\(\{ \.\.\.\(foe\._encId != null \? \{ i: foe\._encId, xs: 1 \} : \{ i: foe\._surI \?\? pi \}\), dmg: damage, kind,/,
     'the divert asks the provenance and the sign, and nothing about the body');
   assert.doesNotMatch(d, /!foe\._pupMismatch\) opts\.onFoeHit/,
     'the retired gate is gone, not merely joined by an OR');
@@ -141,15 +141,24 @@ test('AUDIT FOES FOE10: a joiner\'s blow crosses the real relay to the host, and
     ws.open();
     return { s, hits };
   };
-  const host = link('aaaa-0001'); await new Promise((f) => setTimeout(f, 25));
-  const joiner = link('bbbb-0002'); await new Promise((f) => setTimeout(f, 25));
-  const bystander = link('cccc-0003'); await new Promise((f) => setTimeout(f, 25));
+  // Signed hello waits for WebCrypto and relay delivery. Under parallel load,
+  // 25 ms can expire before either finishes; await the actual seat, bounded.
+  const ready = async (predicate, label) => {
+    const deadline = Date.now() + 5000;
+    while (!predicate()) {
+      assert.ok(Date.now() < deadline, `Timed out waiting for ${label}`);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+  };
+  const host = link('aaaa-0001'); await ready(() => host.s.isHost(), 'host seat');
+  const joiner = link('bbbb-0002'); await ready(() => joiner.s.host === 'aaaa-0001', 'joiner hello');
+  const bystander = link('cccc-0003'); await ready(() => bystander.s.host === 'aaaa-0001', 'bystander hello');
   assert.equal(host.s.isHost(), true, 'the first socket holds the seat');
   assert.equal(joiner.s.host, 'aaaa-0001', 'and the joiner is told who to strike through');
 
   const blow = { i: 7, dmg: 12, kind: 'melee', p: [1, 2, 3], d: [0, 0, 1] };
   assert.equal(joiner.s.sendHit(blow), true, 'the blow leaves the joiner');
-  await new Promise((f) => setTimeout(f, 25));
+  await ready(() => host.hits.length > 0, 'routed hit');
 
   assert.equal(host.hits.length, 1, 'THE WHOLE REPORT: the host hears the blow');
   assert.deepEqual(host.hits[0], ['bbbb-0002', blow], 'with the striker named and the payload whole');

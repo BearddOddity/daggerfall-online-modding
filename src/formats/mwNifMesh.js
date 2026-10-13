@@ -22,7 +22,7 @@ import { deref, TEX_SLOT } from './mwNifFile.js';
 // `ninode->mChildren` for anything that casts to Nif::NiNode, and the switch
 // and LOD classes get their own osg wrapper first (:907-924) rather than a
 // pruned subtree. Four of these were parsed and then dropped on the floor.
-const NODE_TYPES = new Set([
+export const NODE_TYPES = new Set([   // MW-SPELLFX1: exported - an effect mesh's node graph is the drawing walk's own membership (formats/mwVfx.js)
   'NiNode',
   'NiBSAnimationNode',
   'NiBSParticleNode',
@@ -46,7 +46,7 @@ const NODE_TYPES = new Set([
  * NiSortAdjustNode and NiCollisionSwitch are plain NiNodes in the
  * reference (no Switch/LOD wrapper), so they keep every child.
  */
-function selectedChild(rec) {
+export function selectedChild(rec) {   // MW-SPELLFX1: exported - an effect's switch shows the one branch the flattener shows
   if (rec.type === 'NiLODNode') {
     const levels = rec.lodLevels;
     if (Array.isArray(levels)) {
@@ -70,7 +70,7 @@ function selectedChild(rec) {
  *  1631) and a batch here is a triangle list by contract, so a line shape
  *  has no honest home downstream - it is dropped rather than drawn as
  *  triangles. */
-const GEOMETRY_TYPES = new Set(['NiTriShape', 'NiTriStrips']);
+export const GEOMETRY_TYPES = new Set(['NiTriShape', 'NiTriStrips']);   // MW-SPELLFX1: exported (formats/mwVfx.js)
 
 /** MAC-Q (2026-09-17, Mac: "the torch doesn't emit fire"): the PARTICLE
  *  geometries. A batch here is a triangle list by contract, and a particle
@@ -83,15 +83,15 @@ const GEOMETRY_TYPES = new Set(['NiTriShape', 'NiTriStrips']);
  *  enclosing NiBSAnimationNode or NiBSParticleNode). formats/mwParticles.js
  *  turns a bundle into a system. A caller with no sink gets exactly what
  *  it always got: nothing. */
-const PARTICLE_TYPES = new Set(['NiParticles', 'NiAutoNormalParticles', 'NiRotatingParticles']);
-const ANIM_FLAG_NODES = new Set(['NiBSAnimationNode', 'NiBSParticleNode']);
+export const PARTICLE_TYPES = new Set(['NiParticles', 'NiAutoNormalParticles', 'NiRotatingParticles']);   // MW-SPELLFX1: exported - an effect's particle geometry is a node of its graph
+export const ANIM_FLAG_NODES = new Set(['NiBSAnimationNode', 'NiBSParticleNode']);   // MW-SPELLFX1: exported - formats/mwVfx.js reads the same AutoPlay/LocalSpace flags
 
 /** nifloader.cpp:1609-1621: one TRIANGLE_STRIP primitive per strip, strips
  *  shorter than 3 skipped, and a shape whose strips are ALL short draws
  *  nothing. Unrolled to the triangle list this module emits, with GL's own
  *  winding flip on odd triangles and the degenerate joins (a repeated index,
  *  which GL drops) left out. */
-function stripsToTriangles(data) {
+export function stripsToTriangles(data) {   // MW-SPELLFX1: exported - an effect mesh's strips, the one expansion
   const out = [];
   for (const strip of data.strips ?? []) {
     if (!strip || strip.length < 3) continue;
@@ -436,7 +436,7 @@ export function flattenNif(nif, opts = {}) {
   const excludeNode = opts.excludeNode ? String(opts.excludeNode).toLowerCase() : null;
   const batches = [];
 
-  function emit(shape, world, props) {
+  function emit(shape, world, props, chain, animFlags, parentRef = -1) {
     const data = deref(nif, shape.data);
     if (!data || !data.vertices) return;
     let indices;
@@ -524,6 +524,14 @@ export function flattenNif(nif, opts = {}) {
     }
     batches.push({
       name: shape.name || '',
+      // MW-BOW1: where the shape hangs - its record and every record from the file root down to it - and its
+      // vertices as authored, so a part whose own controllers move it (a bow's string and its ArrowBone, on the weapon
+      // clock - formats/mwPartClock.js) can be posed again at another time. References, never copies.
+      ref: shape,
+      chain,
+      animFlags,
+      local: data.vertices,
+      localNormals: data.normals ?? null,
       skinned,
       skin,
       positions,
@@ -532,6 +540,7 @@ export function flattenNif(nif, opts = {}) {
       colors: data.colors ? Float32Array.from(data.colors) : null,
       indices,
       material: resolveMaterial(nif, props, !!data.colors),
+      parentRef,   // MWNPC9: the node the shape hangs under - a creature's rigid piece rides it (mwCharacter.js bindCreatureModel)
     });
   }
 
@@ -539,9 +548,10 @@ export function flattenNif(nif, opts = {}) {
   // nowhere else, then carried down the whole traversal.
   let hasMarkers = false;
 
-  function walk(ref, world, props, isRoot = false, inside = !underNode, animFlags = 0) {
+  function walk(ref, world, props, isRoot = false, inside = !underNode, animFlags = 0, chain = [], parentRef = -1) {   // MWNPC9: and the node above
     const rec = deref(nif, ref);
     if (!rec) return;
+    const nextChain = [...chain, rec];   // MW-BOW1: the records from the root down
     if (ANIM_FLAG_NODES.has(rec.type)) animFlags = rec.flags | 0;   // MAC-Q: nifloader.cpp:786-787
     const lname = String(rec.name || '').toLowerCase();
     if (excludeNode && lname === excludeNode) return;   // WS1: the masked subtree
@@ -579,14 +589,14 @@ export function flattenNif(nif, opts = {}) {
       // been composed. The node is still walked - it simply emits
       // nothing - which is the difference between skipping a drawable
       // and pruning a subtree.
-      if (inside && !skipGeometryName(rec.name, hasMarkers)) emit(rec, nextWorld, nextProps);
+      if (inside && !skipGeometryName(rec.name, hasMarkers)) emit(rec, nextWorld, nextProps, nextChain, animFlags, parentRef);
       return;
     }
     if (PARTICLE_TYPES.has(rec.type)) {
       // MAC-Q: a particle system takes the same gates a shape does (the
       // hidden flag above, the name skip here) and goes to the sink whole.
       if (inside && opts.effects && !skipGeometryName(rec.name, hasMarkers)) {
-        opts.effects.push({ ref, rec, world: nextWorld, props: nextProps, animFlags });
+        opts.effects.push({ ref, rec, world: nextWorld, props: nextProps, animFlags, parentRef });
       }
       return;
     }
@@ -601,11 +611,11 @@ export function flattenNif(nif, opts = {}) {
       const only = selectedChild(rec);
       if (only !== null) {
         const child = rec.children[only];
-        if (child !== undefined && child >= 0) walk(child, nextWorld, nextProps, false, inside, animFlags);
+        if (child !== undefined && child >= 0) walk(child, nextWorld, nextProps, false, inside, animFlags, nextChain, ref);
         return;
       }
       for (const child of rec.children) {
-        if (child >= 0) walk(child, nextWorld, nextProps, false, inside, animFlags);
+        if (child >= 0) walk(child, nextWorld, nextProps, false, inside, animFlags, nextChain, ref);
       }
     }
   }

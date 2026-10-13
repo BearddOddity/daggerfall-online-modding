@@ -53,7 +53,8 @@ test('TITLE-N vocabulary: four titles and four glyphs join, each title with its 
 test('TITLE-R founder: no account registered after the cutoff can obtain Founder, and every account that holds it keeps it - held and worn (Mac: "Remove the founder title from being obtained. Current users keep their founder title") (mutants: the cutoff moved forward; the cutoff an open end)', () => {
   // FOUNDER2 (2026-09-24): Mac granted it once more to every account then registered - the cutoff is the end of that
   // day now (founder2.test.js), and the title is closed again past it
-  assert.equal(FOUNDER_UNTIL, Date.UTC(2026, 8, 25) / 1000, 'the cutoff is the end of the day FOUNDER2 was asked');
+  // FOUNDER5 (2026-10-07, PIN MOVED): the end of that day on every clock, twelve hours past 00:00Z
+  assert.equal(FOUNDER_UNTIL, Date.UTC(2026, 8, 25, 12) / 1000, 'the cutoff is the end of the day FOUNDER2 was asked, on the last clock to reach the next');
   const later = Date.UTC(2026, 8, 26) / 1000;
   assert.deepEqual(titlesHeld({ handle: 'New', registered_at: later }, {}), [], 'registered after it: no Founder');
   assert.deepEqual(titlesHeld({ handle: 'New', registered_at: FOUNDER_UNTIL + 1 }, {}), [], 'a second past the cutoff: no Founder');
@@ -79,12 +80,17 @@ test('TITLE-N grants: the Dungeon Master is SquidKamer\'s alone and Disciple is 
   assert.equal(v('APOSTLE_HANDLES'), '', 'SirMcMobdon is no longer an Apostle');
   assert.deepEqual(titlesHeld({ handle: 'sirmcmobdon', created_at: 1_800_000_000, registered_at: 1_900_000_000 }, { APOSTLE_HANDLES: v('APOSTLE_HANDLES') }), [], 'SirMcMobdon holds no Apostle title');
   assert.deepEqual(glyphsOf({ handle: 'SirMcMobdon', created_at: 0 }, { APOSTLE_HANDLES: v('APOSTLE_HANDLES') }, 10 ** 10), [], 'and no Apostle glyph');
-  assert.equal(v('DEVELOPER_HANDLES'), 'Lattymoy,trashBattery,LostMyLeg,Tabby', 'DEV2, Mac: "Give trashBattery, LostMyLeg the developer title/glyph"; DEV3: "grant Tabby the developer title/glyph"');
-  for (const h of ['trashbattery', 'LOSTMYLEG', 'tabby']) {
+  assert.equal(v('DEVELOPER_HANDLES'), 'Lattymoy,trashBattery,LostMyLeg,Tabby,RookieG', 'DEV2, Mac: "Give trashBattery, LostMyLeg the developer title/glyph"; DEV3: "grant Tabby the developer title/glyph"; DEV4, the owner: "Also add RookieG(Dev) as developer", then "Change RookieG(Dev) to RookieG"');
+  for (const h of ['trashbattery', 'LOSTMYLEG', 'tabby', 'RookieG', 'rookieg', 'ROOKIEG']) {
     const dev = { handle: h, created_at: 1_800_000_000, registered_at: 1_900_000_000 };   // FOUNDER3: first played after the cutoff too, so no Founder
     const denv = { DEVELOPER_HANDLES: v('DEVELOPER_HANDLES') };
     assert.deepEqual(titlesHeld(dev, denv), ['developer'], `${h}: the Developer title, case-folded`);
     assert.deepEqual(glyphsOf(dev, denv, 1_900_000_000), ['dev'], `${h}: the dev glyph`);
+  }
+  // DEV4: the handle whole - "RookieG(Dev)" (a handle may carry brackets) is another account, and a near name is no
+  // developer either: none of them holds its rights
+  for (const h of ['RookieG(Dev)', 'RookieGDev', 'Rookie', 'RookieGG', 'RookieG_']) {
+    assert.deepEqual(titlesHeld({ handle: h, created_at: 1_800_000_000, registered_at: 1_900_000_000 }, { DEVELOPER_HANDLES: v('DEVELOPER_HANDLES') }), [], `${h}: not a developer`);
   }
   // MOD2 (2026-10-02, Mac: "give tabbyvish the moderator title/glyph for ingame"): the moderator list, case-folded
   assert.equal(v('MODERATOR_HANDLES'), 'Asynian,tabbyvish,Starempire42', 'MOD1: Asynian; MOD2: tabbyvish; MOD3 (Mac: "Also add Starempire42 as a moderator"): Starempire42');
@@ -95,8 +101,8 @@ test('TITLE-N grants: the Dungeon Master is SquidKamer\'s alone and Disciple is 
   assert.equal(v('HIEROPHANT_HANDLES'), '', 'nobody yet');
   // AUDIT B8 (SHADOW-FANG): the whole list, not a prefix of it - and every list's title and glyph IN the token's closed
   // vocabulary: one outside it makes mintToken throw, and /v1/auth/token a 500 for every handle on that list
-  assert.deepEqual(Object.keys(TIER_LISTS), [...NEW_TITLES, 'shadowfang', 'penitent', 'herald'], 'TITLE-N\'s four, then SHADOW-FANG\'s, then PENITENT\'s, then HERALD\'s');
-  assert.deepEqual(Object.values(TIER_GLYPH), [...NEW_GLYPHS, 'shadowfang', 'penitent', 'herald']);
+  assert.deepEqual(Object.keys(TIER_LISTS), [...NEW_TITLES, 'shadowfang', 'penitent', 'herald', 'aegis', 'primarch', 'crystalfist'], 'TITLE-N\'s four, then SHADOW-FANG\'s, then PENITENT\'s, then HERALD\'s, then AEGIS\'s, then PRIMARCH\'s, then CRYSTAL-FIST\'s (PIN MOVED)');
+  assert.deepEqual(Object.values(TIER_GLYPH), [...NEW_GLYPHS, 'shadowfang', 'penitent', 'herald', 'aegis', 'primarch', 'crystalfist']);   // CRYSTAL-FIST's last (PIN MOVED)
   for (const t of Object.keys(TIER_LISTS)) assert.ok(TITLES.includes(t), `${t}: a title the token may carry`);
   for (const g of Object.values(TIER_GLYPH)) assert.ok(GLYPHS.includes(g), `${g}: a glyph the token may carry`);
   const env = { DUNGEON_MASTER_HANDLES: v('DUNGEON_MASTER_HANDLES'), DISCIPLE_HANDLES: v('DISCIPLE_HANDLES'), APOSTLE_HANDLES: 'Paul', HIEROPHANT_HANDLES: 'Pope, Other' };

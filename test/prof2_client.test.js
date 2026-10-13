@@ -180,15 +180,16 @@ test('PROF2 stand: a dungeon\'s veins on its walls - the dungeon\'s own ray answ
 
 // ─── THE PLAN ────────────────────────────────────────────────────────
 
-test('PROF2 plan: what E does at a vein or a boulder, and what it needs - worked today, the day\'s sixty, the rank, the Pick-Axe, the Stores\' room', () => {
-  const base = { node: { what: 'vein', tier: 2, material: 'metal:lodestone' }, taken: false, counting: false, rank: 10, pick: true, storesFull: () => false, today: 0, cap: 60 };
+test('PROF2 plan: what E does at a vein or a boulder, and what it needs - worked today, the rank, the Pick-Axe, the Stores\' room; no day\'s sixty (CAP-OFF)', () => {
+  const base = { node: { what: 'vein', tier: 2, material: 'metal:lodestone' }, taken: false, counting: false, rank: 10, pick: true, storesFull: () => false };
   assert.deepEqual(minePlan(base), { harvest: 'ore', verb: 'Mine Lodestone', rest: 'Mining 10', ready: true });
   assert.equal(minePlan({ ...base, rank: 9 }).rest, 'needs Mining 10');
   assert.equal(minePlan({ ...base, pick: false }).rest, 'needs a Pick-Axe');
   assert.equal(minePlan({ ...base, storesFull: () => true }).rest, 'Stores full - Lodestone');
   assert.deepEqual([minePlan({ ...base, taken: true }).verb, minePlan({ ...base, taken: true }).ready], ['Lodestone - worked today', false]);
   assert.equal(minePlan({ ...base, counting: true }).rest, 'being counted');
-  assert.equal(minePlan({ ...base, today: 60 }).ready, false);
+  // PIN MOVED (CAP-OFF, 2026-10-07 - Mac: "Remove the cap on life skills"): sixty today was no ready plan
+  assert.equal(minePlan({ ...base, today: 600, cap: 60 }).ready, true, 'a day past the old sixty: ready');
   const b = minePlan({ ...base, node: { what: 'boulder', tier: 1, material: 'stone:rough' } });
   assert.deepEqual([b.harvest, b.verb], ['stone', 'Quarry the stone']);
   assert.deepEqual(pickHandFrame(0), { state: 'Idle', frame: 0 });
@@ -210,7 +211,7 @@ function hostRig({ answer, rocks = null, mining = 0, specs = {} } = {}) {
   const asked = [];
   const door = {
     account: () => 'acct-1',
-    state: async () => ({ ok: true, data: { day, character: 'c1', tracks: [{ profession: 'mining', xp: mining, rank: 0, specs: { 50: specs[50] ?? null, 100: null } }], today: {}, taken: [], stores: [], caps: { harvests: 60, stores: 5000 } } }),
+    state: async () => ({ ok: true, data: { day, character: 'c1', tracks: [{ profession: 'mining', xp: mining, rank: 0, specs: { 50: specs[50] ?? null, 100: null } }], today: {}, taken: [], stores: [], caps: { stores: 5000 } } }),
     pixels: async (c, px) => ({ ok: true, data: { pixels: px.map(([x, y]) => ({ x, y, state: 'none' })), dungeons: [] } }),
     harvest: async (b) => { asked.push(b); return answer ?? { ok: true, data: { node: b.node, kind: b.kind, material: 'metal:iron', qty: 3, xp: 22, track: { profession: 'mining', xp: 22, rank: 1 }, today: 1, gem: 'gem:amber', gemStore: { material: 'gem:amber', own: 1, bought: 0 } } }; },
   };
@@ -353,7 +354,7 @@ test('PROF2 forge: what the Stores can smelt of a recipe - every input\'s units 
   assert.equal(smeltable(smeltRecipe('ingot:steel'), held), 0, 'no Charcoal');
   assert.equal(smeltable(smeltRecipe('ingot:iron'), () => 1000), 100);
   assert.equal(SMELT_RECIPES.length, 10);
-  assert.deepEqual([...DECOR_STATIONS], ['alchemy', 'spells', 'enchant', 'forge', 'workbench', 'loom', 'mason', 'jeweller']);   // PROF4: the workbench, a fifth; PROF7: the loom, a sixth; PIN MOVED (PROF11): the mason's bench, a seventh; PIN MOVED (PROF10): the jeweller's bench, an eighth
+  assert.deepEqual([...DECOR_STATIONS], ['alchemy', 'spells', 'enchant', 'forge', 'workbench', 'loom', 'mason', 'jeweller', 'vendor']);   // PROF4: the workbench, a fifth; PROF7: the loom, a sixth; PIN MOVED (PROF11): the mason's bench, a seventh; PIN MOVED (PROF10): the jeweller's bench, an eighth; PIN MOVED (HOME-VENDOR): the hired trader, a ninth
   assert.deepEqual([DECOR_STATION_FEES.forge, DECOR_STATION_NAMES.forge], [50_000, 'Forge']);
 });
 
@@ -417,7 +418,7 @@ test('PROF2 hosts: the streaming world stands every kind through the one host, i
   assert.match(w, /nodes: professionMarks\(\),/);   // PROF7 moved it: a Tracker's animals beside a Prospector's veins; NODE-MARKS: every node beside them
   assert.match(w, /const near = nodeMarksAt\(feet\), far = motherlodeMarks\(\);\n\s*return nodeCompassPoints\(far\.length \? \[\.\.\.\(near \?\? \[\]\), \.\.\.far\] : near, trackerAnimals\(\)\);/);   // PIN MOVED (PROF2b): and the far Motherlodes
   assert.match(src('src/scenes/mineHost.js'), /return \(specs\('mining'\)\[50\] === 'prospector' && PROSPECTOR_MARKS\[n\.what\]\) \|\| MINE_MARKS\[n\.what\] \|\| MINE_MARKS\.vein;/, 'NODE-MARKS: the Prospector\'s veins marked from PROSPECT_M off, in the mine kind\'s own mark');
-  assert.match(w, /onDungeonLeave: \(\) => \{ const n = handOverRoomFoes\(\);[^\n]*gatherHost\?\.leaveDungeon\(\); worldPublish\(performance\.now\(\), true\); \},/, 'the veins dropped while the dungeon still stands');
+  assert.match(w, /onDungeonLeave: \(\) => \{ if \(_wdunInside\) wdunLeft\(false\); const n = handOverRoomFoes\(\);[^\n]*gatherHost\?\.leaveDungeon\(\); worldPublish\(performance\.now\(\), true\); \},/, 'the veins dropped while the dungeon still stands');   // PVPDUNGEONS: a zone hall's leaving said first (wdunLeft)
   assert.match(w, /profPress: \(\) => gatherHost\?\.press\(\) \?\? false,/);
   assert.match(src('src/world/worldOfDaggerfall.js'), /name: session\.name\[pick\.index\], prefabName: session\.prefab\[pick\.index\] \}\)\);/);   // FOREST1: and the prefab's name - a site or a rock field
   const m = src('src/scenes/worldModes.js');
@@ -428,7 +429,7 @@ test('PROF2 hosts: the streaming world stands every kind through the one host, i
   const d = src('src/scenes/dungeonContext.js');
   assert.match(d, /actTool: \(\) => opts\.actTool\?\.\(\) \?\? null,/);
   assert.match(d, /if \(held && opts\.profActing\?\.\(\)\) return;/, 'AUDIT 29 D2: the press alone');
-  assert.match(d, /if \(dfLocation\?\.spawned \|\| isGateArena\(dfLocation\) \|\| !Number\.isSafeInteger\(dfLocation\?\.mapTableData\?\.mapId\)\) return null;/, 'a spawned dungeon grows none, nor the Burning Court (AUDIT 29 D5)');
+  assert.match(d, /if \(dfLocation\?\.spawned \|\| isGateArena\(dfLocation\) \|\| isArenaFloor\(dfLocation\) \|\| !Number\.isSafeInteger\(dfLocation\?\.mapTableData\?\.mapId\)\) return null;/, 'a spawned dungeon grows none, nor the Burning Court (AUDIT 29 D5), nor the arena\'s floor (ARENA2)');
   assert.match(src('src/ui/hud.js'), /drawNodeCompassMarks\(renderer, nodes, playerXZ, heading01, \{ bx, by, bw, s \}\);/);   // NODE-MARKS: in each profession's colour
   assert.match(src('src/ui/enhancedHud.js'), /drawNodeMarks\(opts\.nodes \?\? null, opts\.playerXZ \?\? null, heading01\);/);
   assert.match(src('src/systems/save.js'), /import '\.\/profTemplates\.js';/, 'every scene a save loads in knows the new templates');

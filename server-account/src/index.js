@@ -46,20 +46,31 @@
 // ACC3, the wardrobe. A player HOLDS titles by derivation and WEARS at
 // most one, which is the only part of it that is a choice:
 //   POST /v1/account/title { title }      -> { ok, titles[], title, glyphs[] }
+// NAME-AS, which name the room reads - the account's, or the realm character's the mint is for; the token's answer
+// says both (`name` the room's, `accountName` the account's), the choice (`nameAs`) and, where the character's could
+// not be worn, why (`nameWhy`, `nameWord`):
+//   POST /v1/account/name { as }          -> { ok, nameAs }
 // ACC4, time played. A beat carries no number - this clock measures:
 //   POST /v1/account/played {}            -> { playedS }
 // MOD1, moderation. The caller must be a moderator or a developer:
 //   POST /v1/mod/mute { target, minutes } -> { ok, target, name, until, order }
 // CUSTOMS-PASS, a developer alone - one character of one account through customs (tools/customsPass.mjs):
 //   POST /v1/mod/customs-pass { name | account, revoke? } -> { ok, target, name, open, changed }
+//   POST /v1/mod/realm-holds | realm-findings { id } | realm-clear { id, note? } | realm-hold { id, note? }
+//        | realm-rollback { id, note? } | realm-budget { days?, set? }   INT6: the review of the judge's verdicts (review.js)
+//        | realm-bodies { days? }   INT14: the boss fights' count, measured (review.js bodiesMeasure)
+//        | realm-gains { days? } | realm-trades { id }   HACKED-GOLD: who gained past the bucket; a character's trades (review.js)
 // DUEL1, the duelling record. The caller of `loss` is the loser:
 //   POST /v1/duel/loss   { winner }       -> { recorded, wins, losses }
 //   POST /v1/duel/record { id }           -> { id, wins, losses, gates }
 // WB5b, the gates closed. The caller is the account the receipt names:
+//   POST /v1/serpent/claim { receipt, character, name?, cid? } -> { recorded, slain, renown, spoils, order, marks? }   (SERPENT1: a sea serpent's receipt; SERPENT-SET: `marks` its silver where it recorded)
+//   POST /v1/sd/claim    { receipt } -> { recorded, slot?, title?, aura?, broken }   (SD9b: a Brass Remnant's receipt - an Hour broken; Hourbreaker and The Turning Hour rolled on its first write)
 //   POST /v1/gate/claim  { receipt, region?, character? } -> { recorded, stones, closed, seat? }   (WB12d: the row's embers, AUDIT WB12d A4; SEAT1b: `seat` the kill's influence)
 // MARKS1, Marks - an account's alone, behind MARKS_OPEN (marks.js); `rid` the act's own id:
 //   POST /v1/marks/balance {}                               -> { balance, today, bank }
 //   POST /v1/marks/exchange { marks, rid }                  -> { ok, marks, gold, balance, exchangedToday } | { repeat, ... }
+//   POST /v1/marks/find { kind, rid }                       -> { ok, struck, balance, today, why? } | { repeat, ... }   (SILVER-FINDS: a loot find)
 //   POST /v1/marks/guild/deposit { character, marks, rid }  -> { ok, marks, balance, guildMarks }
 //   POST /v1/marks/guild/withdraw { character, marks, rid } -> { ok, marks, balance, guildMarks }
 //   POST /v1/marks/report {}                                -> the week's report (a developer's)
@@ -75,13 +86,20 @@
 //   POST /v1/prof/state { character }                                  -> { tracks, today, taken, stores, writs, caps, hunt }   (PROF7: the account's hides today)
 //   POST /v1/prof/pixels { character, pixels: [[x, y]...] }            -> { pixels: [{ x, y, state, climate?, region? }] }
 //   POST /v1/prof/harvest { character, node, kind, climate, region, act, at, rid, foe? } -> { ok, material, qty, xp, track, today, store, gem?, extra?, extraQty?, hunt? } | { repeat, ... }   (PROF7: a body's `foe`, no ground)
+//        BAG1: { carry: true, held, heldKey?, seen? } lands the goods in the carried count - `held` what the bag and pack
+//        hold of `heldKey`, the count cut to it only when `seen` (the count the client last heard) is the service's own,
+//        decided once a request (prof_carried_gate) - and a Motherlode's strike (PROF2b) the same  -> { ..., carry, carried }
 //   POST /v1/prof/spec { character, profession, rank, spec, rid }      -> { ok, track, marks?, balance? }
 //   POST /v1/prof/smelt { character, recipe, count, clean?, rid }      -> { ok, recipe, count, own, bought, xp, first?, clean?, track, stores } | { repeat, ... }   (PROF2; PROF4 the burns and saws; PROF7 the loom's cures and weave - a weave's `track` null; PROF11 the mason's bench's cut and mix - `clean` the chisel's, `first` its 500)
 //   POST /v1/prof/craft { character, recipe, clean, name?, heartwood?, dye?, cracked?, rid } -> { ok, recipe, quality, count, seed, maker, marked, xp, first, heartwood, dye, hand?, pieces, track, stores } | { repeat, ... }   (PROF3 the anvil; PROF4 the workbench; PROF7 the loom and a garment's `dye`; PROF11 the Sculptor's stone decor; PROF9 the fire's dishes and a dish's `hand`; PROF10 the jeweller's bench - a piece's `hand`, a Lapidary's `cracked` gem)
 //   POST /v1/prof/brew { character, potion, keys, seat?, rid } -> { ok, potion, keys, count, potent, unbruised, steps, xp, first, track, stores } | { repeat, ... }   (PROF12: Alchemy's brewing act - DFU's own recipe law on the Stores' cauldron; Potent rolled, the Apothecary's steps)
 //   POST /v1/prof/disenchant { character, provenance, rid, realm? } -> { ok, provenance, recipe, points, essence, origin, xp, track, store, realm? } | { repeat, ... } | { error: 'prof-no-piece', why? }   (PROF12: a crafted piece into Arcane Essence, gone; AUDIT PROF-541 B2: a realm character's out of its record - `realm` where it stands, `realm.seq` the record's new sequence, `why: 'disenchanted'` a piece this account's disenchant took)
 //   POST /v1/prof/stock { character, material, qty, rid }             -> { ok, ... } | { repeat, ... }   (PROF3 the smith's stock; PROF4 the furnisher's; PROF5 the Weavers')
+//   POST /v1/prof/temper { character, recipe, quality, provenance?, rid } -> { ok, recipe, quality, provenance, record?, xp, track, stores } | { repeat, ... }   (CRAFT4: a piece a quality step better, up to Superior)
+//   POST /v1/prof/reforge { character, tier, rid }                     -> { ok, tier, essence, seed, track, store } | { repeat, ... }   (CRAFT4: an Enchanter's Reforge for Arcane Essence)
 //   POST /v1/stores/withdraw { character, material, qty, rid }         -> { ok, material, qty, store } | { repeat, ... }
+//        BAG1: { carry: true, held, seen? } counts the units as carried -> { ..., carry, carried }
+//   POST /v1/stores/deposit { character, material, qty, held, order, rid, seen? } -> { ok, material, qty, own, bought, gold, loose?, store, carried } | { repeat, ... }   (BAG1: `order` 'all' or 'spend'; a deposit made is answered as made, for good - prof_deposits; BAG-CRAFT: 'work', a station's, moves `loose` units the count does not hold too)
 //   POST /v1/writs/list { character, region }                          -> { region, day, endsAt, writs, today }
 //   POST /v1/writs/deliver { character, id, rid }                      -> { ok, writ, pay, balance, track, store, today, renown, order } | { repeat, ... }
 // RENOWN1, Renown. The caller's own character, by the id its
@@ -91,6 +109,33 @@
 //   POST /v1/renown/xp { character, xp, name?, rid?, region? } -> { character, xp, level, credited, rose, order, max?, repeat? }   (SEAT1b: `region` where it was earned)
 //   POST /v1/auth/token { character? }    -> { ..., level, xp }   (RENOWN4: xp, the track's total)
 //   (REALM-DOOR: the token says whether that character is one of the account's realm characters, `rc`)
+//   (ARENA4b: and, for a realm character, the level on its tile - its summary's - as `cl`, 1..1000)
+// CHAP1, THE ROLL (bible/11-Multiplayer/Chapters-Arc.md 3): a realm character's standing with Daggerfall's own guilds -
+// the twenty-two guild factions' reputation and its memberships - kept here, under the playing tab's lease, while
+// CHAPTERS_OPEN lets the account in (npcRoll.js; the law src/net/npcChapterLaw.js):
+//   POST /v1/chapters/roll { character, lease, seed? } -> { roll, from, seeded? } | { roll: null }   (seeded once from the save - a customs crossing from the epoch capped; what is owed paid)
+//   POST /v1/chapters/claim { character, lease, rid, deltas, members } -> { roll, credited } | { roll, repeat }   (a loss whole, a gain at the day's pace and the rest owed)
+//   POST /v1/chapters/witness { hall: { key, region, factions } } -> { ok, counted, why? }   (CHAP2a: a town's guild halls, witnessed as a seat is)
+//   POST /v1/chapters/halls { region } -> { region, towns: [{ key, state, region, factions, witnesses, audit }], ignored }   (AUDIT CHAP2 E1: a developer's audit list)
+//   POST /v1/chapters/strike { key } -> { ok, key, reports }   (AUDIT CHAP2 E1: a false town struck, a developer's)
+//   POST /v1/chapters/list {} -> { week, chapters: [{ f, region, strength, band, seats: [{ seat, name }] }] }   (CHAP3b: the chapter sheet, the Turnings due settled first; CHAP5a its seats' holders)
+//   POST /v1/chapters/focus { character, faction, region, focus } -> { ok, focus, week } | { error }   (CHAP4d: a Master's Focus)
+//   POST /v1/chapters/history { region } -> { rows: [{ faction, week, kind, data, name }], zero }   (CHAP4d: a region's Chronicle; AUDIT CHAP4 R10)
+//   POST /v1/chapters/back { character, faction, region, side } -> { ok, event, side } | { error }   (CHAP6b: a Schism's side, a Succession's candidate)
+//   POST /v1/chapters/patron { character, faction, region, marks, rid } -> { ok, season, marks, guildMarks } | { error }   (CHAP7a: a guild's bid for a chapter's patronage)
+// ARENA4b, the arena online's second half: a bout's Renown on its claim, and the homes the arena displaced:
+//   POST /v1/arena/claim { receipt, character?, name? } -> { ...ARENA4's, renown?, order? }   (a ladder win, a rated players' win)
+//   POST /v1/arena/attempt { tier, bout, room } -> { ticket, tier, bout, room, forfeits } | 409 { error: 'order', ladder } | 403 { error: 'ladder-needs-account' }   (AUDIT ARENA-LADDER: a ladder attempt's ticket, for one room)
+//   POST /v1/homes/arena-move { mapId, from, to, character, realm? } -> { ok, from, to, refund, pieces, items, tenancies, withdrawn, hidden, hall?, realm?, repeat? }
+//   POST /v1/homes/arena-moves { character }           -> { moves: [{ mapId, from, to, refund, movedAt, hall? }] }   (not yet read)
+//   POST /v1/homes/arena-seen { mapId, from }          -> { ok, seen }
+// FIELD BUGS 2026-10-04d KNIGHT-HOUSE, a deed the realm gave (a Knightly Order's house) held off the record, and its hold
+// given up as the deed sells at the bank:
+//   POST /v1/homes/deed { mapId, buildingKey, region, character, layout } -> { ok, home } | { ok, repeat }
+//   POST /v1/homes/release { mapId, buildingKey, deed: true }  -> { ok, price: 0, decorCount: 0, decorBack: 0 }
+// HOME-VOTE, a registered account's word on another's home (homeVotes.js; /v1/homes/town's homes carry `score` and the
+// caller's `vote`):
+//   POST /v1/homes/vote { mapId, buildingKey, vote: 1 | -1 | 0 } -> { ok, mapId, buildingKey, vote, score }
 // PATREON-LINK, a patron's own Patreon (patreon.js) - /v1/account's answer carries `patreon: { on, linked, titles,
 // link }`, `link` the authorize URL with a state sealed for the account; the next three answer a browser and Patreon:
 //   GET  /v1/patreon/callback ?code&state  -> a page asking which game account, with the yes's ticket
@@ -136,30 +181,46 @@
 import {
   createGuest, openSession, resolveSession, closeSession, closeAllSessions,
   devicesOf, accountView, displayName, accountKind,
-  register, login, recover, changePassword, setEmail, overRate,
+  register, login, recover, changePassword, setEmail, overRate, overAccountRate,
   accountWardrobe, equipTitle, equipAura, equipGlyph, buyInsignia, insigniaPurse, creditPlay, muteAccount, isMuted, mutedUntil,
-  duelRecordOf, reportDuelLoss, gateRecordOf, claimGate, legalRefusal,
+  duelRecordOf, claimDuel, gateRecordOf, claimGate, legalRefusal,
+  nameAsOf, wornNameOf, chooseNameAs,   // NAME-AS: the name the room reads - the account's or the character's
   ACCOUNT_MAX, ACCOUNT_WINDOW_S,
 } from './accounts.js';
-import { mintToken, mintOrder, mintRenownOrder, mintGuildOrder, mintGuildOutOrder, MAX_TTL_S, TOKEN_V, ID_RE, SEAT_TITLES } from '../../src/net/identityToken.js';
-import { ACCOUNT_VERSION, MAX_BODY_BYTES, ROUTES, OPEN_ROUTES, PATREON_OPEN_ROUTES, savePathOf, realmPathOf, SAVE_MAX_BYTES, SHOT_MAX_BYTES, maintaining } from './service.js';
+import { mintToken, mintOrder, mintRenownOrder, mintGuildOrder, mintGuildOutOrder, MAX_TTL_S, TOKEN_V, ID_RE, SEAT_TITLES, CHAPTER_TITLES, TOKEN_MAX_CHARS, TOKEN_BODY_MAX, tokenBodyOf } from '../../src/net/identityToken.js';
+import { ACCOUNT_VERSION, MAX_BODY_BYTES, ROUTES, OPEN_ROUTES, PATREON_OPEN_ROUTES, savePathOf, realmPathOf, SAVE_MAX_BYTES, SHOT_MAX_BYTES, maintaining, routeDb, d1BookmarkOf, D1_BOOKMARK_RE, d1Overloaded } from './service.js';   // SCALE4d: the routes a read replica may serve, and the session they are served on
 import { listSaves, putCard, putBlob, getBlob, deleteSave, saveCardOf } from './saves.js';
 import { signingKey, gatePublicKey } from './signing.js';
+import { stakeCards, cashoutCards } from './cards.js';   // CARDS6: a card table's stakes, escrowed
+import { deckOrderOf, claimIliac, iliacBoardOf, withIliacHonours } from './iliac.js';   // CARDS10: a ranked seat's deck vouched for, Iliac Hand's season board and its title
 import { titleWorn, glyphsOf, glyphsHidden, auraWorn } from './titles.js';
+import { claimArena, arenaAttempt, arenaBoardOf, arenaTeam, withArenaHonours, arenaRatingOf, ARENA_HONOUR_PATHS, ARENA_RENOWN_REGION } from './arena.js';   // ARENA4: the arena's records, its board, its banners, and the honours the mint reads
+import { arenaSeasonOf } from '../../src/net/arenaLaw.js';
 import { sendLetter, inboxOf, readLetter, deleteLetter } from './letters.js';   // MAIL1: the letters' routes
+import { postBoxOf, readPost, claimPost, deletePost } from './post.js';   // SERVER-POST: the server's post
 import { reportRenownXp, renownTrackOf, renownTracksOf, renownCharacterOk } from './renownTracks.js';   // RENOWN1: Renown's track - RENOWN-CHAR: a character's again
+import { chaptersOpenFor, readRoll, claimRoll } from './npcRoll.js';   // CHAP1: the Roll - a realm character's standing with Daggerfall's guilds
+import { witnessHall, listHalls, strikeHall } from './npcHalls.js';
+import { creditReceipt } from './npcReceipts.js';   // CHAP2b: a receipt's standing and the chapter's receipt writ
+import { chapterSheet, chapterSeatsOf, chapterTitlesOpenFor, chapterTitlesOfAccount, setChapterFocus, chapterChronicle, backChapter, bidPatron } from './npcChapters.js';   // CHAP3b: the chapter sheet; CHAP4a: a character's seats; CHAP4c: the chapters' titles
+import { contractRegionOfRaid } from '../../src/net/writLaw.js';   // CHAP2b: the region a raid's key names   // CHAP2a: a town's guild halls, witnessed; AUDIT CHAP2 E1: audited and struck
 import { claimRaid, raidRecordOf } from './raids.js';   // RAID4: the towns defended
-import { claimHome, releaseHome, setHomeEntry, homesInTown, homesOf, setHomeLook } from './homes.js';   // HOME1: the online homes' routes; HOME-LOOK: its outside
+import { claimSerpent, serpentRecordOf } from './serpents.js';   // SERPENT1: the serpents slain
+import { claimSd, sdRecordOf } from './sds.js';   // SD9b: the Hours broken
+import { voteHome } from './homeVotes.js';   // HOME-VOTE: a town's word on a player's house
+import { claimHome, releaseHome, setHomeEntry, homesInTown, homesOf, setHomeLook, homeLayoutsKept, arenaMoveHome, arenaMovesOf, arenaMoveSeen, holdDeed, inheritHome } from './homes.js';   // HOME1: the online homes' routes; HOME-LOOK: its outside; WD3: the towns' layouts; ARENA4b: the homes the arena displaced, moved; FIELD BUGS 2026-10-04d KNIGHT-HOUSE: a deed held
 import { roomsOf, offerRoom, withdrawRoom, rentRoom, collectRent } from './rent.js';   // HOME-RENT: a home's rooms, rented
 import {
   foundGuild, guildOf, invitesOf, inviteToGuild, answerInvite, leaveGuild, removeFromGuild, rankGuildMember, renameGuildRanks,
-  depositToGuild, withdrawFromGuild, handOverGuild, disbandGuild, guildBadgeOf,
+  depositToGuild, withdrawFromGuild, handOverGuild, disbandGuild, guildBadgeOf, mintMemberOf,
+  renameGuild,   // GUILD2a
 } from './guilds.js';   // GUILD1: the guilds' routes; GUILD1c: the guild a token carries
+import { vaultOf, vaultPut, vaultTake, vaultGrant } from './guildVault.js';   // GUILD2b: the guild's vault
 import { buyHall, sellHall, setHallEntry, setHeraldry } from './halls.js';   // GUILD1d: the guild hall and heraldry
 import { readGuildBoard, pinGuildNote, takeDownGuildNote } from './guildBoard.js';   // GUILD1e: a guild's own board
 import { listSeats, witnessSeat, strikeSeat, seatsOpenFor } from './townSeats.js';   // SEAT1a: the seats' witnessed registry
 import { pledgeSeat, claimWatch, creditGate, creditRenown, readStandings, payTribute, claimOrcCamp, readRecords } from './seatInfluence.js';   // SEAT1b: influence   // SEASON1 part two: an Orc Raid's camp
-import { settleDue, seatsWithHolders, relinquishSeat, seatBadgeOf, seatTitlesOf } from './seatTurning.js';   // SEAT1c: the Turning, the Charters, their titles and glyphs
+import { settleDueOnce, seatsWithHolders, relinquishSeat, seatBadgeOf, seatTitlesOf } from './seatTurning.js';   // SEAT1c: the Turning, the Charters, their titles and glyphs
 import { setTithe, proclaimEdict, claimBounty } from './seatHolding.js';   // SEAT1d: the holder's levers, a Bounty's camp
 import { setWindow, signBattle, unsignBattle, hireSellsword, withdrawHire, siegesLive } from './seatBattles.js';   // SEAT2a: the battles' week
 import { siegePass, claimSiege, voidSiege } from './seatSiege.js';   // SEAT2a part three: the pass, the result, Honours   // VOID: a moderator's void
@@ -171,26 +232,37 @@ import { fundFort, readForts } from './seatForts.js';   // SEAT2b: a seat's fort
 
 /** SEAT1c: the account's row with the Charter titles it may wear laid on it (`seatTitles`, titles.js titlesHeld), while the
  *  seats are open to it - for the wardrobe's read and its write. */
-const withSeatTitles = async (ctx, player, env) => (seatsOpenFor(player, env) ? { ...player, seatTitles: await seatTitlesOf(ctx.db, player.id) } : player);
-import { decorOf, placeDecor, moveDecor, removeDecor, hideDecorBase, yardsOf } from './decor.js';   // DECOR1: an online home's decor; BASE-HIDE: what its owner took out
-import { gateStrikeStatement, gateStrikeAnswer, raidStrikeStatement, combatStrikeAnswer, raidStrikeRid, deedStatements, deedAnswer, deedEvent, marksOf, marksCardOf, exchangeMarks, depositGuildMarks, withdrawGuildMarks, marksReport } from './marks.js';   // MARKS1: the server's currency; SILVER-WAYS: a raid's silver and a guild's deeds
+const withSeatTitles = async (ctx, player, env) => withChapterTitles(ctx, seatsOpenFor(player, env) ? { ...player, seatTitles: await seatTitlesOf(ctx.db, player.id) } : player, env);
+/** CHAP4c: and the chapters' seats' titles its characters hold, while CHAPTER_TITLES is on (npcChapters.js). */
+const withChapterTitles = async (/** @type {any} */ ctx, /** @type {any} */ player, /** @type {any} */ env) => (chapterTitlesOpenFor(player, env)
+  ? { ...player, chapterTitles: [...new Set((await chapterTitlesOfAccount(ctx.db, player.id, ctx.nowS, seasonZeroOf(env.SEASON_ZERO_WEEK))).map((t) => t.title))] } : player);
+import { decorOf, placeDecor, moveDecor, removeDecor, hideDecorBase, yardsKept, forgetYards } from './decor.js';   // YARD-SHED: a town's yards kept   // DECOR1: an online home's decor; BASE-HIDE: what its owner took out
+import { gateStrikeStatement, gateStrikeAnswer, raidStrikeStatement, combatStrikeAnswer, raidStrikeRid, deedStatements, deedAnswer, deedEvent, marksOf, marksCardOf, exchangeMarks, depositGuildMarks, withdrawGuildMarks, marksReport, serpentStrikeStatement, serpentStrikeAnswer, findMarks } from './marks.js';   // MARKS1: the server's currency; SILVER-WAYS: a raid's silver and a guild's deeds
 import { readBoard, pinNote, takeDownNote, reportNote, moderateNote, postNotice, removeNotice } from './board.js';   // NOTICE1: the Notice Board
-import { profState, profPixels, harvestNode, chooseSpec, withdrawStores, smeltAtForge, craftAtAnvil, buyStock, listWrits, deliverWrit } from './professions.js';   // PROF1: the professions; PROF2: the forge; PROF3: the anvil and the smith's stock
-import { brewAtStation, disenchantPiece } from './alchemy.js';   // PROF12: Alchemy's brew, Enchanting's disenchant
+import { profState, profPixels, harvestNode, chooseSpec, withdrawStores, depositStores, smeltAtForge, craftAtAnvil, temperPiece, buyStock, listWrits, deliverWrit } from './professions.js';   // BAG1: a deposit   // PROF1: the professions; PROF2: the forge; PROF3: the anvil and the smith's stock
+import { brewAtStation, disenchantPiece, reforgeWithEssence } from './alchemy.js';   // PROF12: Alchemy's brew, Enchanting's disenchant
 import {
   writBoard, postGuildWrit, supplyGuildWrit, withdrawGuildWrit, setWritBudget, postCommission, fulfilCommission, cancelCommission, declineCommission,
   guildStores, depositGuildStores, withdrawGuildStores,
 } from './writs.js';   // PROF6: guild writs, commissions and the guild Stores
 import { contractBoard, postContract, withdrawContract, contractPayStatements, contractPaysOf } from './contracts.js';   // SILVER-WAYS: guild contracts
 import { motherlodesRead, strikeMotherlode, isMotherlodeNode } from './motherlodes.js';   // PROF2b: the Motherlodes
-import { marketRead, marketList, marketBuy, marketCancel, marketOrder, marketFill, marketUnorder, marketCollect, marketReport, marketRemove, marketAuction, marketBid, marketGoldCollect } from './market.js';   // PROF5: the market; PROF5b: its auctions; GOLD-MARKET: gold held collected
+import { marketRead, marketList, marketBuy, marketCancel, marketOrder, marketFill, marketUnorder, marketCollect, marketReport, marketRemove, marketAuction, marketBid, marketGoldCollect, marketVendor, marketVendors, marketMyVendors } from './market.js';   // PROF5: the market; PROF5b: its auctions; GOLD-MARKET: gold held collected
 import {
   listRealm, createRealm, customsRealm, joinRealm, checkpointRealm, getRealmBlob, leaveRealm, deleteRealm, undoRealm,
-  realmCharacterHeld, grantCustomsPass, REALM_CHARACTERS_MAX, REALM_MAX_BYTES, objectBytesOf,
-} from './realm.js';   // REALM P1: the realm's characters
+  realmMintFacts, grantCustomsPass, REALM_CHARACTERS_MAX, REALM_MAX_BYTES, objectBytesOf,
+} from './realm.js';   // REALM P1: the realm's characters; ARENA4b: the level on a realm character's tile, the token's `cl`
+import { grantSpoils } from './budget.js';   // INT5: a signed win's spoils fill the playing character's budget
+import { reviewAct } from './review.js';   // INT6: the review of the judge's verdicts
 import { isGzip, gzipSizeOf, gunzipText, REALM_TEXT_MAX_BYTES } from '../../src/net/realmSaveCodec.js';   // REALM-GZIP: a save rides packed
 import { tradeRealm, REALM_TRADE_BODY_MAX } from './realmTrade.js';   // REALM P2.1: a trade, settled here
-import { measured } from './metrics.js';   // SCALE1: every request counted (Workers Analytics Engine)
+import { wildFall } from './wild.js';   // INT9: a death in the open zone's drop, taken off the record
+import { listLineages, putLineage, realmDie, realmWed, listUnions, LINEAGE_BODY_MAX, isTombstone } from './legacy.js';   // LEGACY7: Project Legacy's lines and the tombstone
+import { measured, heartbeatPartsOf } from './metrics.js';   // SCALE1: every request counted (Workers Analytics Engine); AUDIT SCALE II A-3: a heartbeat's parts, of the body the route read
+import { runCron } from './cron.js';   // SCALE4b: the service's own clock
+import { heartbeat } from './heartbeat.js';   // SCALE4c: one request for a tab's three clocks
+import { ADMIT_ROUTES, admitWait } from './admit.js';   // ADMIT-LINE: the sign-in line
+export { AdmitGate } from './admit.js';   // ADMIT-LINE: the line's Durable Object (wrangler.toml binds it from this module)
 import {
   patreonLinkOn, openPatreon, sealPatreon, patreonExchange, patreonIdentity, linkPatreon, unlinkPatreon, patreonWebhook,
   patreonCardOf, pledgeTitles, patreonHtml, patreonPage, patreonConfirmPage, patreonLinkedPage,
@@ -221,29 +293,67 @@ const no = (why, status, origin) => json({ error: why }, status, origin);
 /** REALM P1: each realm refusal's status - a bad shape 400 (the default), a character that is not the caller's 404, a
  *  lease another tab holds or a sequence that is not the next 409 (the tab that lost it goes offline), the account's
  *  bound 409, customs refused 403/409, no storage 503. */
+/** INT3/INT4 (the INTEGRITY arc - bible/06-Systems/Integrity-Arc.md): THE JUDGE'S REFUSALS, the same at every route that
+ *  hands a realm character's value to another player - its trade held, its record unread since the judge shipped, a
+ *  piece the id ledger marked a duplicate - each a conflict with what stands (realm.js holdRefusal, prepareRealmRecord). */
+const JUDGE_STATUS = Object.freeze({ 'trade-held': 409, 'record-unjudged': 409, 'piece-dupe': 409, 'piece-claimed': 409, 'piece-legacy': 409 });
+/** INT9: a death's drop's refusals - no key to verify or sign with 503, a receipt not the caller's 403, the fallen's own
+ *  grace or the room's falls 409; the record's own (REALM_STATUS) after them, a bad shape 400 (the default). */
+const WILD_STATUS = Object.freeze({ 'no-gate-key': 503, 'no-signing-key': 503, 'not-yours': 403, grace: 409, nonce: 400 });
 /** HOME-RENT: a room's refusals - a bad shape 400 (the default). */
 const RENT_STATUS = Object.freeze({
+  ...JUDGE_STATUS,
   'rent-taken': 409, 'rent-held': 409, 'rent-rooms': 409, 'rent-none': 409, 'rent-own': 403, 'realm-only': 403,
   'rent-rate': 429, 'no-rent-room': 404, 'no-home': 404,
 });
+/** AUDIT CARDS-6 D8: a card table's and a ranked deck's refusals that are not a bad request (400, the default): the service
+ *  with no key to sign with, a guest asking for a ranked seat. */
+const CARDS_STATUS = Object.freeze({ 'cards-closed': 503, 'ranked-needs-account': 403 });
+/** SERVER-POST: the post's own refusals; a claim's realm words are REALM_STATUS's. */
+const POST_STATUS = Object.freeze({ 'no-post': 404, 'post-no-item': 409, 'post-claimed': 409, 'post-unclaimed': 409, 'realm-only': 403, 'realm-needed': 409, server: 503 });   // AUDIT SERVER-POST: a batch D1 dropped is the service's failure, counted as one
 const REALM_STATUS = Object.freeze({
+  ...JUDGE_STATUS,   // INT3/INT4
   'no-realm-character': 404, 'no-data': 404, lease: 409, seq: 409, 'too-many-characters': 409,
   'customs-never-online': 403, 'customs-other-account': 403, 'customs-already': 409, 'no-storage': 503,   // CUSTOMS-ELSEWHERE: the other account's
   'trade-spent': 409,   // REALM P2.1: a trade's sid another pair settled
   'guild-master-leaves': 409,   // AUDIT REALM L1-F7: a guildmaster deleted hands the guild over first
   'guild-treasury': 409,   // AUDIT REALM2 S8: and a lone one empties the treasury first
   'guild-hall': 409,   // AUDIT GUILD1d S1: and sells its guild's hall first
+  'guild-vault': 409,   // AUDIT GUILD2 G2: and empties its guild's vault first
   'guild-seat': 409, 'guild-battle': 409,   // SEAT1c: and relinquishes its Charters, and fights the battle it is named in
   'realm-market-open': 409,   // PROF-DELETE: and one with market business open settles it first
   'home-tenants': 409, 'home-rent-due': 409,   // HOME-RENT: and one renting rooms out waits for its tenants and collects its rent
+  'home-vendor-stocked': 409,   // HOME-VENDOR: and one whose trader still sells
   'realm-birth': 403, 'customs-allowance': 403,   // AUDIT REALM2 S1: a first save the realm's law refuses
+  // LEGACY7 (legacy.js): a tombstone is gone for good; a line or person the birth cannot be; a line's model is its founder's
+  dead: 410, 'no-lineage': 404, 'lineage-person': 409, 'lineage-played': 409, 'lineage-model': 409, 'too-many-lineages': 409,
+  'wed-no-line': 409, 'wed-already': 409, 'wed-partner': 409, 'wed-spent': 409,   // LEGACY7 part three: a wedding the realm cannot make
+  'lineage-too-large': 413,   // AUDIT LEGACY III O2/P1: a line's record past its bound - its own word, never a malformed body's
 });
 /** CUSTOMS-PASS: a pass's refusals - a bad shape 400 (the default), a caller who is no developer 403, no such account
  *  404, a guest's name two accounts wear 409. */
 const PASS_STATUS = Object.freeze({ 'not-developer': 403, 'no-player': 404, ambiguous: 409 });
+/** CHAP1: the Roll's refusals - a bad shape 400 (the default), the switch shut 403, no such character or none of its
+ *  saves landed 404, a lease another tab took 409 (the tab stops), a Roll not yet read or a race lost 409 (the tab asks
+ *  again - AUDIT CHAP R12: this said the lease was asked again too), a tombstone 410. */
+const ROLL_STATUS = Object.freeze({
+  'chapters-closed': 403, 'no-realm-character': 404, 'no-data': 404, lease: 409, 'roll-unseeded': 409, 'roll-busy': 409, dead: 410,
+  'halls-need-account': 403, 'halls-rate': 429,   // CHAP2a: a hall's witness - a guest's, or past the hour's
+  'roll-rate': 429,   // AUDIT CHAP2 E2: the claims' hour
+  'hall-struck': 409, 'not-developer': 403, 'bad-region': 400,   // AUDIT CHAP2 E1: a struck town; the audit and the strike a developer's
+  'not-master': 403,   // CHAP4d: a Focus set by a character that is not that chapter's Master ('no-focus' and 'body' the shape's 400)
+  'no-event': 409, closed: 409, 'not-member': 403,   // CHAP6b: a backing where the Season holds nothing to back, one decided, or by no member ('no-side' the shape's 400)
+  // CHAP7a: a patron's bid - an account's, a request's id, the Marks switch, its rank, the hour's writes; no Season or chapter to bid on; too
+  // little or no more than it stood at, too little in the treasury ('bad-marks', 'marks-rid', 'guild-character' the shape's 400)
+  'marks-need-account': 403, 'marks-closed': 403, 'guilds-need-account': 403, 'no-guild': 404, 'guild-rank': 403, 'marks-rate': 429,
+  'no-season': 409, 'no-chapter': 404, 'patron-low': 409, 'guild-marks-short': 409,
+});
+/** INT6: the review's refusals - no developer 403, no such character 404, nothing clean to roll back to 409. */
+const REVIEW_STATUS = Object.freeze({ 'not-developer': 403, 'no-realm-character': 404, 'no-clean': 409, 'service-moved': 409, 'dead': 409 });
 /** GUILD1: each guild refusal's status - a bad shape 400 (the default), the wrong rank or too little Renown 403, a
  *  thing that is not there 404, a conflict with what is 409, the hour's writes spent 429. */
 const GUILD_STATUS = Object.freeze({
+  ...JUDGE_STATUS,   // INT3/INT4
   'guilds-need-account': 403, 'guild-rank': 403, 'guild-renown': 403,
   'no-guild': 404, 'no-invite': 404, 'no-member': 404, 'no-player': 404,
   'guild-already': 409, 'guild-name-taken': 409, 'guild-tag-taken': 409, 'guild-full': 409, 'guild-master-leaves': 409,
@@ -255,18 +365,30 @@ const GUILD_STATUS = Object.freeze({
   // GUILD1d (Seats-Arc 8): the hall - a building somebody owns, the guild's one hall already held, none held, one moved
   // under its sale, a guild kept from going by it; and the heraldry - the same again, changed meanwhile, the Drakes short
   'home-taken': 409, 'guild-hall-have': 409, 'guild-hall-moved': 409, 'guild-hall': 409, 'guild-hall-none': 404, 'home-rate': 429,
+  'home-arena': 409,   // ARENA4b: a hall bought in the arena's cell - the arena stands there (halls.js buyHall)
+  // AUDIT PRE-MERGE 1003 WD1: a hall in another layout of its town (answered with the town's, below), and one from a build
+  // before the town mods - a home's claim's own words and statuses
+  'home-layout': 409, 'home-update': 426,
   'heraldry-same': 409, 'heraldry-moved': 409, 'heraldry-drakes': 409, 'marks-closed': 403,
   'heraldry-siege': 409,   // AUDIT-SEATS S10 (Seats-Arc 8.1): a change in a week the guild fights for a seat
+  // GUILD2a: a new name - the same as the old, a word the filter refuses, too soon after the last, a siege week, the
+  // realm's gold short, moved under it; GUILD2b: the vault - the standing short, the day's limit, full, empty, moved,
+  // a piece the record does not hold or may not leave, a guild kept from going by its vault
+  'guild-rename-same': 409, 'guild-name-word': 400, 'guild-rank-word': 400, 'guild-rename-soon': 409, 'guild-rename-siege': 409, 'guild-rename-gold': 409, 'guild-rename-moved': 409,
+  'guild-vault-rank': 403, 'guild-vault-limit': 409, 'guild-vault-full': 409, 'guild-vault-empty': 404, 'guild-vault-moved': 409, 'vault-goods': 409, 'guild-vault': 409,
+  'realm-only': 400, 'bad-vault-item': 400, 'bad-vault-count': 400, 'bad-vault-slot': 400, 'bad-vault-grant': 400,
   'guild-seat': 409, 'guild-battle': 409,   // SEAT1c: a guild holding a Charter, or named in a battle still to come, does not go
+  'guild-patron': 409,   // AUDIT CHAP5 E4: nor one whose bid for a chapter's patronage stands
   // GUILD1e: the guild's board - the Notice Board's switch, a mute, no such note, the member's notes full, the hour spent
   'board-closed': 403, muted: 403, 'no-note': 404, 'notes-full': 409, 'board-rate': 429, 'board-ops-rate': 429,
   // REALM P2.2: a realm character's record moves with the act - where it stands, and whether it can pay
   'realm-needed': 400, 'realm-gold': 409, lease: 409, seq: 409, 'no-realm-character': 404, 'no-data': 404, 'no-storage': 503,
 });
-/** MARKS1: each Marks refusal's status - not this account's (a guest, the switch, a rank, a developer's) 403, no
- *  guild 404, short or capped 409, the hour's acts spent 429, a bad shape 400 (the default). */
+/** MARKS1: each Marks refusal's status - not this account's (a guest, the switch, a rank, a developer's; AUDIT 625 S1:
+ *  the finds of an account not yet a week registered) 403, no guild 404, short or capped 409, the hour's acts spent
+ *  429, a bad shape 400 (the default). */
 const MARKS_STATUS = Object.freeze({
-  'marks-need-account': 403, 'marks-closed': 403, 'not-developer': 403, 'guild-rank': 403, 'guilds-need-account': 403,
+  'marks-need-account': 403, 'marks-closed': 403, 'marks-young': 403, 'not-developer': 403, 'guild-rank': 403, 'guilds-need-account': 403,
   'no-guild': 404,
   'marks-short': 409, 'marks-bank-cap': 409, 'marks-full': 409, 'guild-marks-short': 409, 'guild-marks-full': 409,
   'marks-rate': 429,
@@ -282,6 +404,8 @@ const BOARD_STATUS = Object.freeze({
 });
 /** SEAT1a (SEAT1b): each seat refusal's status - not this account's (a guest, the switch, a developer's act) 403, a seat struck
  *  409, the hour's reports spent 429, a bad shape 400 (the default). */
+/** SEAT-LEASE: the seat routes that only read, answered from the state as it stands while another settles the Turning. */
+const SEAT_READS = new Set(['/v1/seats/list', '/v1/seats/standings', '/v1/seats/records', '/v1/seats/forts']);
 const SEAT_STATUS = Object.freeze({
   'seats-need-account': 403, 'seats-closed': 403, 'not-developer': 403, 'seat-struck': 409, 'seats-rate': 429,
   'not-moderator': 403,   // VOID: `/siege void` asked by anyone but a moderator or a developer
@@ -313,17 +437,18 @@ const SEAT_STATUS = Object.freeze({
   'fort-not-here': 409, 'fort-building': 409, 'fort-max': 409, 'seat-treasury': 409,
 });
 /** PROF1: each professions refusal's status - not this account's (a guest, the switch, the Marks' switch, the rank) 403,
- *  no such writ 404, a conflict with what stands (the day, the hour, the cap, the Stores, a node or writ taken) 409, the
+ *  no such writ 404, a conflict with what stands (the day, the hour, a bound, the Stores, a node or writ taken) 409, the
  *  hour's acts spent 429, a bad shape 400 (the default). */
 const PROF_STATUS = Object.freeze({
+  ...JUDGE_STATUS,   // INT3/INT4
   'prof-need-account': 403, 'prof-closed': 403, 'marks-closed': 403, 'prof-rank': 403,
   'no-writ': 404, 'bad-recipe': 404,
-  'prof-pixel': 409, 'prof-day': 409, 'prof-late': 409, 'prof-cap': 409, 'stores-full': 409, 'stores-short': 409,   // ANY-HOUR: no `prof-night` - no node keeps hours
-  'prof-account-cap': 409, 'prof-deep-cap': 409, 'prof-spec-stale': 409, 'prof-spec-taken': 409,   // AUDIT 29
+  'prof-pixel': 409, 'prof-day': 409, 'prof-late': 409, 'stores-full': 409, 'stores-short': 409,   // ANY-HOUR: no `prof-night` - no node keeps hours; CAP-OFF: no `prof-cap` - no day's cap
+  'prof-deep-cap': 409, 'prof-spec-stale': 409, 'prof-spec-taken': 409,   // AUDIT 29 (CAP-OFF: no `prof-account-cap`)
   'prof-no-pack-form': 409,   // PROF3: the smith's stock stays in the Stores until its professions' templates
+  'carried-full': 409, 'carried-short': 409,   // BAG1: a carried count at its bound, or holding fewer than a deposit asks
   'prof-later': 409,   // PROF4: a recipe whose slice is to come - the Ram Kit (PROF0 25)
-  'prof-hunt-cap': 409, 'prof-hunt-high': 409, 'prof-foe': 400, 'prof-dye': 400,   // PROF7: Hunting's day (30 hides, 3 of tiers 5-6), a body no knife skins, a dye asked of what takes none
-  'prof-fish-cap': 409,   // PROF8: Fishing's day (40 hauls an account)
+  'prof-hunt-high': 409, 'prof-foe': 400, 'prof-dye': 400,   // PROF7: Hunting's rare hides (3 of tiers 5-6 a day - CAP-OFF: no `prof-hunt-cap`, nor PROF8's `prof-fish-cap`), a body no knife skins, a dye asked of what takes none
   'prof-sculptor': 403,   // PROF11: the stone decor is a Sculptor's - a skill's door, as the rank's
   'prof-lapidary': 403,   // PROF10: a Siege-cracked Gem is set as a gem by a Lapidary alone - a skill's door, as the Sculptor's
   // PROF12: a transmutation is a Transmuter's (a skill's door); a cauldron DFU's law answers with no such potion, a bad piece's id;
@@ -333,6 +458,7 @@ const PROF_STATUS = Object.freeze({
   'prof-piece-gone': 409, 'realm-needed': 400, lease: 409, seq: 409, 'no-realm-character': 404, 'no-data': 404, 'no-storage': 503,
   'node-taken': 409, 'writ-taken': 409, 'writ-expired': 409, 'writ-cap': 409, 'marks-full': 409, 'marks-short': 409, 'prof-respec-pending': 409,
   'prof-rate': 429,
+  'chapters-closed': 403,   // AUDIT CHAP2 S3: a hall writ while the Chapters are not this account's - 403, as every door says it
   // PROF6: guild writs, commissions and the guild Stores
   'writs-closed': 403, 'guild-rank': 403, 'guilds-need-account': 403, 'commission-not-yours': 403, 'market-not-yours': 403,
   'no-guild': 404, 'commission-crafter': 404,
@@ -352,12 +478,14 @@ const PROF_STATUS = Object.freeze({
  *  listing, order or delivery 404, a conflict with what stands (the Marks, the Stores, the units, the road, the price
  *  moved, one's own goods) 409, the hour's acts spent 429, a bad shape 400 (the default). */
 const MARKET_STATUS = Object.freeze({
+  ...JUDGE_STATUS,   // INT3/INT4
   'prof-need-account': 403, 'market-closed': 403, 'not-moderator': 403,
   'market-gone': 404,
   'marks-short': 409, 'marks-full': 409, 'stores-full': 409, 'stores-short': 409, 'market-own': 409, 'market-short': 409,
   'market-no-road': 409, 'market-price-moved': 409, 'market-seller-full': 409, 'market-listings-max': 409, 'market-orders-max': 409,
   'market-not-yours': 409, 'market-listed': 409, 'market-order-full': 409, 'market-elsewhere': 409, 'market-other-character': 409,
-  'market-on-road': 409,
+  'market-on-road': 409, 'market-courier-dear': 409,   // GLOBAL-MARKET: a fill from afar whose courier would take all its pay
+  'market-taxed-out': 409,   // MARKET-AUDIT S2: a fill its tax would leave paying nothing
   'market-not-listable': 409, 'market-uncollected': 409, 'market-standing': 409, 'market-unyielded': 409,   // AUDIT 30
   'market-no-record': 409,   // AUDIT 31 H1
   'auction-not-masterwork': 409, 'auction-low': 409, 'auction-leading': 409, 'auction-bid-standing': 409,   // PROF5b
@@ -368,6 +496,8 @@ const MARKET_STATUS = Object.freeze({
   // MARKET-ANY: a piece from the pack - the record's own piece, a crafted piece's own way
   'market-not-good': 409, 'market-good-gone': 409, 'market-piece-route': 409, 'market-goods-gold': 409,
   'market-rate': 429,
+  // HOME-VENDOR: a trader's refusals
+  'bad-vendor': 400, 'vendor-only': 409, 'vendor-not-here': 409, 'vendor-gone': 404, 'vendor-not-yours': 403, 'vendor-full': 409,   // MARKET-AUDIT
 });
 /** GUILD1c: A GUILD ACT'S ANSWER WITH ITS ORDERS SIGNED in place of what they say (guilds.js). `badge` - the actor's
  *  character's guild now, `{}` for none - becomes `order`, which the actor's own client carries to the rooms it is in;
@@ -408,9 +538,11 @@ async function readCapped(request, max) {
   return out.buffer;
 }
 
+/** A JSON object body within `max` bytes - or null (not a JSON object), or undefined (past the bound: AUDIT LEGACY III
+ *  O2, which the line's route answers in its own word). Both refuse alike wherever a route asks only `!body`. */
 async function readBody(request, max = MAX_BODY_BYTES) {
   const bytes = await readCapped(request, max);
-  if (!bytes) return null;
+  if (!bytes) return undefined;
   const text = new TextDecoder().decode(bytes);
   if (!text) return {};
   try { const v = JSON.parse(text); return v && typeof v === 'object' && !Array.isArray(v) ? v : null; } catch { return null; }
@@ -419,7 +551,21 @@ async function readBody(request, max = MAX_BODY_BYTES) {
 // SCALE1: THE SERVICE, and below it the handler workerd calls - which serves it and counts it (metrics.js). The
 // service is a plain object, not an export: this module still exports `default` and nothing else.
 const service = {
-  async fetch(request, env) {
+  /** SCALE4g: THE ANSWER CARRIES ITS SESSION'S NEWEST BOOKMARK (`x-d1-bookmark`, exposed to the page), so the tab's next
+   *  read starts no older than everything this one saw and wrote - the routes `route` answers are untouched.
+   *  AUDIT SCALE II A-3: `said` is what the route tells the metrics point (metrics.js measured) - a heartbeat's parts. */
+  async fetch(request, env, said = { parts: '' }) {
+    const held = { session: null, said };
+    const res = await service.route(request, env, held);
+    let mark = null;
+    try { mark = held.session?.getBookmark?.() ?? null; } catch { mark = null; }
+    if (typeof mark !== 'string' || !D1_BOOKMARK_RE.test(mark)) return res;
+    const out = new Response(res.body, res);   // its status and headers, copied - a copy's headers may be set
+    out.headers.set('x-d1-bookmark', mark);
+    out.headers.append('access-control-expose-headers', 'x-d1-bookmark');
+    return out;
+  },
+  async route(request, env, held = { session: null, said: { parts: '' } }) {
     const subtle = crypto.subtle;
     const rand = (b) => crypto.getRandomValues(b);
     const nowS = Math.floor(Date.now() / 1000);
@@ -433,7 +579,7 @@ const service = {
         headers: {
           'access-control-allow-origin': origin,
           'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'access-control-allow-headers': 'content-type, authorization, x-realm-lease, x-realm-seq, x-realm-summary',   // REALM P1: a checkpoint's lease, sequence and tile
+          'access-control-allow-headers': 'content-type, authorization, x-realm-lease, x-realm-seq, x-realm-summary, x-d1-bookmark',   // REALM P1: a checkpoint's lease, sequence and tile; SCALE4g: the tab's D1 bookmark
           'access-control-max-age': '86400',
         },
       });
@@ -487,9 +633,26 @@ const service = {
     const realmSlot = realmPathOf(path);   // REALM P1: a realm character's save, matched as a save slot is
     if (!ROUTES.has(path) && !slot && !realmSlot) return no('not-found', 404, origin);
 
-    const db = env.DB;
-    if (!db) return no('no-database', 503, origin);
-    const ctx = { db, subtle, rand, nowS };
+    if (!env.DB) return no('no-database', 503, origin);
+    // ADMIT-LINE (admit.js): A SIGN-IN TAKES ITS PLACE IN THE LINE before it costs the database a statement - the open
+    // routes' address bucket is a D1 write of its own. Told its place, it is answered 503 `queue` with the place and the
+    // wait (and Retry-After, in seconds); a gate that fails lets it in.
+    if (ADMIT_ROUTES.has(path) && request.method === 'POST') {
+      const queued = await admitWait(env, request.headers.get('cf-connecting-ip') || 'unknown');
+      if (queued) {
+        const res = json({ error: 'queue', position: queued.position, wait: queued.wait }, 503, origin);
+        res.headers.set('retry-after', String(Math.ceil(queued.wait / 1000)));
+        return res;
+      }
+    }
+    // SCALE4d: the token's mint on one D1 session whose first statement (the session lookup) is the primary's and whose
+    // reads after it a replica may serve - the reconnect wave's dozen reads a player off the one primary (service.js
+    // REPLICA_ROUTES); every other route on the binding as before
+    // SCALE4g: and the reads a tab keeps asking, each on the session of the bookmark it carries; the session is held so
+    // the answer can carry its newest bookmark back (`fetch`, below)
+    const db = routeDb(env.DB, path, request.method, d1BookmarkOf(request));
+    if (db !== env.DB) held.session = db;
+    const ctx = { db, primary: env.DB, subtle, rand, nowS };   // SCALE4g: `primary` the binding, for a read-then-store a session must not make (board.js)
 
     try {
       // PATREON-LINK: THE THREE DOORS A BROWSER AND PATREON KNOCK AT. No session: each is proven by what it carries
@@ -581,9 +744,23 @@ const service = {
 
       // EVERY ROUTE BELOW NEEDS A SECRET, and resolving it is the same
       // one indexed lookup every time.
-      // REALM P2.1: a trade's half carries two offers of up to sixteen records each - the one JSON route past 4 KiB
-      const body = request.method === 'POST' ? await readBody(request, path === '/v1/realm/trade' ? REALM_TRADE_BODY_MAX : MAX_BODY_BYTES) : {};
+      // REALM P2.1: a trade's half carries two offers of up to sixteen records each - a JSON route past 4 KiB. AUDIT LEGACY
+      // III O2/P1: and a line's record, to its own bound (legacy.js LINEAGE_BODY_MAX) - read at 4 KiB, a played founder's
+      // first save was refused, and the realm held the founding copy for good
+      const body = request.method === 'POST'
+        ? await readBody(request, path === '/v1/realm/lineage' ? LINEAGE_BODY_MAX : path === '/v1/realm/trade' ? REALM_TRADE_BODY_MAX : MAX_BODY_BYTES) : {};
+      if (body === undefined && path === '/v1/realm/lineage') return no('lineage-too-large', 413, origin);
       if (!body) return no('body', 400, origin);
+      // YARD-SHED (2026-10-06, the service down - "D1 DB is overloaded. Requests queued for too long."): A TOWN'S YARDS NEED
+      // NO SESSION. Its answer is every caller's alike, any guest's to read (decor.js yardsKept), and the two reads a
+      // session costs were most of the database's day - so it is answered here, from the isolate's kept answer, bounded
+      // per address in this isolate's memory as a session's door is per account (no write to count it).
+      if (path === '/v1/homes/yards' && request.method === 'POST') {
+        const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+        if (overAccountRate(`yards:${ip}`, nowS, ACCOUNT_MAX, ACCOUNT_WINDOW_S)) return no('rate', 429, origin);
+        const r = await yardsKept(ctx, body.mapId, nowS);
+        return 'error' in r ? no(r.error, 400, origin) : json(r, 200, origin);
+      }
       // ═══ AUDIT-ACC F13: A CREDENTIAL DOES NOT GO IN A URL ══════
       //
       // This read `?secret=` on a GET, and the comment above defended
@@ -605,6 +782,15 @@ const service = {
       const who = await resolveSession(ctx, secret);
       if (!who) return no('auth', 401, origin);
 
+      // AUDIT LEGACY III O12: A TOMBSTONE ACTS IN NOTHING. Every act a character does names it as the body's
+      // `character` - the professions, the Stores, the writs, the market, Renown, the guilds - and a fallen Bloodline
+      // character (an Enduring elder retired) is never played again (legacy.js), yet only the guilds' door asked (O5): a
+      // request naming the dead read its Stores and withdrew them into its heir's pack, and wrote its tracks after its
+      // death. Asked here, once, before any route - but the token's mint, which is no act: it vouches for the account,
+      // and mints a tombstone no realm character (REALM-DOOR's `rc` 0, no house, no `ci`), which the relay's door refuses;
+      // a page under its death screen still mints for the hub it stands in.
+      if (path !== '/v1/auth/token' && typeof body.character === 'string' && (await isTombstone(db, who.player.id, body.character))) return no('dead', 410, origin);
+
       // AUDIT-ACC F12: A CREDENTIAL IS NOT A LICENCE TO HAMMER. The
       // open routes were bounded per address and everything behind a
       // session was not, so one valid secret could mint signatures and
@@ -615,9 +801,20 @@ const service = {
       // credentials are wrong sends them to reset a password that was
       // never the problem - Fight Life's own note beside the same
       // check, and the reason its limiter throws rather than returns.
-      if (await overRate(ctx, `acct:${who.player.id}`, ACCOUNT_MAX, ACCOUNT_WINDOW_S)) {
+      // ACCT-RATE-MEM: counted in the isolate's memory - a D1 upsert here made every read a write (accounts.js).
+      if (overAccountRate(who.player.id, nowS, ACCOUNT_MAX, ACCOUNT_WINDOW_S)) {
         return no('rate', 429, origin);
       }
+
+      // ARENA4: THE ARENA'S HONOURS ON THE ROW, where a badge is minted or a wardrobe read - the Grand Champion's row, the
+      // season's #1 (server-account/src/arena.js arenaHonoursOf) - so titles.js derives `grandchampion`, `arenachampion`
+      // and the laurel from the arena's rows as it derives the founder from a date. Only on the doors that read a badge.
+      // AUDIT SCALE4d A1: ON THE BINDING, never the mint's replica session - a #1 found stale is COUNTED AGAIN AND WRITTEN
+      // (arena.js championNow -> storeArenaChampion, iliac.js the same): counted off a replica as new as the session lookup,
+      // the write put back a #1 a rated bout had just moved past, and the clock only re-stamps a kept #1
+      const honoursCtx = { ...ctx, db: env.DB };
+      if (ARENA_HONOUR_PATHS.has(path)) who.player = await withArenaHonours(honoursCtx, who.player, nowS);
+      if (ARENA_HONOUR_PATHS.has(path)) who.player = await withIliacHonours(honoursCtx, who.player, nowS);   // CARDS10: and Iliac Hand's season #1 (iliac.js), on the same doors
 
       if (path === '/v1/auth/token' && request.method === 'POST') {
         const key = await signingKey(env, subtle);
@@ -644,22 +841,30 @@ const service = {
         // SEAT1c (Seats-Arc 7.4): AND A CHARTER'S - its glyphs on every member of the named character's guild, and a seat
         // title worn only by the guildmaster character this token is minted for, with its claim (`ts`) beside it
         const seats = seatsOpenFor(who.player, env);
-        const worn = seats ? { ...who.player, seatTitles: await seatTitlesOf(ctx.db, who.player.id) } : who.player;
+        const worn = await withChapterTitles(ctx, seats ? { ...who.player, seatTitles: await seatTitlesOf(ctx.db, who.player.id) } : who.player, env);   // CHAP4c: and a chapter's
         const zero = seasonZeroOf(env.SEASON_ZERO_WEEK);   // SEASON1: the Season on a title's claim
-        const seatBadge = seats && renownCharacterOk(body.character) ? await seatBadgeOf(ctx.db, who.player.id, body.character, seasonOf(seatWeekOf(nowS * 1000), zero)?.n ?? 0) : null;
+        // SCALE4f part two: THE CHARACTER'S MEMBERSHIP READ ONCE (guilds.js mintMemberOf) for the seat badge, the ribbon and the
+        // guild's badge below - three reads of one row; each keeps its own law over it
+        const member = renownCharacterOk(body.character) && (seats || body.guild === true) ? await mintMemberOf(ctx, who.player.id, body.character) : undefined;
+        const seatBadge = seats && renownCharacterOk(body.character) ? await seatBadgeOf(ctx.db, who.player.id, body.character, seasonOf(seatWeekOf(nowS * 1000), zero)?.n ?? 0, member) : null;
         const wornT = titleWorn(worn, env);
         // CROWN1 part two: the champion's is the account's own, kept for good - no guildmaster's; SEASON1: and so are a
         // Season's crowned and keeper (seatRoyal.js keptTitleOf)
         const kept = seats && KEPT_TITLES.includes(wornT) ? await keptTitleOf(ctx.db, who.player.id, wornT, zero) : null;
+        // CHAP4c: a chapter's seat's title worn only by a character of the account that holds it, with its claim - the
+        // named character's own first, else none (a title a character does not hold is not signed for it)
+        const chapterT = CHAPTER_TITLES.includes(wornT) && renownCharacterOk(body.character)
+          ? (await chapterTitlesOfAccount(ctx.db, who.player.id, nowS, zero, body.character)).find((t) => t.title === wornT) ?? null : null;
         const seatT = KEPT_TITLES.includes(wornT) ? (kept ? { t: wornT, ts: kept.ts } : {})
-          : SEAT_TITLES.includes(wornT) ? (seatBadge?.title === wornT ? { t: wornT, ts: seatBadge.ts } : {}) : (wornT ? { t: wornT } : {});
+          : SEAT_TITLES.includes(wornT) ? (seatBadge?.title === wornT ? { t: wornT, ts: seatBadge.ts } : {})
+            : CHAPTER_TITLES.includes(wornT) ? (chapterT ? { t: chapterT.high ? 'highmaster' : wornT, ts: chapterT.ts } : {}) : (wornT ? { t: wornT } : {});   // CHAP6e: a Master's in an Ascendancy signed its High Master
         // SEASON1 part two (Seats-Arc 9.1): AND A SEASON'S BANNER RIBBON - the named character's, where its guild kept a
         // seat through the Season before and it was a member at that Season's last Turning (seatRibbons.js ribbonOf)
-        const rb = seats && renownCharacterOk(body.character) ? await ribbonOf(ctx.db, who.player.id, body.character, seasonOf(seatWeekOf(nowS * 1000), zero)) : null;
+        const rb = seats && renownCharacterOk(body.character) ? await ribbonOf(ctx.db, who.player.id, body.character, seasonOf(seatWeekOf(nowS * 1000), zero), member) : null;
         const wardrobe = {
           ...seatT,
           g: [...glyphsOf(who.player, env, nowS), ...(seatBadge?.glyphs ?? [])],
-          au: auraWorn(who.player),   // WB9g: the aura worn, the title's law - absent for none
+          au: auraWorn(who.player, env),   // WB9g: the aura worn, the title's law - absent for none; AEGIS: a list's read off the config
           ...(rb ? { rb } : {}),
         };
         // GLYPH-WEAR: the glyphs taken off ride BESIDE `g`, never out of it - `g` is what is true and what the relay's
@@ -687,19 +892,49 @@ const service = {
         // AUDIT MERGE-PLUS A6: AND ONLY A MINT THAT ASKS (`guild: true`). A build from before GUILD1c names its character
         // too (RENOWN1), and a token wearing a guild is what the hub routes the guild's lines to - that build knows no
         // guild channel and filed them on its World tab, where a reply goes to everyone. It wears no guild instead.
-        const guild = renownCharacterOk(body.character) && body.guild === true ? await guildBadgeOf(ctx, who.player.id, body.character) : null;
+        const guild = renownCharacterOk(body.character) && body.guild === true ? await guildBadgeOf(ctx, who.player.id, body.character, member) : null;
         // REALM-DOOR (2026-09-29, the field): AND WHETHER THAT CHARACTER IS THE REALM'S. A realm-era tab goes online only
         // as a realm character and names it here; a build from before the realm names its offline character, or none.
         // The relay refuses a 0 at its door, so online is the realm's at the servers too. Stamped on every mint, a 0
         // included: a token with no `rc` is a service from before this, which the relay still admits.
-        const rc = (await realmCharacterHeld(ctx, who.player.id, body.character)) ? 1 : 0;
-        const token = await mintToken(
-          { s: who.player.id, n: displayName(who.player), k: accountKind(who.player), ...wardrobe, mu, lv, ...(guild ?? {}), rc },
-          key, { subtle, nowS },
-        );
+        // SCALE4f: THE FOUR READS OF ITS ROW IN ONE (realm.js realmMintFacts) - whether it is the realm's, its level, its arms
+        // and its house, each exactly as its own read answered it
+        const facts = await realmMintFacts(ctx, who.player.id, body.character);
+        const rc = facts.rc;
+        // ARENA4b: AND THAT REALM CHARACTER'S LEVEL, `cl` - the level on its tile (realm.js realmMintFacts: INT7 - the level
+        // its judge trusts, else its summary, 1..1000), which the relay reads (a bout's vitality) as it reads `lv`. Absent for any
+        // other character, none named, or a level out of the claim's bounds - a token without it is a token as before.
+        const cl = facts.cl;
+        // INT7: AND THAT REALM CHARACTER'S ARMS, `wa` - the most reach of its judged pack's lawful weapons and its bow
+        // (realm.js realmMintFacts), every referee's clip of a blow between players. Absent before its first judged checkpoint.
+        const wa = facts.wa;
+        // ARENA4: AND THE ACCOUNT'S ARENA RATING this season, for a registered account - the hall queues by it (net/arenaLaw.js
+        // pairQueue), off the signature, never a word of the client's. A guest's token carries none (a guest is not queued).
+        const ar = who.player.handle ? (await arenaRatingOf(ctx, who.player.id, arenaSeasonOf(nowS))).rating : undefined;
+        // LEGACY7 part two: AND THAT REALM CHARACTER'S HOUSE (realm.js realmMintFacts, by legacy.js houseOn: its line's
+        // surname, its given name, a Bloodline's mark, the generation's numeral) - off the line the service holds, never a
+        // word of the client's
+        const house = facts.house;
+        // NAME-AS (2026-10-12): AND THE NAME THE ROOM READS - the account's, or, where the account chose its character's,
+        // that realm character's own (`facts.name`, off the same read), where the wire can carry it and it is no other
+        // account's username (accounts.js wornNameOf). Never a word of the request: the body names WHICH character, as it
+        // always did, and its name is the row's.
+        const nameWorn = await wornNameOf(ctx, who.player, facts.name);
+        // AUDIT LEGACY III O1: AND WHICH REALM CHARACTER (`ci`, beside a 1 alone) - the relay stamps it on a wedding's frames,
+        // so each half names the character its player saw. Kept when a house is left unsaid: the widest token without a
+        // house is under TOKEN_MAX_CHARS with it (test/auditlegacy3)
+        const signed = { s: who.player.id, n: nameWorn.name, k: accountKind(who.player), ...wardrobe, mu, lv, ...(guild ?? {}), rc, ...(rc ? { ci: body.character } : {}), ...(ar !== undefined ? { ar } : {}), ...(cl != null ? { cl } : {}), ...(wa ? { wa } : {}) };
+        let token = await mintToken(house ? { ...signed, ...house } : signed, key, { subtle, nowS });
+        // the token's own bounds (identityToken.js TOKEN_MAX_CHARS, and AUDIT LEGACY III O11 the relay hello's TOKEN_BODY_MAX):
+        // a house that would take it past either is left unsaid, never the rest
+        let houseWorn = house;
+        if (house && (token.length > TOKEN_MAX_CHARS || tokenBodyOf(token).length > TOKEN_BODY_MAX)) { token = await mintToken(signed, key, { subtle, nowS }); houseWorn = null; }
         return json({
           token,
-          name: displayName(who.player),
+          name: nameWorn.name,   // NAME-AS: the name the token signs - the room's, which the live sessions take in (NAME-ADOPT)
+          accountName: displayName(who.player),   // NAME-AS: and the account's own, which the device's stored session keeps (the profile mark's)
+          nameAs: nameAsOf(who.player),   // NAME-AS: the choice the name was signed under
+          ...(nameWorn.why ? { nameWhy: nameWorn.why, ...(nameWorn.word ? { nameWord: nameWorn.word } : {}) } : {}),   // NAME-AS: why the character's name stood aside, absent where it did not
           kind: accountKind(who.player),
           title: wardrobe.t ?? null,
           ...(wardrobe.ts ? { ts: wardrobe.ts } : {}),   // SEAT1c: a seat title's claim, the client's to word
@@ -711,6 +946,7 @@ const service = {
           guild: guild ? guild.gt : null,   // GUILD1c: the tag my own name wears, beside the token as the level is
           aura: wardrobe.au ?? null,   // WB9g: the aura at my own feet, beside the token as the title is
           ribbon: wardrobe.rb ?? null,   // SEASON1 part two: the ribbon under my own name, beside the token as the aura is
+          house: houseWorn ?? null,   // LEGACY7: the house my token wears, beside it as the ribbon is
           expiresAt: nowS + MAX_TTL_S,
         }, 200, origin);
       }
@@ -733,7 +969,7 @@ const service = {
           // RENOWN1: and Renown's tracks, the most recently earned first (the card's level and its row) - RENOWN-CHAR: a
           // list of the characters' tracks again (RENOWN-ACCOUNT sent the account's one, `{ xp, level }`)
           // MARKS1: and the Marks balance, where Marks are this account's (null where not - a guest, the switch)
-          account: { ...accountView(who.player, nowS), duels: await duelRecordOf(ctx, who.player.id), gates: await gateRecordOf(ctx, who.player.id), raids: await raidRecordOf(ctx, who.player.id), renown: await renownTracksOf(ctx, who.player.id), marks: await marksCardOf(ctx, who.player, env) },
+          account: { ...accountView(who.player, nowS), duels: await duelRecordOf(ctx, who.player.id), gates: await gateRecordOf(ctx, who.player.id), raids: await raidRecordOf(ctx, who.player.id), serpents: await serpentRecordOf(ctx, who.player.id), sds: await sdRecordOf(ctx, who.player.id), renown: await renownTracksOf(ctx, who.player.id), marks: await marksCardOf(ctx, who.player, env) },
           wardrobe: { ...accountWardrobe(await withSeatTitles(ctx, who.player, env), env, nowS), purse: await insigniaPurse(ctx, who.player) },   // SEAT1c: and a Charter's titles   // WB9g: and what the account's closed gates could still pay the Broker's insignia
           devices: await devicesOf(ctx, who.player.id),
           // PATREON-LINK: the card's Patreon row - whether linking is on, whether this account is linked, the titles its
@@ -751,12 +987,30 @@ const service = {
       }
 
       if (path === '/v1/duel/loss' && request.method === 'POST') {
-        // DUEL1: THE LOSER'S OWN REPORT. The caller is the loser - the
-        // session says so, never the body - and `winner` is the account
-        // the relay stamped on the winner's frames. accounts.js
-        // `reportDuelLoss` holds the bounds inside its one INSERT.
-        const r = await reportDuelLoss(ctx, who.player, body.winner);
-        return r.error ? no(r.error, r.error === 'no-player' ? 404 : 400, origin) : json(r, 200, origin);
+        // DUEL1's LOSER'S OWN REPORT - INT8: RETIRED. A duel's result is the relay's signed receipt now (below); a loss a
+        // client reports counts for nothing, and is told so.
+        return no('retired', 410, origin);
+      }
+
+      if (path === '/v1/duel/claim' && request.method === 'POST') {
+        // INT8 (bible/06-Systems/Integrity-Arc.md lane 2): A DUEL'S RESULT, THE RELAY'S - either fighter carries the receipt
+        // the referee handed it (src/net/duelReceipt.js `d1`); the session must be one of its two, never the body's word,
+        // and accounts.js `claimDuel` counts it once (its bout's id) inside its bounds. No public half here yet: 503, and
+        // the client keeps the receipt for its day.
+        const r = await claimDuel(ctx, who.player, body.receipt, await gatePublicKey(env, subtle));
+        if (r.error) return json({ error: r.error, ...(r.why ? { why: r.why } : {}) }, r.error === 'no-gate-key' ? 503 : r.error === 'not-yours' ? 403 : 400, origin);   // AUDIT WB A5's law: which rung refused it
+        return json(r, 200, origin);
+      }
+
+      if (path === '/v1/wild/fall' && request.method === 'POST') {
+        // INT9 (bible/06-Systems/Integrity-Arc.md lane 2): A DEATH IN THE OPEN ZONE'S DROP, TAKEN OFF THE FALLEN'S JUDGED
+        // RECORD (wild.js `wildFall`) - against the fall the relay signed (src/net/wildReceipt.js `f1`: the fallen's own tab
+        // with its record's `at`, its killer's after the grace), or none (a death to a foe: the caller's own record). The
+        // answer's `order` is the service's word on the records, the room's to keep a deposit on.
+        const r = await wildFall({ ...ctx, bucket: env.SAVES }, who.player, body, { gateKey: body.receipt !== undefined ? await gatePublicKey(env, subtle) : null, signing: await signingKey(env, subtle) });
+        if (!('error' in r)) return json(r, 200, origin);
+        if (r.error === 'seq') return json({ error: 'seq', seq: r.seq }, 409, origin);   // the record moved: its tab checkpoints and asks again
+        return json({ error: r.error, ...(r.why ? { why: r.why } : {}) }, WILD_STATUS[r.error] ?? REALM_STATUS[r.error] ?? 400, origin);
       }
 
       if (path === '/v1/duel/record' && request.method === 'POST') {
@@ -769,7 +1023,7 @@ const service = {
         const known = await db.prepare('SELECT 1 AS x FROM players WHERE id = ?1').bind(body.id).first();
         if (!known) return no('no-player', 404, origin);
         // WB5b: the gates closed ride the same answer - the Inspect card asks once and says both
-        return json({ id: body.id, ...(await duelRecordOf(ctx, body.id)), gates: await gateRecordOf(ctx, body.id), raids: await raidRecordOf(ctx, body.id) }, 200, origin);   // RAID4: and the towns defended
+        return json({ id: body.id, ...(await duelRecordOf(ctx, body.id)), gates: await gateRecordOf(ctx, body.id), raids: await raidRecordOf(ctx, body.id), serpents: await serpentRecordOf(ctx, body.id), sds: await sdRecordOf(ctx, body.id) }, 200, origin);   // RAID4: and the towns defended; SERPENT1: and the serpents slain; SD9b: and the Hours broken
       }
 
       if (path === '/v1/gate/claim' && request.method === 'POST') {
@@ -789,6 +1043,7 @@ const service = {
         // AUDIT WB A5: a refused receipt says WHICH rung refused it - the client keeps one the service can mend (its key
         // not the relay's pair, a clock) and lets go of one it cannot
         if (r.error) return json({ error: r.error, ...(r.why ? { why: r.why } : {}) }, r.error === 'no-gate-key' ? 503 : r.error === 'not-yours' ? 403 : 400, origin);
+        if (r.recorded === true) await grantSpoils(ctx.db, who.player.id);   // INT5: a signed win's spoils, the budget's fill
         // MARKS1: THE FIRST FAUCET - a receipt that made its row strikes the gate's Marks, in the row's own batch
         // (marks.js gateStrikeStatement: 50 under SILVER-WAYS' day's combat cap with the raids', the gate's own day its
         // line's id); `marks` null where Marks are not this account's
@@ -799,6 +1054,9 @@ const service = {
         // region the claim named (`seat` the answer: counted, or why not - the kill stands either way). WB12d: the rite
         // alone is no kill, and is no influence
         if (r.recorded && !r.rite && body.region != null) answer.seat = await creditGate(ctx, who.player, env, { character: body.character ?? null, day: r.day, region: body.region });
+        // CHAP2b (Chapters-Arc 3.3, 4): and the guilds the character is a member of on its Roll that keep a chapter there
+        // remember it (npcReceipts.js - after the kill's row, never instead of it)
+        if (r.recorded && !r.rite && body.region != null) answer.chapters = await creditReceipt(ctx, who.player, env, { character: body.character ?? null, kind: 'gate', id: r.day, region: body.region });
         return json(r.recorded && !r.rite ? { ...answer, marks: await gateStrikeAnswer(ctx, who.player, env, !!r.struck, r.day) } : answer, 200, origin);   // AUDIT WB12d (A2): the rite alone strikes no Drakes, and says none
       }
 
@@ -816,6 +1074,7 @@ const service = {
           contracts: (key, nonce) => contractPayStatements(ctx, who.player, env, { key, nonce }),
         });
         if (r.error) return json({ error: r.error, ...(r.why ? { why: r.why } : {}) }, r.error === 'no-gate-key' ? 503 : r.error === 'not-yours' ? 403 : 400, origin);
+        if (r.recorded === true) await grantSpoils(ctx.db, who.player.id);   // INT5: a signed win's spoils, the budget's fill
         let order = null;
         if (r.renown?.rose) {
           const key = await signingKey(env, subtle);
@@ -829,8 +1088,97 @@ const service = {
           if (r.deedStruck !== undefined) answer.deed = await deedAnswer(db, who.player, deedEvent('raid', r.key), r.deedStruck);
           const paid = await contractPaysOf(db, who.player, r.key);
           if (paid.length) answer.contracts = paid;
+          // CHAP2b: the town defended, remembered by the character's guilds that keep a chapter in its region (the key's)
+          answer.chapters = await creditReceipt(ctx, who.player, env, { character: body.character ?? null, kind: 'raid', id: r.key, region: contractRegionOfRaid(r.key) });
         }
         return json({ ...answer, order }, 200, origin);
+      }
+
+      if (path === '/v1/serpent/claim' && request.method === 'POST') {
+        // SERPENT1: A SERPENT'S RECEIPT, CARRIED HERE BY THE ACCOUNT IT NAMES, with the character that fought it. The relay
+        // signed it at the kill (src/net/serpentReceipt.js); the session says who is asking, never the body, and serpents.js
+        // `claimSerpent` holds the rest - the signature, the account, one row a (day, account), the Renown, the device's
+        // hoard. A level that ROSE comes back with a signed order, as a raid's does.
+        // SERPENT-SET: and its silver, a combat strike in the row's own batch (marks.js serpentStrikeStatement - 40, a ship
+        // that stood half, under the day's combat cap with the gates and the raids), answered as `marks` where it recorded
+        const r = await claimSerpent(ctx, who.player, { receipt: body.receipt, character: body.character, name: body.name ?? null, cid: body.cid ?? null, stones: body.stones ?? null }, await gatePublicKey(env, subtle), {   // AUDIT 625 P4: the embers its build mints
+          strike: (d, nonce, earned) => serpentStrikeStatement(ctx, who.player, env, d, nonce, earned),
+        });
+        if (r.error) return json({ error: r.error, ...(r.why ? { why: r.why } : {}) }, r.error === 'no-gate-key' ? 503 : r.error === 'not-yours' ? 403 : 400, origin);
+        if (r.recorded === true) await grantSpoils(ctx.db, who.player.id);   // INT5: a signed win's spoils, the budget's fill
+        const key = r.renown?.rose ? await signingKey(env, subtle) : null;   // a level that rose: its signed order, for the rooms
+        const signed = key ? await mintRenownOrder({ s: who.player.id, lv: r.renown.level }, key, { subtle, nowS }) : null;
+        const answer = { ...r };
+        delete answer.day; delete answer.struck;   // the service's own: the kill's day and whether the batch struck
+        return json({ ...answer, order: signed, ...(r.recorded ? { marks: await serpentStrikeAnswer(ctx, who.player, env, !!r.struck, r.day) } : {}) }, 200, origin);
+      }
+
+      if (path === '/v1/sd/claim' && request.method === 'POST') {
+        // SD9b: A BRASS REMNANT'S RECEIPT, CARRIED HERE BY THE ACCOUNT IT NAMES. The relay signed it at the fall
+        // (src/net/sdReceipt.js); the session says who is asking, never the body, and sds.js `claimSd` holds the rest - the
+        // signature, the account, one row a (slot, account), and on that first write the Hour's grants off its seed. A
+        // refusal says its rung, as the gate's does (AUDIT WB A5): the client keeps a receipt the service can mend.
+        const r = await claimSd(ctx, who.player, body.receipt, await gatePublicKey(env, subtle));
+        if (r.error) return json({ error: r.error, ...(r.why ? { why: r.why } : {}) }, r.error === 'no-gate-key' ? 503 : r.error === 'not-yours' ? 403 : 400, origin);
+        if (r.recorded === true) await grantSpoils(ctx.db, who.player.id);   // INT5: a signed win's spoils, the budget's fill
+        return json(r, 200, origin);
+      }
+
+      if (path === '/v1/arena/claim' && request.method === 'POST') {
+        // ARENA4: A BOUT'S RECEIPT, CARRIED HERE BY AN ACCOUNT IT NAMES. The relay refereed the bout and signed its result
+        // (src/net/arenaReceipt.js); arena.js `claimArena` holds the rest - the signature, the account, one row a bout, a
+        // ladder win only as the account's next bout, both ratings for a bout between players. A refusal says its rung, as
+        // the gate's does (AUDIT WB A5): the client keeps a receipt the service can mend and lets go of one it cannot.
+        // ARENA4b: and a won bout's Renown to the character the claim names (arena.js arenaRenownFor - the renown law's own
+        // door, its hour and cap), with a signed order when the level rose and its influence in Daggerfall's region for a
+        // pledged war-guild - as a Renown report's and a writ's are
+        const r = await claimArena(ctx, who.player, body.receipt, await gatePublicKey(env, subtle), { character: body.character ?? null, name: body.name ?? null });
+        if (r.error) return json({ error: r.error, ...(r.why ? { why: r.why } : {}) }, r.error === 'no-gate-key' || r.error === 'busy' ? 503 : r.error === 'not-yours' ? 403 : 400, origin);   // AUDIT PRE-MERGE 1003 S6: `busy` - a players' bout whose ratings kept moving under it: kept, carried again
+        if (r.renown && r.renown.credited > 0 && !r.renown.repeat) await creditRenown(ctx, who.player, env, { character: body.character, region: ARENA_RENOWN_REGION, xp: r.renown.credited });
+        if (r.renown?.rose) {
+          const key = await signingKey(env, subtle);
+          const order = key ? await mintRenownOrder({ s: who.player.id, lv: r.renown.level }, key, { subtle, nowS }) : null;   // a rise said in the rooms now
+          return json({ ...r, order }, 200, origin);
+        }
+        return json(r, 200, origin);
+      }
+
+      if (path === '/v1/arena/attempt' && request.method === 'POST') {
+        // AUDIT ARENA-LADDER: AN ATTEMPT AT THE ACCOUNT'S NEXT LADDER BOUT - its ticket, which the relay opens the bout for
+        // and signs into the receipt; every attempt still open is forfeit first (arena.js arenaAttempt). 409 `order` with
+        // the ladder for a device behind the climb.
+        const r = await arenaAttempt(ctx, who.player, body.tier, body.bout, body.room);   // AUDIT ARENA-LADDER 2: for the room it is fought in
+        if (r.error) return json({ error: r.error, ...(r.ladder ? { ladder: r.ladder } : {}) }, r.error === 'order' ? 409 : r.error === 'busy' ? 503 : r.error === 'ladder-needs-account' ? 403 : 400, origin);
+        return json(r, 200, origin);
+      }
+
+      if (path === '/v1/arena/board' && request.method === 'POST') {
+        // ARENA4: THE ARENA'S BOARDS (Mac: "view your ranking and even player leaderboards"), counted from the rows - the
+        // season's ratings and its #1, the climb, the fastest Grand Champions, the banners and the Hall of Champions - and
+        // the caller's own (`me`).
+        return json(await arenaBoardOf(ctx, who.player, env), 200, origin);
+      }
+
+      if (path === '/v1/iliac/claim' && request.method === 'POST') {
+        // CARDS10: A RANKED GAME'S RECEIPT, CARRIED HERE BY AN ACCOUNT IT NAMES - the arena players' bout's law for Iliac
+        // Hand (iliac.js claimIliac): the signature, the account, one row a game, both ratings. A refusal says its rung.
+        const r = await claimIliac(ctx, who.player, body.receipt, await gatePublicKey(env, subtle));
+        if (r.error) return json({ error: r.error, ...(r.why ? { why: r.why } : {}) }, r.error === 'no-gate-key' || r.error === 'busy' ? 503 : r.error === 'not-yours' ? 403 : 400, origin);
+        return json(r, 200, origin);
+      }
+
+      if (path === '/v1/iliac/board' && request.method === 'POST') {
+        // CARDS10: ILIAC HAND'S SEASON BOARD (Tavern-Cards section 6.4: "a season board, the Arena's way, with a title for
+        // the top of it"), counted from the rows, and the caller's own.
+        return json(await iliacBoardOf(ctx, who.player, env), 200, origin);
+      }
+
+      if (path === '/v1/arena/team' && request.method === 'POST') {
+        // ARENA4: A BANNER JOINED OR QUIT (`banner` 'red' | 'blue' | null). 403 for a guest; 409 for a banner the season
+        // refuses (`season`) or one while another is worn (`joined`).
+        const r = await arenaTeam(ctx, who.player, body.banner ?? null);
+        if (r.error) return json({ error: r.error, ...(r.left ? { left: r.left } : {}), ...(r.banner ? { banner: r.banner } : {}) }, r.error === 'guest' ? 403 : r.error === 'bad-banner' ? 400 : 409, origin);
+        return json(r, 200, origin);
       }
 
       if (path === '/v1/renown/xp' && request.method === 'POST') {
@@ -858,6 +1206,38 @@ const service = {
         return json({ ...r, order }, 200, origin);
       }
 
+      // ═══ CHAP1: THE ROLL ═════════════════════════════════════════
+      //
+      // A realm character's standing with Daggerfall's own guilds, kept here
+      // (npcRoll.js): read - and seeded, the first time - as the character
+      // comes online, then claimed as it moves. The account is the
+      // session's, the character must be its own and standing, and the
+      // lease the playing tab's. Behind CHAPTERS_OPEN; shut, the save keeps
+      // the standing as it did before CHAP1.
+      if (path === '/v1/chapters/roll' || path === '/v1/chapters/claim' || path === '/v1/chapters/witness'
+        || path === '/v1/chapters/halls' || path === '/v1/chapters/strike' || path === '/v1/chapters/list'
+        || path === '/v1/chapters/focus' || path === '/v1/chapters/history' || path === '/v1/chapters/back' || path === '/v1/chapters/patron') {
+        if (request.method !== 'POST') return no('method', 405, origin);
+        if (!chaptersOpenFor(who.player, env)) return no('chapters-closed', 403, origin);
+        // CHAP2a: and a town's guild halls witnessed, as a seat is (npcHalls.js); AUDIT CHAP2 E1: a region's audit list
+        // and a false town struck, a developer's
+        // CHAP3b: and the chapter sheet - every chapter's Strength and band, after the Turnings due (npcChapters.js)
+        // CHAP4d: and a chapter's Master's Focus, and a region's Chronicle of its chapters' seats
+        const r = path === '/v1/chapters/list' ? await chapterSheet(ctx, who.player, env)
+          : path === '/v1/chapters/focus' ? await setChapterFocus(ctx, who.player, env, body)
+          : path === '/v1/chapters/history' ? await chapterChronicle(ctx, who.player, env, body)
+          : path === '/v1/chapters/back' ? await backChapter(ctx, who.player, env, body)   // CHAP6b: a member's backing in its chapter's Season
+          : path === '/v1/chapters/patron' ? await bidPatron(ctx, who.player, env, body)   // CHAP7a: a guild's bid for a chapter's patronage
+          : path === '/v1/chapters/witness' ? await witnessHall(ctx, who.player, env, body)
+          : path === '/v1/chapters/halls' ? await listHalls(ctx, who.player, env, body)
+            : path === '/v1/chapters/strike' ? await strikeHall(ctx, who.player, env, body)
+              : path === '/v1/chapters/roll' ? await readRoll(ctx, who.player, body) : await claimRoll(ctx, who.player, body);
+        if ('error' in r) return no(r.error, /** @type {Record<string, number>} */ (ROLL_STATUS)[r.error] ?? 400, origin);
+        // CHAP4a: the Roll's answer carries the character's seats - ranks 8 and 9 are a seat's, never the book's
+        if ((path === '/v1/chapters/roll' || path === '/v1/chapters/claim') && /** @type {any} */ (r).roll) /** @type {any} */ (r).roll.seats = await chapterSeatsOf(ctx.db, body?.character);
+        return json(r, 200, origin);
+      }
+
       // ═══ HOME1: THE ONLINE HOMES ═════════════════════════════════
       //
       // A town's homes are anyone's to READ - a guest's session too, since
@@ -873,12 +1253,9 @@ const service = {
         }
         if (path === '/v1/homes/mine') return json(await homesOf(ctx, who.player), 200, origin);
         if ((path === '/v1/homes/decor' || path.startsWith('/v1/homes/decor/')) && body?.seat === true && !seatsOpenFor(who.player, env)) return no('seats-closed', 403, origin);   // SEAT-HALL: a palace's Charter Room while the seats are open
+        if (path === '/v1/homes/layouts') return json(await homeLayoutsKept(ctx), 200, origin);   // WD3: every town holding a home, and the layout it keeps; STORM-SHED 2: read again only once a town's homes moved
         if (path === '/v1/homes/decor') {
           const r = await decorOf(ctx, who.player, body);
-          return 'error' in r ? no(r.error, 400, origin) : json(r, 200, origin);
-        }
-        if (path === '/v1/homes/yards') {   // HOME-YARD: every yard of a town, read by anyone walking its streets
-          const r = await yardsOf(ctx, who.player, body);
           return 'error' in r ? no(r.error, 400, origin) : json(r, 200, origin);
         }
         if (path === '/v1/homes/rooms') {   // HOME-RENT: a home's rooms, read by anyone at its door
@@ -895,10 +1272,11 @@ const service = {
             : path === '/v1/homes/decor/move' ? await moveDecor(hctx, who.player, body)
               : path === '/v1/homes/decor/hidden' ? await hideDecorBase(hctx, who.player, body)   // BASE-HIDE
                 : await removeDecor(hctx, who.player, body);
+          forgetYards(body?.mapId);   // YARD-SHED: the town's kept yards let go, whatever the write did
           if (!('error' in r)) return json(r, 200, origin);
           const said = realmNo(r);
           if (said) return said;
-          const status = r.error === 'decor-cap' || r.error === 'yard-cap' || r.error === 'decor-taken' || r.error === 'guild-treasury-full' ? 409   // GUILD1d: a hall piece's half back, into a full treasury
+          const status = r.error === 'decor-cap' || r.error === 'yard-cap' || r.error === 'decor-taken' || r.error === 'guild-treasury-full' || r.error === 'vendor-stocked' ? 409   // GUILD1d: a hall piece's half back, into a full treasury; HOME-VENDOR: a stocked trader stays
             : r.error === 'decor-rate' ? 429
               : r.error === 'no-home' || r.error === 'no-decor' ? 404 : 400;
           return no(r.error, status, origin);
@@ -916,21 +1294,61 @@ const service = {
           const status = RENT_STATUS[r.error] ?? 400;
           return no(r.error, status, origin);
         }
+        if (path === '/v1/homes/vote') {   // HOME-VOTE: a registered account's word on a home it is no insider of
+          const r = await voteHome(ctx, who.player, body);
+          if (!('error' in r)) return json(r, 200, origin);
+          return no(r.error, r.error === 'no-home' ? 404 : r.error === 'vote-rate' ? 429 : r.error === 'vote-own' || r.error === 'vote-young' ? 403 : 400, origin);
+        }
         if (path === '/v1/homes/look') {   // HOME-LOOK: how a home looks outside - its owner's character's (GUILD-YARD: a hall's, its keepers')
           const r = await setHomeLook(hctx, who.player, body);
           if (!('error' in r)) return json(r, 200, origin);
           return no(r.error, r.error === 'no-home' ? 404 : r.error === 'decor-rate' ? 429 : 400, origin);
+        }
+        if (path === '/v1/homes/arena-move') {
+          // ARENA4b: A HOME THE ARENA DISPLACED, MOVED to the house its owner's client picked (homes.js arenaMoveHome) - the
+          // pieces' refund onto the owner's record in the move's own batch, a realm act's
+          const r = await arenaMoveHome(hctx, who.player, body);
+          if (!('error' in r)) return json(r, 200, origin);
+          const said = realmNo(r);
+          if (said) return said;
+          const status = r.error === 'home-taken' || r.error === 'home-changed' || r.error === 'guild-treasury-full' ? 409 : r.error === 'no-home' ? 404 : 400;
+          return no(r.error, status, origin);
+        }
+        if (path === '/v1/homes/arena-moves') {   // ARENA4b: the moves this character has not read - its letter, its old scene emptied
+          const r = await arenaMovesOf(hctx, who.player, body);
+          return 'error' in r ? no(r.error, 400, origin) : json(r, 200, origin);
+        }
+        if (path === '/v1/homes/arena-seen') {   // ARENA4b: a move's letter read
+          const r = await arenaMoveSeen(hctx, who.player, body);
+          return 'error' in r ? no(r.error, 400, origin) : json(r, 200, origin);
+        }
+        if (path === '/v1/homes/deed') {
+          // FIELD BUGS 2026-10-04d KNIGHT-HOUSE: A DEED THE REALM GAVE, HELD - the building a realm character's record holds
+          // Daggerfall's deed to (a Knightly Order's house) kept from anyone else's claim (homes.js holdDeed)
+          const r = await holdDeed(hctx, who.player, body);
+          if (!('error' in r)) return json(r, 200, origin);
+          if (r.error === 'home-layout') return json({ error: 'home-layout', layout: r.layout ?? null }, 409, origin);   // as /v1/homes/claim answers it
+          const status = r.error === 'home-taken' || r.error === 'home-arena' ? 409 : r.error === 'home-rate' ? 429 : r.error === 'no-deed' || r.error === 'no-realm-character' ? 404 : 400;
+          return no(r.error, status, origin);
+        }
+        if (path === '/v1/homes/inherit') {
+          // PERMADEATH-HOUSES: a fallen member's home taken up by a living realm character of their line (homes.js
+          // inheritHome) - the tombstone gate above has already refused a `character` that is dead
+          const r = await inheritHome(hctx, who.player, body);
+          if (!('error' in r)) return json(r, 200, origin);
+          return no(r.error, r.error === 'not-heir' ? 403 : r.error === 'no-home' ? 404 : r.error === 'homes-need-account' ? 403 : 400, origin);
         }
         if (path === '/v1/homes/claim') {
           const r = await claimHome(hctx, who.player, body);
           if (!('error' in r)) return json(r, 200, origin);
           const said = realmNo(r);
           if (said) return said;
-          const status = r.error === 'home-taken' || r.error === 'home-cap' ? 409 : r.error === 'home-rate' ? 429 : 400;
+          if (r.error === 'home-layout') return json({ error: 'home-layout', layout: r.layout ?? null }, 409, origin);   // WD3 (AUDIT WD3 O1): the layout the town keeps, for the client to hear
+          const status = r.error === 'home-taken' || r.error === 'home-cap' || r.error === 'home-arena' ? 409 : r.error === 'home-rate' ? 429 : r.error === 'home-update' ? 426 : 400;   // AUDIT WD3 B2: a build from before the town mods   // WD3: a town kept in another layout   // ARENA4b: the arena stands there
           return no(r.error, status, origin);
         }
-        const r = path === '/v1/homes/release' ? await releaseHome(hctx, who.player, body) : await setHomeEntry(hctx, who.player, body);
-        if ('error' in r) return realmNo(r) ?? no(r.error, r.error === 'bad-entry' || r.error === 'realm-needed' ? 400 : r.error === 'home-crossed' || r.error === 'home-tenants' ? 409 : 404, origin);   // HOME-CROSSED; HOME-RENT: a sale waits for its tenants
+        const r = path === '/v1/homes/release' ? await releaseHome(hctx, who.player, body) : await setHomeEntry(hctx, who.player, body, env);   // AUDIT LW-II-2 S4: a door leaving public reckons its patrons, by the service's secret
+        if ('error' in r) return realmNo(r) ?? no(r.error, r.error === 'bad-entry' || r.error === 'realm-needed' ? 400 : r.error === 'home-crossed' || r.error === 'home-tenants' || r.error === 'home-vendor-stocked' ? 409 : 404, origin);   // HOME-CROSSED; HOME-RENT: a sale waits for its tenants; HOME-VENDOR: and its stocked trader
         return json(r, 200, origin);
       }
 
@@ -957,11 +1375,21 @@ const service = {
           // GUILD1e: the guild's own board - its notes, its members' alone (guildBoard.js, the Notice Board's switch)
           '/v1/guilds/board': (c, p, b) => readGuildBoard(c, p, env, b), '/v1/guilds/board/pin': (c, p, b) => pinGuildNote(c, p, env, b),
           '/v1/guilds/board/take-down': (c, p, b) => takeDownGuildNote(c, p, env, b),
+          // GUILD2a: a new name, for a price; GUILD2b: the vault - a piece in and out on the realm record, the grants
+          '/v1/guilds/rename': renameGuild, '/v1/guilds/vault': vaultOf, '/v1/guilds/vault/put': vaultPut, '/v1/guilds/vault/take': vaultTake,
+          '/v1/guilds/vault/grant': vaultGrant,
         }[path];
         if (!act) return no('not-found', 404, origin);
         const r = await act({ ...ctx, env, bucket: env.SAVES }, who.player, body);   // REALM P2.2: a realm character's record is in R2; AUDIT 28 M5: the switch says whether the Marks show
         if (!('error' in r)) return json(await guildOrdersOf(r, who.player.id, env, subtle, nowS), 200, origin);
         if (r.error === 'seq') return json({ error: 'seq', seq: r.seq }, 409, origin);   // REALM P2.2: the service's own, as a checkpoint's
+        if (r.error === 'home-layout') return json({ error: 'home-layout', layout: r.layout ?? null }, 409, origin);   // AUDIT PRE-MERGE 1003 WD1: the town's layout, as /v1/homes/claim answers it
+        // AUDIT2 GUILD2 S2/S7: the word the filter caught (`why`, the door's own field for a refusal's reason), and when the
+        // next new name may come - each dropped here, so the page could say neither
+        if ((r.error === 'guild-name-word' || r.error === 'guild-rank-word') && typeof r.word === 'string') return json({ error: r.error, why: r.word }, GUILD_STATUS[r.error], origin);   // TEXT-F1: a rank's name's word too
+        if (r.error === 'guild-rename-soon' && Number.isSafeInteger(r.at)) return json({ error: r.error, at: r.at }, GUILD_STATUS[r.error], origin);
+        // GUILD3c (bible/11-Multiplayer/Guilds-Made-Plain.md): a leave's or a disbanding's refusal names everything that holds the guild
+        if (Array.isArray(r.keeps)) return json({ error: r.error, keeps: r.keeps }, GUILD_STATUS[r.error] ?? 400, origin);
         return no(r.error, GUILD_STATUS[r.error] ?? 400, origin);
       }
 
@@ -974,6 +1402,7 @@ const service = {
         const act = {
           '/v1/marks/balance': () => marksOf(ctx, who.player, env),
           '/v1/marks/exchange': () => exchangeMarks(ctx, who.player, env, body),
+          '/v1/marks/find': () => findMarks(ctx, who.player, env, body),   // SILVER-FINDS: a loot find
           '/v1/marks/guild/deposit': () => depositGuildMarks(ctx, who.player, env, body),
           '/v1/marks/guild/withdraw': () => withdrawGuildMarks(ctx, who.player, env, body),
           '/v1/marks/report': () => marksReport(ctx, who.player, env),
@@ -1013,7 +1442,9 @@ const service = {
         if (request.method !== 'POST') return no('method', 405, origin);
         // SEAT1c (Seats-Arc 5.2): "the account service settles week N the first time anything asks about any seat after
         // N's boundary" - every Turning due, before the ask is answered (one read when none is)
-        if (seatsOpenFor(who.player, env)) await settleDue(ctx.db, nowS, seasonZeroOf(env.SEASON_ZERO_WEEK));   // SEASON1: a Season's end at its Turning
+        // SEAT-LEASE: one settler at a time (seatTurning.js settleDueOnce) - while another holds the Turning a read answers
+        // the state as it stands, and an act is told to ask again in a moment, never made on a week half turned
+        if (seatsOpenFor(who.player, env) && (await settleDueOnce(ctx.db, nowS, seasonZeroOf(env.SEASON_ZERO_WEEK))).pending && !SEAT_READS.has(path)) return no('seats-settling', 503, origin);   // SEASON1: a Season's end at its Turning
         const act = {
           '/v1/seats/list': async () => {
             const r = await listSeats(ctx, who.player, env);
@@ -1080,7 +1511,10 @@ const service = {
           '/v1/prof/brew': () => brewAtStation(ctx, who.player, env, body),   // PROF12: the alchemy station's brew
           '/v1/prof/disenchant': () => disenchantPiece({ ...ctx, bucket: env.SAVES }, who.player, env, body),   // PROF12: an enchanting station's disenchant; AUDIT PROF-541 B2: a realm character's record, in R2
           '/v1/prof/stock': () => buyStock(ctx, who.player, env, body),   // PROF3: the smith's stock; PROF4: the furnisher's
+          '/v1/prof/temper': () => temperPiece(ctx, who.player, env, body),   // CRAFT4: a piece a quality step better
+          '/v1/prof/reforge': () => reforgeWithEssence(ctx, who.player, env, body),   // CRAFT4: a line rolled again for Arcane Essence
           '/v1/stores/withdraw': () => withdrawStores(ctx, who.player, env, body),
+          '/v1/stores/deposit': () => depositStores(ctx, who.player, env, body),   // BAG1: what is carried, into the Stores
           // PROF6: the Court's writs, and beside them this board's guild writs and commissions (writs.js writBoard)
           '/v1/writs/list': async () => {
             const r = await listWrits(ctx, who.player, env, body);
@@ -1112,6 +1546,29 @@ const service = {
         return json(r, 200, origin);
       }
 
+      // ═══ CARDS6: A CARD TABLE'S STAKES ══════════════════════════════════
+      //
+      // Tavern-Cards section 23: a realm character's buy-in held here against the service's order, and the relay's cash-out
+      // receipt paid back into the record - each act its own batch, the gold and the row together (cards.js).
+      if (path.startsWith('/v1/cards/')) {
+        if (request.method !== 'POST') return no('method', 405, origin);
+        const cctx = { ...ctx, bucket: env.SAVES };
+        const act = {
+          '/v1/cards/stake': async () => stakeCards(cctx, who.player, env, body, await signingKey(env, subtle)),
+          '/v1/cards/cashout': async () => cashoutCards(cctx, who.player, env, body, await gatePublicKey(env, subtle)),
+          '/v1/cards/deck': async () => deckOrderOf(cctx, who.player, env, body, await signingKey(env, subtle)),   // CARDS10: a ranked seat's deck, vouched for
+        }[path];
+        if (!act) return no('not-found', 404, origin);
+        const r = await act();
+        if (r.error === 'seq') return json({ error: 'seq', seq: r.seq }, 409, origin);   // the record moved under the act, as a checkpoint's
+        // AUDIT CARDS-4 A4: and why a receipt was refused - the device keeps one refused on its signature or clock
+        // AUDIT CARDS-6 D7: and the card a short deck lacks (iliac.js deckOrderOf) - said nowhere, the vouch's "(card)" never
+        // could be; D8: the service without its key is the service's 503 (the token's own no-signing-key), and a guest's
+        // ranked seat the account's 403 (the arena's ladder-needs-account) - neither a bad request
+        if ('error' in r) return json({ error: r.error, ...(r.why ? { why: r.why } : {}), ...(typeof r.card === 'string' ? { card: r.card } : {}) }, CARDS_STATUS[r.error] ?? JUDGE_STATUS[r.error] ?? 400, origin);   // INT3: a held stake's own
+        return json(r, 200, origin);
+      }
+
       // ═══ PROF5: THE MARKET ══════════════════════════════════════════
       //
       // A registered account's, and the board's, the professions' and the Marks' switches together (market.js asks
@@ -1133,6 +1590,9 @@ const service = {
           '/v1/market/auction': () => marketAuction(ctx, who.player, env, body),   // PROF5b
           '/v1/market/bid': () => marketBid(ctx, who.player, env, body),
           '/v1/market/gold': () => marketGoldCollect(mctx, who.player, env, body),   // GOLD-MARKET
+          '/v1/market/vendor': () => marketVendor(ctx, who.player, env, body),   // HOME-VENDOR: a home's trader's stock
+          '/v1/market/vendors': () => marketVendors(ctx, who.player, env, body),   // HOME-VENDOR: the region's traders
+          '/v1/market/myvendors': () => marketMyVendors(ctx, who.player, env, body),   // HOME-VENDOR: the Vendor page's
         }[path];
         if (!act) return no('not-found', 404, origin);
         const r = await act();
@@ -1164,6 +1624,14 @@ const service = {
         return r.error ? no(r.error, r.error === 'not-held' ? 403 : 400, origin) : json(r, 200, origin);
       }
 
+      if (path === '/v1/account/name' && request.method === 'POST') {
+        // NAME-AS (2026-10-12, Mac: "toggle to use their account name or character name for ingame use"): WHICH NAME THE
+        // ROOM READS - `{ as: 'account' | 'character' }`, the row's choice, which every later mint signs (accounts.js
+        // wornNameOf). Nothing to hold, so nothing to refuse but a word that is neither: 400 `no-name-as`.
+        const r = await chooseNameAs(ctx, who.player, body.as);
+        return r.error ? no(r.error, 400, origin) : json(r, 200, origin);
+      }
+
       if (path === '/v1/account/insignia' && request.method === 'POST') {
         // WB9g: THE BROKER'S INSIGNIA, BOUGHT (accounts.js buyInsignia - one UPDATE, the account's closed gates paying).
         // 403 for a guest (the credential is good, the sale is not theirs to keep); 409 for one owned or one the gates
@@ -1189,6 +1657,15 @@ const service = {
         return json({ ...r, order }, 200, origin);
       }
 
+      // INT6 (bible/06-Systems/Integrity-Arc.md): THE REVIEW - a developer's read of the judge's verdicts and the acts on
+      // them (review.js): the held, a character's findings, a hold lifted or laid, a rollback to the last clean save, the
+      // measure and the budget's config. 403 for a caller who is not one.
+      if (path.startsWith('/v1/mod/realm-') && request.method === 'POST') {
+        const act = path.slice('/v1/mod/realm-'.length);
+        const r = await reviewAct({ ...ctx, bucket: env.SAVES }, who.player, env, act, body);
+        return r.error ? no(r.error, REVIEW_STATUS[r.error] ?? 400, origin) : json(r, 200, origin);
+      }
+
       if (path === '/v1/mod/customs-pass' && request.method === 'POST') {
         // CUSTOMS-PASS (2026-09-29, Mac, asked what becomes of a character a build from before the realm stranded:
         // "Staff customs pass"): A DEVELOPER GRANTS ONE ACCOUNT ONE CHARACTER THROUGH CUSTOMS (realm.js). 403 for a
@@ -1197,6 +1674,13 @@ const service = {
         return r.error ? no(r.error, PASS_STATUS[r.error] ?? 400, origin) : json(r, 200, origin);
       }
 
+      // SCALE4c: ONE HEARTBEAT - the beat, the letterbox and a town's board, whichever the body names, each part answered
+      // as its own route answers it (heartbeat.js), under the one session this request resolved
+      if (path === '/v1/heartbeat') {
+        if (request.method !== 'POST') return no('method', 405, origin);
+        held.said.parts = heartbeatPartsOf(body);   // AUDIT SCALE II A-3: the parts of the body read above - capped, and behind the session
+        return json(await heartbeat(ctx, who.player, env, body), 200, origin);
+      }
       if (path === '/v1/account/played' && request.method === 'POST') {
         // ACC4: A BEAT, AND NOTHING IN IT IS READ. Whatever the body
         // says, the credit is the gap by THIS clock (accounts.js
@@ -1255,13 +1739,36 @@ const service = {
         }
         if (request.method !== 'POST') return no('method', 405, origin);
         if (path === '/v1/mail/send') {
-          const r = await sendLetter(ctx, who.player, { to: body.to, subject: body.subject, body: body.body });
+          const r = await sendLetter(ctx, who.player, { to: body.to, toAccount: body.toAccount, subject: body.subject, body: body.body });   // NAME-AS: or by account - a friend's letter
           if (!('error' in r)) return json(r, 200, origin);
-          const status = r.error === 'muted' ? 403 : r.error === 'no-reader' ? 404 : r.error === 'mail-rate' ? 429 : r.error === 'inbox-full' ? 409 : 400;
+          const status = r.error === 'muted' ? 403 : r.error === 'no-reader' || r.error === 'reader-guest' ? 404 : r.error === 'mail-rate' ? 429 : r.error === 'inbox-full' ? 409 : 400;
           return no(r.error, status, origin);
         }
         const r = path === '/v1/mail/read' ? await readLetter(ctx, who.player, env, body.id) : await deleteLetter(ctx, who.player, body.id);
         return 'error' in r ? no(r.error, 404, origin) : json(r, 200, origin);
+      }
+
+      // SERVER-POST (2026-10-08, Mac: "an ingame server mailbox that goes next to the hourglass in the pause menu ... First
+      // use is to utilize it for players being granted items"): THE SERVER'S POST - the developers' pieces to one account,
+      // a registered one's alone (the letters' wall, its own word), each perhaps holding an item its reader claims into the
+      // online character being played (post.js). Read, claimed and thrown away here; written only by the operator's workflow.
+      if (path.startsWith('/v1/post/')) {
+        if (accountKind(who.player) !== 'linked') return no('post-needs-account', 403, origin);
+        if (path === '/v1/post/box') {
+          if (request.method !== 'GET') return no('method', 405, origin);
+          return json(await postBoxOf(ctx, who.player), 200, origin);
+        }
+        if (request.method !== 'POST') return no('method', 405, origin);
+        const act = {
+          '/v1/post/read': () => readPost(ctx, who.player, body.id),
+          '/v1/post/claim': () => claimPost({ ...ctx, bucket: env.SAVES }, who.player, { id: body.id, character: body.character, realm: body.realm }),   // the realm record is in R2
+          '/v1/post/delete': () => deletePost(ctx, who.player, body.id),
+        }[path];
+        if (!act) return no('not-found', 404, origin);
+        const r = await act();
+        if (!('error' in r)) return json(r, 200, origin);
+        if (r.error === 'seq') return json({ error: 'seq', seq: r.seq }, 409, origin);   // the service's own, as a checkpoint's
+        return no(r.error, POST_STATUS[r.error] ?? REALM_STATUS[r.error] ?? 400, origin);
       }
 
       // ═══ ACC2: THE SAVES ═══════════════════════════════════════
@@ -1406,7 +1913,7 @@ const service = {
         // REALM-GZIP: every answer that hands a tab a lease says this service opens a packed save - a tab packs only then,
         // so a new build before its service is deployed (or after one rolled back) sends the text it always sent
         const leased = (/** @type {any} */ r) => answer(r.error ? r : { ...r, gzip: true });
-        if (path === '/v1/realm/create') return leased(await createRealm(rctx, me, { name: body.name, summary: body.summary }));
+        if (path === '/v1/realm/create') return leased(await createRealm(rctx, me, { name: body.name, summary: body.summary, lineage: body.lineage, person: body.person }));   // LEGACY7: born as a person of the account's own line
         if (path === '/v1/realm/customs') return leased(await customsRealm(rctx, me, { origin: body.origin, name: body.name, summary: body.summary }));   // AUDIT REALM L3-F2/F3: one guarded batch, and resumable
         if (path === '/v1/realm/join') return leased(await joinRealm(rctx, me, body.id));
         if (path === '/v1/realm/trade') {
@@ -1417,6 +1924,19 @@ const service = {
         }
         if (path === '/v1/realm/leave') return answer(await leaveRealm(rctx, me, { id: body.id, lease: body.lease }));
         if (path === '/v1/realm/undo') return answer(await undoRealm(rctx, me, body.id));   // HOUSE-LOSS: a customs that never landed, undone
+        // LEGACY7 (legacy.js): Project Legacy's lines - listed, written past their rev (a stale write answered with the
+        // stored record, to merge into), and a fallen character's tombstone under its lease
+        if (path === '/v1/realm/lineages') return json({ lineages: await listLineages(rctx, me) }, 200, origin);
+        if (path === '/v1/realm/lineage') {
+          const r = await putLineage(rctx, me, { id: body.id, record: body.record, base: body.base ?? null });   // AUDIT LEGACY III A2: the rev it was made from
+          if (r.error === 'lineage-stale') return json(r, 409, origin);
+          return answer(r);
+        }
+        if (path === '/v1/realm/die') return answer(await realmDie(rctx, me, { id: body.id, lease: body.lease, why: body.why }));   // LEGACY7 part three: 'retired' keeps a union
+        // LEGACY7 part three: a half of one wedding, and the account's unions
+        // AUDIT LEGACY III O1/O3: the other's character as the relay stamped it, and a half taken back
+        if (path === '/v1/realm/wed') return answer(await realmWed(rctx, me, { id: body.id, lease: body.lease, sid: body.sid, partner: body.partner, partnerChar: body.partnerChar, withdraw: body.withdraw === true }));
+        if (path === '/v1/realm/unions') return json({ unions: await listUnions(rctx, me) }, 200, origin);
         return answer(await deleteRealm(rctx, me, body.id));   // /v1/realm/delete - HOUSE-LOSS: which undoes one too, for a door that asks a delete
       }
 
@@ -1426,11 +1946,14 @@ const service = {
       // AUDIT ONLINE A17's law, on this side too: an uncaught error is
       // LOGGED, not lost, and a player is told nothing about it.
       console.error('[account]', path, e?.stack ?? String(e));
-      return no('server', 500, origin);
+      return no('server', d1Overloaded(e) ? 503 : 500, origin);   // SCALE4f: an overloaded primary counted apart
     }
   },
 };
 
 export default {
   fetch: (request, env) => measured(request, env, service.fetch),
+  // SCALE4b: THE SERVICE'S OWN CLOCK - wrangler.toml's [triggers] crons, each firing its list (cron.js), the sweeps no
+  // read runs any more and the settlements every read now nearly always finds done
+  scheduled: (controller, env) => runCron(env, { cron: controller?.cron, nowS: Math.floor(Number(controller?.scheduledTime ?? Date.now()) / 1000) }),
 };

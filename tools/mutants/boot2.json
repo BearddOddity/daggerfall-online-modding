@@ -2,8 +2,8 @@
   {
     "name": "BOOT2-the-cursor-takes-the-helper-from-the-hud-again",
     "file": "src/ui/cursor.js",
-    "old": "import { bitmapToColor32 } from '../formats/color32Order.js';",
-    "new": "import { bitmapToColor32 } from './hud.js';",
+    "old": "import { APP_ROOT } from '../systems/appRoot.js';",
+    "new": "import { APP_ROOT } from '../systems/appRoot.js';\nimport { drawHud } from './hud.js';",
     "tests": [
       "test/boot2.test.js"
     ]
@@ -24,6 +24,15 @@
     "new": "export const bitmapToColor32 = () => null;\nexport const hudScale = (canvasWidth, canvasHeight) =>",
     "syntax": true,
     "why": "A second definition cannot sit beside the import without breaking the module; boot2.test.js reads source, never imports hud.js, so it still dies of the ONE HOME scan.",
+    "tests": [
+      "test/boot2.test.js"
+    ]
+  },
+  {
+    "name": "ECOTONE1-the-border-law-imports-on-the-boot-path",
+    "file": "src/world/ecotone.js",
+    "old": "export const ECOTONE = Object.freeze({",
+    "new": "import { MAP_W } from './roadNetwork.js'; void MAP_W;\nexport const ECOTONE = Object.freeze({",
     "tests": [
       "test/boot2.test.js"
     ]

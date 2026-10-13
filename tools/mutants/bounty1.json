@@ -146,8 +146,8 @@
   {
     "name": "AUDIT-BOUNTY1-B1-the-notice-stands-over-an-indoor-window",
     "file": "src/scenes/world.js",
-    "old": "if ((townTalk.overlayActive && !townTalk.overlayDone) || (modes?.overlayHeld ?? false) || (modes?.deathUp?.() ?? false)) return false;",
-    "new": "if ((townTalk.overlayActive && !townTalk.overlayDone) || (modes?.deathUp?.() ?? false)) return false;",
+    "old": "      // stacks (`modes.overlayHeld`): a mate's clear lands while a shop or the pack is open, and must not stand over it\n      if ((townTalk.overlayActive && !townTalk.overlayDone) || (modes?.overlayHeld ?? false) || (modes?.deathUp?.() ?? false)) return false;",
+    "new": "      // stacks (`modes.overlayHeld`): a mate's clear lands while a shop or the pack is open, and must not stand over it\n      if ((townTalk.overlayActive && !townTalk.overlayDone) || (modes?.deathUp?.() ?? false)) return false;",
     "tests": [
       "test/auditbounty1.test.js"
     ]
@@ -180,10 +180,10 @@
     ]
   },
   {
-    "name": "DEATH-PENALTY-1-a-fifth-not-a-quarter",
+    "name": "DEATH-PENALTY-1-a-fifth-not-a-tenth",
     "file": "src/systems/deathPenalty.js",
-    "old": "export const DEATH_GOLD_FRACTION = 0.25;",
-    "new": "export const DEATH_GOLD_FRACTION = 0.2;",
+    "old": "export const DEATH_GOLD_DIVISOR = 10;",
+    "new": "export const DEATH_GOLD_DIVISOR = 5;",
     "tests": [
       "test/deathpenalty.test.js",
       "test/donline1_respawn.test.js",
@@ -193,8 +193,8 @@
   {
     "name": "DEATH-PENALTY-2-rounded-against-the-player",
     "file": "src/systems/deathPenalty.js",
-    "old": "  return Math.floor(g * DEATH_GOLD_FRACTION);",
-    "new": "  return Math.ceil(g * DEATH_GOLD_FRACTION);",
+    "old": "  return Math.floor(g / DEATH_GOLD_DIVISOR);",
+    "new": "  return Math.ceil(g / DEATH_GOLD_DIVISOR);",
     "tests": [
       "test/deathpenalty.test.js",
       "test/donline1_respawn.test.js",
@@ -204,19 +204,20 @@
   {
     "name": "DEATH-PENALTY-3-the-offline-screen-claims-gold",
     "file": "src/ui/deathScreen.js",
-    "old": "this.goldLoss = this.online ? deathGoldLoss(goldPiecesOf(entity)) : 0;",
+    "old": "this.goldLoss = respawns ? deathGoldLoss(goldPiecesOf(entity)) : 0;",
     "new": "this.goldLoss = deathGoldLoss(goldPiecesOf(entity));",
     "tests": [
       "test/deathpenalty.test.js",
       "test/donline1_respawn.test.js",
       "test/risestuck.test.js"
-    ]
+    ],
+    "note": "BAL4 (PIN MOVED): a death that respawns - online, or a Project Legacy rise offline - states the loss; one with no respawn still claims none. Re-aimed by content."
   },
   {
     "name": "DEATH-PENALTY-4-the-respawn-takes-nothing",
     "file": "src/scenes/world.js",
-    "old": "    const goldLost = applyDeathPenalty(playerEntity);   // DEATH-PENALTY: once per death",
-    "new": "    const goldLost = 0;   // DEATH-PENALTY: once per death",
+    "old": "    const goldLost = wildRise ? 0 : applyDeathPenalty(playerEntity);",
+    "new": "    const goldLost = 0;",
     "tests": [
       "test/deathpenalty.test.js",
       "test/donline1_respawn.test.js",
@@ -232,6 +233,17 @@
       "test/deathpenalty.test.js",
       "test/donline1_respawn.test.js",
       "test/risestuck.test.js"
-    ]
+    ],
+    "note": "AUDIT LEGACY (PIN MOVED): its line changed with the audit's fixes (the death at the door, the Succession the death's screen, Privateer's Hold's Legacy arm); re-aimed by content. BAL4 (PIN MOVED): the arm runs online or at a Legacy rise, and both pay the tenth now; re-aimed by content."
+  },
+  {
+    "name": "DEATH-PENALTY-6-times-a-tenth",
+    "file": "src/systems/deathPenalty.js",
+    "old": "  return Math.floor(g / DEATH_GOLD_DIVISOR);",
+    "new": "  return Math.floor(g * DEATH_GOLD_FRACTION);",
+    "tests": [
+      "test/deathpenalty.test.js"
+    ],
+    "note": "AUDIT DEATH-TENTH: 0.1 is a hair over a tenth in binary - past 3 x 2^51 a purse ending in 9 lost a coin more than a tenth."
   }
 ]

@@ -45,8 +45,9 @@ import { isTouchDevice } from './touchDevice.js';
 import { crosshairCentreY, CROSSHAIR_ARM } from './hudCrosshair.js';
 import { hudReticle } from './hud.js';   // the reticle's own two terms, from their home
 import { pickActivatableHit } from '../player/activate.js';
+import { getSeed, setSeed } from '../formats/dfRandom.js';   // CAT-MEOW: the readout keeps the classic stream
 import { frameMark } from '../systems/frameClock.js';   // AUDIT-WH P3: the frame in flight, so the gate's two terms are computed once in it
-import { resolveHover, frameSignature } from '../systems/worldHover.js';
+import { resolveHover, frameSignature, plaqueWindow } from '../systems/worldHover.js';   // LOOT-SCROLL: the drawn window
 import { foldQuickLoot, quickLootRow, quickLootStats, resetQuickLoot, quickLootOn } from '../systems/quickLoot.js';
 import { setClassicLootFrame } from '../systems/classicLootFrame.js';   // DISC22-C: the classic panel's frame, a leaf hud.js can read   // QUICK-LOOT B3: the highlight is the FEATURE's - this draws it and frees it, it does not own it; QUICK-LOOT-STATS: and the lit row's own numbers
 import { bodyStackMark, resetBodyStack } from '../player/lootStack.js';   // LOOT-STACK: the plaque counts the pile the pick noted
@@ -101,6 +102,15 @@ let node = null;
 let shownSig = null;
 let lastX = null;
 let lastTop = null;
+let _winKey = null;     // LOOT-SCROLL: the key the drawn window is over...
+let _winFrom = 0;       // ...and its top row
+/** LOOT-SCROLL: the window over `frame`'s rows that shows its lit row - kept per key, so a notch inside it lights the
+ *  next row and a notch past its edge moves it one. */
+function windowOf(frame, lit) {
+  const w = plaqueWindow(frame, lit, frame?.key != null && frame.key === _winKey ? _winFrom : 0);
+  _winKey = frame?.key ?? null; _winFrom = w.from;
+  return w;
+}
 let _faults = 0;        // AUDIT-WH L1: contained frames, counted
 let _faultSaid = false; // ...and said once, not once a frame
 let _watchdog = null;   // AUDIT-WH2 L3-F2: the heartbeat's handle - owned here, freed at every door out
@@ -207,6 +217,7 @@ export function reticleAnchor(canvas, fovRad) {
 function paint(n, f, sel = -1, stats = []) {
   n.textContent = '';
   n.classList.toggle('has-list', f.kind === 'items' || f.kind === 'actions');
+  n.classList.toggle('has-actions', f.kind === 'actions');
   // UXB1-N: the namer's tone colours the title (a private-property container's, enhancedStyle.js .tone-private)
   n.classList.toggle('tone-private', f.tone === 'private');
   const title = document.createElement('div');
@@ -261,6 +272,12 @@ function paint(n, f, sel = -1, stats = []) {
     p.className = 'wplaque-row wplaque-empty';
     p.textContent = 'Empty';
     list.append(p);
+  }
+  if (f.above > 0) {   // LOOT-SCROLL: what the window leaves above it
+    const up = document.createElement('div');
+    up.className = 'wplaque-row wplaque-more';
+    up.textContent = `${f.above} more above`;
+    list.append(up);
   }
   for (let i = 0; i < f.rows.length; i++) {
     const r = f.rows[i];
@@ -425,8 +442,11 @@ export function showWorldPlaque(frame, anchor = null) {
   // is, and neither is in the frame. A resize with the crosshair held
   // still would otherwise leave the panel off the screen edge it was
   // laid out against.
-  const stats = quickLootStats(frame);
-  const sig = `${frameSignature(frame)}|${quickLootRow(frame)}|${statsSide(lastX, globalThis.innerWidth ?? 0)}`;
+  const stats = quickLootStats(frame);   // the WHOLE frame's lit row - as the take reads it
+  const lit = quickLootRow(frame);
+  const win = windowOf(frame, lit);   // LOOT-SCROLL: HOVER_MAX rows about the lit one
+  const actionLayout = frame?.kind === 'actions' ? `${lastTop}|${globalThis.innerWidth ?? 0}|${globalThis.innerHeight ?? 0}` : '';
+  const sig = `${frameSignature(frame)}|${lit}|${win.from}|${statsSide(lastX, globalThis.innerWidth ?? 0)}|${actionLayout}`;
   if (sig === shownSig) return;
   shownSig = sig;
   if (!frame) {
@@ -437,8 +457,17 @@ export function showWorldPlaque(frame, anchor = null) {
     blank(n);
     return;
   }
-  paint(n, frame, quickLootRow(frame), stats);
+  paint(n, win.frame, lit >= 0 ? lit - win.from : -1, stats);   // LOOT-SCROLL: the window, its lit row counted from its top
   n.classList.add('on');
+  // Keep the selected action readable in the bounded list; selection and activation stay with quickLoot.
+  const list = n.querySelector?.('.wplaque-acts');
+  const selected = list?.querySelector('.sel');
+  if (selected) {
+    const top = selected.offsetTop;
+    const bottom = top + selected.offsetHeight;
+    if (top < list.scrollTop) list.scrollTop = top;
+    else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight;
+  }
 }
 
 /**
@@ -515,6 +544,21 @@ export function worldHoverFrame({
   // Said ONCE (the online lane's own idiom - a latch, not a per-frame
   // console), and the plaque goes down rather than freezing on its
   // last answer: a readout that cannot answer shows nothing.
+  //
+  // CAT-MEOW (FIELD BUGS 2026-10-06c, Flylighter: "NPC sound glitch of a
+  // rapid cat meow", Chesterwark): A READOUT LEAVES THE CLASSIC STREAM AS
+  // IT FOUND IT. A person's name is StaticNPC.DisplayName, which seeds
+  // DFRandom with the NPC's nameSeed and draws the name off it
+  // (characters/staticNpc.js staticNpcName) - and this door asks the
+  // namers EVERY FRAME, where the mod asks once per new hit (prevHit,
+  // .cs:266-275). So while the player looked at a townsperson the stream
+  // restarted at that person's seed each frame, and every draw after it
+  // was the same number: the town animals' 16 Hz roll (systems/
+  // animalAmbience.js, rand() <= 100) answered alike on every tick, and
+  // next to the one person whose draw came under 101 a cat meowed sixteen
+  // times a second. The namers still run as they did; the seed is put
+  // back after them, whatever they drew or threw.
+  const classicSeed = getSeed();
   try {
     const hit = pick ? pick() : pickActivatableHit(eye, dir, targets?.() ?? [], collider);
     const frame = markBodyStack(resolveHover(hit, { name, contents }));
@@ -526,7 +570,7 @@ export function worldHoverFrame({
     // looking at a door does not arrive later at a chest.
     foldQuickLoot(frame);
     if (dom) showWorldPlaque(frame, plaqueAnchor(canvas));
-    else setClassicLootFrame(frame, frameMark(), quickLootRow(frame));   // DISC22-C: drawHud draws it, this frame, its lit row with it
+    else { const lit = quickLootRow(frame), w = windowOf(frame, lit); setClassicLootFrame(w.frame, frameMark(), lit >= 0 ? lit - w.from : -1); }   // DISC22-C: drawHud draws it, this frame, its lit row with it - LOOT-SCROLL: the same window the plaque draws
     return frame;
   } catch (e) {
     _faults += 1;
@@ -538,6 +582,8 @@ export function worldHoverFrame({
     try { showWorldPlaque(null); } catch { /* the draw itself is gone; nothing left to hide */ }
     setClassicLootFrame(null);   // DISC22-C: and the classic panel draws nothing either
     return null;
+  } finally {
+    setSeed(classicSeed);   // CAT-MEOW: the namers' DisplayName draws leave no mark on the game's stream
   }
 }
 
@@ -569,6 +615,7 @@ export function destroyWorldPlaque() {
   try { node?.remove(); } catch { /* already gone */ }
   node = null;
   shownSig = null;
+  _winKey = null; _winFrom = 0;   // LOOT-SCROLL
   lastX = null;
   lastTop = null;
   _faults = 0;

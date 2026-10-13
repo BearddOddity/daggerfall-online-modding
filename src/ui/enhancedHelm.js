@@ -46,7 +46,8 @@ const PAD_CODE = Object.fromEntries(Object.entries(HELM_DPAD).map(([code, dir]) 
  * stows the sails - held, the square sails alone where the hull carries both kinds (the modifier's chord); down lights
  * or douses the lanterns - held, leaves the helm; left and right step the time scale down and up - held, trim the sails
  * while the trim is the player's (SailingAssist.AutoTrimming off), else left held puts the time back to one. Returns
- * true for a hold the let-go must end (the trim).
+ * true for a hold the let-go must end (the trim). HELM-TIME-ONLINE: with the time dial retired (`h.timeDial` false -
+ * online) left and right step nothing, and held they only trim.
  * @param {'up'|'down'|'left'|'right'} dir @param {'tap'|'hold'|'release'} kind
  * @param {any} h - helmPanelState() @param {{ press: (a: string, w?: string) => void, hold: (a: string, on: boolean) => void }} io
  */
@@ -57,6 +58,7 @@ export function helmPadGesture(dir, kind, h, { press, hold }) {
   if (kind === 'tap') {
     if (dir === 'up') { if (h.hasSails) press(A.sail); }
     else if (dir === 'down') press(A.light);
+    else if (h.timeDial === false) return false;   // HELM-TIME-ONLINE: no dial to step
     else if (dir === 'left') press(A.slower);
     else if (dir === 'right') press(A.faster);
     return false;
@@ -64,17 +66,46 @@ export function helmPadGesture(dir, kind, h, { press, hold }) {
   if (dir === 'up') { if (h.squareToggle) press(A.sail, A.trimModifier); else if (h.hasSails) press(A.sail); return false; }
   if (dir === 'down') { press(A.disembark); return false; }
   if (h.manualTrim && h.hasSails) { hold(trim, true); return true; }
+  if (h.timeDial === false) return false;   // HELM-TIME-ONLINE: no time to put back
   if (dir === 'left') press(A.normal); else press(A.faster);
   return false;
 }
 /** CSA-L: the prompt bar's rows at the helm (the pad's own glyphs, ui/plusPad.js showPrompts). */
-export function helmPadPrompts(h) {
+export function helmPadPrompts(h, { glass = [] } = {}) {
   if (!h) return null;
-  return [
+  const trims = h.manualTrim && h.hasSails;
+  if (glass.length) return glassHelmPrompts(h, glass, trims);
+  const rows = [
     [[PAD_CODE.up], h.squareToggle ? 'Sails (hold: square sails)' : 'Sails'],
     [[PAD_CODE.down], 'Lanterns (hold: leave the helm)'],
-    [[PAD_CODE.left, PAD_CODE.right], h.manualTrim && h.hasSails ? 'Slower / faster (hold: trim)' : 'Slower / faster (hold left: normal time)'],
   ];
+  // HELM-TIME-ONLINE: online no dial - the pair says the trim alone, where the trim is the player's
+  if (h.timeDial === false) { if (trims) rows.push([[PAD_CODE.left, PAD_CODE.right], 'Trim (hold)']); }
+  else rows.push([[PAD_CODE.left, PAD_CODE.right], trims ? 'Slower / faster (hold: trim)' : 'Slower / faster (hold left: normal time)']);
+  return rows;
+}
+/**
+ * AUDIT CAPTAIN'S SEA S3: THE HELM'S PROMPTS WITH THE GLASS ON THE D-PAD - a press the player gave the glass (`glass`:
+ * [{ dir, kind }]) is the glass's at the helm too (ui/gamepadInput.js), so each direction says its own two presses, the
+ * glass's in place of the helm's.
+ */
+function glassHelmPrompts(h, glass, trims) {
+  const dial = h.timeDial !== false;
+  const own = {
+    up: { tap: 'Sails', hold: h.squareToggle ? 'square sails' : null },
+    down: { tap: 'Lanterns', hold: 'leave the helm' },
+    left: { tap: dial ? 'Slower' : null, hold: trims ? 'trim' : dial ? 'normal time' : null },
+    right: { tap: dial ? 'Faster' : null, hold: trims ? 'trim' : null },
+  };
+  for (const { dir, kind } of glass) if (own[dir]) own[dir][kind] = 'spyglass';
+  const rows = [];
+  for (const dir of ['up', 'down', 'left', 'right']) {
+    const { tap, hold } = own[dir];
+    const t = tap === 'spyglass' ? 'Spyglass' : tap;
+    if (t) rows.push([[PAD_CODE[dir]], hold ? `${t} (hold: ${hold})` : t]);
+    else if (hold) rows.push([[PAD_CODE[dir]], `${hold.replace(/^./, (c) => c.toUpperCase())} (hold)`]);
+  }
+  return rows;
 }
 
 /**
@@ -85,10 +116,9 @@ export function helmPadPrompts(h) {
 export function helmButtons(h) {
   if (!h) return [];
   const out = [];
-  // HELM-KEYS: the sails' button presses what the arrows press - more sail to raise them, less to stow them - so its
-  // hint teaches the arrows; where the square sails are the player's own (the square button's), stowing is the mod's
-  // own toggle, which strikes all her canvas as its label says
-  if (h.hasSails) out.push({ act: 'sails', label: h.sailsUp ? 'Stow sails' : 'Raise sails', kind: 'tap', action: !h.sailsUp ? A.more : h.squareToggle ? A.sail : A.less });
+  // HELM-LADDER: the sails' button is the mod's own toggle (the End key's) - the arrows climb the oars' rungs first now,
+  // and the button raises or strikes all her canvas as its label says, from any rung
+  if (h.hasSails) out.push({ act: 'sails', label: h.sailsUp ? 'Stow sails' : 'Raise sails', kind: 'tap', action: A.sail });
   if (h.squareToggle) out.push({ act: 'square', label: h.squareUp ? 'Stow square sails' : 'Raise square sails', kind: 'tap', action: A.sail, withHeld: A.trimModifier });
   if (h.manualTrim && h.hasSails) {
     out.push({ act: 'trimLeft', label: '◀ Trim', kind: 'hold', action: A.trimLeft }, { act: 'trimRight', label: 'Trim ▶', kind: 'hold', action: A.trimRight });
@@ -96,7 +126,8 @@ export function helmButtons(h) {
     if (h.hasSquare && !h.squareOnly) out.push({ act: 'squareLeft', label: '◀ Square', kind: 'hold', action: A.trimLeft, withHeld: A.trimModifier }, { act: 'squareRight', label: 'Square ▶', kind: 'hold', action: A.trimRight, withHeld: A.trimModifier });
   }
   out.push({ act: 'light', label: h.light ? 'Douse lanterns' : 'Light lanterns', kind: 'tap', action: A.light });
-  out.push({ act: 'slower', label: '−', kind: 'tap', action: A.slower, disabled: !(h.timeScaleIndex > 0) },
+  // HELM-TIME-ONLINE (2026-10-04, Mac: "Remove the time dial from ships online"): the dial's three only where it turns
+  if (h.timeDial !== false) out.push({ act: 'slower', label: '−', kind: 'tap', action: A.slower, disabled: !(h.timeScaleIndex > 0) },
     { act: 'normal', label: `×${h.timeScale ?? 1}`, kind: 'tap', action: A.normal, disabled: !(h.timeScaleIndex > 0) },
     { act: 'faster', label: '+', kind: 'tap', action: A.faster, disabled: !(h.timeScaleIndex < h.timeScaleMax) });
   if (h.orders) out.push({ act: 'orders', label: 'Orders', kind: 'hook' });   // SHIP-CREW: her captain's orders (the naval arc on)
@@ -117,6 +148,8 @@ body:has(.hud-foe.on) .helmpanel { --hp-top: calc(18px + 28px * var(--hud-scale,
   align-items: center; gap: 6px; padding: 8px 12px; width: max-content; max-width: calc(100vw - 24px); box-sizing: border-box; border: 2px solid; border-radius: 0; }
 .helmpanel-title { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 4px 12px; }
 .helmpanel-name { font-size: 15px; letter-spacing: 0.06em; color: #efe8d6; text-shadow: 1px 1px 0 #050608; }
+.helmpanel-speed { font-size: 13px; letter-spacing: 0.06em; color: #d9c48a; text-shadow: 1px 1px 0 #050608; font-variant-numeric: tabular-nums; }
+.helmpanel-speed:empty { display: none; }
 .helmpanel-hint { font-size: 11px; letter-spacing: 0.08em; color: #a89f88; text-shadow: 1px 1px 0 #050608; }
 .helmpanel-hint:empty { display: none; }
 .helmpanel-btns { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; }
@@ -175,16 +208,18 @@ function build(doc) {
   title.className = 'helmpanel-title';
   const name = doc.createElement('span');
   name.className = 'helmpanel-name';
+  const speed = doc.createElement('span');   // HELM-SPEED: her way, beside her name
+  speed.className = 'helmpanel-speed';
   const hint = doc.createElement('span');
   hint.className = 'helmpanel-hint';
-  title.append(name, hint);
+  title.append(name, speed, hint);
   const btns = doc.createElement('div');
   btns.className = 'helmpanel-btns';
   bar.append(title, btns);
   root.append(bar);
   swallowPresses(root);
   doc.body.append(root);
-  return { root, bar, name, hint, btns, buttons: new Map() };
+  return { root, bar, name, speed, hint, btns, buttons: new Map() };
 }
 
 /** Every hold let go - the panel hidden, rebuilt or gone never leaves a trim held. */
@@ -226,8 +261,12 @@ function makeButtons(doc, list, hooks) {
       });
       for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) n.addEventListener(t, up);
     } else {
+      // AUDIT STEED-UI (the saddle's twin): a tap button never keeps the keyboard's focus - a focused one is clicked
+      // again by the next Space or Enter (Leave the helm on a jump's keyup)
+      n.addEventListener('mousedown', (e) => e.preventDefault?.());
       n.addEventListener('click', (e) => {
         e.preventDefault?.();
+        n.blur?.();
         if (n.disabled) return;
         if (b.kind === 'hook') hooks[b.act]?.();
         else hooks.press?.(b.action, b.withHeld ?? null);
@@ -260,6 +299,8 @@ export function drawEnhancedHelm(state = {}, hooks = {}, { doc = globalThis.docu
   if (last.rootClass !== rootClass) { last.rootClass = rootClass; parts.root.className = rootClass; }
   const title = h ? `At the helm - ${HULL_NAMES[h.hull] ?? 'Boat'}` : `Aboard ${aboard.owner ? `${aboard.owner}'s` : "another player's"} ${HULL_NAMES[aboard.hull] ?? 'boat'}`;
   if (last.title !== title) { last.title = title; parts.name.textContent = title; }
+  const speed = h ? helmSpeedText(h.way) : '';
+  if (last.speed !== speed) { last.speed = speed; parts.speed.textContent = speed; }
   const hint = h ? helmHint(h, state) : '';
   if (last.hint !== hint) { last.hint = hint; parts.hint.textContent = hint; }
   const list = helmButtons(h);
@@ -284,28 +325,32 @@ export function drawEnhancedHelm(state = {}, hooks = {}, { doc = globalThis.docu
 /**
  * HELM-KEYS (2026-09-29, the player: "make the ship controls more intuitive instead of a bunch of buttons and key
  * binds"): the bar's line under its name - in irons, how she comes out (the key that strikes sail and the one that
- * rows - under the responsive helm the rudder's keys first, AUDIT NAV2 F18); else, on a keyboard, the helm's whole
+ * rows - the mod's helm alone lies in irons, SAIL-FREE); else, on a keyboard, the helm's whole
  * hand at a glance - the sails on the arrows, the rudder on the turn keys - and while the look holds the mouse, how to
  * free it for the buttons. A finger reads the buttons themselves. Every key is the one bound now (`keyOf`); one bound
- * to nothing is left out.
+ * to nothing is left out. HELM-LADDER (2026-10-04): the hand is the ladder's now - W, S and the up and down arrows her
+ * oars and her sails, A, D and the side arrows her rudder; in irons, one rung down strikes sail and puts her on her oars.
  * @param {any} h - helmPanelState() @param {{ touch?: boolean, mouseFree?: boolean, freeKey?: string, keyOf?: (a: string) => string }} state
  */
 export function helmHint(h, state = {}) {
   const key = (a) => (state.touch ? '' : (state.keyOf?.(a) ?? ''));
   if (h.inIrons) {
-    const strike = key(A.less), row = key('MoveForwards');
-    const oars = `strike sail${strike ? ` (${strike})` : ''} and row her round${row ? ` (${row})` : ''}`;
-    if (!h.responsive) return `In irons - ${oars}`;
-    // AUDIT NAV2 F18: the responsive helm's rudder answers at rest (HELM-WAY) - the helm alone brings her off the wind
-    const steer = [key('TurnLeft'), key('TurnRight')].filter(Boolean).join(' ');
-    return `In irons - put the helm over${steer ? ` (${steer})` : ''}, or ${oars}`;
+    // HELM-LADDER: one rung down strikes the last of her sail and puts her on her oars, pulling ahead
+    const strike = [key('MoveBackwards'), key(A.less)].filter(Boolean).join(' ');
+    return `In irons - strike sail${strike ? ` (${strike})` : ''} and row her round`;
   }
   if (state.touch) return '';
-  const pair = (label, a, b) => (key(a) || key(b) ? `${label} ${[key(a), key(b)].filter(Boolean).join(' ')}` : '');
-  const parts = [h.hasSails ? pair('Sails', A.more, A.less) : '', pair('Steer', 'TurnLeft', 'TurnRight')];
+  const keys = (label, ...as) => { const ks = [...new Set(as.map(key).filter(Boolean))]; return ks.length ? `${label} ${ks.join(' ')}` : ''; };
+  // HELM-LADDER: W and the up arrow, S and the down arrow, one ladder - her oars, then her sails; A, D and the side arrows steer
+  const parts = [keys(h.hasSails ? 'Oars & sails' : 'Oars', 'MoveForwards', 'MoveBackwards', A.more, A.less), keys('Steer', 'MoveLeft', 'MoveRight', 'TurnLeft', 'TurnRight')];
   if (!state.mouseFree) parts.push(`Free the mouse (${state.freeKey || 'Y'}) to use these`);
   return parts.filter(Boolean).join(' · ');
 }
+
+/** HELM-SPEED (2026-10-06, Mac: "add a speed indicator for when you're sailing"): knots in a metre a second. */
+export const KNOTS_PER_MPS = 3600 / 1852;
+/** Her way (m/s, helmPanelState's `way`) as the helm reads it - in knots, to a tenth; '' with none known. */
+export const helmSpeedText = (way) => (Number.isFinite(way) ? `${(Math.max(0, way) * KNOTS_PER_MPS).toFixed(1)} knots` : '');
 
 /** Taken down: at the helm no longer, aboard nothing, the skin or the mod off. Every hold is let go first. */
 export function hideEnhancedHelm() {

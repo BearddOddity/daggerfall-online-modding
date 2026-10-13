@@ -65,8 +65,8 @@
   {
     "name": "NUDEFLATS-world-street-npc-born",
     "file": "src/scenes/world.js",
-    "old": "      const k = `${pn.drawArchive ?? pn.textureArchive}_${pn.drawRecord ?? pn.textureRecord}`;",
-    "new": "      const k = `${pn.textureArchive}_${pn.textureRecord}`;",
+    "old": "      const archive = pn.drawArchive ?? pn.textureArchive, record = pn.drawRecord ?? pn.textureRecord;",
+    "new": "      const archive = pn.textureArchive, record = pn.textureRecord;",
     "tests": [
       "test/nudeflats.test.js"
     ]
@@ -164,8 +164,8 @@
   {
     "name": "NUDEFLATS-mw-weld-unwired",
     "file": "src/combat/fpArm.js",
-    "old": "      : composeWornModest({ pieces: armor ?? [], armors: armors ?? [], clothes: clothes ?? [], bodyPool: parts, female, colourOf }, showNudity());",
-    "new": "      : composeWornArmor({ pieces: armor ?? [], armors: armors ?? [], clothes: clothes ?? [], bodyPool: parts, female, colourOf });",
+    "old": "      : composeWornModest({ pieces: armor ?? [], armors: armors ?? [], clothes: clothes ?? [], bodyPool: parts, female, colourOf, helmStyle }, showNudity());",
+    "new": "      : composeWornArmor({ pieces: armor ?? [], armors: armors ?? [], clothes: clothes ?? [], bodyPool: parts, female, colourOf, helmStyle });",
     "tests": [
       "test/nudeflats.test.js",
       "test/fparm.test.js"

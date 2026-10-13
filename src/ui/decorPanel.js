@@ -47,14 +47,18 @@ import { registerOverlay } from './enhancedOverlays.js';   // PX28b: Tab puts it
 import { DECOR_KINDS, DECOR_SIZES, decorSize, filterDecor } from '../systems/decorCatalogue.js';
 import { decorRefund, DECOR_FURNITURE_GROUP, DECOR_STATIONS, DECOR_STATION_FEES, DECOR_STATION_NAMES } from '../net/decorLaw.js';
 import { forgeOffered, PROF_STATIONS } from './profPages.js';
+import { VENDOR_STATION } from '../net/vendorLaw.js';   // HOME-VENDOR: a hired trader
 import { rentRowSub, rentPriceStep, RENT_PRICE_STEPS, RENT_PRICE_FIRST } from '../systems/homeRent.js';   // HOME-RENT: the owner's rooms
 import {
   HOME_LOOK_PARTS, HOME_LOOK_PART_NAMES, HOME_LOOK_CLIMATES, HOME_LOOK_CLIMATE_NAMES, HOME_LOOK_SETS, HOME_LOOK_SET_NAMES, HOME_LOOK_DOOR_KEPT, homeLookOf, homeLookSig,
 } from '../net/homeLaw.js';   // HOME-LOOK: the house outside, painted
 import { homeLookSwatch } from '../world/homeLook.js';
 import { decorIsDoor } from '../systems/decorDoorways.js';   // HOME-DOORS (AUDIT): a door's controls
-/** The crafts a piece may be made here: every station, the Forge only where it works (AUDIT 29 B2). */
-export const stationsOffered = () => DECOR_STATIONS.filter((k) => !PROF_STATIONS.includes(k) || forgeOffered());   // PROF4: the workbench as the forge
+/** The crafts a piece may be made here: every station, the Forge only where it works (AUDIT 29 B2). HOME-VENDOR: and a
+ *  trader only where the market trades - online, the trades open (its stock is market listings). */
+/** WAGONS2 (FINAL AUDIT): `trader` - whether the room is a home, where a hired trader trades (the view's `trader`); a
+ *  caravan's or a ship's offers none. */
+export const stationsOffered = (trader = true) => DECOR_STATIONS.filter((k) => (k === VENDOR_STATION ? trader && forgeOffered() : !PROF_STATIONS.includes(k) || forgeOffered()));   // PROF4: the workbench as the forge
 
 export const DECOR_STYLE_ID = 'dagger-decor-style';
 export const DECOR_CSS = `
@@ -308,20 +312,24 @@ export function createDecorButton({ onPress, touch = false, doc = document }) {
  * `onPlace(entry)` - the Place button; `onClose()` - the panel went (Close, Escape, or a placement began);
  * DECOR2b: `onPlaceLook(furniture, look)` - the look view's Place: one's furniture, as the catalogue piece chosen;
  * `onPoint(entry|null)` - the piece the preview shows changed; `thumbOf(entry)` - a Promise of a flat's picture (a URL);
- * DECOR1e: `onMove(piece)`, `onRemove(piece)`, `onToggle(piece, 'light'|'storage')` - a placed piece's four changes.
+ * NUDE-DECOR: `thumbKeyOf(entry)` - the key that picture is kept under (the entry's own, unless the host draws it as
+ * another picture now - a figure's stand-in);
+ * DECOR1e: `onMove(piece)`, `onRemove(piece)`, `onToggle(piece, 'light'|'storage')` - a placed piece's four changes;
+ * DECOR-TURN: `onTurn(piece, dir)` - and turned where it stands, a step left (-1) or right (1).
  * BASE-HIDE: `base` in the view - the room's own furniture, each `{ key, name, kind, model, flat, shape, hidden, holds,
  * dist }`, nearest first; `onBase(keys, out)` - those pieces taken out of the room (`out`) or put back, free.
  * DECOR-ROOMS: `rooms` and `roomId` in the view - a house's rooms (`{ id, name }`, two or more) and the one chosen, and
  * `room` on each placed and built-in piece; `onRoom(id)` - a room's tab chosen.
  * @param {{ onPlace: (entry: any) => void, onClose?: () => void, onPoint?: (entry: any) => void,
  *   thumbOf?: (entry: any) => Promise<string|null>|null, onMove?: (piece: any) => void, onRemove?: (piece: any) => void,
- *   onToggle?: (piece: any, what: string) => void, onPlaceLook?: (furniture: any, look: any) => void,
+ *   onToggle?: (piece: any, what: string) => void, onTurn?: (piece: any, dir: number) => void, onPlaceLook?: (furniture: any, look: any) => void,
  *   onBase?: (keys: string[], out: boolean) => void, onRoom?: (id: number) => void, onRent?: (what: string, row: any, price: number|null) => void,
- *   onPaint?: (what: string, look: any) => void, doc?: any, win?: any }} opts
+ *   onPaint?: (what: string, look: any) => void, doc?: any, win?: any, thumbKeyOf?: (entry: any) => string }} opts
  */
 export function createDecorPanel({
   onPlace, onClose = () => {}, onPoint = () => {}, thumbOf = () => null, onMove = () => {}, onRemove = () => {}, onToggle = () => {},
-  onPlaceLook = () => {}, onBase = () => {}, onRoom = () => {}, onRent = () => {}, onPaint = () => {}, doc = document, win = globalThis,
+  onTurn = () => {}, onPlaceLook = () => {}, onBase = () => {}, onRoom = () => {}, onRent = () => {}, onPaint = () => {}, doc = document, win = globalThis,
+  thumbKeyOf = (e) => e.key,
 }) {
   injectStyle(doc);
   const el = maker(doc);
@@ -370,12 +378,15 @@ export function createDecorPanel({
   const roomActions = el('div', 'dfdecor-room-actions');
   const act = (label, fn) => { const b = el('button', 'dfdecor-btn', label); b.type = 'button'; b.addEventListener('click', fn); return b; };
   const moveBtn = act('Move', () => { const it = placedSelected(); if (it && !moveBtn.disabled) { hide(); onMove(it.piece); } });
+  // DECOR-TURN (Mac: "the ability to rotate objects on the ground"): the chosen piece turned where it stands, the panel up
+  const turnBtn = (label, dir) => { const b = act(label, () => { const it = placedSelected(); if (it && !b.disabled) onTurn(it.piece, dir); }); return b; };
+  const turnLeftBtn = turnBtn('Turn left', -1), turnRightBtn = turnBtn('Turn right', 1);
   const lightBtn = act('Light', () => { const it = placedSelected(); if (it) onToggle(it.piece, 'light'); });
   const storeBtn = act('Holds things', () => { const it = placedSelected(); if (it && !storeBtn.disabled) onToggle(it.piece, 'storage'); });
   const removeBtn = act('Remove', () => { const it = placedSelected(); if (it && !removeBtn.disabled) onRemove(it.piece); });
   // HOME-STATIONS: the craft offered (cycled, free) and the act on it (made for its licence, or unmade)
   let stationOffer = DECOR_STATIONS[0], stationFor = null, stationArmed = null;   // the offer follows a newly chosen piece's own craft
-  const stationPick = act('Station', () => { const o = stationsOffered(); stationOffer = o[(o.indexOf(stationOffer) + 1) % o.length]; stationArmed = null; paintRoomSide(); });
+  const stationPick = act('Station', () => { const o = stationsOffered(view?.trader !== false); stationOffer = o[(o.indexOf(stationOffer) + 1) % o.length]; stationArmed = null; paintRoomSide(); });
   // AUDIT HOME-STATIONS S3: the act is the one the button SAYS (painted with it), never re-read from a newer piece
   const stationBtn = act('Make station', () => {
     const it = placedSelected();
@@ -386,7 +397,7 @@ export function createDecorPanel({
     if (what) onToggle(it.piece, what);
   });
   for (const b of [lightBtn, storeBtn, stationPick, stationBtn]) b.className += ' dfdecor-yardless';   // HOME-YARD
-  roomActions.append(moveBtn, lightBtn, storeBtn, stationPick, stationBtn, removeBtn);
+  roomActions.append(moveBtn, turnLeftBtn, turnRightBtn, lightBtn, storeBtn, stationPick, stationBtn, removeBtn);
   // BASE-HIDE: the room's own furniture - the chosen piece out or back, and the whole room at once
   const baseActions = el('div', 'dfdecor-base-actions');
   const baseBtn = act('Take out', () => { const it = baseSelected(); if (it && !baseBtn.disabled) onBase([it.key], !it.hidden); });
@@ -458,15 +469,16 @@ export function createDecorPanel({
   const waiting = new Map();  // key -> the images waiting on its picture
   /** Ask for a flat's picture once; every image waiting on it gets it, and the preview if it shows that piece. */
   function askThumb(e, img = null) {
-    const known = thumbs.get(e.key);
+    const k = thumbKeyOf(e);
+    const known = thumbs.get(k);
     if (known) { img?.setAttribute('src', known); return; }
-    if (img) waiting.set(e.key, [...(waiting.get(e.key) ?? []), img]);
-    if (thumbs.has(e.key)) return;   // in flight, or none to be had
-    thumbs.set(e.key, null);
+    if (img) waiting.set(k, [...(waiting.get(k) ?? []), img]);
+    if (thumbs.has(k)) return;   // in flight, or none to be had
+    thumbs.set(k, null);
     Promise.resolve(thumbOf(e)).then((url) => {
-      thumbs.set(e.key, url ?? null);
-      const imgs = waiting.get(e.key) ?? [];
-      waiting.delete(e.key);
+      thumbs.set(k, url ?? null);
+      const imgs = waiting.get(k) ?? [];
+      waiting.delete(k);
       if (!url || !alive) return;
       for (const i of imgs) i.setAttribute('src', url);
       if ((hoverKey ?? selectedKey) === e.key) paintSide();
@@ -539,6 +551,7 @@ export function createDecorPanel({
       chip(`Your things (${m})`, mode === 'own' || mode === 'look', () => setMode('own')),   // DECOR2b: a look is chosen within them
       chip(`Built in (${k})`, mode === 'base', () => setMode('base')),   // BASE-HIDE: the room's own furniture
       ...(view?.rent ? [chip(`Rooms to rent (${(view.rent.rows ?? []).filter((r) => r.offer).length})`, mode === 'rent', () => setMode('rent'))] : []),   // HOME-RENT
+      ...(view?.paint?.caravan ? [chip('Paint', mode === 'paint', () => setMode('paint'))] : []),   // WAGONS2: a caravan's inside, painted
       ...roomChips());   // DECOR-ROOMS
   }
   /** DECOR-ROOMS: THE ROOM TABS - one a room, the chosen one pressed, each saying how many pieces stand in it. Choosing
@@ -580,7 +593,7 @@ export function createDecorPanel({
       const img = el('img', '');
       img.setAttribute('alt', '');
       thumb.append(img);
-      const known = thumbs.get(shape.key);
+      const known = thumbs.get(thumbKeyOf(shape));
       if (known) img.setAttribute('src', known); else askThumb(shape, img);
     } else {
       thumb.textContent = (DECOR_KINDS[shape.kind] ?? 'Decorations').slice(0, 2);
@@ -603,7 +616,7 @@ export function createDecorPanel({
       img.setAttribute('alt', '');
       thumb.append(img);
       const shape = baseShape(it);
-      const known = thumbs.get(shape.key);
+      const known = thumbs.get(thumbKeyOf(shape));
       if (known) img.setAttribute('src', known); else askThumb(shape, img);
     } else {
       thumb.textContent = (DECOR_KINDS[it.kind] ?? DECOR_KINDS.furniture).slice(0, 2);
@@ -636,11 +649,37 @@ export function createDecorPanel({
    *  its swatch in the preview; the look painted only when it differs from the house's. */
   /** HOME-LOOK (AUDIT): the styles a roof's or a door's family holds in a climate, as the painter's door knows it, or null. */
   function lookRecordsOf(part, climate) { return view?.paint?.records?.(part, climate) ?? null; }
+  /** WAGONS2: one of the caravan's inside parts - its name and its paint now. */
+  function caravanPaintRow(row) {
+    const r = el('div', 'dfdecor-row');
+    r.setAttribute('role', 'option');
+    r.dataset.key = row.part;
+    r.setAttribute('aria-selected', row.part === paintPart ? 'true' : 'false');
+    const main = el('span', '');
+    main.append(el('div', 'dfdecor-row-name', row.name), el('div', 'dfdecor-row-sub', row.choices[row.current] ?? ''));
+    r.append(el('span', 'dfdecor-thumb', row.name.slice(0, 2)), main, el('span', 'dfdecor-row-price', 'Free'));
+    r.addEventListener('click', () => { paintPart = row.part; redraw(); });
+    return r;
+  }
+  /** WAGONS2: the chosen part's paints, a chip each - pressed, painted at once (free, any time - Mac's answer). */
+  function paintCaravanSide() {
+    const row = view.paint.caravan.find((x) => x.part === paintPart) ?? null;
+    pickName.textContent = row ? row.name : 'Choose a part of your caravan';
+    pickLine.textContent = row ? row.choices[row.current] ?? '' : 'Walls, floor and ceiling - each can wear another paint.';
+    pickPrice.textContent = 'Free';
+    paintClimates.replaceChildren();
+    paintKinds.replaceChildren(...(row ? row.choices.map((name, i) => chip(name, i === row.current, () => onPaint('caravan', { part: row.part, i }))) : []));
+    paintBtns.hidden = true;   // nothing to try on and paint: a chip pressed is painted
+    previewImg.removeAttribute?.('src');
+    pickWhy.textContent = '';
+  }
   function paintPaintSide() {
+    if (view?.paint?.caravan) { paintCaravanSide(); return; }   // WAGONS2
+    paintBtns.hidden = false;
     const part = paintPart;
     const choice = part ? paintLook?.[part] ?? null : null;
     pickName.textContent = part ? HOME_LOOK_PART_NAMES[part] : 'Choose a part of your house';
-    pickLine.textContent = part ? decorLookText(part, choice) : 'Walls, windows, roof and door - each can wear another of Daggerfall\'s own looks.';
+    pickLine.textContent = part ? decorLookText(part, choice) : 'Walls, windows, roof and door - each can wear another of the original game\'s own looks.';
     pickPrice.textContent = 'Free';
     const set = (next) => { paintLook = { ...paintLook, [part]: next }; tryLook(); };
     const start = () => choice ?? decorLookStart(part);
@@ -662,8 +701,8 @@ export function createDecorPanel({
     backBtn.disabled = !differs;
     const sw = part ? homeLookSwatch(part, choice, view?.paint?.season ?? 0) : null;
     const shape = sw ? { key: `look:${sw.archive}.${sw.record}`, flat: [sw.archive, sw.record] } : null;
-    if (shape && !thumbs.has(shape.key)) askThumb(shape);
-    const url = shape ? thumbs.get(shape.key) : null;
+    if (shape && !thumbs.has(thumbKeyOf(shape))) askThumb(shape);
+    const url = shape ? thumbs.get(thumbKeyOf(shape)) : null;
     if (url) previewImg.setAttribute('src', url); else previewImg.removeAttribute?.('src');
     if (preview.dataset.model !== '0') preview.dataset.model = '0';
     pickWhy.textContent = differs ? 'Tried on your house - paint it to keep it, for everyone to see.' : '';
@@ -708,7 +747,7 @@ export function createDecorPanel({
       const img = el('img', '');
       img.setAttribute('alt', '');
       thumb.append(img);
-      const known = thumbs.get(e.key);
+      const known = thumbs.get(thumbKeyOf(e));
       if (known) img.setAttribute('src', known);
       else if (watcher) { r.decorThumb = () => askThumb(e, img); watcher.observe(r); } else askThumb(e, img);
     } else {
@@ -735,7 +774,7 @@ export function createDecorPanel({
       const img = el('img', '');
       img.setAttribute('alt', '');
       thumb.append(img);
-      const known = thumbs.get(e.key);
+      const known = thumbs.get(thumbKeyOf(e));
       if (known) img.setAttribute('src', known); else askThumb(e, img);
     } else {
       thumb.textContent = (DECOR_KINDS[e.looks?.[0]] ?? DECOR_KINDS.furniture).slice(0, 2);
@@ -760,6 +799,13 @@ export function createDecorPanel({
     waiting.clear();
     if (mode === 'rent' && !view.rent) { mode = 'catalogue'; card.dataset.mode = mode; }   // HOME-RENT: no rooms door here any more
     if (mode === 'paint' && !view.paint) { mode = 'catalogue'; card.dataset.mode = mode; }   // HOME-LOOK: no painter here any more
+    if (mode === 'paint' && view.paint.caravan) {   // WAGONS2: the caravan's inside - a row a part, its paints chosen at once
+      if (!view.paint.caravan.some((r) => r.part === paintPart)) paintPart = view.paint.caravan[0]?.part ?? null;
+      list.replaceChildren(...view.paint.caravan.map(caravanPaintRow));
+      listSig = signature();
+      paintSide();
+      return;
+    }
     if (mode === 'paint') {   // HOME-LOOK: a row a part
       paintLook ??= { ...(view.paint.current ?? {}) };
       list.replaceChildren(...HOME_LOOK_PARTS.map(paintRow));
@@ -802,12 +848,13 @@ export function createDecorPanel({
   }
   /** Everything the list reads that the host can change under it (the room's pieces: each one's id, cost, light,
    *  storage and whether it holds anything). */
-  const signature = () => [view?.entries ? view.entries.length : -1, view?.ready ? 1 : 0, view?.gold ?? 0, view?.count ?? 0,
+  const signature = () => [view?.entries ? view.entries.length : -1, view?.ready ? 1 : 0, view?.sized ?? 0, view?.gold ?? 0, view?.count ?? 0,   // AUDIT 05b A3: a piece measured late, priced
     (view?.placed ?? []).map((it) => `${it.piece.id}:${it.piece.paid}:${it.piece.light ? 1 : 0}:${it.piece.storage ? 1 : 0}:${it.holds ? 1 : 0}:${it.piece.station ?? ''}:${it.room ?? ''}`).join(','),   // AUDIT HOME-STATIONS S3: and its craft; DECOR-ROOMS: and its room
     (view?.own ?? []).map((e) => `${e.key}:${e.name}:${e.count ?? 1}`).join(','),   // DECOR2a: the pack's list
     (view?.base ?? []).map((it) => `${it.key}:${it.name}:${it.hidden ? 1 : 0}:${it.holds ? 1 : 0}:${it.room ?? ''}`).join(','),   // BASE-HIDE
     (view?.rooms ?? []).map((r) => `${r.id}:${r.name}`).join(','), view?.roomId ?? '', view?.doorways ?? '',
     view?.yard ? 'y' : '', view?.paint ? homeLookSig(view.paint.current) : '-',   // HOME-YARD; HOME-LOOK
+    (view?.paint?.caravan ?? []).map((r) => `${r.part}:${r.current}`).join(','),   // WAGONS2: the caravan's inside, painted
     paintPart === 'roof' || paintPart === 'door' ? String(lookRecordsOf(paintPart, (paintLook?.[paintPart] ?? decorLookStart(paintPart)).climate)) : '',   // HOME-LOOK (AUDIT): a family's count answered
     view?.rent ? `${view.rent.due}:${view.rent.busy ? 1 : 0}${view.rent.loaded ? 1 : 0}${view.rent.finding ? 1 : 0}:${(view.rent.rows ?? []).map((r) => `${rentKeyOf(r)}:${r.offer ? `${r.offer.price}.${r.offer.taken ? 1 : 0}.${r.offer.listed ? 1 : 0}.${r.offer.until ?? ''}` : '-'}`).join(',')}` : ''].join('|');   // HOME-RENT (RENT-FRESH, RENT-ORPHANS: read, and still finding - each changes what the view says)   // DECOR-ROOMS: the tabs, and the one chosen; HOME-DOORS: the doorways free
 
@@ -823,15 +870,15 @@ export function createDecorPanel({
       pickName.textContent = e.name;
       pickLine.textContent = ownLine(e);
       pickPrice.textContent = 'Free';
-      if (!thumbs.has(e.key)) askThumb(e);
-      const url = thumbs.get(e.key);
+      if (!thumbs.has(thumbKeyOf(e))) askThumb(e);
+      const url = thumbs.get(thumbKeyOf(e));
       if (url) previewImg.setAttribute('src', url); else previewImg.removeAttribute?.('src');
     } else {
       pickName.textContent = e.name;
       pickLine.textContent = e.kind === 'door' && mode === 'catalogue' ? `${decorRowSub(e, radiusOf(e))} - ${decorDoorLine(view?.doorways ?? null)}` : decorRowSub(e, radiusOf(e));   // HOME-DOORS
       pickPrice.textContent = decorPriceText(priceOf(e));
-      if (e.flat && !thumbs.has(e.key)) askThumb(e);   // chosen out of view: its picture all the same
-      const url = e.flat ? thumbs.get(e.key) : null;
+      if (e.flat && !thumbs.has(thumbKeyOf(e))) askThumb(e);   // chosen out of view: its picture all the same
+      const url = e.flat ? thumbs.get(thumbKeyOf(e)) : null;
       if (url) previewImg.setAttribute('src', url); else previewImg.removeAttribute?.('src');
     }
     if (mode === 'look') {   // DECOR2b: what is set down is one's furniture, by its own name - the look under it, free
@@ -890,6 +937,7 @@ export function createDecorPanel({
     stationPick.disabled = !it || !!it.piece.item || it.piece.storage || door;
     stationBtn.disabled = stationPick.disabled;
     moveBtn.disabled = !it;
+    turnLeftBtn.disabled = turnRightBtn.disabled = !it || door;   // DECOR-TURN: a door is turned by its doorway (Move)
     lightBtn.disabled = !it || door;
     storeBtn.disabled = !it || !!it.piece.item || (it.piece.storage && it.holds) || !!it.piece.station || door;   // HOME-STATIONS: a station holds nothing
     removeBtn.disabled = !it || it.holds;
@@ -1041,7 +1089,8 @@ export function createDecorPanel({
 }
 
 /**
- * THE BAR, while a piece is being placed. `show(info)` / `hide()`; `info` is { name, price, why, snap } and, for a move
+ * THE BAR, while a piece is being placed. `show(info)` / `hide()`; `info` is { name, price, why, snap, sized } (DECOR-FIGURE:
+ * `sized` false hides Smaller and Bigger - a figure stands at its own size) and, for a move
  * (DECOR1e), `priceText` - free, or what a resize costs or gives back. The buttons are
  * the keys' twins: `on` holds place, back, turnLeft, turnRight, raise, lower, smaller, bigger, grid - and, on a touch
  * screen (DECOR1e), `fly(dir)`: Fly up (1) or Fly down (-1) held, 0 let go. A touch screen's bar stands at the top,
@@ -1054,9 +1103,10 @@ export function createDecorBar({ on, touch = false, doc = document }) {
   const root = el('div', `dfdecor-bar${touch ? ' touch' : ''}`);
   root.dataset.up = '0';
   const what = el('div', 'dfdecor-bar-what');
-  const keys = el('div', 'dfdecor-bar-keys',
-    touch ? 'Fly: the stick, and hold Fly up or Fly down - Look: drag - the piece stands where you look.'
-      : 'Fly: walk keys, Jump up, Crouch down, Run faster - Look: mouse - Turn: wheel or Turn Left/Right (Shift: fine; a picture turned half round faces the other way) - Raise/lower: Float Up/Down - Size: - and = - Grid: / - Place: click or Interact - Back: right click or Escape');
+  // DECOR-FIGURE: a piece that takes no size step (one of Daggerfall's people) is told no Size key
+  const keysText = (sized) => (touch ? 'Fly: the stick, and hold Fly up or Fly down - Look: drag - the piece stands where you look.'
+    : `Fly: walk keys, Jump up, Crouch down, Run faster - Look: mouse - Turn: wheel or Turn Left/Right (Shift: fine; a picture turned half round faces the other way) - Raise/lower: Float Up/Down - ${sized ? 'Size: - and = - ' : ''}Grid: / - Place: click or Interact - Back: right click or Escape`);
+  const keys = el('div', 'dfdecor-bar-keys', keysText(true));
   const why = el('div', 'dfdecor-bar-why');
   const btns = el('div', 'dfdecor-bar-btns');
   const b = (label, key, cls = 'dfdecor-chip') => {
@@ -1077,8 +1127,9 @@ export function createDecorBar({ on, touch = false, doc = document }) {
     for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) n.addEventListener(t, () => { if (flyDir === dir) flyTo(0); });
     return n;
   };
+  const smaller = b('Smaller', 'smaller'), bigger = b('Bigger', 'bigger');   // DECOR-FIGURE: hidden for a figure (show's `sized`)
   btns.append(b('Place', 'place', 'dfdecor-btn'), b('Turn left', 'turnLeft'), b('Turn right', 'turnRight'), b('Raise', 'raise'),
-    b('Lower', 'lower'), b('Smaller', 'smaller'), b('Bigger', 'bigger'), grid);
+    b('Lower', 'lower'), smaller, bigger, grid);
   if (touch) btns.append(hold('Fly up', 1), hold('Fly down', -1));
   btns.append(b('Back', 'back'));
   root.append(what, keys, why, btns);
@@ -1087,10 +1138,12 @@ export function createDecorBar({ on, touch = false, doc = document }) {
   let alive = true;
   return {
     root,
-    show({ name, price, priceText = null, why: whyText = null, snap = false }) {
+    show({ name, price, priceText = null, why: whyText = null, snap = false, sized = true }) {
       if (!alive) return;
       const w = `${name} - ${priceText ?? decorPriceText(price)}`;
       if (what.textContent !== w) what.textContent = w;
+      // DECOR-FIGURE: one of Daggerfall's people stands at its own size - no Smaller, no Bigger, no Size key told
+      if (!!smaller.hidden === sized) { smaller.hidden = !sized; bigger.hidden = !sized; keys.textContent = keysText(sized); }
       const y = whyText ?? '';
       if (why.textContent !== y) why.textContent = y;
       grid.setAttribute('aria-pressed', snap ? 'true' : 'false');

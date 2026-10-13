@@ -35,6 +35,8 @@
 import { DROP_ICON_IDXS, DROP_ICON_ARCHIVES, RANDOM_TREASURE_ARCHIVE } from './lootDataTables.js';
 import { STORAGE_CONTEXT } from './horseCartLaw.js';   // HCC: the storage contexts the runtime's CanAccessWagonStorage takes
 import { localizedText } from './textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language
+import { BAG_CAPACITY, BAG_WORDS, hasBag } from '../net/bagLaw.js';   // BAG1: the Materials Bag, a second list as the wagon is
+import { activeWagonItem } from './wagonKinds.js';   // CART-SLOT: the Cart cell shows the wagon driven
 
 /** ItemGroups.Transportation.Small_cart's template index. */
 export const SMALL_CART_TEMPLATE = 93;
@@ -75,10 +77,16 @@ export const hasHorse = (items = []) =>
 
 /** The ITEM behind either answer, for a window that wants to draw it -
  *  its name, its icon. Null when there is none. `kind` is 'mount' or
- *  'cart', the words the UI uses; the template indices stay here. */
+ *  'cart', the words the UI uses; the template indices stay here.
+ *  CART-SLOT (FIELD BUGS 2026-10-11b, the Discord's "The caravan became a
+ *  cart after the update"): the cart is the wagon DRIVEN (wagonKinds.js
+ *  activeWagonItem, the best owned) - every wagon is the Small Cart's
+ *  template, and the first of them was a Small Cart kept beside a Caravan
+ *  bought after it (WAGONS1), so the cell named the cart the world did not
+ *  drive. */
 export function transportItem(items = [], kind) {
-  const template = kind === 'mount' ? TRANSPORT_HORSE_TEMPLATE : SMALL_CART_TEMPLATE;
-  return (items ?? []).find((it) => it?.templateIndex === template) ?? null;
+  if (kind !== 'mount') return activeWagonItem(items ?? []);
+  return (items ?? []).find((it) => it?.templateIndex === TRANSPORT_HORSE_TEMPLATE) ?? null;
 }
 
 /**
@@ -147,6 +155,9 @@ export function openState(deps = {}) {
  * dropped items when no container opened the window.
  */
 export function remoteTarget(deps = {}, state = {}) {
+  // BAG1: the Materials Bag outranks everything while it is showing, as the wagon does - the two never show together
+  // (planBagToggle hides the wagon, planWagonToggle's caller hides the bag)
+  if (state.usingBag) return deps.bagItems?.() ?? [];
   if (state.usingWagon) return deps.wagonItems?.() ?? state.wagonLocal ?? [];
   if (state.chooseOne) return state.chooseOne.items;
   return deps.loot ? deps.loot.items() : state.dropped;
@@ -169,7 +180,7 @@ export function remoteTarget(deps = {}, state = {}) {
  *  session's dropped list, or a pile the player dropped before (DaggerfallLoot.playerOwned) - never a wagon, a chest, a
  *  corpse or a merchant. Null: the ground takes it. */
 export function groundRefusalOf(deps = {}, state = {}) {
-  if (state.usingWagon || state.chooseOne) return null;
+  if (state.usingWagon || state.usingBag || state.chooseOne) return null;   // BAG1: the bag is no floor
   if (deps.loot && !deps.loot.playerOwned) return null;
   return deps.dropRefusal?.() ?? null;
 }
@@ -179,6 +190,7 @@ export function groundRefusalOf(deps = {}, state = {}) {
  *  storage, never the wagon (WagonCanHoldAmount's own 750), the ground or a choose-one list. Null: no limit.
  *  `{ kg, name }` - the limit, and whose it is for the refusal's words. */
 export function storeCapacityOf(deps = {}, state = {}) {
+  if (state.usingBag) return BAG_CAPACITY;   // BAG1: the bag's own limit, under the companion's pack's law
   if (state.usingWagon || state.chooseOne || !deps.loot) return null;
   const cap = deps.loot.capacity?.();
   return cap && Number.isFinite(cap.kg) ? cap : null;
@@ -187,6 +199,7 @@ export function storeCapacityOf(deps = {}, state = {}) {
 /** RemoteTargetTypes (:213-219), in the enum's own order. */
 export const REMOTE_TARGET_TYPES = Object.freeze({
   Dropped: 0, Wagon: 1, Loot: 2, Merchant: 3,
+  Bag: 4,   // BAG1: the port's own, after DFU's four (Ledger A) - the Materials Bag
 });
 
 /** The port derives `remoteTargetType` from the same three claims
@@ -195,6 +208,7 @@ export const REMOTE_TARGET_TYPES = Object.freeze({
  *  the Merchant one (:259-264 with :595-598), a lootTarget is Loot
  *  (:609-613) and OnPush's default is Dropped (:601-606). */
 export function remoteTargetType(deps = {}, state = {}) {
+  if (state.usingBag) return REMOTE_TARGET_TYPES.Bag;   // BAG1
   if (state.usingWagon) return REMOTE_TARGET_TYPES.Wagon;
   if (state.chooseOne) return REMOTE_TARGET_TYPES.Merchant;
   return deps.loot ? REMOTE_TARGET_TYPES.Loot : REMOTE_TARGET_TYPES.Dropped;
@@ -294,6 +308,20 @@ export function planWagonToggle(deps = {}, state = {}) {
     return { ok: false, refusal: WAGON_REFUSAL.exitTooFar };
   }
   return { ok: true, usingWagon: !state.usingWagon };
+}
+
+/** BAG1: whether a pack holds a Materials Bag (net/bagLaw.js hasBag, the one spelling). */
+export const hasMaterialsBag = (items = []) => hasBag(items);
+/** BAG1: THE BAG BUTTON's ladder - the wagon button's, for the bag: no bag refuses in its words; showing, the click hides
+ *  it; hidden, it shows - anywhere: the bag is on the player's back, not parked at a door. Showing it hides the wagon.
+ *  @returns {{ok:true, usingBag:boolean, usingWagon:boolean}|{ok:false, refusal:object}} */
+export function planBagToggle(deps = {}, state = {}) {
+  if (!hasMaterialsBag(deps.items?.() ?? [])) return { ok: false, refusal: { reason: 'noBag', text: BAG_WORDS.none } };
+  // AUDIT BAG1 H1: never over a reward tray - a choice up makes every piece taken from the side window the claim, and a
+  // log taken out of the bag was the smith's gift chosen
+  if (state.chooseOne && !state.usingBag) return { ok: false, refusal: { reason: 'reward', text: BAG_WORDS.reward } };
+  const usingBag = !state.usingBag;
+  return { ok: true, usingBag, usingWagon: usingBag ? false : !!state.usingWagon };
 }
 
 /**

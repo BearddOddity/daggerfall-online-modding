@@ -381,7 +381,7 @@ test('AUDIT DISC19 W5 by source: every host that offers one swing to more than o
   assert.match(w, /if \(exteriorFoes\.resolvePlayerHit\([^\n]*guardHitSound, \{ swing \}\)\) \{/);
   assert.match(w, /\{ onMurder: \(\) => _crimeResponse\(\), onHitSound: guardHitSound, swing \}\)\.then/);
   const e = rd('src/scenes/exterior.js');
-  assert.equal((e.match(/guardHitSound, \{ swing \}\)\)/g) ?? []).length, 2, 'the fixed-city host\'s two pools');
+  assert.equal((e.match(/guardHitSound, \{ swing \}\)\)/g) ?? []).length, 3, 'the fixed-city host\'s two pools - and a technique\'s offer of the encounter pool after the watch took it, the same token');   // PIN MOVED (TECH1 AUDIT): an area technique's blow is offered every pool it reaches (bible/05-Combat/Weapon-Techniques.md)
   assert.match(e, /onHitSound: guardHitSound, swing \}\)\.then/);
   const m = rd('src/scenes/worldModes.js');
   assert.equal((m.match(/interiorHitSound, \{ swing \}\)\)/g) ?? []).length, 2, 'the interior\'s two pools');
@@ -654,7 +654,7 @@ test('AUDIT DISC19 B1: underground the candle burns its own white - every other 
   const branch = src.slice(at, src.indexOf('\n    }\n', at));
   assert.match(branch, /const _dgColor = lanternColor\(!!renderer\.lightingLane, new Float32Array\(DUNGEON_LIGHT_COLOR\)\);/);
   assert.match(branch, /const _dgNear = _iilDg \? nearestLights\(_iilDg\.lights, cam\.pos, renderer\.maxPointLights, _iilDg\.ranges, _iilDg\.colorOf\) : nearestLights\(dungeonCtx\.lights, cam\.pos, renderer\.maxPointLights \+ \(_dgFade \? 1 : 0\), dungeonCtx\.flicker\.ranges, \(\) => _dgColor, DUNGEON_LIGHT_BLOCK_RANGE\);/);   // LA-AUDIT A5: one past the cap, for its fade
-  assert.match(branch, /\n\s*abyssCandle\(dungeonCtx\.candleLight\(\), _abyss\), _abyss\?\.torchOff \? null : _dgTint\(playerTorchLight\([^\n]*\)\), _dgTint\(thunderlockMuzzleLight\([^\n]*\)\), \.\.\.\(host\.peerLights\?\.\(\{ torches: !_abyss\?\.torchOff \}\) \?\? \[\]\)\.map\(\(l\) => abyssCandle\(_dgTint\(l\), _abyss\)\), \.\.\.dungeonCtx\.campLights\(\)\.map\(_dgTint\), \.\.\.dungeonCtx\.torchLights\(\)\.map\(_dgTint\), \.\.\.\(host\.modeLights\?\.\(\) \?\? \[\]\)\);/);   // AUDIT PRE-MERGE 0928 M4: the others' torches out and their candles at half in the abyss, as mine
+  assert.match(branch, /\n\s*abyssCandle\(dungeonCtx\.candleLight\(\), _abyss\), _abyss\?\.torchOff \? null : _dgTint\(playerTorchLight\([^\n]*\)\), _dgTint\(thunderlockMuzzleLight\([^\n]*\)\), \.\.\.\(host\.peerLights\?\.\(\{ torches: !_abyss\?\.torchOff \}\) \?\? \[\]\)\.map\(\(l\) => abyssCandle\(_dgTint\(l\), _abyss\)\), \.\.\.dungeonCtx\.campLights\(\)\.map\(_dgTint\), \.\.\.dungeonCtx\.torchLights\(\)\.map\(_dgTint\)(?:, \.\.\.\(dungeonCtx\.sdEndLights\?\.\(\) \?\? \[\]\))?, \.\.\.\(host\.modeLights\?\.\(\) \?\? \[\]\)\);/);   // SD-LOOK S4 (PIN MOVED): the Rift's and the Return's light, untinted, before the mode's; AUDIT PRE-MERGE 0928 M4: the others' torches out and their candles at half in the abyss, as mine
   // CSA-C: a boat's lanterns, where one stands on the dungeon's water, keep the colour Come Sail Away's AddBillboardLight
   // gives them - it sets the Light's colour on DFU's own light prefab, which the dungeon's lights share untouched
   // OH-E: the abyss's arm scales the candle's own white (SuppressAbyssLights' half) - never the dungeon's tint - and

@@ -4,12 +4,13 @@
 // CDN scripts' integrity. Each pin failed on the tree before its fix.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { Writable } from 'node:stream';
 import { execFileSync } from 'node:child_process';
+import { testFiles } from '../tools/testShards.mjs';   // FAST-SUITE: npm test's own list
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(root, p), 'utf8');
@@ -38,7 +39,8 @@ test('AUDIT 68 X2-release-tag-commit: a new release tag is cut at the built comm
   const wf = read('.github/workflows/release-desktop.yml');
   // REL4: the one step that attaches anything is the publish job's draft
   const attach = wf.slice(wf.indexOf('- name: Stage the release as a draft, every file attached'), wf.indexOf('- name: Publish it whole'));
-  assert.match(attach, /\n {10}tag_name: \$\{\{ needs\.version\.outputs\.tag \}\}\n {10}name: \$\{\{ needs\.version\.outputs\.tag \}\}\n {10}target_commitish: \$\{\{ github\.sha \}\}\n/,
+  // PIN MOVED (REL8): the release is named for the player's update (comments between) - the tag and the commit as ever
+  assert.match(attach, /\n {10}tag_name: \$\{\{ needs\.version\.outputs\.tag \}\}\n(?: {10}#[^\n]*\n)* {10}name: \$\{\{ needs\.version\.outputs\.update != '' && format\('Update \{0\}', needs\.version\.outputs\.update\) \|\| needs\.version\.outputs\.tag \}\}\n {10}target_commitish: \$\{\{ github\.sha \}\}\n/,
     'without target_commitish GitHub cuts the tag at main\'s head at upload time');
   const uses = wf.split('\n').filter((l) => l.includes('${{ inputs.release_tag }}'));
   assert.ok(uses.length > 0, 'the input is still read');
@@ -154,7 +156,11 @@ test('AUDIT 68 X2-eslint-coverage-gaps: tests, tools, scripts and the desktop sh
 test('AUDIT 68 X2-npm-test-glob: npm test runs the test files, not the helpers beside them', () => {
   // bare `node --test` also discovers **/test/**/*.{js,mjs,cjs}, so every
   // helper module in test/ ran as a "passing test" of its own
-  assert.equal(JSON.parse(read('package.json')).scripts.test, 'node --test "test/*.test.js"');
+  // FAST-SUITE: `npm test` is `tools/testShards.mjs 1/1` now - its list is testFiles(), which must be exactly the glob's
+  assert.equal(JSON.parse(read('package.json')).scripts.test, 'node tools/testShards.mjs 1/1');
+  const listed = testFiles(root);
+  assert.ok(listed.length > 0 && listed.every((f) => /^test\/[^/]+\.test\.js$/.test(f)), 'testFiles lists test/*.test.js and nothing else');
+  assert.deepEqual(listed, readdirSync(join(root, 'test')).filter((f) => f.endsWith('.test.js')).sort().map((f) => `test/${f}`), 'and every one of them');
   const stray = tracked('*.js').concat(tracked('*.mjs'), tracked('*.cjs'))
     .filter((f) => /\.test\.[cm]?js$/.test(f) && !/^test\/[^/]+\.test\.js$/.test(f));
   assert.deepEqual(stray, [], 'every test file sits where the glob looks');

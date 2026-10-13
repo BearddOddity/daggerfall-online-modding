@@ -145,8 +145,10 @@ test('AUDIT RETRO1 A4: a replacement texture (TryImportTexture) keeps its mip ch
     r.drawScreenQuad(null, { x: 0, y: 0, w: 1, h: 1 });
   } finally { setFrameTarget(null); }
   const dp = src('scenes/dataPipeline.js');
-  assert.match(dp, /const replacement = !!swap;/, 'the pipeline flags TryImportTexture\'s');
-  assert.match(dp, /renderer\.uploadEmissionTexture\(archive, record, t\.getWindowColors32\(bitmap\), \{ replacement \}\);/);
+  // PIN MOVED (AUDIT GALLEON-2 PF5, 2026-10-03): but for a stand-in the port paints as a hull's classic art (the new
+  // galleon's), which Retro Mode caps as it caps ARENA2's (test/auditgalleon2_prefab.test.js PF5)
+  assert.match(dp, /const replacement = !!swap && !classicArt\.has\(Number\(archive\)\);/, 'the pipeline flags TryImportTexture\'s');
+  assert.match(dp, /renderer\.uploadEmissionTexture\(archive, record, t\.getWindowColors32\(bitmap\), \{ replacement, window: true \}\);/);   // RW1: and the window flag beside it (render/realWindows.js)
   assert.match(dp, /renderer\.uploadEmissionTexture\(archive, record, color32, \{ white: true, replacement \}\);/);
 });
 
@@ -305,13 +307,13 @@ test('AUDIT RETRO1 C1: Shift-F11 under an open window loads nothing - it is the 
   assert.equal(retroToggleKey(ev(true)), true);
   assert.equal(retroToggleKey(ev(false)), false, 'F11 alone is QuickLoad\'s');
   let loads = 0;
-  const ctx = { uiOverlayActive: true, overlayIsNative: false, overlayInput() {}, quickLoad: () => { loads++; } };
+  const ctx = { uiOverlayActive: true, overlayIsNative: false, overlayInput() {}, overlayWindow: () => ({ loadsUnder: true }), quickLoad: () => { loads++; } };   // PIN MOVED (DUPE-LOAD): the death screen, the one window F11 loads from under
   _resetRetroPostprocessing();
   routeKey(ev(true), ctx, null, new Set(['ShiftLeft']));
   assert.equal(loads, 0, 'Shift-F11 under a window: no load');
   assert.equal(retroPostprocessingEnabled(), true, 'and no toggle either - DaggerfallHUD.Update is dead under a window (the second pass, I7)');
   routeKey(ev(false), ctx, null, new Set());
-  assert.equal(loads, 1, 'F11 under a window still loads (the death screen\'s hint)');
+  assert.equal(loads, 1, 'F11 under the death screen still loads (its hint)');
   const w = src('scenes/world.js');
   assert.match(w, /codeMeans\(bindings\(\), e\.code, 'QuickLoad'\) && !retroToggleKey\(e, keys\)\) \{/, 'the exterior ladder\'s own arm (UXB1-S: its key, shared or not)');
   _resetRetroPostprocessing();
@@ -400,7 +402,8 @@ test('AUDIT RETRO1 C8/E5: every host shows its frame at its own foot - a frame t
   assert.equal(x.hits.length, 2, 'both ?exterior frame tails - the modal one was missed (the second pass, F1/J2)');
   assert.ok(x.hits[1] > x.h.indexOf('townTalk.frame(dt);   // T3b'), 'after the last draw');
   // DISC29-D: the indoor foot closes its frame token WITH a sample now (frameEnd), below the note that says why
-  assert.match(x.h.slice(x.hits[0] - 200, x.hits[0] + 900), /townTalk\.frame\(dt\);\n\s+renderer\.resolveFrame\(\);[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s+frameEnd\(\);/, 'the modal foot, after its last draw');
+  // SHOT1: the PrintScreen shot owed to a drawn frame is read right after the resolve (ui/screenshot.js deliverOwedShots)
+  assert.match(x.h.slice(x.hits[0] - 200, x.hits[0] + 900), /townTalk\.frame\(dt\);\n\s+renderer\.resolveFrame\(\);[^\n]*\n\s+deliverOwedShots\(\);[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s+frameEnd\(\);/, 'the modal foot, after its last draw');
   assert.match(src('render/renderer.js'), /resolveFrame\(\) \{ this\._compositeAir\(\); \}/);
 });
 

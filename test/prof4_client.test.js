@@ -14,7 +14,7 @@ import { standService, T0, sessionStorageOf } from './accountDb.mjs';
 import { accountProf, SESSION_KEY, accountRefusalText } from '../src/net/accountClient.js';
 import { createProfBook } from '../src/net/profBook.js';
 import { trees, nodeKey, utcDayOfMs } from '../src/net/nodeLaw.js';
-import { xpForRank, CHOP_ACT, chopsFor, ringBand } from '../src/net/professionLaw.js';
+import { xpForRank, CHOP_ACT, chopsFor, ringBand, trackOf } from '../src/net/professionLaw.js';
 import { recipeById, QUALITY_EFFECTS, TOOL_LIFE, PLANE_ACT, grainAt } from '../src/net/recipeLaw.js';
 import { decorPieceOf } from '../src/net/decorLaw.js';
 import { createChopAct, ringAt, RING_PASS_S } from '../src/systems/chopAct.js';
@@ -65,7 +65,7 @@ test('PROF4 DONE WHEN: DECOR places a crafted table - an Oak felled, its logs sa
   const track = (prof, xp, spec100 = null) => raw.prepare(`INSERT INTO prof_tracks (player, char_id, profession, xp, spec100, updated_at) VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT (player, char_id, profession) DO UPDATE SET xp = excluded.xp, spec100 = excluded.spec100`).run(mac.id, mac.character, prof, xp, spec100, NOON);
   track('logging', xpForRank(10));
-  track('carpentry', xpForRank(100), 'master-joiner');
+  track('building', xpForRank(100), 'master-joiner');   // PIN MOVED (CRAFT3): a workbench's table reads the Building track (Carpentry's craft) - seeded under the craft's id
   const door = accountProf({ fetch: s.fetch, storage: sessionStorageOf(SESSION_KEY, mac) });
   const book = createProfBook({ door, storage: memStorage(), character: () => mac.character, now: () => NOON * 1000, sleep: noWait });
   assert.equal((await book.refresh()).ok, true);
@@ -226,9 +226,10 @@ test('PROF4 trees: a pixel\'s trees stand at the forest\'s own tree flats, the n
   assert.equal(moved.length, 3, 'nothing felled then or now: untouched');
   assert.deepEqual([...new Set(stood.map((q) => q.material))].sort(), ['log:oak', 'log:pine'], 'PINE-SHARE: an unconfirmed Woodlands pixel stands its Oak and Pine');
   const node = stood.find((q) => q.material === 'log:oak');
-  const plan = (o) => treePlan({ node, taken: false, counting: false, rank: 10, axe: true, storesFull: () => false, today: 0, cap: 60, ...o });
+  const plan = (o) => treePlan({ node, taken: false, counting: false, rank: 10, axe: true, storesFull: () => false, ...o });
   assert.deepEqual(plan({}), { harvest: 'logs', verb: 'Chop Oak', rest: `Logging 10 - ${chopsFor(2)} chops`, ready: true });
-  assert.deepEqual([plan({ rank: 9 }).rest, plan({ axe: false }).rest, plan({ taken: true }).rest, plan({ today: 60 }).rest], ['needs Logging 10', 'needs a Wood-Axe', 'felled today', 'Logging done for today (60)']);
+  // PIN MOVED (CAP-OFF, 2026-10-07 - Mac: "Remove the cap on life skills"): sixty today said 'Logging done for today (60)'
+  assert.deepEqual([plan({ rank: 9 }).rest, plan({ axe: false }).rest, plan({ taken: true }).rest, plan({ today: 600, cap: 60 }).ready], ['needs Logging 10', 'needs a Wood-Axe', 'felled today', true]);
   assert.deepEqual({ ...AXE_HAND }, { group: 'Weapons', templateIndex: 128, material: 0 });
   assert.deepEqual([axeHandFrame(0), axeHandFrame(1), axeHandFrame(0.01)], [{ state: 'Idle', frame: 0 }, { state: 'StrikeDownRight', frame: 0 }, { state: 'StrikeDownRight', frame: 4 }]);
 });
@@ -243,7 +244,7 @@ test('PROF4 host: the tree targeted, E starts the Wood-Axe\'s ring (DFU\'s War A
     let taken = [];
     const door = {
       account: () => 'acct-1',
-      state: async () => ({ ok: true, data: { day, character: 'c1', tracks: [{ profession: 'logging', xp: xpForRank(10), rank: 10, specs: { 50: null, 100: null } }], today: {}, taken, stores: [], caps: { harvests: 60, stores: 5000 } } }),
+      state: async () => ({ ok: true, data: { day, character: 'c1', tracks: [{ profession: 'logging', xp: xpForRank(10), rank: 10, specs: { 50: null, 100: null } }], today: {}, taken, stores: [], caps: { stores: 5000 } } }),
       pixels: async (c, px) => ({ ok: true, data: { pixels: px.map(([x, y]) => ({ x, y, state: 'none' })), dungeons: [] } }),
       harvest: async (b) => { asked.push(b); taken = [`${b.node}|logs`]; return { ok: true, data: { node: b.node, kind: b.kind, material: 'log:oak', qty: 3, xp: 30, extra: 'wood:resin', extraStore: { material: 'wood:resin', own: 1, bought: 0 }, track: { profession: 'logging', xp: xpForRank(10) + 30, rank: 10 }, today: 1 } }; },
     };
@@ -363,11 +364,12 @@ test('PROF4 pages: the Workbench at a Furniture Store - the saws for the logs he
   const { setPref } = await import('../src/systems/uiPrefs.js');
   setPref('gentleActs', false);
   const held = new Map([['log:oak', 2], ['plank:oak', 7], ['wood:heartwood', 1]]);
-  const tracks = new Map([['carpentry', { profession: 'carpentry', xp: xpForRank(10), rank: 10, specs: { 50: null, 100: null } }], ['smithing', { profession: 'smithing', xp: xpForRank(50), rank: 50, specs: { 50: null, 100: null } }]]);
+  // PIN MOVED (CRAFT3): the book holds the ten tracks - Carpentry's is Building's - and `track` maps a discipline through trackOf, as profBook's own does
+  const tracks = new Map([['building', { profession: 'building', xp: xpForRank(10), rank: 10, specs: { 50: null, 100: null } }], ['smithing', { profession: 'smithing', xp: xpForRank(50), rank: 50, specs: { 50: null, 100: null } }]]);
   const book = {
     state: { open: true, day: 1, character: 'c', account: 'a', readAt: Date.now(), stores: new Map(), tracks, today: {}, caps: null }, stale: () => false, refresh: async () => ({ ok: true }),
     held: (k) => held.get(k) ?? 0, store: (k) => ({ material: k, own: held.get(k) ?? 0, bought: 0 }),
-    track: (p) => tracks.get(p) ?? { profession: p, xp: 0, rank: 0, specs: { 50: null, 100: null } }, materials: () => [], pendingWithdrawals: 0, pendingCrafts: 0,
+    track: (p) => tracks.get(trackOf(p)) ?? { profession: trackOf(p), xp: 0, rank: 0, specs: { 50: null, 100: null } }, materials: () => [], pendingWithdrawals: 0, pendingCrafts: 0,
     choose: async () => ({ ok: true }),
   };
   const crafted = [], bought = [], works = [];
@@ -399,13 +401,14 @@ test('PROF4 pages: the Workbench at a Furniture Store - the saws for the logs he
   assert.ok(anvilRecipes('tools', 'ingot:iron').every((r) => r.profession === 'smithing'), 'the Basket is the workbench\'s');
   assert.deepEqual(benchRecipes('furniture', 'plank:oak').map((r) => r.id), ['table-large:oak', 'table-small:oak', 'chair:oak', 'bed-plain-double:oak']);
   press('Furniture');
-  press('plank:oak');
+  // PIN MOVED (CRAFT2): the workbench lists its patterns, the wood chosen in the box - the bed is Oak's alone
   const bed = buttons().find((b) => b.textContent.startsWith('Plain Double Bed'));
   assert.match(bed.textContent, /wants its inputs/, 'no Linen');
   bed.onclick();
   await press('Buy 2 from the furnisher - 4 silver');
   assert.deepEqual(bought, [['cloth:linen', 2]]);
-  press('Small Oak Table');
+  press('Small Table');   // PIN MOVED (CRAFT2): the pattern - in the wood the last craft here was made of, held
+  assert.match(text(), /Small Oak Table - rank 10/);
   assert.match(text(), /Use a Heartwood for a plank - a step better \(1 stored\)/);
   const box = [...root.querySelectorAll('input')].find((i) => i.type === 'checkbox' && /Heartwood/.test(i.parentNode?.textContent ?? ''));
   box.checked = true; box.onchange();
@@ -438,13 +441,13 @@ test('PROF4 pages: the Workbench at a Furniture Store - the saws for the logs he
   bench = { kind: 'home', fee: 0 };
   held.delete('cloth:linen');
   draw();
-  press('Furniture'); press('plank:oak');
+  press('Furniture');
   buttons().find((b) => b.textContent.startsWith('Plain Double Bed')).onclick();
   assert.equal(buttons().some((b) => b.textContent.startsWith('Buy ') && /furnisher/.test(b.textContent)), false, 'a home sells nothing');
   assert.match(text(), /Your workbench/);
   bench = null;
   draw();
-  assert.match(text(), /Carpentry is done at a workbench: a Furniture Store's \(50 gold a craft or a saw\)/);
+  assert.match(text(), /Carpentry is done at a workbench: a Furniture Store's or a joinery's \(50 gold a craft or a saw\)/);   // PIN MOVED (CARP-YARD, 2026-10-12): a joinery's bench too
   // the Professions page: Smithing practised - its cards chosen at 50 (PROF4's FOUND)
   root.remove(); root = el('div'); document.body.append(root);
   drawProfessionsPage(root, () => {}, kit);
@@ -464,13 +467,16 @@ test('PROF4 pages: the Workbench at a Furniture Store - the saws for the logs he
 
 test('PROF4 wiring: a built pixel keeps its forest (the tree flats by World of Daggerfall\'s table, their groups\' batches); the host mints furniture among the home\'s things, asks the station by the recipe, the plane\'s band off AGI and WIL; the workbench a Furniture Store\'s or a home\'s station; the billboard shader tips a felled tree; DECOR marks a set-down piece from the service\'s own row', () => {
   const w = src('src/scenes/world.js');
-  assert.match(w, /if \(isTreeRecord\(climate\.natureArchive, f\.record\)\) pixelTrees\.push\(\{ id: pixelTrees\.length, group: `\$\{natureArchive\}_\$\{f\.record\}`, i, x: f\.x, y: f\.y, z: f\.z, wood: f\.wood \?\? 0 \}\);/);   // FOREST1 (AUDIT F3): and how wooded its tile is
+  // PIN MOVED (ECOTONE1, 2026-10-07): a flat's climate is its own - the pixel's, or the neighbour's a border stood it by
+  // (`base` its summer archive, the Tree table's key; `archive` the season's set it is drawn in)
+  assert.match(w, /if \(isTreeRecord\(base, f\.record\)\) pixelTrees\.push\(\{ id: pixelTrees\.length, group: `\$\{archive\}_\$\{f\.record\}`, i, x: f\.x, y: f\.y, z: f\.z, wood: f\.wood \?\? 0, base, archive \}\);/);   // FOREST1 (AUDIT F3): and how wooded its tile is
   assert.match(w, /forest: \{ base: climate\.natureArchive, archive: natureArchive, trees: pixelTrees\.filter\(\(t\) => forestGroups\.has\(t\.group\)\), groups: forestGroups \},/);
-  assert.equal((w.match(/if \(archive === natureArchive\) forestGroups\.set\(k, \{ batch, centers, size[^}]*\}\);/g) ?? []).length, 2, 'both the season\'s batch and the classic one');
+  // PIN MOVED (ECOTONE1): any of the pixel's nature archives - its own, or a neighbour climate's a border stood here
+  assert.equal((w.match(/if \(natureSet\.has\(archive\)\) forestGroups\.set\(k, \{ batch, centers, size[^}]*\}\);/g) ?? []).length, 3, 'the season\'s batch, the classic one and (LPT1) a low-poly tree\'s far pictures');
   assert.match(w, /if \(isCraftedFurniture\(it\)\) \(playerEntity\.furnishings \?\?= \[\]\)\.push\(it\);\n\s*else addItem\(\(playerEntity\.items \?\?= \[\]\), it, 'back'\);/);
   // PROF7 moved it: the station a recipe's profession names (craftStation) - the workbench Carpentry's, the loom Outfitting's
   assert.match(w, /const st = craftStation\(recipeById\(recipe\)\?\.profession\);\n\s*const f = st\.here\(\);/);
-  assert.match(w, /const craftStation = \(profession\) => \(profession === 'carpentry'\n\s*\? \{ here: \(\) => modes\?\.workbenchHere\?\.\(\) \?\? null,/);
+  assert.match(w, /const craftStation = \(profession\) => \(profession === 'carpentry'\n\s*\? \{ here: \(\) => workbenchHere\(\),/);   // PIN MOVED (CARP-YARD, 2026-10-12): the host's own question - a joinery's bench in the street
   // PIN MOVED (PROF11): the work names the mason's bench too
   assert.match(w, /const bench = work\?\.station === 'workbench', loom = work\?\.station === 'loom', mason = work\?\.station === 'mason';/);
   assert.match(w, /planeBand: \(\) => planeBand\(\{ agility: liveStat\(playerEntity, 'agility'\), willpower: liveStat\(playerEntity, 'willpower'\) \}\),/);

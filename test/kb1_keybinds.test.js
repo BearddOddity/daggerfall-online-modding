@@ -54,7 +54,8 @@ test('KB1 laws 1 and 3: every action is in one Controls group or hidden, no defa
     assert.ok(!shipped.has(action), `${action} owns no second key`);
     shipped.set(action, code);
   }
-  assert.deepEqual(DEFAULT_SHARES.map(([, a, p]) => [a, p]), [['BoatSailUp', 'ActChoice'], ['Professions', 'BoatSailDown']], 'the pairs: the helm\'s more sail and an herb patch\'s choice; CLASSIC-PAGES\' Professions key and the helm\'s less sail');
+  // PIN MOVED (SPYGLASS, 2026-10-11): and the captain's glass beside the road's follow - a deck has no road
+  assert.deepEqual(DEFAULT_SHARES.map(([, a, p]) => [a, p]), [['BoatSailUp', 'ActChoice'], ['Professions', 'BoatSailDown'], ['Spyglass', 'FollowPaths']], 'the pairs: the helm\'s more sail and an herb patch\'s choice; CLASSIC-PAGES\' Professions key and the helm\'s less sail; SPYGLASS\' glass and the road\'s follow');
   for (const [vendor, rows] of Object.entries(MOD_ACTIONS)) {
     const grp = ACTION_GROUPS.find((g) => g.mod === vendor);
     assert.ok(grp, `${vendor} has its own Controls group`);
@@ -183,7 +184,7 @@ test('KB1 (Mac: "build 2") + AUDIT KB1: PrintScreen takes a screenshot - F8 by d
     assert.equal(shots.length, 1, 'rebound, F8 no longer shoots');
     routeKey(key('F12'), world);
     assert.equal(shots.length, 2, '...and the new key does');
-    assert.match(screenshotName(new Date(2026, 8, 23, 14, 5, 9)), /^daggerfall-20260923-140509\.png$/);
+    assert.match(screenshotName(new Date(2026, 8, 23, 14, 5, 9)), /^dfo-20260923-140509\.png$/);
     assert.match(rd('src/main.js'), /setScreenshotCanvas\(canvas\);/, 'the canvas handed in once, at boot');
   } finally {
     setScreenshotCanvas(null);

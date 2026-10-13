@@ -29,8 +29,8 @@
   {
     "name": "GUILD1b-a-refund-on-a-lost-answer",
     "file": "src/net/guildBook.js",
-    "old": "      if (guildRefused(r?.error)) { w.credit(gold); return r; }\n      return { ok: false, error: 'guild-unsure' };",
-    "new": "      w.credit(gold); return r;",
+    "old": "      if (guildRefused(r?.error)) { paid.back(); return r; }\n      return { ok: false, error: 'guild-unsure' };",
+    "new": "      paid.back(); return r;",
     "tests": [
       "test/guild1b.test.js"
     ]
@@ -38,7 +38,7 @@
   {
     "name": "GUILD1b-no-refund-on-a-refusal",
     "file": "src/net/guildBook.js",
-    "old": "      if (guildRefused(r?.error)) { w.credit(gold); return r; }",
+    "old": "      if (guildRefused(r?.error)) { paid.back(); return r; }",
     "new": "      if (guildRefused(r?.error)) { return r; }",
     "tests": [
       "test/guild1b.test.js"
@@ -103,11 +103,12 @@
   {
     "name": "GUILD1b-a-look-always-moving-the-version",
     "file": "src/net/guildBook.js",
-    "old": "    if (JSON.stringify([this.state, this.guild, this.invites]) !== was) this._changed();",
+    "old": "    if (pictureOf(this.state, this.guild, this.invites) !== was) this._changed();",
     "new": "    this._changed();",
     "tests": [
       "test/guild1b.test.js"
-    ]
+    ],
+    "note": "GUILD-SEEN (PIN MOVED): re-aimed by content - a look compares pictureOf, the picture less each member's seenAt."
   },
   {
     "name": "GUILD1b-any-truthy-answer-accepting",
@@ -211,8 +212,8 @@
   {
     "name": "GUILD1b-withdraw-offered-to-an-officer",
     "file": "src/ui/socialPanel.js",
-    "old": "enabled: !g.busy && goldTyped() > 0 && guildMay(me, 'withdraw')",
-    "new": "enabled: !g.busy && goldTyped() > 0",
+    "old": "enabled: !g.busy && goldTyped() > 0 && !overCap() && guildMay(me, 'withdraw')",
+    "new": "enabled: !g.busy && goldTyped() > 0 && !overCap()",
     "tests": [
       "test/guild1b.test.js"
     ]
@@ -220,8 +221,8 @@
   {
     "name": "GUILD1b-a-disband-with-gold-in-it",
     "file": "src/ui/socialPanel.js",
-    "old": "      const can = !busy && v.treasury === 0 && !v.hall;",
-    "new": "      const can = !busy && !v.hall;",
+    "old": "    ['guild-treasury', Number(v?.treasury ?? 0) > 0],\n",
+    "new": "",
     "tests": [
       "test/guild1b.test.js"
     ]
@@ -229,7 +230,7 @@
   {
     "name": "GUILD1b-the-guildmaster-walking-out",
     "file": "src/ui/socialPanel.js",
-    "old": "    const canLeave = !busy && (!master || (alone && v.treasury === 0 && !v.hall));",
+    "old": "    const canLeave = !busy && (!master || (alone && !listed));",
     "new": "    const canLeave = !busy;",
     "tests": [
       "test/guild1b.test.js"
@@ -274,8 +275,8 @@
   {
     "name": "GUILD1b-the-bank-before-the-purse",
     "file": "src/scenes/world.js",
-    "old": "pay: (n) => { const short = deductGold(playerEntity, n); if (account && short > 0) account.accountGold -= short; },",
-    "new": "pay: (n) => { if (account) account.accountGold -= n; },",
+    "old": "pay: (n) => payUndoable(playerEntity, n, account),   // MARKET-AUDIT: answering the undo of exactly what it took\n          // GUILD-LETTER",
+    "new": "pay: (n) => { if (account) account.accountGold -= n; },\n          // GUILD-LETTER",
     "tests": [
       "test/guild1b.test.js"
     ]

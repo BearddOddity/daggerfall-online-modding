@@ -18,6 +18,7 @@
 // at the top says how to free the mouse and offers Lock and Reset.
 import { getPref, setPref } from '../systems/uiPrefs.js';
 import { isEnhanced } from '../systems/uiSkin.js';   // ENHANCED PLUS ONLY: no other UI is customisable
+import { seatHudPlacer } from './hudPlacer.js';   // MOVED-NOTICE: a piece's builder places it at once, through the leaf
 
 
 export const HUD_LOCK_PREF = 'hudLocked';
@@ -30,7 +31,10 @@ export const SNAP_PX = 8;
 /** The pieces, in the order the banner would name them. `sel` must match only while the piece stands in its place. */
 export const HUD_PIECES = Object.freeze([
   // the gameplay HUD
-  { id: 'compass', sel: '.hud .hud-compass', name: 'Compass', len: true },
+  // TURN1 (Dudey: "let the players rotate the compass with alt + u"): `turn` - the piece can be turned over in the editor
+  // (its own press, beside the X); a dress that draws a compass with a top and a bottom (DFO Grimoire's, hung from the
+  // screen's top) stands it up again when it is turned. The flag rides the piece's layout and Reset clears it
+  { id: 'compass', sel: '.hud .hud-compass', name: 'Compass', len: true, turn: true },
   // `dummy`: hidden until there is something to show (no foe targeted) - while unlocked it stands as a preview to move
   { id: 'foe', sel: '.hud .hud-foe', name: 'Target bar', dummy: true, len: true },
   { id: 'hotbar', sel: '.hud .hb', name: 'Hotbar' },
@@ -50,13 +54,15 @@ export const HUD_PIECES = Object.freeze([
   { id: 'tracker', sel: '.qtrack', name: 'Quest tracker', dummy: true, ghost: 'tracker' },
   { id: 'party', sel: '.dfparty', name: 'Party', dummy: true, ghost: 'party' },
   { id: 'notices', sel: '.notice-stack', name: 'Notifications', dummy: true, ghost: 'notices' },
-  { id: 'boss', sel: '.wb-boss-bar', name: 'Boss bar', dummy: true, ghost: 'boss' },
+  { id: 'boss', sel: '.wb-boss-bar', name: 'Boss bar', dummy: true, ghost: 'boss', len: true },   // HUD-LEN: and its length
   { id: 'revenant', sel: '.rvncard-stack', name: 'Revenant taunts', dummy: true, ghost: 'revenant' },   // REVENANT-CARD
+  { id: 'loot', sel: '.lootbanner-stack', name: 'Loot banners', dummy: true, ghost: 'loot' },   // LOOT-BANNER
   { id: 'fps', sel: '#fps-counter', name: 'FPS counter' },
   { id: 'midtext', sel: '#enhanced-midtext, .hudmid[data-hm-ghost="midtext"]', name: 'Screen messages', dummy: true, ghost: 'midtext' },
   { id: 'netstatus', sel: '#enhanced-netstatus, .hudstatus[data-hm-ghost="netstatus"]', name: 'Online status', dummy: true, ghost: 'netstatus' },
   // the Overworld
   { id: 'overworld', sel: '#travel-view .tview-bar', name: 'Overworld panel' },
+  { id: 'overworldFilters', sel: '#travel-view .tview-side', name: 'Overworld filters' },   // FILTERS-LEFT
   { id: 'travel', sel: '#enhanced-travel .travelpanel-bar', name: 'Travel controls' },
   { id: 'junction', sel: '.travelpanel-junction', name: 'Junction map' },
 ].map(Object.freeze));
@@ -89,24 +95,30 @@ const layoutOf = (id) => {
   if (liveOuter && liveOuter.id === id) return liveOuter.o;
   const o = readLayout()[id] ?? {};
   const num = (v, d) => (Number.isFinite(v) ? v : d);
-  return { x: num(o.x, 0), y: num(o.y, 0), s: num(o.s, 1), l: num(o.l, 1), off: o.off === true };
+  return { x: num(o.x, 0), y: num(o.y, 0), s: num(o.s, 1), l: num(o.l, 1), off: o.off === true, t: o.t === true };
 };
 const pieceOf = (id) => HUD_PIECES.find((q) => q.id === id);
 const lenVarOf = (p) => (typeof p?.len === 'string' ? p.len : '--hml');
 /** Scale and length limits. */
 const SCALE_MIN = 0.5, SCALE_MAX = 2.5, LEN_MIN = 0.4, LEN_MAX = 3;
 
-function injectStyle(doc) {
-  if (doc.getElementById(STYLE_ID)) return;
-  const st = doc.createElement('style');
-  st.id = STYLE_ID;
-  const moved = HUD_PIECES.flatMap((p) => p.sel.split(',').map((x) => `${x.trim()}[data-hm]`)).join(',\n');
-  st.textContent = `
+const MOVED = HUD_PIECES.flatMap((p) => p.sel.split(',').map((x) => `${x.trim()}[data-hm]`)).join(',\n');
+/** The editor's sheet, built once from the pieces - exported as the other sheets are, so a pin reads the rules the
+ *  game injects (HUD-CLASS, test/sheetRules.mjs). */
+export const HUD_LAYOUT_CSS = `
 /* a piece's own place and size never pass to a piece inside it (a bar in the vitals, the buffs in the quick block) */
 @property --hmx { syntax: '<length>'; inherits: false; initial-value: 0px; }
 @property --hmy { syntax: '<length>'; inherits: false; initial-value: 0px; }
 @property --hms { syntax: '<number>'; inherits: false; initial-value: 1; }
-${moved} { translate: var(--hmx, 0px) var(--hmy, 0px); scale: var(--hms, 1); }
+${MOVED} { translate: var(--hmx, 0px) var(--hmy, 0px); scale: var(--hms, 1); }
+/* MOVED-NOTICE (FIELD BUGS 2026-10-03, SylviaB: "it momentarily spawns in its original location and slides in from the
+   side ... changing it to a fade in/out at the updated location"): a slide is from the EDGE the sheet stands the stack
+   on - moved off it, a notice or a revenant's card fades in and out where it stands (the sheets' own opacity
+   transitions; the node still leaves at NOTICE_SLIDE_MS / REVENANT_SLIDE_MS, past the fade) */
+.notice-stack[data-hm-moved] > .notice, .notice-stack[data-hm-moved] > .notice.notice-in,
+.notice-stack[data-hm-moved] > .notice.notice-out { transform: none; }
+.rvncard-stack[data-hm-moved] > .rvncard, .rvncard-stack[data-hm-moved] > .rvncard.rvncard-in,
+.rvncard-stack[data-hm-moved] > .rvncard.rvncard-out { transform: none; }
 /* OFF (the piece's X): gone in play; greyed while the editor is open, so it can be turned back on */
 [data-hm-off]:not([data-hm-edit]) { visibility: hidden !important; }
 [data-hm-off][data-hm-edit] { opacity: 0.35 !important; filter: grayscale(1) !important; outline-color: #8b8578 !important; }
@@ -120,15 +132,21 @@ ${moved} { translate: var(--hmx, 0px) var(--hmy, 0px); scale: var(--hms, 1); }
 .hud .hud-breath[data-hm-len] .hud-track { width: calc(min(140px, 18vw) * var(--hml, 1)) !important; }
 .hud .hud-renown[data-hm-len] { width: calc((3 * min(190px, 23vw) + 32px) * var(--hml, 1)) !important; }
 .hud .hud-compass[data-hm-len] { width: calc(min(520px, 60vw) * var(--hml, 1)) !important; }
+/* HUD-LEN: the boss's bar at its sheet's width (ui/gateBossBar.js BOSS_BAR_WIDTH) times its length; its track is the bar's */
+.wb-boss-bar[data-hm-len] { width: calc(460px * var(--hml, 1)) !important; max-width: 96vw !important; }
 /* THE HANDLES: a corner square scales a piece, an edge bar changes its length */
 #${HANDLES_ID} { position: fixed; inset: 0; pointer-events: none; z-index: 7; }
 #${HANDLES_ID} i { position: fixed; display: block; pointer-events: auto; touch-action: none; background: #e0b070;
   border: 1px solid #3a2a14; box-shadow: 0 0 0 1px rgba(0,0,0,0.4); }
 #${HANDLES_ID} i[data-hm-handle="scale"] { width: 12px; height: 12px; cursor: nwse-resize; }
 #${HANDLES_ID} i[data-hm-handle="len"] { width: 6px; height: 20px; cursor: ew-resize; }
+#${HANDLES_ID} i[data-hm-handle="len"][data-axis="y"] { width: 20px; height: 6px; cursor: ns-resize; }
 #${HANDLES_ID} i[data-hm-handle="off"] { width: 16px; height: 16px; cursor: pointer; background: #b8402e; color: #fff;
   font: 700 12px/16px sans-serif; text-align: center; font-style: normal; }
 #${HANDLES_ID} i[data-hm-handle="off"][data-on="0"] { background: #4f7a3a; }
+/* TURN1: the turn-over press shows only where a dress draws a compass with a top and a bottom (the Grimoire's) */
+#${HANDLES_ID} i[data-hm-handle="turn"] { display: none; width: 16px; height: 16px; cursor: pointer; background: #e0b070; color: #3a2a14;
+  font: 700 12px/16px sans-serif; text-align: center; font-style: normal; }
 [data-hm-edit] { pointer-events: auto !important; cursor: move !important; touch-action: none !important;
   outline: 2px dashed rgba(224,176,112,0.95) !important; outline-offset: 3px;
   user-select: none; -webkit-user-select: none; }
@@ -177,6 +195,11 @@ ${moved} { translate: var(--hmx, 0px) var(--hmy, 0px); scale: var(--hms, 1); }
 #${BANNER_ID} button { font: inherit; color: #0e1013; background: #c08a3e; border: 0; padding: 4px 10px; cursor: pointer; }
 #${BANNER_ID} button.ghost { background: transparent; color: #d8cfae; border: 1px solid #8b8578; }
 `;
+function injectStyle(doc) {
+  if (doc.getElementById(STYLE_ID)) return;
+  const st = doc.createElement('style');
+  st.id = STYLE_ID;
+  st.textContent = HUD_LAYOUT_CSS;
   (doc.head ?? doc.body).append(st);
 }
 
@@ -215,9 +238,14 @@ function paint(node, o) {
   const p = pieceOf(node.dataset?.hm);
   const t = p?.inside ? insideTransform(node, p, o) : o;   // a piece inside another: the outer one's move undone
   if (t && (t.x || t.y)) { set('--hmx', `${t.x}px`); set('--hmy', `${t.y}px`); } else { del('--hmx'); del('--hmy'); }
+  // MOVED-NOTICE: the player took it from its sheet's place - a stack that slides in from an edge fades where it stands
+  if (o && (o.x || o.y)) { if (!node.hasAttribute('data-hm-moved')) node.setAttribute('data-hm-moved', ''); }
+  else if (node.hasAttribute?.('data-hm-moved')) node.removeAttribute('data-hm-moved');
   if (t && t.s && t.s !== 1) set('--hms', String(t.s)); else del('--hms');
   if (o?.off) { if (!node.hasAttribute('data-hm-off')) node.setAttribute('data-hm-off', ''); }
   else if (node.hasAttribute?.('data-hm-off')) node.removeAttribute('data-hm-off');
+  if (p?.turn && o?.t) { if (!node.hasAttribute('data-hm-turn')) node.setAttribute('data-hm-turn', ''); }   // TURN1
+  else if (node.hasAttribute?.('data-hm-turn')) node.removeAttribute('data-hm-turn');
   if (p?.len) {
     const v = lenVarOf(p);
     if (o && o.l && o.l !== 1) { set(v, String(o.l)); if (!node.hasAttribute('data-hm-len')) node.setAttribute('data-hm-len', ''); }
@@ -241,12 +269,12 @@ let ghostDeps = null, ghostDepsLoading = false;
 function ensureGhostDeps() {
   if (ghostDeps || ghostDepsLoading) return;
   ghostDepsLoading = true;
-  Promise.all([import('./gateBossBar.js'), import('./partyPanel.js'), import('./revenantCard.js')])
-    .then(([boss, party, revenant]) => { ghostDeps = { BOSS_BAR_CSS: boss.BOSS_BAR_CSS, BOSS_BAR_STYLE_ID: boss.BOSS_BAR_STYLE_ID, injectPartyStyle: party.injectPartyStyle, buildRevenantPreview: revenant.buildRevenantPreview }; })
+  Promise.all([import('./gateBossBar.js'), import('./partyPanel.js'), import('./revenantCard.js'), import('./lootBanner.js')])
+    .then(([boss, party, revenant, loot]) => { ghostDeps = { BOSS_BAR_CSS: boss.BOSS_BAR_CSS, BOSS_BAR_STYLE_ID: boss.BOSS_BAR_STYLE_ID, injectPartyStyle: party.injectPartyStyle, buildRevenantPreview: revenant.buildRevenantPreview, buildLootBannerPreview: loot.buildLootBannerPreview }; })
     .catch(() => { ghostDeps = {}; });
 }
 function buildGhost(doc, kind) {
-  if ((kind === 'party' || kind === 'boss' || kind === 'revenant') && !ghostDeps) { ensureGhostDeps(); return null; }   // next sweep
+  if ((kind === 'party' || kind === 'boss' || kind === 'revenant' || kind === 'loot') && !ghostDeps) { ensureGhostDeps(); return null; }   // next sweep
   const div = (cls, text) => { const n = doc.createElement('div'); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
   let g = null;
   if (kind === 'notices') {
@@ -275,6 +303,8 @@ function buildGhost(doc, kind) {
     g.append(div('wb-boss-name', 'Boss (preview)'), track);
   } else if (kind === 'revenant') {
     try { g = ghostDeps.buildRevenantPreview?.(doc) ?? null; } catch { g = null; }   // REVENANT-CARD: a card as one will stand
+  } else if (kind === 'loot') {
+    try { g = ghostDeps.buildLootBannerPreview?.(doc) ?? null; } catch { g = null; }   // LOOT-BANNER: a banner as one will stand
   }
   if (g) { g.setAttribute('data-hm-ghost', kind); doc.body.append(g); }
   return g;
@@ -298,7 +328,7 @@ function stripAll(doc) {
   syncGhosts(doc, false);
   for (const n of doc.querySelectorAll?.('[data-hm]') ?? []) {
     paint(n, null);
-    for (const a of ['data-hm-edit', 'data-hm-drag', 'data-hm-dummy', 'data-hm-len', 'data-hm-name']) if (n.hasAttribute?.(a)) n.removeAttribute(a);
+    for (const a of ['data-hm-edit', 'data-hm-drag', 'data-hm-dummy', 'data-hm-len', 'data-hm-name', 'data-hm-moved']) if (n.hasAttribute?.(a)) n.removeAttribute(a);
     n.removeAttribute?.('data-hm');
   }
   syncBanner(doc, false);
@@ -332,6 +362,8 @@ export function sweepHudLayout(doc = docRef) {
   syncHandles(doc, edit);
 }
 
+seatHudPlacer(sweepHudLayout);   // MOVED-NOTICE: the notice stack's builder sweeps through ui/hudPlacer.js
+
 // THE HANDLES' LAYER: one corner square per outlined piece (scale) and, where the piece has a length, a bar on its
 // right edge. They live in their own fixed layer over the HUD - nothing is added inside a piece, whose own layout
 // (a flex row, a centred column) must not change - and follow their pieces every frame while unlocked.
@@ -349,7 +381,7 @@ function syncHandles(doc, edit) {
     layer = doc.createElement('div'); layer.id = HANDLES_ID; doc.body.append(layer);
   }
   const live = new Set(doc.querySelectorAll('[data-hm-edit]'));
-  for (const [n, h] of handleMap) if (!live.has(n)) { h.sq.remove(); h.ln?.remove(); h.tag?.remove(); h.x?.remove(); handleMap.delete(n); }
+  for (const [n, h] of handleMap) if (!live.has(n)) { h.sq.remove(); h.ln?.remove(); h.tag?.remove(); h.x?.remove(); h.turn?.remove(); handleMap.delete(n); }
   for (const n of live) {
     if (handleMap.has(n)) continue;
     const p = pieceOf(n.dataset.hm);
@@ -359,8 +391,10 @@ function syncHandles(doc, edit) {
     if (p?.len) { ln = doc.createElement('i'); ln.setAttribute('data-hm-handle', 'len'); ln.title = `Length: ${p.name}`; }
     const x = doc.createElement('i'); x.setAttribute('data-hm-handle', 'off'); x._hmNode = n;   // the X: off and on again
     sq._hmNode = n; if (ln) ln._hmNode = n;
-    layer.append(tag, sq, x); if (ln) layer.append(ln);
-    handleMap.set(n, { sq, ln, tag, x });
+    let turn = null;   // TURN1: the turn-over press, beside the X
+    if (p?.turn) { turn = doc.createElement('i'); turn.setAttribute('data-hm-handle', 'turn'); turn.textContent = '\u21bb'; turn.title = `Turn over: ${p.name}`; turn._hmNode = n; }
+    layer.append(tag, sq, x); if (ln) layer.append(ln); if (turn) layer.append(turn);
+    handleMap.set(n, { sq, ln, tag, x, turn });
   }
   const win = doc.defaultView ?? globalThis;
   if (!handleRaf && win.requestAnimationFrame) {
@@ -371,14 +405,21 @@ function syncHandles(doc, edit) {
         const r = n.getBoundingClientRect?.();
         const show = r && r.width > 2 && r.height > 2;
         h.sq.style.display = show ? '' : 'none'; if (h.ln) h.ln.style.display = show ? '' : 'none'; h.tag.style.display = show ? '' : 'none';
-        h.x.style.display = show ? '' : 'none';
+        h.x.style.display = show ? '' : 'none'; if (h.turn) h.turn.style.display = show ? '' : 'none';
         if (!show) continue;
         const off = n.hasAttribute('data-hm-off');
         if (h.x.dataset.on !== (off ? '0' : '1')) { h.x.dataset.on = off ? '0' : '1'; h.x.textContent = off ? '+' : '✕'; h.x.title = off ? 'Turn this back on' : 'Turn this off (hidden in play)'; }
         h.x.style.left = `${r.right - 14}px`; h.x.style.top = `${Math.max(2, r.top - 18)}px`;
+        if (h.turn) { h.turn.style.left = `${r.right - 34}px`; h.turn.style.top = `${Math.max(2, r.top - 18)}px`; }
         h.tag.style.left = `${Math.max(2, r.left)}px`; h.tag.style.top = `${Math.max(2, r.top - 19)}px`;
         h.sq.style.left = `${r.right - 2}px`; h.sq.style.top = `${r.bottom - 2}px`;
-        if (h.ln) { h.ln.style.left = `${r.right + 2}px`; h.ln.style.top = `${r.top + r.height / 2 - 10}px`; }
+        if (h.ln) {
+          // HUD-LEN: a piece whose length runs up (a dress's upright vials say so: --hm-len-axis) takes it on its top edge
+          const ax = lenAxisOf(n);
+          if (h.ln.dataset.axis !== ax) h.ln.dataset.axis = ax;
+          if (ax === 'y') { h.ln.style.left = `${r.left + r.width / 2 - 10}px`; h.ln.style.top = `${Math.max(2, r.top - 8)}px`; }
+          else { h.ln.style.left = `${r.right + 2}px`; h.ln.style.top = `${r.top + r.height / 2 - 10}px`; }
+        }
       }
       handleRaf = win.requestAnimationFrame(step);
     };
@@ -456,8 +497,29 @@ function saveLayout(id, o) {
   if (o?.s && Math.abs(o.s - 1) > 0.005) v.s = Math.round(o.s * 100) / 100;
   if (o?.l && Math.abs(o.l - 1) > 0.005) v.l = Math.round(o.l * 100) / 100;
   if (o?.off) v.off = true;
+  if (o?.t) v.t = true;   // TURN1: turned over
   if (Object.keys(v).length) next[id] = v; else delete next[id];
   setPref(HUD_LAYOUT_PREF, Object.keys(next).length ? next : null);
+}
+
+/** HUD-LEN: which way a piece's length runs - across ('x', the sheets' bars) or up ('y': a dress that stands its bars
+ *  on end says so with --hm-len-axis). */
+function lenAxisOf(node) {
+  try { return String((node.ownerDocument?.defaultView ?? globalThis).getComputedStyle?.(node)?.getPropertyValue('--hm-len-axis') ?? '').trim() === 'y' ? 'y' : 'x'; } catch { return 'x'; }
+}
+/** HUD-LEN: a size or a length taken from a piece that stood wholly on the screen keeps it there - the piece is moved
+ *  back in by what it outgrew past an edge (a corner's vitals grown about their middle went off the screen's edge). */
+function keepOnScreen(want) {
+  const r = drag.node.getBoundingClientRect();
+  const vw = globalThis.innerWidth || 0, vh = globalThis.innerHeight || 0;
+  if (!vw || !vh || !drag.inView) return want;
+  let dx = 0, dy = 0;
+  if (r.width <= vw) { if (r.left < 0) dx = -r.left; else if (r.right > vw) dx = vw - r.right; }
+  if (r.height <= vh) { if (r.top < 0) dy = -r.top; else if (r.bottom > vh) dy = vh - r.bottom; }
+  if (!dx && !dy) return want;
+  const out = { ...want, x: want.x + dx / drag.k, y: want.y + dy / drag.k };
+  paint(drag.node, out);
+  return out;
 }
 
 const handleAt = (target) => target?.closest?.('[data-hm-handle]') ?? null;
@@ -472,8 +534,9 @@ function onDown(e) {
   if (e.type !== 'pointerdown' || (e.button != null && e.button !== 0)) return;
   const id = node.dataset.hm;
   const o = layoutOf(id);
-  const mode = handleAt(e.target)?.getAttribute('data-hm-handle') ?? 'move';   // move | scale | len | off
+  const mode = handleAt(e.target)?.getAttribute('data-hm-handle') ?? 'move';   // move | scale | len | off | turn
   if (mode === 'off') { const nx = { ...o, off: !o.off }; paint(node, nx); saveLayout(id, nx); return; }   // the X: a click, no drag
+  if (mode === 'turn') { const nx = { ...o, t: !o.t }; paint(node, nx); saveLayout(id, nx); return; }   // TURN1: turned over, and back
   const r0 = node.getBoundingClientRect();
   // how far one local pixel of translate moves the piece on screen (the HUD scale rides its ancestors)
   let k = 1;
@@ -486,8 +549,26 @@ function onDown(e) {
     if (Math.abs(b - a) > 1) k = (b - a) / 100;
   } catch { /* keep 1 */ }
   const cx = r0.left + r0.width / 2, cy = r0.top + r0.height / 2;
+  // HUD-LEN: THE HANDLE FOLLOWS THE POINTER. How far the handle's edge moves for a step of length is MEASURED, never
+  // assumed: a centred piece grows both ways, a corner's grows one way, and a dress's upright vials grow up, not across
+  // (the old "twice the pull across" sent a corner's handle running from the pointer, and did nothing to a stood bar)
+  let axis = 'x', per = 0;
+  if (mode === 'len') {
+    axis = lenAxisOf(node);
+    try {
+      paint(node, o);
+      const a = node.getBoundingClientRect();
+      paint(node, { ...o, l: (o.l || 1) * 1.25 });
+      const b = node.getBoundingClientRect();
+      paint(node, o);
+      per = (axis === 'y' ? a.top - b.top : b.right - a.right) / ((o.l || 1) * 0.25);   // px of the handle's edge per unit of length
+    } catch { per = 0; }
+    if (!(Math.abs(per) > 0.5)) per = axis === 'y' ? Math.max(8, r0.height) : Math.max(8, r0.width) / 2;
+  }
+  const vw = globalThis.innerWidth || 0, vh = globalThis.innerHeight || 0;
+  const inView = r0.left >= -1 && r0.top >= -1 && r0.right <= vw + 1 && r0.bottom <= vh + 1;
   drag = { node, id, mode, free: !!e.altKey, sx: e.clientX, sy: e.clientY, ox: o.x, oy: o.y, o0: { ...o }, k, cur: { ...o }, pid: e.pointerId,
-    cx, cy, d0: Math.max(8, Math.hypot(e.clientX - cx, e.clientY - cy)), w0: Math.max(8, r0.width), cap: e.target };
+    cx, cy, d0: Math.max(8, Math.hypot(e.clientX - cx, e.clientY - cy)), w0: Math.max(8, r0.width), cap: e.target, axis, per, inView };
   node.setAttribute('data-hm-drag', '');
   try { (drag.cap ?? node).setPointerCapture?.(e.pointerId); } catch { /* ok */ }
 }
@@ -502,14 +583,15 @@ function onMove(e) {
     const d = Math.hypot(e.clientX - drag.cx, e.clientY - drag.cy);
     want = { ...drag.o0, s: clamp(drag.o0.s * d / drag.d0, SCALE_MIN, SCALE_MAX) };
   } else if (drag.mode === 'len') {
-    // the right edge pulled out or pushed in (a centred piece grows both ways, so twice the pull)
-    const grow = (e.clientX - drag.sx) * 2;
-    want = { ...drag.o0, l: clamp(drag.o0.l * (drag.w0 + grow) / drag.w0, LEN_MIN, LEN_MAX) };
+    // HUD-LEN: the handle's edge goes where the pointer goes - right (or up, for a stood bar) is longer
+    const pull = drag.axis === 'y' ? drag.sy - e.clientY : e.clientX - drag.sx;
+    want = { ...drag.o0, l: clamp((drag.o0.l || 1) + pull / drag.per, LEN_MIN, LEN_MAX) };
   } else {
     want = { ...drag.o0, x: drag.ox + (e.clientX - drag.sx) / drag.k, y: drag.oy + (e.clientY - drag.sy) / drag.k };
   }
   paint(drag.node, want);
   if (drag.mode === 'move') want = snapMove(want);
+  else want = keepOnScreen(want);   // HUD-LEN: a size or a length never carries a piece off the screen
   liveOuter = { id: drag.id, o: want }; repaintInsides(drag.id); liveOuter = null;
   const r = drag.node.getBoundingClientRect();
   const vw = globalThis.innerWidth || 0, vh = globalThis.innerHeight || 0;
@@ -608,7 +690,8 @@ function onKey(e) {
   setHudLocked(!hudLocked());
 }
 
-/** Start once (the enhanced HUD's first frame, the Overworld's first open); afterwards a cheap, throttled sweep. */
+/** Start once (the enhanced HUD's first frame, the Overworld's first open): the first sweep at once, every one after it
+ *  the interval's (SWEEP_MS). The tick sweeps on its own clock only on a page the start set no interval for (PERF-HUD1). */
 export function tickHudLayout(doc = globalThis.document, now = (globalThis.performance?.now?.() ?? Date.now())) {
   if (!doc?.body) return;
   if (!started) {
@@ -638,9 +721,15 @@ export function tickHudLayout(doc = globalThis.document, now = (globalThis.perfo
     // stand while the HUD itself is hidden
     timer = setInterval(() => sweepHudLayout(doc), SWEEP_MS);
     timer?.unref?.();   // never what keeps a process alive (Node's timers; a browser's is a number)
+    lastSweep = now; sweepHudLayout(doc);   // PERF-HUD1: the first sweep at once; the interval takes every one after it
+    return;
   }
-  if (now - lastSweep >= SWEEP_MS) { lastSweep = now; sweepHudLayout(doc); }
+  // PERF-HUD1 (PERF-NEXT item 5): ONE CLOCK. This tick swept on its own clock beside the interval's - about eight sweeps
+  // of 34 querySelectorAll a second where four were meant (the real game's profile: the HUD's sweeps 1.4 ms a second of
+  // this container's CPU). The interval is the clock where it runs; the tick sweeps only where none does (a page
+  // without events - a test's stub document - whose start returned above before an interval was set).
+  if (!timer && now - lastSweep >= SWEEP_MS) { lastSweep = now; sweepHudLayout(doc); }
 }
 
 /** Tests: forget the started state. */
-export function _resetHudLayoutForTests() { if (timer) clearInterval(timer); timer = null; started = false; docRef = null; drag = null; }
+export function _resetHudLayoutForTests() { if (timer) clearInterval(timer); timer = null; started = false; docRef = null; drag = null; lastSweep = -Infinity; }   // PERF-HUD1: the clock too

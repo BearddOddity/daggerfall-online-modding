@@ -449,7 +449,9 @@ the swept geometry raycast (the sweep covers the whole step - raw
 dt cannot tunnel), plus a terrain landing check the dungeon never
 needed: the mesh raycast cannot see the collider's heightAt fallback
 floor, so an arrow at or under it has landed. A lost arrow is LOST
-(DFU's law for a miss - no recovery without a struck target).
+(DFU's law for a miss - no recovery without a struck target; since
+STUCK-ARROWS, `05-Combat/Arrow-Supply.md`, the player's real shaft
+stays where it struck and is taken back).
 
 Mounted (the host rule): worldModes INTERIOR mode (fires from
 player.eye along eyeDir; per-building collider late-resolved; a new
@@ -511,7 +513,14 @@ EnemyMotor.KnockbackMovement + FormulaHelper:
 - THE SPEED (weaponKnockbackSpeed, formulas.js): kb = ((10d - w) *
   256)/(w + 10d) * 2d; speed = (10d/w) * (2d - kb/256), through
   classicToUnitySpeedUnitRatio/10 (3.95), FLOORED at 15 classic - so
-  every landed player hit clears the 5-classic hurt threshold.
+  every landed player hit clears the 5-classic hurt threshold. (The
+  port's own exception, TELL1 in `12-Enhanced-AI/Feud-Arc.md`: with
+  the Enhanced AI switch on, a foe WINDING UP a telegraphed blow holds
+  - no shove, no Hurt - until its poise breaks, and the blow that breaks
+  it, or the first on a foe overreached by its miss (TELL4), writes its
+  shove x1.5 (`TELL.STAGGER_KNOCK`, the store's cap still clamping it);
+  an iron blow (TELL3) holds through every blow. DFU's law everywhere
+  else.)
   Weight (enemyWeightClassicUnits): monster table Weight, class
   female 240 / male 350; the + items*4 term FLAGGED to item weights.
 - THE GATE (WeaponManager:578): monsters need Weight > 0 - the
@@ -1360,8 +1369,8 @@ the step, and the dip only ever makes `|dir|` larger.
 `onAttackFromPlayer` the sentence is about is `:215`, which is where the
 sibling comment in `cityGuards.js` was pointed in the same round). The
 dungeon's three-host sentence had its `exterior.js` number re-resolved
-and its `world.js:"bails at its second"` left naming a `WorldTime`/`PauseWhileOpen` note
-800 lines from the host's `onPlayerArrowHitFoe` (`world.js:"textures not taking"`); all
+and its `world.js` line 6559 at c68f132dc left naming a `WorldTime`/`PauseWhileOpen` note
+800 lines from the host's `onPlayerArrowHitFoe` (`world.js` line 7370 at c68f132dc); all
 three halves are read in `citedrift.test.js` now, the shape AUDIT 62's
 review had to apply to `pauseWindow`/`restWindow`. And `listPicker.js`'s
 "three routers that mount a bare picker" named three lines, none of
@@ -1519,6 +1528,14 @@ wielder the port does not know keeps DFU's line: a foe's machine (DFU never asks
 - and a sprite foe's blow lands on its own frame), a peer's walker at PEER_SWING_SPEED 50, the viewers. The bow's draw
 (0.0625 s a frame), its cooldown and the Thunderlock's clock are their own.
 
+**And the Morrowind arm reads the machine** (MW-PACE1, 2026-10-07, Mac: "Morrowind attack animations don't scale with
+attack speed/multiple attacks when attack speed is high"). The arm used to play a blow at its WEAP record's own pace,
+so at a high Speed the machine began its next blow while the arm was still in the last, and one blow in two was drawn.
+At a strike's first frame the machine says when its hit lands and when the blow is done (`characters/weaponStates.js`
+blowSchedule, at that frame's dt; `combat/playerWeapon.js` strikeSchedule; `combat/weaponRig.js` fpAttack), and the arm
+fits its wind-up and release to the hit and its follow-through to the end (`02-Formats/Morrowind-Rules.md` MW-PACE1). A
+peer's body paces its blows by the burst's own gaps. A declared departure: Ledger A (MW-PACE1).
+
 **Measured on the real rig** (60 fps, the machine's one step a frame; the mods at their defaults - Items' weaponBalance
 answering - and, in brackets, with both mods off): an average fighter's longsword 1.08 s a blow (1.17; DFU at 50: 1.0);
 Speed 75 and a saber 0.92 s (0.92; 0.83 from Strength 56 up - AUDIT PRE-MERGE 0929 S4); live Speed 95 - the report's werewolf - with a dagger 1.71 a second (1.71; DFU: 3.3);
@@ -1538,3 +1555,12 @@ re-run - 88 dead, RR1-18 equivalent as recorded. AUDIT PRE-MERGE 0929: `test/aud
 blow, mods on and off, for a claw and a sword and a second and third rig; the reader in a rig built without the boot;
 the reader that never writes), RR1's heft, `test/disc28_speed.test.js` on the weapon as the rig builds it; mutants
 `tools/mutants/audit0929_swing.json` (8, all dead). A declared departure: Ledger A (SWING-LAW).
+
+## TECH1 - WEAPON TECHNIQUES (2026-10-10, the owner's call) - SHIPPED
+
+A weapon found on the loot ladder may carry a technique, done by its own key (WeaponTechnique, the mouse's back side
+button): a Volley, a Leap Strike, a Shadowstep, a Whirlwind and eight more. It rides the swing's own machine and the
+shot's own loose: `PlayerWeapon.resolveHit` reads the technique's blow (`combat/techniqueBlow.js`) for its reach and
+scales DFU's rolled damage by its multiplier, and `playerArrowHitFoe` does the same for its shafts - the formula still
+decides, a miss is still a miss. The record, the roster and the four hosts' doors are `Weapon-Techniques.md`. A declared
+departure: Ledger A (TECH1).

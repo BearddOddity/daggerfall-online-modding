@@ -289,7 +289,7 @@ import { defaultActionTemplates } from './actions.js';
 import { QuestResourceBehaviour } from './resourceBehaviour.js';
 import { FACTION_TYPES } from '../../formats/factionFile.js';
 import { SECONDS_PER_WEEK } from '../gameDate.js';
-import { Quest, nextUid } from './quest.js';
+import { Quest, nextUid, isShelved } from './quest.js';   // QUEST-SHELF: a quest set aside
 import { localizedQuestDisplayName } from './localizedQuest.js';   // L10N3c: ParseQuest's -LOC DisplayName
 import { Task } from './task.js';
 import { Person } from './person.js';
@@ -297,8 +297,9 @@ import { Place } from './place.js';
 import { Item } from './item.js';
 import { Foe } from './foe.js';
 import { Clock } from './clock.js';
-import { questDataOnThisClock } from './questStamps.js';   // TIME3: a party member's copy, on this character's clock
+import { questDataOnThisClock, shiftQuestStamps } from './questStamps.js';   // TIME3: a party member's copy, on this character's clock; QUEST-SHELF: a reclaimed quest's, by the time it was set aside
 import { BUILDING_TYPES } from '../../world/buildingNames.js';   // DISC28-I: IsActiveQuestBuilding's House1-House6
+import { adoptLinkedDungeonSize } from '../../world/smallerDungeons.js';   // AUDIT DELVE E5: the size a quest's markers were chosen on
 
 const HOUSE1 = BUILDING_TYPES.House1, HOUSE6 = BUILDING_TYPES.House6;
 
@@ -328,6 +329,9 @@ export const PROTECTED_QUESTS = Object.freeze(['S0000999', 'S0000977', '_BRISIEN
  *  case-insensitive as C#'s. scenes/questFoeHost.js's WORLD_QUESTS reads the same test. */
 export const questNameIn = (list, name) => { const n = (name ?? '').toLowerCase(); return list.some((x) => x.toLowerCase() === n); };
 const isProtectedQuest = (quest) => questNameIn(PROTECTED_QUESTS, quest.questName);
+/** QUEST-SHELF (its audit): a partner's envelope never carries a shelf - THE ENVELOPE IS NOT TRUSTED (AUDIT DROPS A1), and
+ *  a copy set aside is never handed on (getShareableQuestData), so the fields are the receiver's alone. */
+const NO_SHELF = Object.freeze({ shelvedAt: null, shelvedSites: null });
 
 /** QUEST1 "COUNTS AS ACCEPT/ADVANCE": restoreSaveData deliberately
  *  never replays an action - a LOAD must not refire a reward, reset a
@@ -435,7 +439,7 @@ export class QuestMachine {
 
   /** TIME3: the clocks a quest reads, one set for every door a live quest is born through - the character's (nowSeconds:
    *  the countdowns, intervals and tombstones), the sky (skySeconds: an hour, a date, a season), the event clock
-   *  (worldSeconds: the journal's dates) and the session's raises (raisedSeconds: charged whole). A host that names
+   *  (worldSeconds: the journal's dates) and the session's raises (raisedSeconds: charged nothing online - QCLOCK-WORLD). A host that names
    *  none of the last three is offline or headless: the one clock, and every gap a lived one. */
   _questClocks() {
     const nowSeconds = () => this.deps.nowSeconds?.() ?? 0;
@@ -516,8 +520,8 @@ export class QuestMachine {
       releaseQuestItem: (questUID, itemResource) => this.deps.releaseQuestItem?.(questUID, itemResource),
       makeHeldQuestItemsPermanent: (questUID, symbol) => this.deps.makeHeldQuestItemsPermanent?.(questUID, symbol),
       offerReward: (q, dfItem) => this.deps.offerReward?.(q, dfItem),
-      // REALM P0.4: the shares a quest's gold reward is paid in - the party's, for a quest kept in step with it
-      rewardShares: (quest) => (this.sharedQuestNames.has(quest?.questName) ? Math.max(1, Math.trunc(this.deps.partySize?.() ?? 1) || 1) : 1),
+      // REALM P0.4: the shares a quest's gold reward is paid in - the party's, for a quest kept in step with it. VERMIN-SHARED: `sharedCopy` - `quest` is a copy kept in step (its name shared, and it that name's live copy - AUDIT Q7: never a later private instance), so its `pick one of` draws the share's roll (actions.js PickOneOf)
+      rewardShares: (quest) => (this.sharedQuestNames.has(quest?.questName) ? Math.max(1, Math.trunc(this.deps.partySize?.() ?? 1) || 1) : 1), sharedCopy: (quest) => !!quest && this.sharedQuestNames.has(quest.questName) && this.sharedCandidateNamed(quest.questName) === quest,
       isPlayerInTown: () => this.deps.isPlayerInTown?.() ?? false,
       // GivePc.cs:96's static event, through the deps to the UI latch.
       onOfferPending: (givePc) => this.deps.onOfferPending?.(givePc),
@@ -662,6 +666,7 @@ export class QuestMachine {
    *  the corpus fires at startup all over - operated on nothing. */
   startQuestImmediate(quest) {
     quest.start();
+    adoptLinkedDungeonSize(quest, this);   // AUDIT DELVE E5: where the medium size is either side, the size its markers know
     this.deps.addQuestTopics?.(quest);
     // QUEST-UID1 (2026-09-24, found tracing "two letters from the queen"): `quests.Add(quest.UID, quest)` (:725) is a
     // Dictionary.Add - a UID already on the live table THROWS, and the quest standing there stays. `set` replaced it
@@ -730,6 +735,7 @@ export class QuestMachine {
     // scene half rides alongside now.
     this.lastNPCClickedHost = host;
     for (const quest of this.quests.values()) {
+      if (isShelved(quest)) continue;   // QUEST-SHELF: a quest set aside hears no click
       for (const resource of quest.resources.values()) {
         if (resource.isPerson && this.isNPCDataEqual(resource.questorData, npcData)) {
           resource.setPlayerClicked();
@@ -748,6 +754,7 @@ export class QuestMachine {
   activeQuestor(npcData) {
     let found = null;
     for (const quest of this.quests.values()) {
+      if (isShelved(quest)) continue;   // QUEST-SHELF: its questor is nobody's while it is set aside
       const questorSymbols = quest.getQuestors();
       if (!questorSymbols || questorSymbols.length === 0) continue;
       for (const symbol of questorSymbols) {
@@ -815,6 +822,9 @@ export class QuestMachine {
     const clicked = this.getLastNPCClicked();
     for (const quest of this.quests.values()) {
       if (quest.questComplete) continue;
+      // QUEST-SHELF (Themicles' K'avar, the guild's door shut while a quest stood stuck): a quest set aside opens its
+      // questor's door - the guild offers work again
+      if (isShelved(quest)) continue;
       for (const resource of quest.resources.values()) {
         if (!resource.isPerson || !resource.isQuestor) continue;
         if (this.isNPCDataEqual(resource.questorData, clicked)) {
@@ -901,6 +911,7 @@ export class QuestMachine {
         return false;
       }
       const behaviour = new QuestResourceBehaviour(this, host);
+      behaviour.individualHome = true;   // QUEST-SHELF (its audit): the home copy - a quest set aside never hides it
       const activePersonResources = this.activeFactionPersons(factionID);
       if (activePersonResources && activePersonResources.length > 0) {
         const person = activePersonResources[0];
@@ -957,6 +968,7 @@ export class QuestMachine {
   _forEachAction(fn) {
     for (const list of [this.quests.values(), this.questsToInvoke]) {
       for (const quest of list) {
+        if (isShelved(quest)) continue;   // QUEST-SHELF: its actions arm on nothing while it is set aside
         for (const task of quest.tasks?.values?.() ?? []) {
           for (const action of task.actions) fn(action);
         }
@@ -973,6 +985,7 @@ export class QuestMachine {
   getAllQuestLogMessages() {
     const questMessages = [];
     for (const quest of this.quests.values()) {
+      if (isShelved(quest)) continue;   // QUEST-SHELF: the journal's active page holds what runs; the Abandoned list the rest
       const logEntries = quest.getLogMessages();
       if (!logEntries || logEntries.length === 0) continue;
       for (const logEntry of logEntries) {
@@ -1093,8 +1106,15 @@ export class QuestMachine {
    *  A tombstoned copy stays on the table for a week and a repeatable quest can be taken again inside it, so the
    *  first by name was the dead one: every resync was refused as 'gone' and a fresh share as 'active'. */
   sharedCandidateNamed(questName) {
-    for (const quest of this.quests.values()) if (quest.questName === questName && !quest.questTombstoned) return quest;
-    return null;
+    // QUEST-SHELF (its audit): and a copy RUNNING before one set aside - the questor's door opens on abandon, so the same
+    // quest may be taken again, and the older copy set aside shadowed it (its syncs, a partner's step, the share's reward)
+    let away = null;
+    for (const quest of this.quests.values()) {
+      if (quest.questName !== questName || quest.questTombstoned) continue;
+      if (!isShelved(quest)) return quest;
+      away ??= quest;
+    }
+    return away;
   }
 
   /** SENDER side: one quest's own envelope, in the exact shape
@@ -1109,7 +1129,7 @@ export class QuestMachine {
    *  would otherwise miss every time, silently. */
   getShareableQuestData(uid) {
     const quest = this.quests.get(Number(uid));
-    if (!quest) return null;
+    if (!quest || isShelved(quest)) return null;   // QUEST-SHELF: a quest set aside is not handed on
     quest.shareId ??= mintShareId();   // DISC22-F: the copy's identity, stamped the first time it is shared out, then carried
     return quest.getSaveData();
   }
@@ -1177,7 +1197,7 @@ export class QuestMachine {
    *  this quest has its final local UID, reaches the exact link a
    *  fresh accept would have made. */
   receiveSharedQuest(questData) {
-    questData = this._onThisClock(questData);   // TIME3: the sender's countdowns, on this character's clock
+    questData = { ...this._onThisClock(questData), ...NO_SHELF };   // TIME3: the sender's countdowns, on this character's clock
     const quest = this._newQuest();
     const uid = nextUid();
     // AUDIT DROPS A3: an envelope the restore chokes on is REFUSED (null), never half a quest on the live table
@@ -1186,11 +1206,11 @@ export class QuestMachine {
     // AUDIT 68 S29-share-topics: StartQuest's talk registration, in its place (before the live table) - a received
     // quest's people and places had no 'tell me about'/'where is', and its `dialog link` actions found no quest
     this.deps.addQuestTopics?.(quest);
-    this.quests.set(quest.uid, quest);
+    this.sharedQuestNames.add(quest.questName);   // AUDIT QA2: a shared copy from its arrival on - the arrival's re-seat draws the share's die (Place.reseatMovedSite)
+    this.quests.set(quest.uid, quest); this._reseatArrived(quest);   // QUESTOR-MOVED: a copy from before the town mods, mended on arrival (its links made after)
     for (const resource of quest.resources.values()) {
       if (resource.isPlace && resource.siteDetails) this.createSiteLink(quest, resource.symbol);
     }
-    this.sharedQuestNames.add(quest.questName);
     this._rearmNewlyCompletedEffects(quest, null);
     return quest;
   }
@@ -1289,6 +1309,7 @@ export class QuestMachine {
   updateSharedQuest(questName, questData) {
     const quest = this.sharedCandidateNamed(questName);
     if (!quest) return null;
+    if (isShelved(quest)) return null;   // QUEST-SHELF: a copy set aside takes no partner's state - reclaimed, it is as it was
     // AUDIT DROPS A2: a quest this player has FINISHED is never dragged back into play by a partner who is behind
     if (quest.questComplete || quest.questTombstoned) return null;
     // AUDIT DISC28 QS-4: A COPY ALREADY ENDING TAKES NO ENVELOPE. Quest.EndQuest's two ticks of grace (ticksToEnd, no
@@ -1307,7 +1328,7 @@ export class QuestMachine {
     // every reward still unpaid (a complete quest never updates).
     const finishing = questData.questComplete === true;
     if (finishing) questData = { ...questData, questComplete: false, questTombstoned: false };
-    questData = this._onThisClock(questData);   // TIME3: the sender's countdowns, on this character's clock
+    questData = { ...this._onThisClock(questData), ...NO_SHELF };   // TIME3: the sender's countdowns, on this character's clock
     const scratch = this._newQuest();
     const uid = quest.uid;
     try { scratch.restoreSaveData({ ...questData, uid }, this._saveResolvers()); } catch (e) { console.warn(`[quest] shared quest resync refused: ${e?.message ?? e}`); return null; }
@@ -1325,6 +1346,21 @@ export class QuestMachine {
     // player may already hold. The envelope's is a fresh throwaway parse every time, so each resync re-rolled it.
     const itemsBefore = new Map();
     for (const r of quest.resources.values()) if (r.isItem && r.daggerfallUnityItem) itemsBefore.set(r.symbol?.name, r.daggerfallUnityItem);
+    // WHERE-ROBES (FIELD BUGS 2026-10-04c): and an Item's CLICK and PICKUP are this world's too - the player's own act on
+    // the stand or the loot row (QuestResourceBehaviour.DoClick's SetPlayerClicked and IsHidden, the remote list's
+    // click). The envelope carried the partner's (false), so a resync landing between a pickup and the next tick took
+    // the click back - `clicked item` never fired, O0A0AL00's note never came - and showed the stand again over robes
+    // already in the pack. Both are kept as the foes' flags are: an Item is hidden only by that pickup (no action
+    // un-hides one), and the click is spent by the tick's own PostTick, never by a partner.
+    // AUDIT WHERE-ROBES S1: and a click is this world's whatever it clicked - a quest Person's or Foe's too (ClickedNpc,
+    // ClickedFoe); a resync between the click and the tick lost O0A0AL00's own hand-in (`toting _clothing_ and
+    // _thiefmember_ clicked`). Restored through setPlayerClicked, so a Person the partner's copy has since muted or
+    // destroyed refuses it, as DFU's guard does.
+    const actsBefore = new Map();
+    for (const r of quest.resources.values()) {
+      const hidden = !!(r.isItem && r.isHidden);
+      if (r.hasPlayerClicked || hidden) actsBefore.set(r.symbol?.name, { clicked: !!r.hasPlayerClicked, hidden });
+    }
     // AUDIT DISC7 C2: the behaviours standing on this quest - relinked below, at once, not on their next update
     // (a person's or an item's never ticks, and a Place mount may come first)
     const standing = this._liveBehaviours(uid);
@@ -1341,7 +1377,12 @@ export class QuestMachine {
       if (r.isClock && r.clockFinished) { const tk = quest.getTask?.(r.symbol); finishedBefore.set(r.symbol?.name, tk ? { triggered: tk.triggered, prev: tk.prevTriggered } : null); }
     }
     { let t = 0; for (const task of quest.tasks.values()) { let a = 0; for (const action of task.actions) { if (action.typeName === 'CreateFoe') wavesBefore.set(`${t}:${a}`, { last: action.lastSpawnTime, tick: action._lastTick, raised: action._lastRaised, count: action.spawnCounter }); a++; } t++; } }
+    // QUEST-AUDIT II SHARED-SEAT: and a Place's BUILDING is this world's where the partner's names none here (their town
+    // stood in another layout) - kept below, the partner's assignments carried onto it (Place.keepOwnSite)
+    const sitesBefore = new Map();
+    for (const r of quest.resources.values()) if (r.isPlace && r.siteDetails) sitesBefore.set(r.symbol?.name, structuredClone(r.siteDetails));
     quest.restoreSaveData({ ...questData, uid }, this._saveResolvers());
+    for (const r of quest.resources.values()) if (r.isPlace && sitesBefore.has(r.symbol?.name)) r.keepOwnSite?.(sitesBefore.get(r.symbol?.name));
     for (const r of quest.resources.values()) {
       if (r.isClock && !r.clockFinished && finishedBefore.has(r.symbol?.name)) {
         r.clockEnabled = false; r.clockFinished = true; r.remainingTimeInSeconds = 0;
@@ -1359,6 +1400,11 @@ export class QuestMachine {
     }
     { let t = 0; for (const task of quest.tasks.values()) { let a = 0; for (const action of task.actions) { const w = action.typeName === 'CreateFoe' ? wavesBefore.get(`${t}:${a}`) : null; if (w && w.last) { action.lastSpawnTime = w.last; action._lastTick = w.tick; action._lastRaised = w.raised; action.spawnCounter = w.count | 0; } a++; } t++; } }   // the count is the holder's too: the waves spawn in this world, N of them here
     for (const r of quest.resources.values()) if (r.isItem && itemsBefore.has(r.symbol?.name)) r.daggerfallUnityItem = itemsBefore.get(r.symbol?.name);
+    for (const r of quest.resources.values()) {   // WHERE-ROBES: this world's clicks and pickups, kept
+      const was = actsBefore.get(r.symbol?.name);
+      if (was?.clicked && !r.hasPlayerClicked) r.setPlayerClicked();
+      if (was?.hidden && r.isItem) r.isHidden = true;
+    }
     this._relinkQuestItems(quest);
     for (const r of quest.resources.values()) {
       const was = r.isFoe ? foesBefore.get(r.symbol?.name ?? String(r.symbol)) : null;
@@ -1382,6 +1428,11 @@ export class QuestMachine {
       for (const action of task.actions) { if (before.get(`${t}:${a}`) === true && !action.isComplete) action.isComplete = true; a++; }
       t++;
     }
+    this._reseatArrived(quest);   // QUESTOR-MOVED: a partner's copy from before the town mods, mended as it lands
+    // QUEST-AUDIT II SITE-LINKS: each Place's link made AGAIN, never once more - the copy's own link from its accept (or
+    // the last resync) went on standing beside a new one at every resync, so a quest shared for an evening carried
+    // dozens of links per Place in the save, and every mount of its building walked them all
+    this.siteLinks = this.siteLinks.filter((link) => link.questUID !== quest.uid);
     for (const resource of quest.resources.values()) {
       if (resource.isPlace && resource.siteDetails) this.createSiteLink(quest, resource.symbol);
     }
@@ -1477,7 +1528,7 @@ export class QuestMachine {
     const questsToTombstone = [], questsToRemove = [];
     for (const quest of this.quests.values()) {
       try {
-        if (!quest.questComplete) quest.update();
+        if (!quest.questComplete && !isShelved(quest)) quest.update();   // QUEST-SHELF: a quest set aside does not run
       } catch (e) {
         console.warn(`[quest] QuestMachine encountered an exception in quest ${quest.questName}: ${e?.message ?? e}`);
         if (!isProtectedQuest(quest)) questsToRemove.push(quest);
@@ -1491,6 +1542,79 @@ export class QuestMachine {
 
     for (const quest of questsToTombstone) this.tombstoneQuest(quest);
     for (const quest of questsToRemove) this.removeQuest(quest);
+  }
+
+  /**
+   * QUEST-SHELF (2026-10-08, Mac: "All quests should be able to be abandoned and reclaimed"): ABANDON - THE QUEST SET
+   * ASIDE, KEPT WHOLE. Never a tombstone: its items stay in the pack (the load's orphan sweep keeps a quest it still
+   * holds), its topics and journal stay its own, its clocks stop where they stand. It stops running (tick, clicks,
+   * actions), its questor's door opens (isLastNPCClickedAnActiveQuestor - a guild offers work again), a named NPC it
+   * held is home again, its site links are set aside by Place (what it stood in a scene no longer stands; reclaimed,
+   * they stand again), a wave in flight is let go, its faction listeners go (its task asks again once it runs), and a
+   * shared copy leaves the party's step (Share it again once reclaimed). Its sites stay reserved (getAllActiveQuestSites
+   * still answers them), so the building or dungeon is its own when it comes back. Refused: a quest gone, ending or
+   * already set aside; the world's own quests (PROTECTED_QUESTS - the main quest's backbone, the curse, the tutorial);
+   * and whatever the host's `refuse` names. Answers `{ ok, reason?, quest? }`.
+   */
+  shelveQuest(uid, { refuse = null } = {}) {
+    const why = this.shelveRefusal(uid, { refuse });
+    if (why) return { ok: false, reason: why };
+    const quest = this.quests.get(Number(uid));
+    // the party's step is this copy's only where this copy is the one a share by its name speaks to
+    if (this.sharedCandidateNamed(quest.questName) === quest) this.sharedQuestNames.delete(quest.questName);
+    const now = Math.floor(this.deps.nowSeconds?.() ?? 0);
+    quest.shelvedAt = now !== 0 ? now : 1;   // 0 reads as never set aside
+    quest.shelvedSites = [...new Set(this.siteLinks.filter((l) => l.questUID === quest.uid).map((l) => l.placeSymbol?.name).filter(Boolean))];
+    this.siteLinks = this.siteLinks.filter((l) => l.questUID !== quest.uid);
+    for (const [factionID, owner] of [...this.factionListeners]) if (owner?.parentQuest === quest) this.factionListeners.delete(factionID);
+    for (const task of quest.tasks.values()) {
+      for (const action of task.actions) if (action?.typeName === 'CreateFoe') { action.pendingFoes = null; action.spawnInProgress = false; }
+    }
+    this.deps.forceTopicListsUpdate?.();
+    return { ok: true, quest };
+  }
+
+  /** QUEST-SHELF: why the quest may not be set aside now, or null - shelveQuest's ladder, and the journal's button
+   *  (questBridge.js canAbandon) asks the same one. */
+  shelveRefusal(uid, { refuse = null } = {}) {
+    const quest = this.quests.get(Number(uid));
+    if (!quest || quest.questComplete || quest.questTombstoned) return 'gone';
+    if (isShelved(quest)) return 'shelved';
+    if (quest.ticksToEnd > 0) return 'ending';
+    if (isProtectedQuest(quest)) return 'protected';
+    return refuse?.(quest) ?? null;
+  }
+
+  /**
+   * QUEST-SHELF: RECLAIM - the quest set aside, back as it was. Its own clock's stamps (its clocks' samples, a wave's
+   * timing, a sound's, a daily guard's - questStamps.js QUEST_OWN_SECOND_KEYS) move on by the time it was set aside, so
+   * no deadline ran down while it was away: the quest is restored from its own envelope moved by that time, as a load
+   * restores one (TIME3's law, one home). Its site links stand again by Place, and a scene it stands in mounts its
+   * people, things and foes once more the next time it is built. Answers `{ ok, reason?, quest? }`.
+   */
+  reclaimQuest(uid) {
+    const quest = this.quests.get(Number(uid));
+    if (!quest || quest.questTombstoned) return { ok: false, reason: 'gone' };
+    if (!isShelved(quest)) return { ok: false, reason: 'running' };
+    // its audit: the same quest taken again while this one was away - two running copies of one name are never made
+    if (!isShelved(this.sharedCandidateNamed(quest.questName))) return { ok: false, reason: 'twin' };
+    const now = Math.floor(this.deps.nowSeconds?.() ?? 0);
+    const away = Math.max(0, now - quest.shelvedAt);
+    const sites = quest.shelvedSites ?? [];
+    const data = JSON.parse(JSON.stringify(quest.getSaveData()));
+    data.shelvedAt = null;
+    data.shelvedSites = null;
+    shiftQuestStamps(data, away, { own: true });
+    const standing = this._liveBehaviours(quest.uid);   // its audit: relinked at once, as a resync's are (AUDIT DISC7 C2)
+    quest.restoreSaveData({ ...data, uid: quest.uid }, this._saveResolvers());
+    for (const name of sites) {
+      const place = quest.getPlace?.({ name });
+      if (place?.siteDetails && !this.siteLinks.some((l) => l.questUID === quest.uid && l.placeSymbol?.name === name)) this.createSiteLink(quest, place.symbol);
+    }
+    for (const b of standing) b.relinkToLiveQuest?.();
+    this.deps.relinkQuestTopics?.(quest);   // and its talk topics (AUDIT 68 S29-share-topics): 'where is' reads the live Person
+    this.deps.forceTopicListsUpdate?.();
+    return { ok: true, quest };
   }
 
   /** Dispose resources then task actions (Quest.cs Dispose order,
@@ -1560,14 +1684,7 @@ export class QuestMachine {
   createSiteLink(parentQuest, placeSymbol) {
     const place = parentQuest.getPlace(placeSymbol);
     if (!place) throw new Error(`Attempted to add SiteLink for invalid Place symbol ${placeSymbol?.name}`);
-    this.addSiteLink({
-      questUID: parentQuest.uid,
-      placeSymbol: placeSymbol.clone(),
-      siteType: place.siteDetails?.siteType,
-      mapId: place.siteDetails?.mapId,
-      buildingKey: place.siteDetails?.buildingKey ?? 0,
-      magicNumberIndex: place.siteDetails?.magicNumberIndex ?? 0,
-    });
+    this.addSiteLink({ questUID: parentQuest.uid, placeSymbol: placeSymbol.clone(), ...linkSiteOf(place) });
   }
 
   /** GetAllActiveQuestSites (QuestMachine.cs:769): every Place's site
@@ -1582,6 +1699,73 @@ export class QuestMachine {
       }
     }
     return sites;
+  }
+
+  /** WD3 (AUDIT WD3 S5): every incomplete quest's building sites whose town stands in another layout now, chosen again
+   *  in it (Place.reseatMovedSite), their site links following - and (QUESTOR-MOVED) its questors met in a building of
+   *  such a town, seated again in it (Person.reseatMovedQuestor), their halls with them. Answers how many moved. */
+  reseatMovedSites(world = this.deps.world ?? null) {
+    if (!world) return 0;
+    let moved = 0;
+    for (const quest of this.quests.values()) moved += this._reseatMovedOf(quest, world);
+    return moved;
+  }
+  /** One quest's half of reseatMovedSites - the questors first, so a questor's hall moves with them and never by a
+   *  Place's own law (it has none: Place.reseatMovedSite's Scopes.None). FIELD BUGS 2026-10-04d QUEST-MARKERS: and every
+   *  building site's markers the curation moves, moved (Place.mendCuratedMarkers) - not counted: no site moved. */
+  _reseatMovedOf(quest, world) {
+    if (!world || quest.questComplete) return 0;
+    let moved = 0;
+    const follow = (place) => {
+      for (const link of this.siteLinks) {
+        if (link.questUID === quest.uid && link.placeSymbol?.name === place.symbol?.name) Object.assign(link, linkSiteOf(place));   // AUDIT QA2: the whole site, its town with it
+      }
+    };
+    for (const resource of quest.resources.values()) {
+      if (!resource.isPerson || !resource.reseatMovedQuestor?.(world)) continue;
+      moved++;
+      const hall = resource.homePlaceSymbol ? quest.getPlace(resource.homePlaceSymbol) : null;
+      if (hall?.siteDetails) follow(hall);
+    }
+    for (const resource of quest.resources.values()) {
+      if (!resource.isPlace || !resource.reseatMovedSite?.(world)) continue;
+      moved++;
+      follow(resource);
+      resource.fitSiteToBuild?.(world);   // KVAR-HOLD's audit: a dungeon drawn again, fitted to the size its link now builds
+    }
+    for (const resource of quest.resources.values()) if (resource.isPlace) resource.mendCuratedMarkers?.(world);
+    return moved;
+  }
+  /** QUESTOR-MOVED: a quest that ARRIVED (a partner's share, a resync) is mended as a load mends a save's
+   *  (the world host's applyLayoutPins) - a copy taken before the town mods names a questor and sites in a layout it no
+   *  longer stands in. Not before the host knows its towns' layouts: the world seam's `townLayoutsKnown()` (online,
+   *  the service's homes, AUDIT WD3 S4/S5; absent, known) - the load's own reseat runs once it does. */
+  _reseatArrived(quest) {
+    const world = this.deps.world ?? null;
+    if (!world || world.townLayoutsKnown?.() === false) return 0;
+    return this._reseatMovedOf(quest, world);
+  }
+
+  /** QUESTOR-MOVED: the name a static NPC answers to when it was seated as a questor that stood elsewhere
+   *  (Person.reseatMovedQuestor) - the questor's own, the journal's - or null. In DFU the questor's name and the NPC's
+   *  are one (Person.nameSeed is the clicked NPC's, SetupQuestorNPC), so a questor bound where they stand answers
+   *  null here and the NPC's own name stands, as DFU's does. */
+  movedQuestorName(npcData) {
+    const person = this.activeQuestor(npcData);
+    return person && person.nameSeed !== npcData?.nameSeed ? person.displayName : null;
+  }
+
+  /** WD3 (AUDIT WD3 S3): every incomplete quest's questor met in a building - its town keeps the layout the questor
+   *  was met in (systems/layoutPins.js layoutRecordsOf). */
+  getAllActiveQuestors() {
+    const out = [];
+    for (const quest of this.quests.values()) {
+      if (quest.questComplete) continue;
+      for (const resource of quest.resources.values()) {
+        if (resource.isPerson && resource.isQuestor && resource.questorData?.buildingKey > 0) out.push(resource.questorData);
+      }
+    }
+    return out;
   }
 
   /** DISC28-I (Discord: a quest shared by a friend - "we couldn't enter the house after I entered it"): PlayerActivate.
@@ -1602,7 +1786,7 @@ export class QuestMachine {
   activeFactionPersons(factionID) {
     const found = [];
     for (const quest of this.quests.values()) {
-      if (quest.questComplete) continue;
+      if (quest.questComplete || isShelved(quest)) continue;   // QUEST-SHELF: a named NPC a quest set aside held is home again
       for (const resource of quest.resources.values()) {
         if (resource.isPerson && resource.factionId === factionID) found.push(resource);
       }
@@ -1658,3 +1842,14 @@ export class QuestMachine {
     }
   }
 }
+
+/** A site link's half that is its Place's site (CreateSiteLink, QuestMachine.cs:1757) - ONE derivation, for the link made
+ *  and for the link a re-seat moves (AUDIT QA2: the re-seat copied the building key alone, and once NEAR-SITE could move a
+ *  site to another town its link stayed on the old one - the mount stood the quest's person or thing in a stranger's
+ *  building there and never in the site's, and Repair, finding a link, left it). */
+export const linkSiteOf = (place) => ({
+  siteType: place.siteDetails?.siteType,
+  mapId: place.siteDetails?.mapId,
+  buildingKey: place.siteDetails?.buildingKey ?? 0,
+  magicNumberIndex: place.siteDetails?.magicNumberIndex ?? 0,
+});

@@ -74,7 +74,7 @@ async function stage() {
   const S = { asked: [], said: [], meter: null, prompt: null };
   S.e = { stats: { intelligence: 60, agility: 60, strength: 55, endurance: 50, luck: 50 }, items: [createForagingItem(FT.PickAxe)], wagonItems: [] };
   S.book = {
-    state: { open: true, today: {}, caps: { harvests: 60, stores: 5000 } },
+    state: { open: true, today: {}, caps: { stores: 5000 } },
     stale: () => false, refresh: async () => ({ ok: true }), pixel: () => ({ state: 'none' }), askPixels: async () => [], pump: () => {},
     dungeon: () => null, askDungeon: async () => false, held: () => 0, taken: () => false, counting: () => false,
     track: () => ({ rank: 100, specs: { 50: null, 100: null } }),
@@ -223,7 +223,7 @@ test('CLICK-LIFT: the latch is the press\'s - pressed mid-act it is taken to its
 test('CLICK-LIFT: underground the dungeon\'s ladder holds the act\'s click to its release - the modal frame asks it every frame with the button\'s level, the world host hands the gathering host\'s, and tryExitDungeon stops on it (mutants: the dungeon never asks)', () => {
   assert.match(MODES, /\n\s*const _activateDown = held\(keys, 'ActivateCenterObject'\) \|\| !!host\.activateDown\?\.\(\);\n\s*const _act = activateFrame\(\(latch\.activate \?\?= createActivateGate\(\)\), \{\n\s*down: _activateDown,/, 'the gate\'s press is the level the latch is asked with');
   assert.match(MODES, /\n\s*const actClick = host\.profClickTaken\?\.\(_activateDown\) \?\? false;[^\n]*\n\s*if \(\(_act\.activate \|\| useEdge\) && !overlayHeld\) \(mode === 'dungeon' \? tryExitDungeon : tryExit\)\(\{ pressCast: _act\.pressCast, interact: useEdge, actClick \}\);/, 'asked every frame, before the ladder, and handed to it');
-  assert.match(MODES, /\n\s*if \(!interact && \(actClick \|\| host\.profActing\?\.\(\)\)\) return true;/, 'tryExitDungeon: the act\'s click, or an act playing, stops the ladder');
+  assert.match(MODES.slice(MODES.indexOf('  function tryExitDungeon(')), /\n\s*if \(!interact && \(actClick \|\| host\.profActing\?\.\(\)\)\) return true;/, 'tryExitDungeon: the act\'s click, or an act playing, stops the ladder');   // PIN MOVED (INDOOR-SKIN): the building's ladder has its own, above
   assert.match(WORLD, /\n\s*profClickTaken: \(down\) => gatherHost\?\.clickTaken\(down\) \?\? false,/, 'the world host hands the gathering host\'s latch');
 });
 
@@ -279,24 +279,18 @@ test('CURE-FILL: the turn with Endurance and Strength drained fills the pools to
 
 // ─── REFUSALS-LEARNED, at the host ─────────────────────────────────
 
-test('REFUSALS-LEARNED: the host offers no act the book says the service refused today - the account\'s Mining day closed, the vein\'s prompt says so, E passes on and says it, nothing starts; the craft open, the vein is ready again (mutants: the host never asks the book)', async () => {
+test('REFUSALS-LEARNED at the host, CAP-OFF (2026-10-07, Mac: "Remove the cap on life skills"): the account\'s day in a craft closes nothing - a book that says `account:mining` is closed (the word the day\'s cap left) leaves the vein ready, its prompt the rank\'s, and E starts the act; the unvouched dungeons\' door stands (test/fb1001_ground.test.js) (mutants: the host asks the account\'s day again)', async () => {
   const s = await stage();
   try {
     s.face(s.vein);
     assert.match(s.prompt?.rest ?? '', /^Mining 100/, 'open: ready');
-    let shut = 'account:mining';
-    s.book.closed = (k) => k === shut;
+    // PIN MOVED (CAP-OFF): the account's Mining day closed, the prompt said "120 today across your characters", E passed
+    // on and said it, and nothing started
+    s.book.closed = (k) => k === 'account:mining';
     s.host.tick(0.016);
-    assert.equal(s.prompt?.rest, '120 today across your characters', 'the prompt says the account\'s day is done');
-    assert.equal(s.host.press(), false, 'E passes on (VEIN-NEED: no door took it, so the node says why)');
-    assert.equal(s.host.acting(), false, 'nothing played, no tool worn');
-    assert.equal(s.host.sayNeed(), true);
-    assert.equal(s.said.at(-1), `${s.prompt.verb}: 120 today across your characters`);
-    shut = 'account:herbalism';
-    s.host.tick(0.016);
-    assert.match(s.prompt?.rest ?? '', /^Mining 100/, 'another craft closed: Mining still ready');
-    assert.equal(s.host.press(), true);
-    assert.equal(s.host.acting(), true);
+    assert.match(s.prompt?.rest ?? '', /^Mining 100/, 'still ready');
+    assert.equal(s.host.press(), true, 'E is the vein\'s');
+    assert.equal(s.host.acting(), true, 'the act starts');
   } finally { s.done(); }
 });
 

@@ -13,7 +13,7 @@ import { relayVersionAtLeast } from './relayVersion.mjs';
 import { OnlineSession, FOES_STALE_MS } from '../src/net/online.js';
 import { fakeRoom } from './fakeRoom.mjs';
 import { fakeSocketClass } from './fakeSocket.mjs';
-import { createExteriorFoes, MAX_ACTIVE_ENCOUNTER_FOES } from '../src/scenes/exteriorFoes.js';
+import { createExteriorFoes, MAX_ACTIVE_ENCOUNTER_FOES, ENCOUNTER_PUPPETS_MAX } from '../src/scenes/exteriorFoes.js';
 import { runDayChange, dayRollsFor, setSharedClock, sharedClockOn, MINUTES_PER_DAY, DAY_SALT, worldRegionPricesOn } from '../src/systems/worldTick.js';
 import { regionPriceAdjustment } from '../src/systems/shopStock.js';   // ECON1: the world's index through the one seam
 import { MERCHANTS_FACTION_ID } from '../src/systems/guilds.js';
@@ -202,24 +202,26 @@ test('AUDIT WORLD6b B1/B2/B10: the pool - a fall\'s, another foe\'s and a relaye
   const x = rd('src/scenes/exteriorFoes.js');
   assert.match(x, /const trap = peer \|\| _peerTrap \? \{ allowDeath: true \} : attemptSoulTrap\(f\.entity, f\.mobileType, playerEntity\.items, Math\.random\(\)\);/, 'B2: the trap, by source (STRIKE-SHARED: and a peer\'s trap reads no gem of mine either)');
   assert.match(x, /if \(!peer && f\.mobileType < 128 && isAzurasStarEquipped\(playerEntity\)/, 'B2: the Star, by source');
-  assert.match(x, /if \(fromPlayer && !peer\) \{\s*(?:\/\/[^\n]*\n\s*)*const _pt = f\._divertPt \?\? null; f\._divertPt = null;\s*f\._divertFrame = _peerFrame;\s*f\._struckAt = _now\(\);[^\n]*\n\s*_net\?\.onPeerHit\?\.\(\{ to: f\.puppet, k: _owners\.get\(f\.puppet\)\?\.k \?\? _net\.room\?\.\(\) \?\? null, i: f\.seq, dmg: Math\.max\(0, Math\.round\(Number\(damage\) \|\| 0\)\), kind,[^\n]*\n\s*\.\.\.\(_pAt \? \{ p: [^\n]*\n\s*\.\.\.\(knockDir \? \{ d: [^\n]*\n\s*\.\.\.\(_pt != null \? \{ pt: _pt \} : \{\}\),[^\n]*\n\s*\.\.\.\(kind === 'arrow' \? \{ ar: 1 \} : \{\}\),\n\s*\.\.\.\(spell \?\? \{\}\),[^\n]*\n\s*\.\.\.\(_whole \? \{ z: 1 \} : \{\}\) \}\);[^\n]*\n\s*\}\s*return;/, 'B1: the divert\'s gate, by source (WORLD6b-ii: the striker\'s feet and the blow\'s direction ride; WORLD6b-iii(e): the poison and the shaft; DISC10-E: the blow stamped for the owner\'s `slain` answer; AUDIT PSCALE1 DOORS-1: a kill rides as one; STRIKE-SHARED: a strike spell rides whole)');
+  assert.match(x, /if \(fromPlayer && !peer\) \{\s*(?:\/\/[^\n]*\n\s*)*const _pt = f\._divertPt \?\? null; f\._divertPt = null;\s*(?:\/\/[^\n]*\n\s*)*const _wc = [^\n]*blowClassOf\([^\n]*\n\s*f\._divertFrame = _peerFrame;\s*f\._struckAt = _now\(\);[^\n]*\n\s*_net\?\.onPeerHit\?\.\(\{ to: f\.puppet, k: _owners\.get\(f\.puppet\)\?\.k \?\? _net\.room\?\.\(\) \?\? null, i: f\.seq, dmg: Math\.max\(0, Math\.round\(Number\(damage\) \|\| 0\)\), kind,[^\n]*\n\s*\.\.\.\(_pAt \? \{ p: [^\n]*\n\s*\.\.\.\(knockDir \? \{ d: [^\n]*\n\s*\.\.\.\(_pt != null \? \{ pt: _pt \} : \{\}\),[^\n]*\n\s*\.\.\.\(_wc \? \{ wc: hitClassField\(_wc\) \} : \{\}\),[^\n]*\n\s*\.\.\.\(kind === 'arrow' \? \{ ar: 1 \} : \{\}\),\n\s*\.\.\.\(spell \?\? \{\}\),[^\n]*\n\s*\.\.\.\(_whole \? \{ z: 1 \} : \{\}\) \}\);[^\n]*\n\s*\}\s*return;/, 'B1: the divert\'s gate, by source (WORLD6b-ii: the striker\'s feet and the blow\'s direction ride; WORLD6b-iii(e): the poison and the shaft; DISC10-E: the blow stamped for the owner\'s `slain` answer; AUDIT PSCALE1 DOORS-1: a kill rides as one; STRIKE-SHARED: a strike spell rides whole; PIN MOVED - TELL8: the blow\'s class rides beside the poison)');
   assert.match(rd('src/scenes/shared.js'), /if \(!f \|\| f\.dead \|\| !f\.entity \|\| f\.puppet\) continue;/, 'B1: the magic-round broker skips a puppet');
 });
 
 test('AUDIT WORLD6b B3/C2/B14: the pool - an owner stands at most CELL_PUPPETS_MAX live puppets here (a corpse and a build count, a swept one does not); a record outside the law is refused whole while its neighbours land; a puppet carries no loot, no kit and no spells', async () => {
+  // DESYNC-ZERO: the reader's allowance is ENCOUNTER_PUPPETS_MAX now (a Greater Giant's call stands whole); CELL_PUPPETS_MAX is its floor
+  assert.ok(ENCOUNTER_PUPPETS_MAX >= CELL_PUPPETS_MAX && ENCOUNTER_PUPPETS_MAX + 4 <= CELL_FRAME_RECORDS_MAX);
   const hits = [];
   const pool = createExteriorFoes(poolRig());
   pool.setNet(netFor(hits));
-  const many = []; for (let i = 1; i <= CELL_PUPPETS_MAX + 4; i++) many.push(rec(i));
+  const many = []; for (let i = 1; i <= ENCOUNTER_PUPPETS_MAX + 4; i++) many.push(rec(i));
   pool.applyFoes('bob-0002', frame(1, many));
   await settle();
-  assert.equal(puppets(pool).length, CELL_PUPPETS_MAX, `B3: ${CELL_PUPPETS_MAX} of ${many.length} stand`);
+  assert.equal(puppets(pool).length, ENCOUNTER_PUPPETS_MAX, `B3: ${ENCOUNTER_PUPPETS_MAX} of ${many.length} stand`);
   assert.equal(pool.applyFoes('bob-0002', frame(2, [rec(1, { d: 1 })], 0)), true);
-  assert.equal(puppets(pool).filter((f) => !f.dead).length, CELL_PUPPETS_MAX - 1);
-  pool.applyFoes('bob-0002', frame(3, [rec(20)], 0)); await settle();
-  assert.equal(puppets(pool).filter((f) => !f.dead).length, CELL_PUPPETS_MAX, 'a dead one\'s slot is free for the next');
-  pool.applyFoes('bob-0002', frame(4, [rec(21)], 0)); await settle();
-  assert.equal(puppets(pool).filter((f) => !f.dead).length, CELL_PUPPETS_MAX, 'and the cap holds');
+  assert.equal(puppets(pool).filter((f) => !f.dead).length, ENCOUNTER_PUPPETS_MAX - 1);
+  pool.applyFoes('bob-0002', frame(3, [rec(ENCOUNTER_PUPPETS_MAX + 10)], 0)); await settle();
+  assert.equal(puppets(pool).filter((f) => !f.dead).length, ENCOUNTER_PUPPETS_MAX, 'a dead one\'s slot is free for the next');
+  pool.applyFoes('bob-0002', frame(4, [rec(ENCOUNTER_PUPPETS_MAX + 11)], 0)); await settle();
+  assert.equal(puppets(pool).filter((f) => !f.dead).length, ENCOUNTER_PUPPETS_MAX, 'and the cap holds');
   pool.applyFoes('eve-0003', frame(1, [rec(1), rec(2)])); await settle();
   assert.equal(puppets(pool).filter((f) => f.puppet === 'eve-0003').length, 2, 'the cap is per owner');
   // C2: the projection
@@ -346,7 +348,7 @@ test('AUDIT WORLD6b C1: the puppet\'s target lives in the WORLD frame - when the
   pool.update(0.05, [0, 0, 0], [0, 1.6, 0]);
   assert.ok(pup.ai.feet[0] > 20 + shift && pup.ai.feet[0] < 21 + shift, 'and a new record eases in the new frame');
   const x = rd('src/scenes/exteriorFoes.js');
-  assert.match(x, /const feet = f\.ai\.feet, t = p\.wire \? _net\.toScene\(p\.wire\) : null;/, 'by source: converted in the step');
+  assert.match(x, /const feet = f\.ai\.feet, t = p\.wire \? puppetLead\(p, _net\.toScene\(p\.wire\), performance\.now\(\) \/ 1000\) : null;/, 'by source: converted in the step (PIN MOVED - DESYNC-ZERO: then led along its way, scenes/puppetLead.js; a shift is a jump the lead refuses)');
   assert.doesNotMatch(x, /_pup\.feet/, 'no scene-frame target survives');
 });
 
@@ -380,10 +382,11 @@ test('AUDIT WORLD6b C4/C5: the day\'s rolls - online the walk is one day at a ti
   // the world host by source: the heartbeat (A9), the death branch (C8), the full kick (C7), the targets (B8), the Wabbajack (B9), the pane (C9)
   const h = rd('src/scenes/world.js');
   assert.match(h, /else if \(id && isWorldRoom\(online\.room\)\) _foesInAt = performance\.now\(\);/, 'A9');
-  assert.match(h, /if \(online\.room\) \{ worldPublish\(now, true\); online\.leave\(\); exteriorFoes\.clearPuppets\(\); modes\?\.clearOwnPuppets\?\.\(\); _foesRoom = null; \}/, 'C8 (QUEST-PARTY phase 3b: a building\'s puppets too)');
+  assert.match(h, /if \(online\.room(?: && !_wildGhost)?\) \{ worldPublish\(now, true\); online\.leave\(\); exteriorFoes\.clearPuppets\(\); modes\?\.clearOwnPuppets\?\.\(\); _foesRoom = null; \}/, 'C8 (QUEST-PARTY phase 3b: a building\'s puppets too) - WILD1: never the open zone\'s ghost, whose cell is kept while its body lies');
   assert.match(h, /if \(online\.room !== _foesRoom\) \{ const seam = isCellRoom\(online\.room\) && isCellRoom\(_foesRoom\); _foesRoom = online\.room; _foesFullAt = -Infinity; _ownFullAt = -Infinity; if \(!seam\) \{ exteriorFoes\.clearPuppets\(\); modes\?\.clearOwnPuppets\?\.\(\); \} \}/, 'C7 (WORLD6b-iii(b): a cell crossing keeps them - the seam is no room change to the puppets; QUEST-PARTY phase 3b: a building\'s go with the room)');
   assert.match(h, /\{ const ids = ownerIds\(\); if \(ids\) exteriorFoes\.pruneOwners\(ids, now\); \}/, 'C3: the prune reads the clock');
-  assert.match(h, /candidates: \(\) => \[\.\.\.cityGuards\.guards, \.\.\.exteriorFoes\.foes\]\.filter\(\(f\) => !f\.dead && !f\.puppet\),/, 'B8');
+  // WATCH-PROTECTS: PIN MOVED - the street's people beside them (the living world's quarry), the puppet still nobody's
+  assert.match(h, /candidates: \(\) => \[\.\.\.cityGuards\.guards, \.\.\.exteriorFoes\.foes, \.\.\.livingQuarry\(\)\]\.filter\(\(f\) => !f\.dead && !f\.puppet\),/, 'B8');
   assert.match(h, /const f = enchantFoes\(\)\.find\(\(x\) => !x\.dead && x\.entity === targetEntity\);\s*if \(!f \|\| f\.puppet\) return;/, 'B9');
   assert.match(rd('src/scenes/exteriorFoes.js'), /const me = _net\?\.selfId\?\.\(\) \?\? null;/, 'C11: selfId on the net is READ now (WORLD6b-ii: whose blow a streamed target names) - no dead wiring');
   assert.match(rd('src/ui/enhancedMenu.js'), /everyone nearby sees and can fight, and those monsters can hurt you too\./, 'C9 (AUDIT WORLD6b-ii C3: since the hunt a peer\'s creature can hurt me)');

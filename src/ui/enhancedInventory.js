@@ -56,6 +56,7 @@
 // inventory slice's first job.
 // ═══════════════════════════════════════════════════════════════════
 
+import { isRestItem } from '../systems/restItems.js';   // REST6: the seven's card lines
 import { getPref, setPref } from '../systems/uiPrefs.js';   // PLUS7: getPref, the hover card's switch; PACK-PHONE: setPref, the phone's Body
 import { USE_PENDING, powersRows, INFO_TEXT_POWERS } from './nativeInventory.js';   // PLUS10: the Info box's powers record
 import { itemInfoRows, questLetterName } from '../systems/itemInfo.js';   // PLUS10: the classic Info popup's own text
@@ -63,6 +64,8 @@ import { magicPowersLines } from '../systems/itemPowers.js';   // PLUS10: %mpw
 import { CHAT_MAX } from '../net/wire.js';   // CHAT-POST: a posted item is one chat line
 import { itemIsIdentified } from '../systems/tradeModes.js';   // PLUS10: MagicPowers' identified arm
 import { PACK_PAGES, PAGE_IDS, pageOf, filterByPage } from './packPages.js';   // PX31: the pack's nine pages (the classic keeps DFU's four)
+import { isCardBinder, isIliacCard, binderDecks } from '../systems/iliacItems.js';   // CARDS8: the binder holds the cards
+import { isWalletItem, walletContents, walletLedger, refreshWalletSilver, letterWorthGold } from '../systems/walletItem.js';   // WALLET1: the wallet's sheet; WALLET-UI: its ledger
 import { useItem, isLightSource, usableItem, isPotionRecipe, toggleHood, HOOD_TEXT, nextDrape, drapeCount, DRAPE_TEXT } from '../systems/useItem.js';   // PLUS10: isPotionRecipe, a recipe's second Info box   // HT2: the light source's own act; Mac: Use only where the law has an arm   // HOOD-SAID: the hood's button and its lines   // CLOAK-DRAPE: the drape's
 // QS2: the quickslot model (systems/quickslots.js). This screen is the ONE
 // place a slot is filled - Mac's own words, "in the enhanced menu through the
@@ -92,9 +95,10 @@ import {
 } from './paperDoll.js';
 import {
   equipItem, unequipSlot, equipTableOf, isEquipped,
-  isForbiddenEquip, isBrokenItem, getEquipSlot, bodyPartForSlot,   // getEquipSlot - Mac (2026-09-18): Wear only where a slot would take it; bodyPartForSlot - AC-COMPARE: GetBodyPartForEquipSlot, the part a worn panel stands for
+  isForbiddenEquip, isBrokenItem, getEquipSlot, bodyPartForSlot,   // getEquipSlot - Mac (2026-09-18): Wear only where a slot would take it; bodyPartForSlot - AC-COMPARE: GetBodyPartForEquipSlot, the part a worn panel stands for}
+  swapHands, canSwapHands,   // SWAP-HANDS
 } from '../systems/equip.js';
-import { armourBadge, armourPlaque, compareBlock } from './armourCard.js';   // AC-COMPARE: the doll's numbers on the map, the overall figure, the card's comparison
+import { armourBadge, armourPlaque, compareBlock, lineCompareBlock, wearComparison } from './armourCard.js';   // AC-COMPARE: the doll's numbers on the map, the overall figure, the card's comparison
 import { statFlip } from './statsCard.js';   // STATS-CARD: the paperdoll's flip side, its Stats button
 import {
   itemWeight, isEnchanted, totalWeight, addItem, goldStack,
@@ -105,31 +109,44 @@ import { noticeHold, noticeRelease } from './enhancedNotice.js';   // ENH-NOTICE
 // U56/U57: DFU's transfer ladder and DFU's remote side, both extracted
 // from the classic window so this pane runs them rather than a second
 // reading of them.
+import { wagonKgFor } from '../systems/wagonKinds.js';   // WAGONS1: the driven wagon's capacity
 import {
-  planStore, planTake, applyTransfer, planDropGold, WAGON_KG_LIMIT,
+  planStore, planTake, applyTransfer, planDropGold,
   HOW_MANY_ITEMS, parseSplitAmount,   // DISC25-F: the split popup's law, as the card's field
+  sendQuestItemClick,   // WHERE-ROBES: DFU's remote-click quest send, one home for every door onto a loot row
 } from '../systems/itemTransfer.js';
 import { howManyField } from './howManyField.js';   // DISC25-F: the card's field, one constructor for both counters
 import {
   openState, remoteTarget, planWagonToggle, hasCart, hasHorse, transportItem,
   groundRefusalOf,   // HOUSE-DROP: the host's word against the ground
   storeCapacityOf,   // COMPANION-WEIGHT: a storage's own weight limit
+  planBagToggle, hasMaterialsBag,   // BAG1: the Materials Bag, a list beside the wagon's
 } from '../systems/inventorySession.js';
+import { bagStoreRefusal, bagMayLeave } from '../systems/materialsBag.js';   // BAG1: only materials go in the bag; AUDIT2 H11: and a loaded one stays
+import { shiftDrop } from '../systems/physicalItems.js';   // PI1: Physical Items' shift-drop, one law for both packs
+import { BAG_KG_LIMIT } from '../net/bagLaw.js';
+import { STORE_FILTER_KINDS, filterStore, storeFilterOptions, freshStoreFilter } from './storeFilter.js';   // WAGON-FILTER: the wagon, the storage and the bag, filtered
 import { entityMaxEncumbrance } from '../combat/formulas.js';   // AUDIT 26: PlayerEntity.MaxEncumbrance, enchantment allowance and all
 import { liveStat } from '../systems/statMods.js';
 import { conditionWord, conditionPercentage, itemNameParts, itemLongName, itemDamageLine, itemArmourLine, itemHandsLine } from '../systems/itemInfo.js';   // RF6: the long name's two parts, ResolveItemLongName's arms once
-import { survivalInfoTokens, potionMacroName, potionRecipeIngredientNames } from '../systems/itemInfo.js';   // AUDIT SURV C: the survival items' tokens on this skin's card too
+import { survivalInfoTokens, potionMacroName, potionRecipeIngredientNames } from '../systems/itemInfo.js'; import { isPortalStone } from '../systems/gateSpoils.js';   // AUDIT SURV C: the survival items' tokens on this skin's card too
 import { isSurvivalItem } from '../systems/survival/items.js';
 import { hoodCapable, hoodUp } from '../systems/survival/temperature.js';   // HOOD-SAID: the one hood law, on the card and the panel
-import { rarityAttr, rarityLines, lootRarityOn } from '../systems/lootRarity.js';   // LR1: the row's tier attribute and the card's lines
+import { heirloomLine } from '../systems/legacy/heirloom.js';   // LEGACY4: Project Legacy's heirlooms, named on the card
+import { rarityAttr, rarityLines, lootRarityOn, techniqueDetail, techniqueLineOf } from '../systems/lootRarity.js';   // LR1: the row's tier attribute and the card's lines
 import { pieceLines } from '../net/recipeLaw.js';   // PROF3: a crafted piece's quality and maker, above its powers
 import { craftedJewelPoints } from '../systems/enchanting.js';   // AUDIT PROF-541 R2-C4: a jewel's points as the item maker reads them
 import { sigilCard } from './sigilCard.js';   // SIGIL-UI: the sigil's own block on the card
+import { techniqueCard } from './techniqueCard.js';   // TECH-CARD: a technique's own block on the card
+import { TECHNIQUE_ACTION } from '../combat/techniqueRoster.js';   // TECH-CARD: the key its block names (the leaf, never the runner)
+import { actionKeyWord } from './quickslotTags.js';   // FINAL AUDIT: the word for the key that answers - the HUD chip's too
 import { validSigil } from '../systems/sigil.js';   // SIGIL-UI: the tile's corner rune
 import { setCard, setStrip, markSetFrame } from './setCard.js';   // SET5: a set piece's set on its card, the worn sets on the doll's column, a set piece's rune
 import { setIdOf, setById, setLines, setSigilLines } from '../systems/sigilSets.js';   // CARD-FIT U4/U10: a set piece and its sigil in a line each
 import { isLocked, toggleLocked, lockRefuses, lockedText, LOCKED_LINE } from '../systems/itemLock.js';   // LOCK1
-import { isBound, BOUND_LINE, boundRefusesPut, boundText } from '../systems/itemBound.js';   // SS1: a bound piece says so on its card   // SS3: and goes nowhere but the wagon and the player's own storage
+import { isJunk, junkable, toggleJunk, lockLiftsJunk, JUNK_LINE } from '../systems/itemJunk.js';   // LOOT18
+import { isBound, BOUND_LINE, boundRefusesPut, boundText, isPackOnly, packOnlyText } from '../systems/itemBound.js';   // SS1: a bound piece says so on its card   // SS3: and goes nowhere but the wagon and the player's own storage
+import { letterRefusesPut, letterPutText } from '../systems/peerWord.js';   // HACKED-GOLD: online a letter of credit goes nowhere a peer's word could hand it on
 import { injectEnhancedStyle, injectEnhancedFonts } from './enhancedStyle.js';
 import { closeOnOutsideTap } from './enhancedOverlays.js';   // OT1
 import { repaintKeepingScroll } from './domRepaint.js';
@@ -137,11 +154,17 @@ import { overlayAction, eventActions } from './input.js';   // MAC-C: and the RE
 import { audio } from '../systems/audio.js';   // MAC-O6: the pack's own transfer cue - this window carried none at all
 import { dismantleStones, dismantleRefusal, dismantleWare, dismantleAsk, DISMANTLED, DISMANTLE_WORN } from '../systems/sigilBroker.js';   // SS5: a Broker ware back into stones
 import { salvageShards, salvageRefusal, salvagePiece, shardsText } from '../systems/reforge.js';   // LOOT9: a laddered piece broken into Welkynd Shards
+import { gemsHeld, setGemPiece, unsetGemPiece } from '../systems/reforge.js';   // GEM1: a gem set in a socket from the pack, and shattered out of one
+import { ALL_GEM_IDS, SOCKET_EMPTY, emptySockets, gemKindOf } from '../systems/lootRarity.js';   // GEM1: the socket list and the gems
+import { mintGem } from '../systems/gems.js';   // GEM3: a set gem's picture, as its own item draws it
+import { socketWells, socketChooser, markSocketFrame } from './socketWells.js';   // GEM3: the card's wells and the tile's pips
+import { GEM_SET, UNSET_ASK, GEM_SHATTERED, REFORGE_REFUSALS } from './reforgeWindow.js';   // GEM3: the Sockets page's own words
 import { createReforgeOverlay, reforgeDoorOpen, closeReforgeDoor } from './reforgeDoor.js';   // LOOT10: the Codex, from the pack
 import { SOUND } from '../systems/soundClips.js';
 
 import { expandRowValues } from '../systems/quest/questMacros.js';   // MACROS1: a used item's record through its own context (%map)
 import { localizedText } from '../systems/textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 /** Slot id -> where it sits on the body, and what to call it.
  *
  *  THE FIGURE FACES THE READER, so the character's RIGHT arm is drawn
@@ -230,8 +253,21 @@ export function packModel(deps = {}) {
   // halves the same member does.
   const carried = items.reduce((kg, it) => kg + itemWeight(it), 0)
     + goldPiecesOf(entity) * GOLD_PIECE_WEIGHT_KG;
+  // WALLET1: WHAT THE WALLET HOLDS LEAVES THE PAGES for its sheet, while the pack holds one (systems/walletItem.js) - the
+  // letters of credit, the embers and the shards. Every piece stays in `items`, where every spender reads it; the pages
+  // and the wallet together are still a partition of what the pack holds unworn.
+  const walletItem = items.find(isWalletItem) ?? null;
+  const wallet = walletItem ? { item: walletItem, ...walletContents(items, entity) } : null;
+  // CARDS8: and THE CARDS LEAVE THE PAGES for the binder's sheet, while the pack holds one (systems/iliacItems.js) - the
+  // Wallet's law: every card stays in `items`; the pages, the wallet and the binder are still a partition
+  const binderItem = items.find(isCardBinder) ?? null;
+  const binder = binderItem ? { item: binderItem, held: items.filter((it) => isIliacCard(it) && !isEquipped(it)) } : null;
+  const held = new Set([...(wallet?.held ?? []), ...(binder?.held ?? [])]);
+  const paged = held.size ? items.filter((it) => !held.has(it)) : items;
   return {
-    tabs: PACK_PAGES.map(([tab, label]) => ({ tab, label, items: filterByPage(items, tab) })),   // PX31
+    tabs: PACK_PAGES.map(([tab, label]) => ({ tab, label, items: filterByPage(paged, tab) })),   // PX31; WALLET1: less what the wallet holds
+    wallet,
+    binder,   // CARDS8
     worn,
     // PlayerEntity.GoldPieces, the COUNTER - gold has not been an item
     // in the pack since E4, so there is no stack here to find.
@@ -304,11 +340,13 @@ export function equippedModel(entity = {}) {
  *  the port's; which claim is showing is inventorySession's. */
 export const REMOTE_TITLE = Object.freeze({
   wagon: 'Wagon', reward: 'Choose one', container: 'Loot', storage: 'Storage', ground: 'Ground', fate: 'Fate',
+  bag: 'Materials Bag',   // BAG1
 });
 /** What moving an item THERE is called. A verb per destination,
  *  because "Transfer" tells the player nothing about where. */
 export const STOW_LABEL = Object.freeze({
   wagon: 'Stow in wagon', reward: 'Stow', container: 'Put back', storage: 'Store', ground: 'Drop',
+  bag: 'Put in bag',   // BAG1
 });
 /** GOLD-DROP: what giving gold THERE is called - the pack's gold button and its field's submit, by destination (AUDIT GOLD-DROP 3: no reward tray - it never offers the button). */
 const GOLD_VERB = Object.freeze({ wagon: 'Stow', container: 'Drop', storage: 'Store', ground: 'Drop' });
@@ -326,19 +364,19 @@ export function remoteModel(deps = {}, state = {}) {
   // REVENANT-FATE: a beaten revenant's choice - this window's remote side with no list of items, called by its name
   if (deps.fate) return { kind: 'fate', title: deps.fate.name ?? REMOTE_TITLE.fate, items: [], count: 0, weight: 0, capacity: null, pile: null };
   const items = (remoteTarget(deps, state) ?? []).filter(Boolean);
-  const kind = state.usingWagon ? 'wagon'
+  const kind = state.usingBag ? 'bag' : state.usingWagon ? 'wagon'   // BAG1: in remoteTarget's own order
     : state.chooseOne ? 'reward'
       : deps.loot ? (deps.loot.storage === true ? 'storage' : 'container') : 'ground';   // SHIP-STORE: the player's own storage
   return {
     kind,
-    title: REMOTE_TITLE[kind],
+    title: (kind === 'reward' && typeof state.chooseOne?.title === 'string' && state.chooseOne.title) || REMOTE_TITLE[kind],   // WILD1: a choice may name itself (a fallen player's gear)
     items,
     count: items.length,
     weight: totalWeight(items),
     // ItemHelper.WagonKgLimit is DFU's only capacity a remote list has -
     // the ground and a corpse hold anything; COMPANION-WEIGHT: a
     // companion's pack carries what a person of his strength can.
-    capacity: kind === 'wagon' ? WAGON_KG_LIMIT : (storeCapacityOf(deps, state)?.kg ?? null),
+    capacity: kind === 'wagon' ? wagonKgFor(deps.entity) : kind === 'bag' ? BAG_KG_LIMIT : (storeCapacityOf(deps, state)?.kg ?? null),   // BAG1: the bag's 300
     // LOOT-STACK: the bodies piled with this one, as tabs
     // (player/lootStack.js lootPile) - on the body's own frame only, never
     // over the wagon or a reward tray the same session can show.
@@ -408,7 +446,8 @@ export function itemLine(item, identity = undefined) {
     hands: itemHandsLine(item),
     // AUDIT SURV C: a food's worth and stage, a skin's water, the gear's uses - the classic popup's tokens (systems/itemInfo.js
     // survivalInfoTokens, less the name and the weight this card already carries), so a Waterskin says its water here too
-    survival: isSurvivalItem(item) ? survivalInfoTokens(item).slice(2).map((r) => r.text) : null,
+    survival: isSurvivalItem(item) || isRestItem(item) ? survivalInfoTokens(item).slice(2).map((r) => r.text) : null,   // REST6: the seven's lines too
+    ...(isPortalStone(item) ? { survival: survivalInfoTokens(item).slice(2).map((r) => r.text) } : {}),   // PORTAL1: and the Portal Stone's
     // MAPLOOT1 (Discord: "Potion recipe's can't be read at all"): a recipe is READ, not used - DFU's use arm
     // is cannotUseThis (DaggerfallInventoryWindow.cs:1732-1740) and the knowledge is ShowInfoPopup's
     // (:1602-1609): "Recipe for Potion of %po" and the chained PotionRecipeIngredients box. This skin has no
@@ -538,7 +577,7 @@ export function localPrimaryAct(item, entity = null) {
  * why `pending` exists and why the classic window's own USE_PENDING
  * strings are reused here rather than reworded.
  */
-export function useResultAction(r, { openBook = null, openSpellbook = null, placeCamp = null } = {}) {
+export function useResultAction(r, { openBook = null, openSpellbook = null, placeCamp = null, openPortal = null } = {}) {
   if (!r) return { kind: 'nothing' };
   // AUDIT 26: DaggerfallUI.PopToHUD() + return (:1687-1688). A watched
   // quest item that is neither parchment nor clothing closes the whole
@@ -563,6 +602,15 @@ export function useResultAction(r, { openBook = null, openSpellbook = null, plac
       ? { kind: 'placeCamp', item: r.item, closeFirst: true }
       : { kind: 'message', text: USE_PENDING[r.kind] };
   }
+  // PORTAL1: a Portal Stone - close, then hand it to the host's travel map (the camp's shape)
+  if (r.kind === 'openPortal') {
+    if (openPortal) noteFirstUse('portal-stone');   // TUT1
+    return openPortal
+      ? { kind: 'openPortal', item: r.item, closeFirst: true }
+      : { kind: 'message', text: USE_PENDING.openPortal };
+  }
+  // WALLET1: the wallet - its sheet, in the detail column; nothing closes
+  if (r.kind === 'wallet' || r.kind === 'binder') return { kind: 'pickWallet', item: r.item };   // CARDS8 (AUDIT CARDS-5 C5): the binder's sheet the same way
   // MEND-AIM: a use that asks WHICH (a repair kit, more than one piece to mend) - the pack asks, and uses it again aimed
   if (r.kind === 'chooseTarget') return { kind: 'chooseTarget', item: r.item, targets: r.targets, labels: r.labels, title: r.title };
   // The classic window's own ladder, in its own order: an explicit
@@ -593,6 +641,11 @@ let picked = null;      // the selected item object
 let fatePick = null;    // REVENANT-FATE: the fate row picked ('kill' | 'spare'), the second press confirms
 let side = 'local';     // which list `picked` came out of
 let notice = null;
+/** GEM3 (bible/06-Systems/Gem-Sockets.md section 5): the pack's own piece's wells - the empty well whose chooser is open
+ *  and the set well whose Shatter waits (`{ item, at }`), and the gem whose "Set in..." targets are shown. Each is the
+ *  one piece's: a pick of another piece reads none of them. */
+let wellOpen = null, wellAsk = null, gemTargets = null, wellPick = null;   // AUDIT GEM: `wellPick` the selection these belong to
+let walletAsked = false;   // WALLET1: the account's silver asked afresh once a mount, as the wallet's sheet first shows
 /** CHAT-POST: what the card says after a post. */
 export const POSTED_TEXT = 'Posted in chat.';
 export const NOT_POSTED_TEXT = 'Could not post that in chat right now.';
@@ -609,6 +662,9 @@ let session = { usingWagon: false, allowDungeonWagonAccess: false, chooseOne: nu
 let dropped = [];
 let wagonLocal = [];
 let remote = null;
+/** WAGON-FILTER: what the player's own store (the wagon, their storage, the bag) is showing - a category and a search,
+ *  ui/storeFilter.js. Fresh at every open, so a pane never opens on a filter the player has forgotten setting. */
+let storeFilter = freshStoreFilter();
 /* PX20b (Mac: "when looting items, only open the loot tooltip, not the
    entire inventory window"). DFU opens the whole parchment because DFU
    has ONE window and both lists live in it; PX19c already split the
@@ -835,20 +891,66 @@ function ghostAt(x, y, verb) {
  *  `stow` on the one path where `stow` is guaranteed mute - a dead
  *  gesture that also wiped whatever the screen was saying. The plan's
  *  own `ok` is the honest answer to both, so the label is the plan's. */
+/** AUDIT BAG1: the bag's own rule, as every gate asks it - a piece the showing bag refuses (not a material), or null. */
+const bagRefuses = (item) => (remote?.kind === 'bag' ? bagStoreRefusal(item) : null);
+/** HACKED-GOLD: online a letter of credit goes into no container but the player's own (systems/peerWord.js) - a chest, a
+ *  body, a cupboard is the room's once opened, and its record a peer's word; the player's own pile on the ground (its
+ *  hooks' `playerOwned`, as the classic skin reads it) and storage are the player's. Every gate asks it. */
+const letterRefuses = (item) => letterRefusesPut(item, { container: remote?.kind === 'container', own: deps.loot?.playerOwned === true });
 function stowIntent(item) {
   if (remote?.kind === 'ground' && lockRefuses(item, 'drop')) return { kind: 'stow', label: null, speaks: true };   // LOCK1: released, it says why
+  if (bagRefuses(item)) return { kind: 'stow', label: null, speaks: true };   // AUDIT BAG1: a dagger dragged to the bag read "Put in bag
   if (remote && boundRefusesPut(item, remote.kind)) return { kind: 'stow', label: null, speaks: true };   // SS3: a bound piece - released, it says why
+  if (remote && letterRefuses(item)) return { kind: 'stow', label: null, speaks: true };   // HACKED-GOLD: a letter online - released, it says why
   const plan = planStore(item, {
     remote: remote.items, usingWagon: session.usingWagon, chooseOne: session.chooseOne,
     dryRun: true,   // as canStow's own note says: the quest rung WRITES, and a label must not
     groundRefusal: groundRefusalOf(deps, session),   // HOUSE-DROP
-    capacity: storeCapacityOf(deps, session),   // COMPANION-WEIGHT
+    capacity: storeCapacityOf(deps, session), bagLoaded: !bagMayLeave(deps.entity), wagonKg: wagonKgFor(deps.entity),   // COMPANION-WEIGHT
   });
   // A refusal that speaks is still worth releasing on - the player gets
   // the sentence. One that cannot speak is shown as refused and does
   // nothing, because a silent no-op is the drawn door PX14 forbids.
   if (plan.ok) return { kind: 'stow', label: STOW_LABEL[remote.kind] };
   return plan.refusal?.text ? { kind: 'stow', label: null, speaks: true } : { kind: 'nope', label: null };
+}
+/** HAND-DRAG (2026-10-08, the owner: "dragging and dropping the left hand weapon to the right hand one or when empty
+ *  should be possible in the inventory"): A HAND'S OWN PANEL AS A TARGET. A piece held in one hand, released on the
+ *  other hand's panel, moves there - into the empty hand, or trading places with what that hand holds - wherever the
+ *  hand law lets it (systems/equip.js canSwapHands: a shield keeps the left, a two-hander the right). A weapon carried
+ *  out of the pack onto a hand's panel is put in THAT hand. Null off the hand panels. */
+const HAND_OF = Object.freeze({ rhand: EQUIP_SLOTS.RightHand, lhand: EQUIP_SLOTS.LeftHand });
+function handIntent(item, over, source) {
+  const panel = over?.closest?.('.wornrow');
+  const to = panel ? HAND_OF[panel.dataset?.fam] : undefined;
+  if (to == null) return null;
+  const label = to === EQUIP_SLOTS.RightHand ? 'Right hand' : 'Left hand';
+  if (source === 'worn') {
+    if (item.equipSlot !== EQUIP_SLOTS.RightHand && item.equipSlot !== EQUIP_SLOTS.LeftHand) return null;
+    if (item.equipSlot === to) return { kind: 'none', label: '' };
+    return canSwapHands(deps.entity).ok ? { kind: 'hand', label, to } : { kind: 'nope', label: null };
+  }
+  if (item.group !== 'Weapons' && !(item.group === 'Armor' && getEquipSlot(deps.entity, item) === EQUIP_SLOTS.LeftHand)) return null;
+  const act = localPrimaryAct(item, deps.entity);
+  return act?.kind === 'wear' ? { kind: 'hand', label, to } : { kind: 'nope', label: null };
+}
+/** HAND-DRAG: the release - a held piece moved to the other hand, or a pack piece worn and set in the hand it was
+ *  dropped on (worn where the table puts it, then the hands traded if that was the other one and the law allows). */
+function dropOnHand(item, to) {
+  notice = null;
+  if (!isEquipped(item)) {
+    const before = getEquipSlot(deps.entity, item);
+    wear(item);
+    if (!isEquipped(item)) return;   // the wear refused (and said why)
+    if (item.equipSlot !== to && before !== EQUIP_SLOTS.None && canSwapHands(deps.entity).ok) swapHands(deps.entity);
+  } else if (item.equipSlot !== to) {
+    const r = swapHands(deps.entity);
+    if (!r.ok) notice = r.why;
+  }
+  refresh();
+  refreshFigure();
+  picked = null;
+  render();
 }
 function dropIntent(item, over, fromItem, source = 'local') {
   // MAC-M2 (2026-09-16, Mac: "Hold to drag enhanced functionality
@@ -868,6 +970,8 @@ function dropIntent(item, over, fromItem, source = 'local') {
   // dock the answer is the same "never mind" the pack's chrome gives.
   const hot = hotbarIntent(item, over);   // HB1: the hotbar, before either side's law
   if (hot) return hot;
+  const hand = handIntent(item, over, source);   // HAND-DRAG: a weapon onto a hand's own panel
+  if (hand) return hand;
   if (source === 'worn') {
     const act = localPrimaryAct(item, deps.entity);
     return over?.closest?.('.pack-dock') && act
@@ -919,7 +1023,8 @@ function dragTo(x, y) {
   const want = dropIntent(drag.item, document.elementFromPoint?.(x, y), drag.item, drag.source);
   drag.want = want;
   ghostAt(x, y, want?.label ?? null);
-  if (want?.kind === 'body') document.elementFromPoint?.(x, y)?.closest?.('.wornmap, .wornshelf')?.classList.add('dragover');
+  if (want?.kind === 'hand') document.elementFromPoint?.(x, y)?.closest?.('.wornrow')?.classList.add('dragover');   // HAND-DRAG: the hand it would go to
+  else if (want?.kind === 'body') document.elementFromPoint?.(x, y)?.closest?.('.wornmap, .wornshelf')?.classList.add('dragover');
   // MAC-M2: the other direction lights the DOCK - the pack is one
   // target the way the map is one, not a grid of twelve tiles.
   else if (want?.kind === 'offbody') document.elementFromPoint?.(x, y)?.closest?.('.pack-dock')?.classList.add('dragover');
@@ -978,7 +1083,8 @@ function dragStop(commit) {
   // no longer owned.
   if (!(deps.items?.() ?? []).includes(d.item)) return;
   const want = dropIntent(d.item, overAtRelease, d.item, d.source);
-  if (want?.kind === 'body') dropOnBody(d.item);
+  if (want?.kind === 'hand') dropOnHand(d.item, want.to);   // HAND-DRAG
+  else if (want?.kind === 'body') dropOnBody(d.item);
   // MAC-M2: THE SAME DOOR. A piece carried OFF the body performs the
   // act its own card offers, exactly as one carried onto it does, so
   // the two directions cannot answer differently - and the closed act
@@ -1302,7 +1408,7 @@ function use(item, collection = deps.items?.() ?? [], target = null) {
     // reach. The same seam the transfer ladder's quest arm reads.
     getQuest: deps.getQuest ?? null,
   });
-  const act = useResultAction(r, { openBook: deps.openBook, openSpellbook: deps.openSpellbook, placeCamp: deps.placeCamp });
+  const act = useResultAction(r, { openBook: deps.openBook, openSpellbook: deps.openSpellbook, placeCamp: deps.placeCamp, openPortal: deps.openPortal });
   // AUDIT 26's PopToHUD: the window stack goes, nothing is said.
   if (act.kind === 'close') { onExit(); return; }
   // THE HOOKS ARE READ BEFORE ANYTHING CLOSES. `onExit` unmounts, and
@@ -1329,7 +1435,14 @@ function use(item, collection = deps.items?.() ?? [], target = null) {
     place(act.item, collection);   // AUDIT SURV-TIERS: the list it came from (a wagon's tent leaves the wagon)
     return;
   }
+  if (act.kind === 'openPortal') {
+    const openPortal = deps.openPortal;
+    onExit();   // PORTAL1: the camp's law - the map takes the slot the pack leaves
+    openPortal(act.item, collection);
+    return;
+  }
   if (act.kind === 'chooseTarget') { askTarget(act, collection); return; }   // MEND-AIM
+  if (act.kind === 'pickWallet') { picked = act.item; side = 'local'; return render(); }   // WALLET1: its sheet, the pack still up
   if (act.textId && deps.rows) {
     const rows = expandRowValues(deps.rows(act.textId) ?? [], act.macros ?? null);   // MACROS1: %map is the map's name
     notice = rows.map((row) => (typeof row === 'string' ? row : row?.text ?? '')).join(' ').trim() || null;
@@ -1353,7 +1466,9 @@ export function inventoryQuickAct(target) {
   const row = target?.closest?.('.itemrow');
   const item = row?._padItem;
   if (!item || !row.isConnected) return false;
-  if (row._padFrom === 'remote') { take(item); return true; }
+  // WHERE-ROBES: the pad's X on a loot row is a click on it, so it sends the quest click as the row's own click does -
+  // without it a quest item taken by X never reached its `clicked item` trigger
+  if (row._padFrom === 'remote') { sendQuestItemClick(item, deps.getQuest ?? null); take(item); return true; }
   const act = localPrimaryAct(item, deps.entity);
   if (!act) use(item);
   else if (act.kind === 'takeOff') takeOff(item.equipSlot);
@@ -1417,11 +1532,12 @@ function canStow(item) {
   // right for a click and catastrophic for a render - every repaint
   // would mark a quest item as dropped. The dry run cannot change the
   // answer, because that rung's refusal speaks.
+  if (bagRefuses(item)) return false;   // AUDIT BAG1: no "Put in bag" on a dagger's card - the bag takes materials alone
   const plan = planStore(item, {
     remote: remote.items, usingWagon: session.usingWagon, chooseOne: session.chooseOne,
     dryRun: true,
     groundRefusal: groundRefusalOf(deps, session),   // HOUSE-DROP
-    capacity: storeCapacityOf(deps, session),   // COMPANION-WEIGHT
+    capacity: storeCapacityOf(deps, session), bagLoaded: !bagMayLeave(deps.entity), wagonKg: wagonKgFor(deps.entity),   // COMPANION-WEIGHT
   });
   return plan.ok || !!plan.refusal.text;
 }
@@ -1429,8 +1545,9 @@ function canStow(item) {
 /** DISC25-F: the most a transfer of this item would move - its plan's own amount, asked as a DRY RUN (canStow's
  *  reason: the quest rung writes) - or 0 where it would move nothing, or is a map's interception rather than a move. */
 function splitMax(item, dir) {
+  if (dir === 'store' && bagRefuses(item)) return 0;   // AUDIT BAG1: no how-many field for what the bag refuses
   const plan = dir === 'store'
-    ? planStore(item, { remote: remote.items, usingWagon: session.usingWagon, chooseOne: session.chooseOne, dryRun: true, groundRefusal: groundRefusalOf(deps, session), capacity: storeCapacityOf(deps, session) })
+    ? planStore(item, { remote: remote.items, usingWagon: session.usingWagon, chooseOne: session.chooseOne, dryRun: true, groundRefusal: groundRefusalOf(deps, session), capacity: storeCapacityOf(deps, session), bagLoaded: !bagMayLeave(deps.entity), wagonKg: wagonKgFor(deps.entity) })
     : planTake(item, {
       bag: deps.items?.() ?? [], entity: deps.entity, mode: 'remove',
       chooseOne: session.chooseOne, usingWagon: session.usingWagon, dryRun: true,
@@ -1468,24 +1585,36 @@ function stow(item) {
   }
   // SS3: a BOUND piece goes nowhere but the wagon and the player's own storage (systems/itemBound.js BOUND_KEEPS) - the
   // ground and every container refuse it, a container being the room's once it is opened online. Ahead of the ladder,
-  // and it speaks.
+  // and it speaks. WALLET1: a pack-only piece goes nowhere at all, and says so in its own words.
+  if (remote && isPackOnly(item)) {
+    notice = packOnlyText(itemLongName(item, { getQuest: deps.getQuest ?? null }));
+    return render();
+  }
   if (remote && boundRefusesPut(item, remote.kind)) {
     notice = boundText(itemLongName(item, { getQuest: deps.getQuest ?? null }));
     return render();
   }
+  // HACKED-GOLD: online a LETTER OF CREDIT goes into no container but the player's own - it is gold, and a chest's record
+  // is a peer's word another player takes from (systems/peerWord.js). Ahead of the ladder, and it speaks.
+  if (remote && letterRefuses(item)) {
+    notice = letterPutText(itemLongName(item, { getQuest: deps.getQuest ?? null }));
+    return render();
+  }
+  // BAG1: the bag takes materials alone - ahead of the ladder, and it speaks
+  { const no = bagRefuses(item); if (no) return refuse(no); }
   const to = remoteTarget(deps, sessionState());
   const plan = planStore(item, {
     remote: to, usingWagon: session.usingWagon, chooseOne: session.chooseOne,
     getQuest: deps.getQuest ?? null,
     groundRefusal: groundRefusalOf(deps, session),   // HOUSE-DROP: a floor that refuses a drop
-    capacity: storeCapacityOf(deps, session),   // COMPANION-WEIGHT: a companion's pack takes what fits
+    capacity: storeCapacityOf(deps, session), bagLoaded: !bagMayLeave(deps.entity), wagonKg: wagonKgFor(deps.entity),   // COMPANION-WEIGHT: a companion's pack takes what fits
   });
   if (!plan.ok) return refuse(plan.refusal);
   // AUDIT INV2 B-F2: THE MAP IS AN INTERCEPTION, not a transfer. AUDIT
   // 26 F156: planStore answers `{ ok: true, map: true }` for a
   // MiscItems.Map - the reveal runs, the paper is consumed, nothing
   // lands in the destination. The classic window routes it
-  // (nativeInventory.js:"if (plan.map) { this._use(it, this.hooks.items()); return; }") and this one did not, so dragging a
+  // (nativeInventory.js:"if (mode === 'equip' && this.hooks.entity)") and this one did not, so dragging a
   // treasure map out of the pack dropped the paper on the floor and
   // revealed nothing.
   if (plan.map) { use(item, deps.items?.() ?? []); return; }
@@ -1495,7 +1624,7 @@ function stow(item) {
   if (amount == null) { notice = HOW_MANY_ITEMS(plan.amount); render(); return; }
   // MAC-O6: the same cue this window's `take()` gained - storing (selling,
   // banking, dropping into a wagon or a pile) is a transfer too, and
-  // planStore already hands back the sound (itemTransfer.js:"return { ok: true, amount: stack, sound: 'click' };"), unread
+  // planStore already hands back the sound (itemTransfer.js:"if (capacity.gone || canHold <= 0)"), unread
   // until now.
   audio.playOneShot(plan.sound === 'gold' ? SOUND.GoldPieces : SOUND.ButtonClick, 1);   // SND1: a take always sounds - the click, or the gold
   // PX24 (Mac: an action taken closes the tooltip): the transfer
@@ -1521,6 +1650,21 @@ function stow(item) {
   render();
 }
 
+/** PI1: THE SHIFT-DROP - the pack's piece into the world as itself (systems/physicalItems.js shiftDrop: the ground's
+ *  guards, then the whole stack onto the host's own `physicalDrop`). Its refusals are this pack's; a map is read as a
+ *  Remove's is (F156). */
+function physicalDrop(item) {
+  notice = null;
+  const r = shiftDrop(item, { items: deps.items?.() ?? [], entity: deps.entity, getQuest: deps.getQuest ?? null, dropRefusal: deps.dropRefusal ?? null, drop: (list) => deps.physicalDrop?.(list) });
+  if (r.refusal) return refuse(r.refusal);
+  if (r.map) { use(item, deps.items?.() ?? []); return; }
+  audio.playOneShot(r.sound === 'gold' ? SOUND.GoldPieces : SOUND.ButtonClick, 1);   // DoTransferItem's own cue, as stow's
+  if (qty.item === item) qty = { item: null, text: '' };
+  if (picked === item) picked = null;
+  refresh();
+  render();
+}
+
 /** REMOTE -> LOCAL, through the same ladder. */
 function take(item) {
   notice = null;
@@ -1533,7 +1677,7 @@ function take(item) {
   });
   if (!plan.ok) return refuse(plan.refusal);
   // AUDIT INV2 B-F2: the map is an interception in EITHER direction
-  // (itemTransfer.js:"return { ok: true, map: true, amount: item.stackCount ?? 1 };   //", "F156: either direction") - taking one off a
+  // (itemTransfer.js:"and is written anyway", "F156: either direction") - taking one off a
   // pile reveals and consumes it, exactly as stowing one does. The
   // classic window routes both; this one routed neither.
   if (plan.map) { use(item, remoteTarget(deps, sessionState())); return; }
@@ -1589,8 +1733,28 @@ function toggleWagon() {
   const plan = planWagonToggle(deps, session);
   if (!plan.ok) return refuse(plan.refusal);
   session.usingWagon = plan.usingWagon;
+  if (plan.usingWagon) session.usingBag = false;   // BAG1: one second list at a time
+  storeFilter = freshStoreFilter();   // AUDIT WAGON-FILTER C2: another list shown, a fresh filter
   // The selection belonged to the list that just went away.
   if (side === 'remote') { picked = null; side = 'local'; }
+  refresh();
+  render();
+}
+
+/** BAG1: whether the bag's door is drawn - a bag in the pack, and no reward tray up beside a closed bag (AUDIT BAG1 H1). */
+const bagDoorShown = () => hasMaterialsBag(deps.items?.() ?? []) && !(session.chooseOne && !session.usingBag);
+/** BAG1: THE BAG BUTTON (inventorySession.js planBagToggle) - the wagon button's, for the Materials Bag. */
+function toggleBag() {
+  notice = null;
+  const plan = planBagToggle(deps, session);
+  if (!plan.ok) return refuse(plan.refusal);
+  session.usingBag = plan.usingBag;
+  session.usingWagon = plan.usingWagon;
+  storeFilter = freshStoreFilter();   // AUDIT WAGON-FILTER C2: another list shown, a fresh filter
+  if (side === 'remote') { picked = null; side = 'local'; }
+  // AUDIT2 BAG1 U8: the gold field goes with it - gold is no material, so the bag hides the field, and a half-typed
+  // amount came back over the list it was never meant for when the bag closed
+  goldEntry = null;
   refresh();
   render();
 }
@@ -1604,7 +1768,7 @@ function dropGold(text) {
   const plan = planDropGold(text, {
     carried: goldAmount(player), usingWagon: session.usingWagon, remote: to,
     groundRefusal: groundRefusalOf(deps, session),   // HOUSE-DROP
-    capacity: storeCapacityOf(deps, session),   // COMPANION-WEIGHT
+    capacity: storeCapacityOf(deps, session), bagLoaded: !bagMayLeave(deps.entity), wagonKg: wagonKgFor(deps.entity),   // COMPANION-WEIGHT
   });
   if (plan.notice) notice = plan.notice;
   else if (!plan.ok && plan.refusal?.reason === 'ground') notice = plan.refusal.text;   // HOUSE-DROP: the floor's refusal is said
@@ -1939,6 +2103,7 @@ function wornPanel(fam, byLabel, area) {
   // collision of that shape in the arc after `.detail`/`.packcol`.
   if (!filled.length) {
     const d = el('div', 'wornrow wornempty');
+    d.dataset.fam = fam.id;   // HAND-DRAG: which panel a release lands on
     d.title = fam.slots.join(' \u00b7 ');
     if (area) d.style.gridArea = area;
     const txt = el('span', 'worntext');
@@ -1950,6 +2115,7 @@ function wornPanel(fam, byLabel, area) {
   const top = filled.find((r) => r.item === picked) ?? filled[0];
   const line = itemLine(top.item, deps.entity);
   const b = el('button', `wornrow${filled.some((r) => r.item === picked) ? ' on' : ''}`);
+  b.dataset.fam = fam.id;   // HAND-DRAG: which panel a release lands on
   markItemFrame(b, top.item);   // RARITY-UI / SIGIL-UI: the piece the panel shows wears its tier and its rune
   // MAC-M1: the WORN map's hover carries the rating too, and this is
   // the surface Mac's second sentence is about - "not sure if armor
@@ -2261,8 +2427,51 @@ function showTip(item, from, row) {
   fitTip(tipEl);   // AUDIT SET U13
   placeBeside(tipEl, row);
 }
+/** SHOP-HOVER (2026-10-08, the owner: "hovering over items in all shops shows the same it does in your inventory"): THE
+ *  PACK'S HOVER CARD for a window that is not the pack - the shop counter's both lists. `ctx` is that window's own
+ *  `{ entity, getQuest }`, held for the card's build (and its late picture's) and never left behind; `side` 'local' for
+ *  the player's own piece (it says Worn), 'shop' for the shelf's. The same card, the same comparison against what is worn. */
+export function showItemHover(item, ctx, row, side = 'shop') {
+  if (!item || !row || getPref('plusItemHover') === false) return;
+  hideTip();
+  const before = deps;
+  let built;
+  deps = { ...before, ...ctx };
+  try { built = infoCard(item, side, () => { if (tipEl && tipFor === item) showItemHover(item, ctx, row, side); }); } finally { deps = before; }
+  tipEl = el('div', 'inv-tip');
+  tipFor = item;
+  tipEl.setAttribute('role', 'tooltip');
+  tipEl.append(built.c);
+  document.body.append(tipEl);
+  fitTip(tipEl);
+  placeBeside(tipEl, row);
+  // SHOP-SIDES (2026-10-08, the owner: "tooltip of hovering on item in your inventory should be on the left side of shop
+  // window and what the shop has on the right"): the card stands OUTSIDE the window - the player's own piece to its left,
+  // the shelf's to its right - never over either list. A screen too narrow for the side it wants takes the other, then
+  // the old place beside the row.
+  const win = row.closest?.('.trade-win, .px-win');
+  if (win) placeOutside(tipEl, win, row, side === 'local' ? 'left' : 'right');
+}
+function placeOutside(node, win, row, want) {
+  const vw = window.innerWidth, vh = window.innerHeight, r = node.getBoundingClientRect(), w = win.getBoundingClientRect();
+  const leftAt = w.left - r.width - 10, rightAt = w.right + 10;
+  const fitsLeft = leftAt >= 8, fitsRight = rightAt + r.width <= vw - 8;
+  let left = null;
+  if (want === 'left') left = fitsLeft ? leftAt : fitsRight ? rightAt : null;
+  else left = fitsRight ? rightAt : fitsLeft ? leftAt : null;
+  if (left == null) return false;
+  let top = row.getBoundingClientRect().top;
+  if (top + r.height > vh - 8) top = vh - r.height - 8;
+  node.style.left = `${Math.round(left)}px`; node.style.top = `${Math.round(Math.max(8, top))}px`;
+  return true;
+}
+export const hideItemHover = () => hideTip();
 function openMenu(item, from, x, y) {
   hideTip(); closeMenu();
+  // WHERE-ROBES: the menu is the RIGHT click (a long press, the pad's Y), and DFU's right click on a loot row is the
+  // same member as the left (RemoteItemListScroller_OnItemRightClick, :2070-2073) - the quest click goes first, a menu
+  // closed unused included, as a look counts. Its Take and Use then ran with no click at all.
+  if (from === 'remote') sendQuestItemClick(item, deps.getQuest ?? null);
   const acts = itemActs(item, from, { qty: false });
   const buttons = [...acts.querySelectorAll('button')];
   if (!buttons.length) return;
@@ -2296,6 +2505,8 @@ export function markItemFrame(node, item) {
   if (validSigil(item?.sigil)) node.dataset.sigil = '';   // every frame here is a fresh node per render - nothing to take off
   markSetFrame(node, item);   // SET5: a set piece's rune wears its set's colour (ui/setCard.js)
   if (isLocked(item)) node.dataset.locked = '';   // LOCK1: the padlock in the picture's corner (the sheet's own)
+  if (isJunk(item)) node.dataset.junk = '';   // LOOT18: a junk piece's picture is dimmed (the sheet's own)
+  markSocketFrame(node, item);   // GEM3: a socket's pip a socket in the top edge; a graded gem's ring (ui/socketWells.js)
   return node;
 }
 
@@ -2375,6 +2586,21 @@ function itemRow(item, from = 'local') {
     // fires after pointerup, so without this a reorder would also
     // select the row it left.
     if (takeDragClick()) return;   // AUDIT INV2 A-F6: a release that DRAGGED is not a pick
+    // SHIFT-STOW (2026-10-04, Mac: "shift click to deposit items (like materials) needs to be a thing"): Shift on a pack
+    // row puts the WHOLE stack into the player's own store showing beside it - the wagon, their storage, the bag - in one
+    // press, through the same ladder as the card's Stow (stow: the lock, the bound law, the bag's materials-only, the
+    // 750 kg, the companion's back). Ahead of the double click, so a quick second deposit never wears the piece; the
+    // card's how-many field does not apply - Shift is the whole stack. A corpse, a container and the ground keep their
+    // plain click (the ground is where a slip loses a piece).
+    if (from === 'local' && e?.shiftKey && remote && STORE_FILTER_KINDS.has(remote.kind)) {
+      if (qty.item === item) qty = { item: null, text: '' };
+      stow(item);
+      return;
+    }
+    // PI1 (Physical Items - systems/physicalItems.js shiftDrop): Shift on a pack row with no store of the player's
+    // beside it drops the piece in the world as itself (LocalItemLeftClickPrefix [IL_0528]: any remote target but a
+    // reward tray). SHIFT-STOW keeps its stores - it was here first and it is the player's own deposit.
+    if (from === 'local' && e?.shiftKey && !session.chooseOne && deps.physicalDropOn?.()) { physicalDrop(item); return; }
     // DBLEQUIP: the pack's second click on the same piece wears it (or lights it); the loot side's click already takes
     if (from === 'local' && equipByDoubleClick(secondClick(item, item, e))) return;
     // AUDIT 26: "Send click to quest system" (:2027-2037) - the FIRST
@@ -2385,9 +2611,7 @@ function itemRow(item, from = 'local') {
     // LocalItemListScroller_OnItemClick (:1974-2007) has no such call,
     // which is why this sits behind `from === 'remote'` rather than in
     // the pick itself.
-    if (from === 'remote' && item.questItem) {
-      deps.getQuest?.(item.questUID)?.getItem?.(item.questSymbol)?.setPlayerClicked();
-    }
+    if (from === 'remote') sendQuestItemClick(item, deps.getQuest ?? null);
     // IG7 (Mac: "opening a container or body and clicking to loot an
     // item - the item isn't picked up properly and the tooltip
     // remains"): a LOOT-SIDE click TAKES, immediately. DFU's remote
@@ -2513,6 +2737,13 @@ function remoteCol() {
     b.onclick = toggleWagon;
     acts.append(b);
   }
+  // BAG1: THE BAG BUTTON, by the wagon's own rule - there only with a bag in the pack. AUDIT BAG1 H1: and never over a
+  // reward tray (a piece taken from the bag beside one was the reward chosen)
+  if (bagDoorShown()) {
+    const b = el('button', `act${session.usingBag ? ' primary' : ''}`, session.usingBag ? 'Close bag' : 'Materials Bag');
+    b.onclick = toggleBag;
+    acts.append(b);
+  }
   // MAC-M2 B (2026-09-16, Mac: "Remove the gold and pack buttons from
   // the looting menu"): THE LOOT WINDOW IS FOR TAKING, and its bar
   // carries the wagon and nothing else.
@@ -2553,14 +2784,77 @@ function remoteCol() {
   // is also what lets them FLOW INTO A SECOND COLUMN before anything
   // scrolls at all.
   const list = el('div', 'remotelist');
+  // WAGON-FILTER: the player's own store carries its filter between the head and the rows (ui/storeFilter.js); every
+  // other remote shows its list whole, as it always did
+  const store = STORE_FILTER_KINDS.has(remote.kind);
+  // AUDIT WAGON-FILTER C2: fresh for every store shown, and for a store emptied - the wagon's category and search
+  // followed the player into the bag, and a wagon emptied on Materials hid the dagger shift-stowed into it next
+  if (store && (storeFilter.kind !== remote.kind || !remote.items.length)) storeFilter = freshStoreFilter(remote.kind);
+  const filtering = store && remote.items.length > 0;
+  if (filtering) col.append(storeFilterBar(list));
+  // SHIFT-STOW: the gesture says itself where it works - a modifier nobody is told of is a feature nobody finds; its own
+  // line, hidden on a touch screen and a short one (enhancedStyle), so a hidden hint leaves no band behind
+  if (store && packOpen) col.append(el('p', 'storehint', SHIFT_STOW_HINT[remote.kind] ?? SHIFT_STOW_HINT.wagon));
+  fillRemoteList(list, filtering);
+  col.append(list);
+  return col;
+}
+
+/** SHIFT-STOW: the line under a store's head that tells the gesture, in the store's own verb (STOW_LABEL's). */
+export const SHIFT_STOW_HINT = Object.freeze({
+  wagon: 'Shift-click an item in your pack to stow the whole stack in the wagon.',
+  storage: 'Shift-click an item in your pack to store the whole stack.',
+  bag: 'Shift-click a material in your pack to put the whole stack in the bag.',
+});
+/** The row's own name, so the search reads what the row says. */
+const storeNameOf = (it) => itemLine(it, deps.entity).name;
+/** The remote rows - all of them, or what the store's filter shows. A take is by the item itself (take(item)), so a
+ *  filtered list takes the right piece from the whole store. */
+function fillRemoteList(list, filtering = STORE_FILTER_KINDS.has(remote.kind) && remote.items.length > 0) {
+  list.innerHTML = '';
+  const shown = filtering ? filterStore(remote.items, storeFilter, storeNameOf) : remote.items;
   if (!remote.items.length) {
     list.append(el('p', 'packempty', remote.kind === 'ground'
       ? 'Nothing dropped here yet.'
       : 'Empty.'));
+  } else if (!shown.length) list.append(el('p', 'packempty', 'Nothing here matches.'));
+  for (const it of shown) list.append(itemRow(it, 'remote'));
+}
+
+/**
+ * WAGON-FILTER (2026-10-04, Mac: "The wagon needs a filter option"): the search and the category menu over the
+ * player's own store, in ONE row (AUDIT WAGON-FILTER C1 - the store's list is what the frame is for). Both refill the
+ * rows in place: the field is never rebuilt under the caret, the menu keeps its focus, and a card open on a pack item
+ * stays open. Back in the field clears it, then leaves it.
+ */
+function storeFilterBar(list) {
+  const bar = el('div', 'storefilter');
+  const search = el('input', 'storesearch');
+  search.type = 'search';
+  search.maxLength = 40;
+  search.placeholder = 'Filter by name';
+  search.value = storeFilter.query;
+  search.setAttribute('aria-label', `Filter the ${String(remote.title).toLowerCase()} by name`);
+  search.dataset.focus = 'store-filter';
+  search.oninput = () => { storeFilter.query = search.value; fillRemoteList(list, true); };
+  search.onkeydown = (e) => {
+    if (overlayAction(e) !== 'back') return;
+    e.preventDefault(); e.stopPropagation();
+    if (search.value) { search.value = ''; storeFilter.query = ''; fillRemoteList(list, true); } else search.blur?.();
+  };
+  bar.append(search);
+  const menu = el('select', 'storecat');
+  menu.setAttribute('aria-label', `Show in the ${String(remote.title).toLowerCase()}`);
+  for (const c of storeFilterOptions(remote.items, storeFilter.cat)) {
+    const o = el('option', null, `${c.label} (${c.count})`);
+    o.value = c.id;
+    if (c.id === storeFilter.cat) o.selected = true;
+    menu.append(o);
   }
-  for (const it of remote.items) list.append(itemRow(it, 'remote'));
-  col.append(list);
-  return col;
+  menu.value = storeFilter.cat;
+  menu.onchange = () => { storeFilter.cat = menu.value; fillRemoteList(list, true); };
+  bar.append(menu);
+  return bar;
 }
 
 /** A numeric field of 8, opening on "0" (:1272). The REFUSAL is
@@ -2691,9 +2985,10 @@ function quickslotActs(item) {
  *  rarityLines, which names a rolled item's), and for an enchanted item the tier list does not name - DFU's own magic
  *  items and the item maker's carry no `rarity`, and with the tiers off it names none - DFU's Info box powers (itemPowers magicPowersLines, the classic
  *  popup's own words; "powers unknown" until it is identified). The card and the trade window read this one list. */
-export function itemPowerLines(item, d = deps, { set = true, lore = true } = {}) {
-  const lines = rarityLines(item, { sigil: false, set, lore });   // SET5: the card draws the set in its own block (set: false); CARD-FIT: and leaves the lore to the Info box (lore: false)
+export function itemPowerLines(item, d = deps, { set = true, lore = true, technique = true } = {}) {
+  const lines = rarityLines(item, { sigil: false, set, lore, technique });   // TECH-CARD: the card draws a technique's block (technique: false)   // SET5: the card draws the set in its own block (set: false); CARD-FIT: and leaves the lore to the Info box (lore: false)
   lines.unshift(...pieceLines(item, craftedJewelPoints(item)));   // PROF3: a crafted piece's quality and maker above them
+  { const h = heirloomLine(item); if (h) lines.unshift(h); }   // LEGACY4: an heirloom's house and its generations, first
   if (item && !(item.rarity && lootRarityOn()) && isEnchanted(item)) {
     // unidentified: DFU's "powers unknown" - unless the tier list already said "Unidentified"
     const known = itemIsIdentified(item);
@@ -2728,15 +3023,79 @@ export function itemChatText(item, d = deps) {
   const line = itemLine(item, d?.entity);
   const parts = [line.damage != null ? `Damage ${line.damage}` : null, line.armour != null ? `Armour ${line.armour}` : null,
     ...itemBriefLines(item, d)].filter(Boolean);
-  const text = `[${line.name}]${parts.length ? ` ${parts.join(' · ')}` : ''}`;
+  // TECH1 (AUDIT): a technique's "what a press does" line stays on the card - the post names the line itself, and keeps
+  // the room under CHAT_MAX for the piece's other lines (a gem's, a set's) that it would have cut
+  const told = techniqueDetail(techniqueLineOf(item));
+  const said = told ? parts.filter((p) => p !== told) : parts;
+  const text = `[${line.name}]${said.length ? ` ${said.join(' · ')}` : ''}`;
   if (text.length <= CHAT_MAX) return text;
   const cut = text.slice(0, CHAT_MAX - 3);
   return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), line.name.length + 2)).replace(/[\s·]+$/, '')}...`;
 }
 
+/** GEM3 (bible/06-Systems/Gem-Sockets.md section 5): WHO SETS A GEM - the player, as the presses read them (the pack
+ *  and the entity whose fold a worn piece's gem moves). */
+const gemWho = () => (deps.entity && Array.isArray(deps.entity.items) ? deps.entity : { items: deps.items?.() ?? [] });
+/** The pack's loose gems as the chooser lists them - `{ id, count }`, DFU's eight then the graded, the held alone. */
+function heldGems() {
+  const held = gemsHeld(deps.items?.() ?? []);
+  return ALL_GEM_IDS.filter((g) => held[g] > 0).map((id) => ({ id, count: held[id] }));
+}
+/** A gem's picture for a well, as its own item draws it (the card's box for a half panel's picture). */
+function gemPicture(id, ready) {
+  const g = mintGem(id);
+  const pic = g ? linePicture(itemLine(g, deps.entity), { box: SLOT_BOX.wornHalf, onReady: ready }) : null;
+  return pic ? fittedImg(pic) : null;
+}
+/** THE WELLS AND THE CHOOSER for a card, or null for a piece with no socket. `live`: the pack's own piece's detail card,
+ *  whose wells press - an empty one opens the chooser (pressed again, it closes), a set one asks first and its second
+ *  press shatters the gem (systems/reforge.js unsetGemPiece); a gem picked sets in that well (setGemPiece). */
+function socketBlock(item, live, ready) {
+  const name = () => itemLongName(item, { getQuest: deps.getQuest ?? null });
+  const refused = (r) => REFORGE_REFUSALS[r.reason ?? ''] ?? 'That will not set.';
+  const onWell = !live ? null : (at, v) => {
+    if (v === SOCKET_EMPTY) {
+      wellOpen = wellOpen?.item === item && wellOpen.at === at ? null : { item, at };
+      wellAsk = null;
+      render();
+      return;
+    }
+    if (wellAsk?.item !== item || wellAsk.at !== at) { wellAsk = { item, at }; wellOpen = null; notice = UNSET_ASK(v); render(); return; }
+    wellAsk = null;
+    const r = unsetGemPiece(item, gemWho(), at);
+    notice = r.ok ? GEM_SHATTERED(name(), v) : refused(r);
+    refresh();
+    render();
+  };
+  const wells = socketWells(item, {
+    picture: (id) => gemPicture(id, ready), onWell,
+    asking: live && wellAsk?.item === item ? wellAsk.at : null, open: live && wellOpen?.item === item ? wellOpen.at : null,
+  });
+  if (!wells) return null;
+  if (!live || wellOpen?.item !== item) return [wells];
+  const at = wellOpen.at;
+  return [wells, socketChooser(item, heldGems(), (id) => {
+    wellOpen = null;
+    const r = setGemPiece(item, id, gemWho(), at);
+    notice = r.ok ? GEM_SET(name(), id) : refused(r);
+    refresh();
+    render();
+  })];
+}
+/** GEM3: a gem's own card - every piece in the pack with an empty socket it may go in (known, of course: an unknown piece
+ *  is refused its setting), for "Set in...". */
+const gemHomes = () => (deps.items?.() ?? []).filter((it) => emptySockets(it) > 0 && itemIsIdentified(it));   // AUDIT GEM: never a piece the setting refuses (an unknown one)
+
+/** TECH-CARD: the technique key's word off the live bindings, as the HUD's chip names it (scenes/world.js
+ *  techniqueKeyWord): FINAL AUDIT - the key that ANSWERS, primary or secondary, and the pad's button while a pad is in
+ *  hand (quickslotTags.js actionKeyWord); '' when nothing is bound, and the block's foot says so. */
+const techniqueKeyWord = () => actionKeyWord(TECHNIQUE_ACTION);
 /** PLUS7: the item's card WITHOUT its buttons - the detail column's, the hover card's. CARD-FIT: `body` puts its words
  *  in a body of their own (`.card-body`), so the detail column can hang its buttons under it, never inside it. */
 function infoCard(picked, side, ready = render, { body = false } = {}) {
+  // AUDIT GEM: a well's open chooser, its asked Shatter and a gem's "Set in..." list are the SELECTION's - another piece
+  // picked and this one picked again starts clean, never a stale question answered by one press
+  if (body && picked !== wellPick) { wellOpen = null; wellAsk = null; gemTargets = null; wellPick = picked; }
   const line = itemLine(picked, deps.entity);
   const c = el('div', 'card');
   const into = body ? el('div', 'card-body') : c;
@@ -2751,18 +3110,22 @@ function infoCard(picked, side, ready = render, { body = false } = {}) {
     fig.append(fittedImg(big));
     into.append(fig);
   }
+  // GEM3: the piece's sockets as wells under its picture - pressable on the pack's own piece's detail card
+  { const w = socketBlock(picked, side === 'local' && body, ready); if (w) into.append(...w); }
   into.append(el('h3', null, line.name));
   { const r = rarityAttr(picked); if (r) c.dataset.rarity = r; }   // LR1: the card's heading wears the tier too
   const meta = [line.material, line.stack ? `${line.stack} of them` : null].filter(Boolean).join(' · ');
   if (meta) into.append(el('p', 'meta', meta));
   // LR1: the tier, then each affix as a line, then the enchantment - or
   // "Unidentified" until the Identify spell or the guild reads it.
-  { const lines = itemPowerLines(picked, deps, { set: false, lore: false }); if (lines.length) { const ul = el('ul', 'rarity'); for (const l of lines) ul.append(el('li', null, l)); into.append(ul); } }   // TRADE-INFO: and a DFU magic item's powers; SET5: the set draws its own block below; CARD-FIT: the lore is the Info box's
+  { const lines = itemPowerLines(picked, deps, { set: false, lore: false, technique: false }); if (lines.length) { const ul = el('ul', 'rarity'); for (const l of lines) ul.append(el('li', null, l)); into.append(ul); } }   // TRADE-INFO: and a DFU magic item's powers; SET5: the set draws its own block below; CARD-FIT: the lore is the Info box's
+  { const tb = techniqueCard(picked, { keyWord: techniqueKeyWord() }); if (tb) into.append(tb); }   // TECH-CARD: a technique's own block - the piece's own line, so first of the blocks
   // SIGIL-UI: the sigil as its own block - the rune, the stage it wakes to in my hand, its five stages and the bar of
   // what it has drunk toward the next (ui/sigilCard.js); the tier list above no longer carries it as three more lines
   { const sb = sigilCard(picked); if (sb) into.append(sb); }
   { const set = setCard(picked, deps.entity, itemLongName); if (set) into.append(set); }   // SET5: its set - the places worn, the stage, its tiers (ui/setCard.js)
   if (isLocked(picked)) into.append(el('p', 'lockline', LOCKED_LINE));   // LOCK1
+  if (isJunk(picked)) into.append(el('p', 'boundline junkline', JUNK_LINE));   // LOOT18: the lock's line style, without its padlock
   if (isBound(picked)) into.append(el('p', 'boundline', BOUND_LINE));   // SS1: the lock's line style, without its padlock
   const dl = el('dl', 'stats');
   // CARD-FIT: each pair in its own group, so a narrow card flows them two a line and never breaks a pair across two
@@ -2773,6 +3136,7 @@ function infoCard(picked, side, ready = render, { body = false } = {}) {
   // is armour, and `pair` skips a null.
   pair('Damage', line.damage);
   pair('Armour', line.armour);
+  pair('Worth', letterWorthGold(picked));   // TRADE-LOC II: a letter of credit is its worth - the card every pack, shop and trade hover shows says it
   // MAC-M2: under the damage, because it is the same question - how the
   // thing is swung - and above the weight, which is not. Null for
   // everything that is not a weapon, so no book grows an empty row.
@@ -2780,7 +3144,7 @@ function infoCard(picked, side, ready = render, { body = false } = {}) {
   for (const t of line.survival ?? []) {   // AUDIT SURV C: the classic popup's tokens, each under a word of its own
     const i = t.indexOf(': ');
     if (i > 0) pair(t.slice(0, i), t.slice(i + 2));
-    else pair(/^Nourishes/.test(t) ? 'Food' : /^Raw/.test(t) ? 'Raw' : /uses left/.test(t) ? 'Uses' : /skillet/i.test(t) ? 'Cooking' : 'Note', t);
+    else pair(/^Nourishes/.test(t) ? 'Food' : /^Raw/.test(t) ? 'Raw' : /uses left/.test(t) ? 'Uses' : /of fuel$/.test(t) ? 'Fuel' : /skillet/i.test(t) ? 'Cooking' : 'Note', t);
   }
   if (line.recipe) {   // MAPLOOT1: the recipe's own two boxes, as rows
     pair('Recipe for', line.recipe.potion);
@@ -2796,13 +3160,17 @@ function infoCard(picked, side, ready = render, { body = false } = {}) {
     else pair('Worn', line.equipped ? 'yes' : 'no');
     if (line.equipped && hoodCapable(picked)) pair('Hood', hoodUp(picked) ? 'up' : 'down');   // HOOD-SAID: the hood a worn cloak or robe is drawn with, as a light says Lit
   }
-  else pair('Where', remote.title);
+  else if (side !== 'shop') pair('Where', remote?.title ?? '');   // SHOP-HOVER: a shelf's piece says no Where (the counter is the where)
   into.append(dl);
   // AC-COMPARE: WHAT WEARING IT WOULD CHANGE, under its own stats - the card is the hover's and the pick's alike (the
   // pack's one way of showing an item), so the comparison needs no key: what it would replace, then its damage and the
   // armour a wear moves, each set against what is worn now in green or red (ui/armourCard.js). A pack piece or a loot
   // row's; a worn piece is what is worn, and has none.
-  { const cmp = compareBlock(deps.entity, picked, (it) => itemLongName(it, { getQuest: deps.getQuest ?? null })); if (cmp) into.append(cmp); }
+  {
+    const wear = wearComparison(deps.entity, picked);   // AUDIT LOOT II B6: one comparison for both blocks
+    const cmp = compareBlock(deps.entity, picked, (it) => itemLongName(it, { getQuest: deps.getQuest ?? null }), wear); if (cmp) into.append(cmp);
+    const lc = lineCompareBlock(deps.entity, picked, wear); if (lc) into.append(lc);   // LOOT18: and its lines against theirs
+  }
   return { c, line, big };
 }
 
@@ -2899,12 +3267,42 @@ function itemActs(picked, side, { qty = true } = {}) {
   // ghost from the moment it was made. The remote side gets none; take it
   // first, then slot it.
   if (side === 'local') for (const b of quickslotActs(picked)) acts.append(b);
+  // GEM3 (bible/06-Systems/Gem-Sockets.md section 3): A LOOSE GEM'S "SET IN..." - pressed, the pieces with an empty socket,
+  // a press each that sets the gem in the first empty one (systems/reforge.js setGemPiece); the card stays up
+  if (side === 'local' && lootRarityOn() && gemKindOf(picked) && !picked.questItem && gemHomes().length) {   // AUDIT GEM: law 3 - with the ladder off there is no setting to offer
+    const open = gemTargets === picked;
+    const g = el('button', `act${open ? ' on' : ''}`, 'Set in...');
+    g.onclick = () => { gemTargets = open ? null : picked; render(); };
+    acts.append(g);
+    if (open) {
+      for (const home of gemHomes()) {
+        const t = el('button', 'act gem-home', `Set in ${itemLongName(home, { getQuest: deps.getQuest ?? null })}`);
+        t.onclick = () => {
+          const gem = gemKindOf(picked);
+          const r = setGemPiece(home, /** @type {string} */ (gem), gemWho(), null, { from: picked });   // AUDIT GEM: this card's stone, not another stack's
+          gemTargets = null;
+          notice = r.ok ? GEM_SET(itemLongName(home, { getQuest: deps.getQuest ?? null }), /** @type {string} */ (gem)) : (REFORGE_REFUSALS[r.reason ?? ''] ?? 'That will not set.');
+          if (r.ok && !(deps.items?.() ?? []).includes(picked)) picked = null;   // the last of the stack went into the socket
+          refresh();
+          render();
+        };
+        acts.append(t);
+      }
+    }
+  }
   // LOCK1: the lock, on the card and in the right-click menu alike (both are built from this row); the card stays up
   // so the padlock is seen to close
   if (side === 'local') {
     const k = el('button', 'act', isLocked(picked) ? 'Unlock' : 'Lock');
-    k.onclick = () => { toggleLocked(picked); notice = null; render(); };
+    k.onclick = () => { toggleLocked(picked); lockLiftsJunk(picked); notice = null; render(); };   // LOOT18: locked, its junk mark lifted
     acts.append(k);
+  }
+  // LOOT18 (the Loot arc II, bible/06-Systems/Loot-II-Arc.md section 10): JUNK, beside the lock - gear in the pack, not
+  // worn; a shop's Sell junk puts every such piece on its counter, and quick loot's take-all leaves one where it lies
+  if (side === 'local' && !line.equipped && junkable(picked)) {
+    const j = el('button', 'act', isJunk(picked) ? 'Not junk' : 'Junk');
+    j.onclick = () => { toggleJunk(picked); notice = null; render(); };
+    acts.append(j);
   }
   // SS5 (Mac: "The ability to dismantle in the inventory and recieve back sigil stones", the Broker's wares alone): a
   // ware in the pack is DISMANTLED for a share of its price (systems/sigilBroker.js), asked first - it is gone for good.
@@ -2915,8 +3313,9 @@ function itemActs(picked, side, { qty = true } = {}) {
     acts.append(d);
   }
   // LOOT9 (the Loot arc): a laddered piece SALVAGED into Welkynd Shards (systems/reforge.js) - the Reforge's coin - asked
-  // first, as the dismantle is; never a worn one (taken off first), and a piece that will never break shows no button
-  if (side === 'local' && !line.equipped && salvageShards(picked) > 0 && !['off', 'aetheric', 'artifact', 'quest', 'bound'].includes(salvageRefusal(picked) ?? '')) {
+  // first, as the dismantle is; never a worn one (taken off first), and a piece that will never break shows no button -
+  // but one that wears Magic and never will (FB1012d SALVAGE-CLASSIC: DFU's own magic) shows it, and its press says why
+  if (side === 'local' && !line.equipped && (salvageShards(picked) > 0 || salvageRefusal(picked) === 'classic') && !['off', 'aetheric', 'gilded', 'artifact', 'quest', 'bound'].includes(salvageRefusal(picked) ?? '')) {
     const v = el('button', 'act', 'Salvage');
     v.onclick = () => askSalvage(picked);
     acts.append(v);
@@ -3019,10 +3418,14 @@ function askDismantle(item) {
  *  or a press outside keep it. A locked piece is refused in words before any question is asked. */
 export const SALVAGE_ASK = (name, n) => [`Salvage ${name}?`, `It is gone for good, and you get ${shardsText(n)}.`];
 export const SALVAGED_LINE = (name, n) => `Salvaged: ${name}, for ${shardsText(n)}.`;
+/** AUDIT GEM: a piece holding a set gem is never salvaged with it (systems/reforge.js salvageRefusal 'gems'). */
+export const SALVAGE_GEMS = (name) => `${name} holds a gem - extract it at the Reforge, or unset it, first.`;
+/** FB1012d SALVAGE-CLASSIC: a piece that wears Magic the ladder never graded (systems/reforge.js salvageRefusal 'classic'). */
+export const SALVAGE_CLASSIC = (name) => `${name} will not break: its magic is classic, the kind the guilds sell and make. Welkynd Shards come only from a piece the loot ladder graded.`;
 function askSalvage(item) {
   hideTip(); closeMenu(); closeInfo(); closeDismantle();
   const name = itemLongName(item, { getQuest: deps.getQuest ?? null });
-  const refusedFor = (why) => { notice = why === 'locked' ? lockedText(name) : null; refresh(); render(); };
+  const refusedFor = (why) => { notice = why === 'locked' ? lockedText(name) : why === 'gems' ? SALVAGE_GEMS(name) : why === 'classic' ? SALVAGE_CLASSIC(name) : null; refresh(); render(); };   // AUDIT GEM: the gems, said; FB1012d: classic magic
   const why = salvageRefusal(item);
   if (why) { refusedFor(why); return; }
   const n = salvageShards(item);
@@ -3118,7 +3521,7 @@ function openInfo(item) {
   // CARD-FIT: THE INFO BOX IS THE WHOLE READ - the card keeps what a glance needs, so the tier, its affixes and the
   // lore are said here too (a line the powers box already says is not said twice), then the sigil and the set whole
   { const said = new Set(boxes.flat().map((r) => String(r?.text ?? r ?? '').trim()));
-    const tier = rarityLines(item, { sigil: false, set: false }).filter((t) => t && !said.has(t));
+    const tier = rarityLines(item, { sigil: false, set: false, technique: false }).filter((t) => t && !said.has(t));
     if (tier.length) boxes.splice(1, 0, tier.map((text) => ({ text, center: true }))); }
   infoEl = el('div', 'inv-info');
   infoEl.setAttribute('role', 'dialog');
@@ -3136,6 +3539,7 @@ function openInfo(item) {
     }
     body.append(sec);
   });
+  { const tb = techniqueCard(item, { full: true, keyWord: techniqueKeyWord() }); if (tb) body.append(tb); }   // TECH-CARD: a technique's block, whole
   { const sb = sigilCard(item, { full: true }); if (sb) body.append(sb); }   // SIGIL-UI: the Info box's last word on a sigil weapon is its sigil (CARD-FIT: whole)
   { const set = setCard(item, deps.entity, itemLongName, { full: true }); if (set) body.append(set); }   // SET5: ...and a set piece's, its set (CARD-FIT: whole)
   markItemFrame(card, item);   // RARITY-UI: the box's heading line wears the tier
@@ -3151,6 +3555,79 @@ function openInfo(item) {
   const key = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeInfo(); } };
   const timer = setTimeout(() => { document.addEventListener('pointerdown', away, true); document.addEventListener('keydown', key, true); }, 0);
   infoOff = () => { clearTimeout(timer); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', key, true); };
+}
+
+/**
+ * WALLET1: THE WALLET'S SHEET - what it holds, in the classic box's own words (systems/walletItem.js walletLedger, the
+ * box saying its rows as lines; WALLET-UI drew them as a ledger: the gold, the silver, the letters and what they are
+ * worth, the embers, the shards), then each piece it holds as the
+ * PACK'S OWN ROW (AUDIT 625 W3: `itemRow`, the page's - its picture, its count, its hotbar chip, and every gesture a page
+ * gives a piece: the click that opens its card, whose acts are the pack's (its lock, its stow, the bound law's
+ * refusals); Shift into the store beside it; the double click that wears a crystal; the drag; the right click's menu;
+ * the pad's quick act. A button that only opened the card took all but the first from the letters, the embers and the
+ * shards the wallet gathered off their pages). The account's silver is asked afresh of the host once a mount, as the
+ * sheet first shows, and the pack redrawn with the answer WHATEVER IS PICKED as it lands: a model kept back while a
+ * piece was picked was the sheet's for the rest of the mount (the way back draws, it does not refresh), its silver
+ * "kept online" though the answer had come. A repaint landing after a press is the pack's own contract
+ * (refreshFigure's, the fpArm's), and after the unmount none (JAN2).
+ */
+function walletSheet(w) {
+  noteFirstUse('wallet');   // TUT1: the wallet's sheet read
+  const box = el('div', 'walletsheet');
+  // WALLET-UI: the ledger (systems/walletItem.js walletLedger) - each part under its name, a row a currency, its label
+  // left and its figure right, in one column; a figure not counted here gives way to why, a letter's worth stands under
+  // its count; the pieces it holds under the part that names them
+  for (const part of walletLedger(w)) {
+    box.append(el('h4', 'wallet-head', part.head));
+    for (const r of part.rows) {
+      const row = el('div', `wallet-row${r.none ? ' none' : ''}`);
+      row.dataset.key = r.key;
+      row.append(el('span', 'wallet-k', r.label), el('span', `wallet-v${r.figure == null ? ' why' : ''}`, r.figure ?? r.note));
+      box.append(row);
+      if (r.figure != null && r.note) box.append(el('p', 'wallet-note', r.note));
+    }
+  }
+  if (w.held.length) {
+    const rows = el('div', 'walletpieces');
+    for (const it of w.held) rows.append(itemRow(it));
+    box.append(rows);
+  }
+  if (!walletAsked) {
+    walletAsked = true;
+    refreshWalletSilver().then(() => { if (host) { refresh(); render(); } });
+  }
+  return box;
+}
+/** CARDS8: the binder's sheet - its decks, then each card it holds as the pack's own row (the Wallet's way: every act a
+ *  card has on a page it has here); the decks are built on the Holdings page, under Collections. */
+function binderSheet(b) {
+  const box = el('div', 'walletsheet bindersheet');
+  const n = b.held.reduce((s, it) => s + Math.max(1, it.stackCount ?? 1), 0);
+  box.append(el('h4', 'wallet-head', `${n} card${n === 1 ? '' : 's'} of ${b.held.length} kind${b.held.length === 1 ? '' : 's'}`));
+  for (const d of binderDecks(b.item)) {   // AUDIT CARDS-5 C1: the decks a reader may trust
+    const row = el('div', 'wallet-row');
+    row.append(el('span', 'wallet-k', d.name), el('span', 'wallet-v', `${d.cards.length} cards`));
+    box.append(row);
+  }
+  box.append(el('p', 'wallet-note', 'Your decks are built on the Holdings page, under Collections.'));
+  if (b.held.length) {
+    const rows = el('div', 'walletpieces');
+    for (const it of b.held) rows.append(itemRow(it));
+    box.append(rows);
+  }
+  return box;
+}
+/** CARDS8: a card's way back to the binder's sheet. */
+function binderBack(binder) {
+  const b = el('button', 'act', 'Binder');
+  b.onclick = () => { picked = binder; side = 'local'; notice = null; render(); };
+  return b;
+}
+/** WALLET1: a held piece's way back to the wallet's sheet. */
+function walletBack(wallet) {
+  const b = el('button', 'act', 'Wallet');
+  b.onclick = () => { picked = wallet; side = 'local'; notice = null; render(); };
+  return b;
 }
 
 function detailCol() {
@@ -3170,6 +3647,12 @@ function detailCol() {
   const { c, line, big } = infoCard(picked, side, render, { body: true });
   const acts = itemActs(picked, side);
   c.append(acts);
+  // WALLET1: the wallet picked - its sheet in the card's body (the part that gives way when the card will not fit, above
+  // the buttons); a piece the wallet holds - the way back to the wallet, beside its own acts
+  if (side === 'local' && model?.wallet && picked === model.wallet.item) (c.querySelector('.card-body') ?? c).append(walletSheet(model.wallet));
+  if (side === 'local' && model?.wallet?.held.includes(picked)) acts.append(walletBack(model.wallet.item));
+  if (side === 'local' && model?.binder && picked === model.binder.item) (c.querySelector('.card-body') ?? c).append(binderSheet(model.binder));   // CARDS8
+  if (side === 'local' && model?.binder?.held.includes(picked)) acts.append(binderBack(model.binder.item));
   col.append(c);
   // The address, for the player who wants it and the developer who
   // needs it - the same place the classic window's own info panel
@@ -3239,6 +3722,7 @@ function render() {
   // dismissal the pane does not keep. (The classic twin queues each of
   // these as a real click-anywhere box; the enhanced pane never did.)
   const onPanel = noticeHold(noticeOwner, notice ? [{ text: notice, center: true }] : null, { hint: false });
+  const filterFocus = storeFilterFocus();   // WAGON-FILTER: the search keeps its focus and caret through a repaint
   repaintKeepingScroll(host, () => {
     // PX22: the list's scroll position survives a repaint, per tab - an
     // equip, a drop or a tab's own re-render rebuilds the DOM, and a
@@ -3381,7 +3865,7 @@ function render() {
     // the TRAY, not the choice. The wagon, opened beside a tray, still takes gold and keeps it, as DFU's DropGoldPopup
     // does (it has no choose-one check) - though no ITEM may go there while a choice is up (planStore's chooseOnePile,
     // DFU's `!chooseOne` Remove arm).
-    const giving = remote?.kind !== 'reward';
+    const giving = remote?.kind !== 'reward' && remote?.kind !== 'bag';   // BAG1: gold is no material - never into the bag
     if (giving) {
       const verb = `${GOLD_VERB[remote?.kind] ?? 'Drop'} gold`;   // never the bare verb an item's Store or Drop carries
       const give = el('button', `act goldbtn${goldEntry != null ? ' primary' : ''}`, verb);
@@ -3394,6 +3878,15 @@ function render() {
       gold.append(give);
     }
     bar.append(el('span', 'packitems', plural(model.count, 'item')), carry, gold);
+    // AUDIT BAG1 H2: THE BAG'S DOOR ON A PLAIN PACK. Its button stood in the side window's header alone, and a pack opened
+    // with nothing beside it (no chest, no body, no wagon) draws no side window - the bag could not be opened at all.
+    // On the footer while no side window stands; open, the bag IS the side window, with its own Close bag
+    if (bagDoorShown() && remote?.kind === 'ground' && !(remote.count > 0)) {
+      const b = el('button', 'act bagbtn', 'Materials Bag');
+      b.type = 'button';
+      b.onclick = toggleBag;
+      bar.append(b);
+    }
     // AUDIT GOLD-DROP 1: the field is the FOOTER's, floated above it (the sheet's `.packbar > .goldfield`) as DFU's
     // popup floats - in the window's flow it took ~110px from the item list, which a stacked window (641-999px wide)
     // has about 50px of, and the dock ran under the footer
@@ -3484,6 +3977,20 @@ function render() {
     if (list && _scrollMemo.has(tab)) list.scrollTop = _scrollMemo.get(tab);
     _renderedTab = tab;
   });
+  if (filterFocus) restoreStoreFilterFocus(filterFocus);
+}
+
+/** WAGON-FILTER: the store's search, when it holds the focus - its caret, to be given back after a repaint. */
+function storeFilterFocus() {
+  const a = host?.ownerDocument?.activeElement ?? globalThis.document?.activeElement;
+  if (!a || a.dataset?.focus !== 'store-filter' || !host?.contains?.(a)) return null;
+  return { at: typeof a.selectionStart === 'number' ? [a.selectionStart, a.selectionEnd] : null };
+}
+function restoreStoreFilterFocus(kept) {
+  const s = host?.querySelector?.('[data-focus="store-filter"]');
+  if (!s) return;
+  s.focus?.({ preventScroll: true });   // AUDIT WAGON-FILTER: domRepaint's own manner - the page does not scroll to it
+  if (kept.at) { try { s.setSelectionRange(kept.at[0], kept.at[1]); } catch { /* a field with no caret */ } }
 }
 
 // ── THE KEYBOARD ─────────────────────────────────────────────────
@@ -3599,6 +4106,9 @@ export function mountEnhancedInventory(hostEl, d = {}) {
   onExit = d.onExit ?? (() => {});
   tab = PAGE_IDS[0];
   picked = null;
+  wellOpen = null; wellAsk = null; gemTargets = null; wellPick = null;   // GEM3: no well open, no Shatter waiting, from a fresh mount
+  walletAsked = false;   // WALLET1
+  storeFilter = freshStoreFilter();   // WAGON-FILTER
   // PX20b: a LOOT target opens its own frame alone; every other way in
   // (F6, the world's inventory door) opens the pack as it always did.
   // SHIP-STORE (2026-09-26, Mac: "No ui to put items in storage on boat - problem for enhanced and enhanced +"):
@@ -3627,6 +4137,7 @@ export function mountEnhancedInventory(hostEl, d = {}) {
   const open = openState(d);
   session = {
     usingWagon: open.usingWagon,
+    usingBag: false,   // BAG1: the bag opens on its button
     allowDungeonWagonAccess: open.allowDungeonWagonAccess,
     chooseOne: open.chooseOne,
     // AUDIT HCC I2: Horse Cart and Cargo's granted exit request - the wagon button's later click asks the dungeon-exit

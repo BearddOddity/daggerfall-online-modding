@@ -619,7 +619,8 @@
   "new": "  const seat = bailiwickOf((await confirmedSeats(db, nowS)).values(), region, null);\n  const h = seat",
   "tests": [
    "test/seat1d_service.test.js"
-  ]
+  ],
+  "note": "GATHER-SPEED/MARKET-SPEED (PIN MOVED): re-aimed by content - the reads batched. D1-LOAD (PIN MOVED): kept the default, the option gone."
  },
  {
   "name": "SEAT1d-levy-any-bailiwick",
@@ -651,20 +652,22 @@
  {
   "name": "SEAT1d-market-no-tithe",
   "file": "server-account/src/market.js",
-  "old": "  const tt = await titheAt(db, nowS, from, rowBoard(l));",
-  "new": "  const tt = null;",
+  "old": "    at ? null : titheAt(db, nowS, from, rowBoard(l)),",
+  "new": "    null,",
   "tests": [
    "test/seat1d_service.test.js"
-  ]
+  ],
+  "note": "GATHER-SPEED/MARKET-SPEED (PIN MOVED): re-aimed by content - the reads batched."
  },
  {
   "name": "SEAT1d-market-board-ignored",
   "file": "server-account/src/market.js",
-  "old": "  const tt = await titheAt(db, nowS, from, rowBoard(l));",
-  "new": "  const tt = await titheAt(db, nowS, from, null);",
+  "old": "    at ? null : titheAt(db, nowS, from, rowBoard(l)),",
+  "new": "    at ? null : titheAt(db, nowS, from, null),",
   "tests": [
    "test/seat1d_service.test.js"
-  ]
+  ],
+  "note": "GATHER-SPEED/MARKET-SPEED (PIN MOVED): re-aimed by content - the reads batched."
  },
  {
   "name": "SEAT1d-market-no-courier-share",
@@ -696,8 +699,8 @@
  {
   "name": "SEAT1d-levy-kept-whole",
   "file": "server-account/src/professions.js",
-  "old": ".bind(player.id, rid, nonce, character, key2, day, node, kind, profession, kept, STORES_MAX,",
-  "new": ".bind(player.id, rid, nonce, character, key2, day, node, kind, profession, qty, STORES_MAX,",
+  "old": ".bind(player.id, rid, nonce, character, key2, day, node, kind, profession, kept, ROOM,",
+  "new": ".bind(player.id, rid, nonce, character, key2, day, node, kind, profession, qty, ROOM,",
   "tests": [
    "test/seat1d_service.test.js"
   ]
@@ -768,8 +771,8 @@
  {
   "name": "SEAT1d-tab-levers-anyone",
   "file": "src/ui/seatTab.js",
-  "old": "        if (SEAT_LEVER_RANKS.includes(data.mine?.rank)) body.append(holdingNode(data.holding));",
-  "new": "        body.append(holdingNode(data.holding));",
+  "old": "      const levers = !!data.holding && SEAT_LEVER_RANKS.includes(data.mine?.rank);",
+  "new": "      const levers = !!data.holding;",
   "tests": [
    "test/seat1d_client.test.js"
   ]

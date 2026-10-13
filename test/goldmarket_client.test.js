@@ -267,7 +267,7 @@ test('GOLD-MARKET tab: My listings - a gold listing\'s price in gold; the List f
   cur.value = 'gold';
   cur.onchange();
   assert.deepEqual(matOptions(), ['Iron Ore (8)'], 'gold: own and gold\'s - Mithril bought with Drakes lists for none');
-  assert.match(t.text(), /No fee to list: each sale pays 1% and 5% tax out of its price/);
+  assert.match(t.text(), /No fee to list\. Up for 72 hours on every board\. If it all sells you get \d+ gold \(after a 1% fee and 5% tax\), collected at a bank\./);   // AUDIT 657 B9 (PIN MOVED): the 1% the sale's fee; BOARD-UI (PIN MOVED)
   const list = t.buttons().find((b) => b.textContent === 'List');
   assert.equal(list.disabled, false, 'no Drakes fee asked');
   await list.onclick();
@@ -281,7 +281,7 @@ test('GOLD-MARKET refusals: every new word the service says has its sentence', (
   }
   assert.match(accountRefusalText('market-gold-goods'), /pack or back on the market for gold/);
   assert.match(accountRefusalText('market-drakes-goods'), /^Goods bought with silver, and pieces made with them, sell only for silver\./, 'AUDIT PROF-541 R2-S3: a piece made of counter goods is silver\'s, in words');
-  assert.match(readFileSync(new URL('../src/ui/marketTab.js', import.meta.url), 'utf8'), /not goods bought with silver, nor pieces made with them\./, 'AUDIT PROF-541 R2-S3: the gold form\'s own word agrees');
+  assert.match(readFileSync(new URL('../src/ui/marketTab.js', import.meta.url), 'utf8'), /Goods bought with silver, and pieces made with them, sell only for silver\./, 'AUDIT PROF-541 R2-S3: the gold form\'s own word agrees');   // AUDIT 657 D7: BOARD-UI (PIN MOVED): the words cut
 });
 
 // ─── THE WIRING ──────────────────────────────────────────────────────
@@ -289,8 +289,12 @@ test('GOLD-MARKET refusals: every new word the service says has its sentence', (
 test('GOLD-MARKET wiring: the host gives the market book the realm act over the playing session and a wallet that pays at the board\'s region (purse, letters, then that account - the service\'s order); the door has the collect; the service routes it', () => {
   const w = src('src/scenes/world.js');
   // PIN MOVED (FIELD BUGS 2026-10-01, MARKET-ANY): the realm hook carries the session's abandon too, and the goods' receive beside it
-  assert.match(w, /realm: realmSession \? \{ act: \(o\) => realmGoldAct\(\{ \.\.\.o, session: realmSession, checkpoint: \(\) => onlineCheckpoint\(\) \}\), abandon: \(why\) => realmSession\.abandon\(why\) \} : null, goods: realmSession \? \{ receive: \(rec\) => marketGoods\.receive\(rec\) \} : null,\n\s+wallet: realmSession \? \(region\) => \{/);
-  assert.match(w, /pay: \(n\) => \{ const owed = deductGold\(playerEntity, n\); if \(account && owed > 0\) account\.accountGold -= owed; \},\n\s+credit: \(n\) => addGold\(playerEntity, n\),/);
+  assert.match(w, /realm: realmSession \? \{ act: \(o\) => realmGoldAct\(\{ \.\.\.o, session: realmSession, checkpoint: \(\) => onlineCheckpoint\(\) \}\), abandon: \(why\) => realmSession\.abandon\(why\) \} : null, goods: realmSession \? \{ receive: \(rec\) => marketGoods\.receive\(rec\) \} : null,\n\s+wallet: realmWallet \}\)/);
+  // PIN MOVED (CARDS6): the wallet is the host's one realm wallet, the card stakes' too
+  assert.match(w, /const realmWallet = realmSession \? \(region\) => \{/);
+  // MARKET-AUDIT (PIN MOVED: `deductGold`, its refusal's `credit` the whole cost as coins): the pay answers the undo of exactly
+  // what it took - the purse's coins, a letter's value, the bank's gold
+  assert.match(w, /pay: \(n\) => payUndoable\(playerEntity, n, account\),\n\s+credit: \(n\) => addGold\(playerEntity, n\),/);
   assert.match(src('src/net/accountClient.js'), /gold: \(req\) => post\('\/v1\/market\/gold', req\),/);
   assert.match(src('server-account/src/index.js'), /'\/v1\/market\/gold': \(\) => marketGoldCollect\(mctx, who\.player, env, body\),/);
   assert.match(src('server-account/src/index.js'), /'\/v1\/market\/buy': \(\) => marketBuy\(mctx, who\.player, env, body\),/);

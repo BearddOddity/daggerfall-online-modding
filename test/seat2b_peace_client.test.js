@@ -116,7 +116,8 @@ test('SEAT2b part two A CRAFT CARRIES ITS TOWN: the book keeps the town the stat
 
 test('SEAT2b part two THE HOST\'S SEAMS: a members\' Harbour is the travel map\'s, the popup\'s, the held map\'s, Roleplay Realism\'s and the deed\'s port; the board\'s coast is the sea beside the town; a craft names the held town whose hall steps it; the Watchtowers asked from the frame; a Ram Kit\'s craft and its Stores say where it waits (mutants: each seam; the words)', () => {
   assert.match(W, /setSeatHarbours\(\(mapId\) => harbourPortFor\(seatHere\(mapId\), guildBook\?\.guild\?\.id \?\? null\)\);/);
-  assert.match(W, /portTown: \(modSetting\('travel-options', 'Enabled'\) === true \? hasPortFor\(loc\.mapTableData\?\.mapId\) :/);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA P10): past the Veil an isle's place answers by its own kind first, the Bay's as before
+  assert.match(W, /portTown: \(loc\.ether \? loc\.etherKind === 'port' : modSetting\('travel-options', 'Enabled'\) === true \? hasPortFor\(loc\.mapTableData\?\.mapId\) :/);
   assert.match(W, /if \(hasPortFor\(summary\.id\)\) return true;/);
   for (const f of ['travelPopUp.js', 'travelMapOptions.js', 'heldMap.js']) {
     assert.match(readFileSync(new URL(`../src/ui/${f}`, import.meta.url), 'utf8'), /import \{ hasPortFor as hasPort \} from '\.\.\/systems\/travelPorts\.js';/, f);
@@ -133,5 +134,9 @@ test('SEAT2b part two THE HOST\'S SEAMS: a members\' Harbour is the travel map\'
   assert.equal(storedText('Ram Kit', 2), 'You made 2 Ram Kits - they wait in your Stores');
   assert.notEqual(SIEGE_STAYS_LINE, STOCK_STAYS_LINE);
   assert.match(SIEGE_STAYS_LINE, /Siege Camp/);
-  assert.match(readFileSync(new URL('../src/ui/profPages.js', import.meta.url), 'utf8'), /: pick\.family === 'siege' \? siegeStaysLine\(\) : stockStaysLine\(\)\)\);/);   // PIN MOVED (L10N4): said through their readers
+  // BAG1 (PIN MOVED): one law for the Stores page and the bag's page - the line chosen in `staysLine`, which both call;
+  // PIN MOVED (L10N4): said through their readers
+  const pp = readFileSync(new URL('../src/ui/profPages.js', import.meta.url), 'utf8');
+  assert.match(pp, /: pick\.family === 'siege' \? siegeStaysLine\(\) : stockStaysLine\(\)\);/);
+  assert.equal(pp.match(/: staysLine\(pick\)\)\);/g)?.length, 2, 'both pages say it');
 });

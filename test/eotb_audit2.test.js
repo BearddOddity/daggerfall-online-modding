@@ -138,7 +138,7 @@ test('EOTB-IL: the rig registers the WHOLE record - the motion bag and what Late
 // THE ONE-SHOTS [IL]
 // ─────────────────────────────────────────────────────────────────
 
-test('EOTB-IL: a swing plays the six-frame AttackMelee at GetMeleeAnimTickTime, started by IsAttacking, once, and the loop resumes', async () => {
+test('EOTB-IL: a swing plays ONE STROKE of the six-frame AttackMelee (ONE-STROKE) over the weapon\'s animation, started by IsAttacking, once, and the loop resumes', async () => {
   _resetModSettings();
   setModSetting(MOD, 'Graphics.AttackStrings', STRING.None);
   const { b } = await liveBody();
@@ -148,9 +148,9 @@ test('EOTB-IL: a swing plays the six-frame AttackMelee at GetMeleeAnimTickTime, 
   const clip = b.state().clip;
   assert.ok(clip, 'IsAttacking starts the clip (IL_3eee-IL_3f3b)');
   assert.equal(clip.table, 'AttackMelee');
-  assert.deepEqual(clip.frames, [0, 1, 2, 3, 4, 5], 'the art\'s six frames, forward');
+  assert.deepEqual(clip.frames, [0, 1, 2], 'the art\'s first stroke, forward - not the six frames of both');
   const animTime = getMeleeWeaponAnimTime(50);
-  assert.equal(clip.interval, animTime * 5 / 6, 'the weapon\'s own frame time, five over six');
+  assert.equal(clip.interval, animTime * 5 / 3, 'the weapon\'s own frame time, five over the stroke\'s three: the stroke lasts the whole blow');
   assert.equal(b.state().shown.frame, 0, 'the first frame paints in the same LateUpdate');
   b.tick(1 / 60, walk({ sheathed: false, attacking: true }));
   assert.equal(b.state().clip.i, 0, 'no second clip while one is in flight');
@@ -210,22 +210,28 @@ test('EOTB-IL: the loose, the cast and the claw at an eighth of a second; the dr
   assert.deepEqual(c.frames, [0, 1, 2]);
 });
 
-test('EOTB-IL: Mixed is a ping-pong on the first swing and every fourth, Mirror alternates the count and flips 0/4 alone, MirrorTime reverts', async () => {
+test('EOTB-IL: a blow is ONE STROKE under every string (ONE-STROKE), Mirror alternates the count and flips 0/4 alone, MirrorTime reverts', async () => {
   _resetModSettings();
   const { b } = await liveBody();   // AttackStrings ships at Mixed
-  const swing = async () => {
-    b.tick(1 / 60, still({ sheathed: false, attacking: true }));
+  const swing = async (extra = {}) => {
+    b.tick(1 / 60, still({ sheathed: false, attacking: true, ...extra }));
     const c = b.state().clip;
     tickSeconds(b, c.interval * (c.frames.length + 1) + 0.05, still({ sheathed: false }));
     assert.equal(b.state().clip, null);
     return c;
   };
-  const kinds = [];
-  for (let i = 0; i < 6; i++) kinds.push((await swing()).kind);
-  assert.deepEqual(kinds, ['pingpong', 'forward', 'forward', 'forward', 'pingpong', 'forward'], 'pingpongCount % 4 == 0 (IL_507c-IL_509f)');
-  assert.equal(b.state().pingpongCount, 6, 'every clip under Mixed bumps the count');
-  // the mirror count: a melee clip under Mirror/Mixed bumps it (the ping-pong does not)
-  assert.equal(b.state().mirrorCount, 4, 'four forward swings');
+  const clips = [];
+  for (let i = 0; i < 6; i++) clips.push(await swing());
+  assert.deepEqual(clips.map((c) => c.kind), new Array(6).fill('forward'), 'no ping-pong under Mixed: the IL\'s every-fourth is retired');
+  assert.deepEqual(clips.map((c) => c.frames), [[0, 1, 2], [3, 4, 5], [0, 1, 2], [3, 4, 5], [0, 1, 2], [3, 4, 5]],
+    'a rig that names no count: the body\'s own, one stroke a blow, alternating');
+  assert.equal(b.state().strokeCount, 6);
+  // the rig's count names the stroke when there is one - the count the peers read off the wire (`an`)
+  assert.deepEqual((await swing({ swingN: 7 })).frames, [3, 4, 5]);
+  assert.deepEqual((await swing({ swingN: 8 })).frames, [0, 1, 2]);
+  assert.equal(b.state().strokeCount, 6, 'a named count leaves the body\'s own alone');
+  // the mirror count: every melee clip under Mirror/Mixed bumps it
+  assert.equal(b.state().mirrorCount, 8, 'eight forward swings');
   // the flip: front and back only, while the count is odd
   const { b: m } = await liveBody();
   setModSetting(MOD, 'Graphics.AttackStrings', STRING.Mirror);
@@ -570,14 +576,23 @@ test('EOTB-FLIP: a decoded PNG is turned into the world billboard\'s row order O
   const m = flipRows(out.colors, w, h);
   assert.deepEqual([m[0] & 0xff, (m[0] >> 8) & 0xff], [1, 2], 'mirrored: x swapped, y kept');
   assert.deepEqual([...out.colors], [...new Uint32Array(toColor32({ width: w, height: h, data }).colors.buffer)], 'toColor32, byte for byte');
+  // PERF-PEERS5: an OWNED raster is turned in its own bytes - the same answer, no second raster (odd and even heights)
+  for (const hh of [3, 4, 1]) {
+    const d = new Uint8Array(w * hh * 4).map((_, i) => (i * 37 + hh) & 255);
+    const own = worldOrderColors({ width: w, height: hh, data: d.slice() }, { owned: true });
+    assert.deepEqual([...own.colors], [...worldOrderColors({ width: w, height: hh, data: d }).colors], `owned, ${hh} rows: byte for byte`);
+  }
+  const keep = new Uint8Array(data);
+  const own = worldOrderColors({ width: w, height: h, data: keep }, { owned: true });
+  assert.equal(own.colors.buffer, keep.buffer, 'and owned means its own bytes - no copy');
 });
 
 test('EOTB-FLIP: the body\'s decode is the dropped torch\'s door - decodePng, then the converter - and never a canvas of its own', () => {
   const body = rd('src/player/eotbBody.js');
-  assert.match(body, /export async function decodeSprite\(url\) \{\s*const res = await fetch\(url\);\s*if \(!res\.ok\) throw new Error\([^)]*\);\s*return worldOrderColors\(await decodePng\(new Uint8Array\(await res\.arrayBuffer\(\)\)\)\);\s*\}/,
+  assert.match(body, /export async function decodeSprite\(url\) \{\s*const res = await fetch\(url\);\s*if \(!res\.ok\) throw new Error\([^)]*\);\s*return worldOrderColors\(await decodePng\(new Uint8Array\(await res\.arrayBuffer\(\)\)\), \{ owned: true \}\);[^\n]*\s*\}/,
     'fetch, decodePng, worldOrderColors - the same three the dropped torch takes');
   assert.ok(!/getImageData|new Image\(|OffscreenCanvas/.test(body), 'no canvas door of its own');
-  assert.match(rd('src/player/eotbSprite.js'), /import \{ toColor32 \} from '\.\.\/formats\/color32Order\.js';/, 'the converter is the tree\'s');
+  assert.match(rd('src/player/eotbSprite.js'), /import \{ toColor32, toColor32OrderInPlace \} from '\.\.\/formats\/color32Order\.js';/, 'the converter is the tree\'s (PERF-PEERS5: its in-place twin beside it)');
   assert.match(rd('src/scenes/droppedTorches.js'), /return toColor32\(await decodePng\(new Uint8Array\(await res\.arrayBuffer\(\)\)\)\);/, 'and the torch still takes it too');
   assert.deepEqual(MATERIAL.shade, { mode: 4, alpha: 0.6 });
   assert.equal(TABLE_FRAMES.Death, 2);

@@ -8,6 +8,229 @@
 
 Newest first.
 
+**2026-10-11 - AUDIT BR5.** Mac: *"Audit everything"* - PR #786, the rebrand to DFO Online. Four cold lanes and a live
+one on the frozen branch. Mac's four calls: the downloads keep their new names with copies under the old ones on every
+release (a pre-BR5 Mac or portable copy asks by name and would have met a 404), and a BR5 copy reads its download off
+the release; the terms' rename is not material, so their version stays 2026-09-28, re-hashed; the site's and the
+launcher's wordmark is the logo; the Mac's old app gets a patch note. Fixed as found: three lines still naming the
+original game where it is not owed (A-2, A-4, A-5) and a pin over the files that draw their words; the stale comments
+and docs. Main merged; the account version is acct115. `tools/mutants/auditbr5.json` 24. Record: `10-UI/UI-Arc.md`
+AUDIT BR5.
+
+**2026-10-11 - AUDIT SCALE II.** Mac: *"Lets do an audit on everything. Ensure perfection"* - PR #757, every slice of
+the Scale arc past 2,000. Seven lenses: live in real workerd, and six adversarial reviewers on the frozen head. Two
+critical (a stranger's hello taking a shard player's peer id on the bus, R2-1; a court's copy fighting a boss of its own
+and telling the hub it fell, R3-1), a dozen high and medium (the mint's stale bookmark, the new client closing its hub
+link on the relay before it, mutes and guild removals lost to a shard, woken shards and buses, lost batches, a private
+empty layer on demand, Renown lost at the hour's turn), the record's deploy claim, and ADMIT-LINE's line holding a
+reconnect's mints at 5 a second (put to Mac). Every finding reproduced, fixed and pinned red on the head as it stood; 169
+mutants, 168 dead and 1 equivalent as recorded. Record: `Audit-Scale-II.md` (AUDIT SCALE II).
+
+**2026-10-09 - AUDIT QUEST-SHELF.** Mac: *"Audit this"* - QUEST-SHELF (`06-Systems/Quest-Arc.md`). One review over
+its commit (fifteen findings), every one read against the tree, the tree untouched while it read (17l's rule). FIXED:
+- **The same quest taken again** (the abandon opens its questor's door) was shadowed by the copy set aside: every
+  lookup by name (`machine.js sharedCandidateNamed` - the syncs, a partner's step, the share's reward) answers a running
+  copy first now, the abandon leaves the party's step only where the copy is the one a share speaks to, and the copy
+  set aside is not reclaimed while the other runs (`twin`, said).
+- **A reclaim** left the behaviours standing on the quest and its talk topics on the resources the restore threw away
+  (a Place mount stood a second copy; `where is` read the old Person): relinked at once, as a resync's are (AUDIT
+  DISC7 C2, AUDIT 68 S29-share-topics).
+- **A named NPC's HOME copy** bound to the quest's Person by the block was put out of sight, and a click on them skipped
+  the broadcast to the running quests: the home copy is marked (`individualHome`) and stands, and only the direct click
+  is the quest's.
+- **The Settings repair** mended quests set aside (their links stood again): it reads running quests only; their
+  markers still follow a moved layout. **The rumor mill** told their rumors: `questAway` keeps them, told by no one.
+- **The lens** forgot a quest set aside, so its reclaim announced its whole journal as news: kept while away. **The
+  Abandoned rows** listed entries as first logged: in the order written (`writtenOrder`), and built for the pause tab
+  alone (`shelvedRail` - the timer's refresh and the chronicle read none of their lines).
+- **The pause tab** moved its selection on a refused press (the words under another quest): it follows the quest only
+  where it went, and a reclaimed quest the player had hidden is on the page again. **A partner's deliberate share** to a
+  copy set aside was answered with silence: said (`RECEIVER_REFUSAL_TEXT.shelved`); only the background sync is quiet.
+- **A partner's envelope** could carry a shelf (THE ENVELOPE IS NOT TRUSTED): stripped on receipt and on a step
+  (`NO_SHELF`). **The button and the press** kept two refusal ladders: one (`machine.js shelveRefusal`), and one raid
+  word (`refuseRaid`). **The topic lists** asked the first info's resource whether its quest was set aside: the quest
+  itself, by id; `isShelved` is the one spelling where a module may import it (the guidance keeps its own light graph).
+Mutants: `questshelf.json` 58 (22 new), all dead; `guide1.json` and `time3.json` re-aimed by content, all dead.
+
+**2026-10-08 - AUDIT FIELD-BUGS 1008.** Mac: *"let's do an audit on everything"* - the branch's seven: SHIP-CREDIT
+WITHDRAWN, MEDIUM-DISTINCT, WED-GATE, KVAR-HOLD, UNSTUCK-OUT, WATER-OFF, MERC-SLOPE. One review over the whole diff
+(nineteen findings), every one read against the tree, the tree untouched while it read (17l's rule). FIXED:
+- **A crash on the boot's load** - the landing's rock check asked `tvSeaY`, a const declared after the boot's
+  `await worldQuickLoad` (its dead zone): declared beside `state` now, pinned before the load (`test/unstuckout.test.js`).
+- **MERC-SLOPE paid nothing** for a lot whose half is one gold - a gold at least where the half and Daggerfall's offer
+  both reach one, as MERC-RISE paid (`test/fb0929d_mercantile.test.js`); and P0.4's pins in `test/realm0.test.js`,
+  weakened to inequalities in the slope's own change, are the law exactly again.
+- **The moved-layout relay** read an unlinked dungeon offline on the settings' size, and every dungeon at every load:
+  only a build that MOVED (`distinct`) is read now, and offline only one a link holds (`questRepair.js
+  relayQuestMovedLayout`); a shared copy arriving is laid too (`questShare.js`); the size test is `portSize`, exported;
+  its pin builds on the producer's own moved build (`test/mediumdistinct.test.js`).
+- **KVAR-HOLD's re-seat** enumerated the new stronghold before its link stood there (the settings' size, then the
+  quest's): fitted after the link moves (`Place.fitSiteToBuild`, machine.js `_reseatMovedOf`); drew near this client's
+  player - every shared copy elsewhere: drawn among the nearest the Hold it leaves; left a `local dungeon` stuck:
+  rescued as the remote one it is; a reveal that throws left the link behind: the reveal is best-effort
+  (`test/kvarhold.test.js`, 3).
+- **`/unstuck` outdoors** moved a body at a helm, aboard, on a deck, mounted or mid-door, and said "no open ground" for
+  every refusal: refused by `playerAfloat`, `isOnFoot` and `modes.transitioning`, each in its own words
+  (`UNSTUCK_OUT_WORDS`); the ring search asks `heldInSolid`, the one probe law.
+LEFT, said: (1) a moved medium dungeon's ONLINE room is still `dungeon:m<id>.m` - its memory from before (30 days at
+most) is the old layout's, and a page from before shares the room until it reloads. A room of its own is a relay version
+(`net/wire.js` WORLD_ROOM, DUNGEON_ROOM_TAGS; ~40 pins of `world176` and a bundle row), so OPEN for Mac. (2) The
+landing's check reads any single skin overhead (an arch, an eave) as a rock - an arrival under one moves to the open
+ground beside it, metres at most where a street is open. (3) The ring search walks every static bucket (no broad phase)
+- one command, or one landing held in a rock, at a time. Mutants: `unstuckout.json` 17, `kvarhold.json` 12,
+`mediumdistinct.json` 18, `fb0929d_mercantile.json` 9 - all dead.
+**2026-10-08 - AUDIT LW-STIR.** Mac: *"Lets audit everything and ensure perfection"*, of LW-STIR - the watch's word at
+the gate and on its rounds, the town's quarrels, haggles and pleas, the street hushing and turning, its small voices.
+Taken up again on main after its lenses never reported: four independent adversarial lenses on the frozen merge (the
+dealer's math and laws, the street and every reader, the plans and the hosts, the pins and the record) and this
+session's own; the game's own towns not run (no ARENA2 in the container). Paid: the day's incidents kept by who was in
+town, not by their plans - a reader there before the roads' word staged a day apart from one come after, travellers on
+the road among it (B1 = C1); a gate's word lost past 2^24 minutes, where the online sky is in 2028 (A1); a second party
+halted in a round another's word held, asked nothing (A2); a quarrel unbroken at a watch's handover (A3); a plea taking a
+keeper off their stall (A4 = B3); the day dealt from this reader's lends and household (B2); an incident's beggar and
+keeper drawn as still pictures facing nobody (B4); a halt costing a day visit its walk out (C2); a stranger asked by
+name, both of a pair calling the hour, a pair's second breaking it up, a held walker crying wares, one of an incident
+unable to greet the player the round through (A5, A6, A7, B6, B7). Lens D: 93 of its 118 mutants survived every test
+that imports the living town - the small voices never heard on the street under a pin, every stated number pinned
+against itself, the hush and the turn one way, the dealer's and the voices' laws, the town's wiring, fixtures that never
+made their cases (D1-D9) - each killed now; the measured table re-run by a committed probe (D10), a reason that does not
+reproduce marked (D11), titles made true (D12), a test loop bounded (D13). The record's false claims corrected; B5, B4's
+onlookers and C2's elder half recorded. 110 new mutants, 106 dead and 4 recorded equivalent. Record: `Audit-LW-Stir.md`.
+
+**2026-10-08 - AUDIT LW-ROOMS.** Mac: *"Audit this"*, of LW-ROOMS - the whole room walked, the tables filled apart and in
+sight, a room holding what its floor does, no afternoon sat out in the tavern. Four independent adversarial lenses on the
+frozen head (the room's math, the layer and every reader, the day's plan, the pins and the record), every one on the
+freeware ARENA2's 6,823 interiors and the game's own towns in scratch, and this session's own. Paid: the walk stopped at
+every doorway off its lattice's lines - 81 of 290 taverns under ten places - and slides through them now (E1: none); an
+open door laid the room out anew, its every drinker elsewhere, for the next visit, a load and a peer - the room is
+measured with every door shut as built (A1/B1); one stirring was drawn beside strangers by a farthest place round a
+corner and company chained two tables - their own place is the farthest they can walk to, company apart (A2/D2: taverns
+at five or more astir 49 -> 3); the tavern day was read every quarter hour and hid the noon lunch's wait - read every
+minute, the lunch from the stint's end (D1); the same-place rule emptied the street a quarter at 17:00 - indoors alone
+now (C1); a body on a bench's edge, the step ladder, one reader's quest and the hour, a lodger's stand, faces to the
+wall, comings in plain view, a word and the talk ray through walls, a household's hold (A3, D5, B2, B1b, A4, A5, B3, B4,
+E3). Lens D's survivors pinned or proven equivalent; the record's overstated sentences corrected (D3, D4, D8-D10); the
+room's talk measured back to 79.5 lines in five minutes (B6); C2, B7, C5, C6, A8-A10 recorded; the long stands at the
+square left for Mac (C1's trade-off). 40 new mutants, 37 dead and 3 recorded equivalent. Record: `Audit-LW-Rooms.md`.
+
+**2026-10-08 - AUDIT SCALE.** Mac: *"Do a comprehensive audit on this and ensure perfection"*, of SCALE3 and SCALE4a-c -
+the load harness, the session and its player in one read, the service's own clock, one heartbeat for a tab's three
+clocks. Five lenses: this session's own, live in real workerd (the account probe, both crons fired over a migrated D1,
+the deploy's triggers), and four independent adversarial reviewers on a snapshot of the pushed head (the service, the
+client's heartbeat, the harness and its numbers, the tests and the record). Paid: an auction won under a seat's Tithe,
+its seller within the Tithe of the Marks cap, picked every minute and closed never, twenty of them holding every auction
+behind them - on main already (A1); a firing able to spend thousands of statements on a stuck page and pass D1's
+thousand an invocation (A2); the knock's wait spending the grace that covers a missed knock - a 40 s alt-tab credited
+910 s of a sitting's 1,500 (B1); one hung heartbeat holding the board, the box and the beat for the page (B2); one
+part's throw failing all three (A7); the professions' state polled thirty times the client in the harness, a quarter of
+main's statements (C1); the arena's whole board counted every eight minutes on an empty world (A4); and the mutation
+runner reading "dead" off a test file that did not parse (M1). Lane D's 45 surviving mutants pinned; the measurements
+taken again by the corrected harness. 81 new mutants, 80 dead and 1 recorded equivalent. Record: `Audit-Scale.md` (AUDIT
+SCALE).
+
+**2026-10-07 - FIELD BUGS 2026-10-07.** Eight player reports from the Discord's bug-reports channel, through Mac, read
+one at a time. Six paid, two are recorded and left as they stand:
+- CRASH-BLUR - the crash screen's "NotFoundError: Failed to execute 'replaceChildren' ... moved in a 'blur' event
+  handler": the Notice Board's Market list repainted INSIDE a repaint (marketTab.js's redraw waits on a held list's
+  blur, and emptying the window blurs it). noticeWindow.js's render coalesces a paint asked mid-paint; read back in a
+  real Chromium (`crashblur_board.test.js`).
+- UMI-NAMES - "Use Magic Item Menu is crowded": every row read the raw `name` ("Glass Bottle", "%it of Lightning"),
+  never DFU's LongName; the list asks `itemLongName` now (`10-UI/UI-Arc.md`).
+- HIGH-CAST - "fishing popup shows up wayy too early" and "couldn't get it off my screen when on my ship": the cast's
+  point was asked over water in the ground's plane alone; it must stand within CAST_OVER_WATER_M of the water's
+  surface now (`06-Systems/Professions-Arc.md`, PROF8).
+- SHOT1 - "dark screenshots": PrintScreen read the canvas on a frame of its own, which a Frame Rate Cap's held frame
+  or a pad's press left undrawn; the shot is paid at the host's frame foot now (`10-UI/Loading-Screens.md`).
+- HALL-FOLK - "Npcs in purchased guild halls": a rest by day in a House2-4 hall or home stood its residents back up
+  through UpdateNpcPresence; a player's room online refuses the re-roll now (`06-Systems/Online-Arc.md`).
+- INDOOR-SKIN - "Cannot skin indoors": a building's bodies were never Hunting's nodes (the host read the street's
+  dead, the gather host ran outdoors and in dungeons alone); buildings skin now, exterior.js FLAGGED as before
+  (`06-Systems/Professions-Arc.md` section 29).
+- GUARD-RETURN, NOT CHANGED - "Protect an Honored Mage: assassins spawn again": DFU's own law (PcAt clears and
+  re-sets its task, CreateFoe.InitialiseOnSet zeroes its count), pinned as such; 26 vendored quests share it, and the
+  departure is Mac's to decide (`06-Systems/Quest-Arc.md` GUARD-RETURN).
+- "Items dropped for quests", NOT REPRODUCED: DroppedItemAtPlace, the transfer's refusal and every drop door matched
+  DFU end to end on The Acceptance Test (L0A01L00) and The Postman (A0C00Y00), save and load between included. Open
+  leads, unproven: a party's resync carrying the drop task cleared, and `_questLoc()` reading the live interior
+  position where DFU's GPS stands at the door. It waits on the reporter's save. The abandon-a-quest suggestion is not
+  DFU's and was not taken.
+
+**2026-10-07 - AUDIT LANDFORMS III.** Mac: *"Audit this. Must be perfection"*, of LANDFORM4-6 - a town standing in its
+land, the rolling hills, the land each climate wears. Four independent adversarial lenses on the frozen head (the
+shaper's math and determinism, every reader and online, the tests' and the record's honesty, the real map's body and
+cost), every one on the freeware ARENA2 in scratch, and this session's own. Paid: the town pull stood walls at the beach
+round coastal towns - 85 pixels over 50 m past DFU's own step, 149 m beside Penwold - and a pull up is eased over the
+knee now (A1: 0 over 5 m); the hills stood rivers on embankments, 77 m over their banks at worst, while the moved pins
+hid it - a river cuts its valley now (C1); the mountain woods sat 13-18 m low on a stale centre - every land centred on
+its own field (A2); a client whose town pack failed stood the wild ground round 3,360 towns up to 120 m off its room's -
+the sites are MAPS.BSA's rows on every client (B1); the sea was counted twice under coastal towns and six stood under the beach line - a level is its land's (D4); the ground asked engine-approximated Math.cos and Math.exp - series
+of correctly rounded steps now (A8). Lens C's 15 surviving mutants pinned or proven equivalent; the record's stale
+sentences corrected (A3, R1-R10); a big town on a steep mountainside left for Mac (C7), and a WATER-NEXT seam named for
+its owner (B2). 35 new mutants, 34 dead and 1 recorded equivalent. Record: `Audit-Landforms.md` (AUDIT LANDFORMS III).
+
+**2026-10-07 - AUDIT LANDFORMS II.** Mac: *"Do another deep audit on this"*, of LANDFORM1-3 and its first audit (#655).
+Six lenses on the audited head - the first audit's fixes, the network's timing, main's arrivals since, the body on the
+ground, the tests' and the record's honesty (five independent adversarial reviewers on a snapshot), and this session's
+own on the real data and in the running game. Paid: a Travel Options journey down a lifted mountain road billed lethal
+falls - the collider's floor reaches as far as the slope limit allows over a substep's run now (I3); a track over water
+was painted a ford and cut a causeway, its water up to 7.9 m over the channel - a track gives way to the channel too
+(J1), and streams are pinned at last (J2); a bench on a steep hillside stood its banks twice the hillside's grade and
+launched runs into 20-49 m falls - a bank is held within half a grade of its hillside (I2); when Basic Roads' network
+landed after a pixel's first build, what lay on its ground stayed in the air (a pile 28 m up) and the held player fell
+the cut - both ride the new ground now (G1/G2); a fetch that never answered left an online client roadless all
+session - a failed ask after 30 s (G3); the spawn's probe was bound after the boot's load, and a camp by a spawn
+drifted 24 m a session (F1); nature asked the beach line of the shaped blend while the tiles asked DFU's (H2); and the
+lift steepened Menevia's sea-cliff rim into a wall a road dropped a walker 95 m down - asked "Is it too steep?", then
+"Go ahead", the lift fades beside the sea now and the rim stands as DFU stands it (I1). This session's own headless boot
+caught a boot crash its G1 fix had made and the boot gate missed - fixed, and the gate scoped (K1) - and drove a save
+across the row both ways onto its ground. Every fix's pin red first; the first audit's overstated sentences corrected
+(J1, J8, J11, I4, I5). 60 new mutants and 24 re-aimed; 195 judged on the final code, 189 dead and 6 recorded
+equivalent. Record: `Audit-Landforms.md` (AUDIT LANDFORMS II).
+
+**2026-10-07 - AUDIT LANDFORMS.** Mac: *"Dont worry about it. Instead let's do just an audit and ensure this is
+perfect"*, of LANDFORM1-3 (#655), the heightmap raised, the roads cut in, the rivers in channels. Five lenses - the law
+and the math re-measured on the real WOODS.WLD, and four independent adversarial reviewers on a snapshot of the pushed
+head (every reader of the ground, the saves and the re-stand, online and the pipeline, the tests' honesty). Paid: the
+painted water climbed up to 19 m out of its channel where a road's cut refilled it (E2), and a hillside road stood on a
+32 m shelf (E1); a save from this build would have dropped the character from the sky on any build without the row -
+every height a record carries is in DFU's frame now, no stamp (C1); a record stood before its pixel was built took the
+wild lift, 203 m off a town at worst (B1), and across a change of the row one by a road landed up to 29.8 m over its
+ground - the field follows the cuts now (B2); 359 coastal town tiles turned between sand and land through the blend -
+a location's tiles are DFU's own blend's now (D3); online one failed fetch stood a client on other roads (C3). Every
+fix's pin red first (lane D's coverage pins proven by their mutants - AUDIT LANDFORMS II J8); lane D's 69 mutants in the record, the arm-weighting law written out and equal to the shaper at every
+sample. 135 mutants, 128 dead and 7 recorded equivalent. Open for Mac: two builds in one room (C2), OW-MOUNTAINS on the
+lifted ground (A2). Record: `Audit-Landforms.md` (AUDIT LANDFORMS).
+
+**2026-10-05 - AUDIT VE.** Mac: *"Audit this. Ensure this is on by default. And performance isn't affected"*, of
+Vanilla Enhanced (VE1-VE4, #621). Four lenses - the default, performance (measured in Chromium and node), the door against
+DFU (an independent adversarial review of a snapshot of the pushed head) and the tests' own honesty. Paid: Vanilla
+Enhanced is worn by default (the shipped Base on as a mod in DFU's Mods folder is, its add-ons off, the player's choice
+kept either way); its pictures are decoded off the main thread, as an attached bundle's are (the worst main-thread stall
+29-39 ms to 8-10 ms, none over 16 ms); the ground cache keeps three tile sets, not every one the session drew; and the review's fourteen (two Major - a switch
+mid-game drew a classic patchwork for the page, and the main menu's card read the shipped mods alone) fixed at their
+roots, each pinned red first and mutation-proven. Record: `Audit-VE.md` (AUDIT VE).
+
+**2026-10-03 - AUDIT GALLEON-2.** Mac: *"I want you to audit it"*, of the galleon's branch after AUDIT GALLEON, with
+main merged in. Six read-only lenses (the bake; her prefab, pictures and loader; her rig; her deck on every hull; her
+guns, the sea and online with #543's glide; the tests and records), 54 findings, each reproduced; six fixers on files of
+their own, every pin red first. Paid: G6's draft froze every hull-2 ship at every harbour berth; D-wall brought D1's
+level-jumping leash back on the Carrack and the fallback hull, and D7 made the Carrack's shut cargo doors a hole; G2's
+snap held only in the test's frame order; another player's galleon froze laid once she left her helm; her running rope
+trailed its spars up to 5 m; the fill was Blender 5.0's where Mac exported from 5.1.1; the port battery's side, a
+galleon at sea's guns and G5's heel were unpinned, and AUDIT NAV2 F24 had left a survivor. 133 mutants, 132 dead and one
+recorded equivalent. Her boom at head height kept, as the mod's own. Record: `Audit-Galleon-2.md` (AUDIT GALLEON-2).
+
+**2026-10-02 - AUDIT GALLEON.** Mac: *"Audit this. It must be perfect"*, of his galleon (GALLEON and GALLEON-2) on its own
+branch. Six lenses - the bake, the rig and her pictures, her prefab and loader, her deck and crew, her guns, the tests -
+and 70 pins, each red on the code as it stood. Paid: her faces cut as Blender cuts them (the bake's ear clip laid a 22 m
+wedge on one side alone), and her deck's walls marked as they stand in a cell (Blender's cut of her castle front had
+walled her castle roof out); her port side's shutters swung into her gun deck, a quick click and another player's
+volley fired through shut ports, and her balls left her upright root as she heeled; the helmsman stood in the great
+cabin; the anchor, the board triggers and the lantern poles stood in her; her rig met itself trimmed and its hit boxes
+stood still while her canvas swung; boarders fell off her port flight into the cabin; the fallback hull kept her
+numbers. 211 mutants, 210 dead and one recorded equivalent. Her sternway head to wind (4.05 m/s) stated, damping it
+Mac's call. Record: `Audit-Galleon.md` (AUDIT GALLEON).
+
 **2026-10-02 - AUDIT GRASS-LIT2.** Mac: *"Audit this."* Three read-only lenses over GRASS-LIT2
 (the shader, the host, the tests and docs). Paid: each grass cell walks only the lanterns that
 reach it, eight at most, where every blade walked all 48; a draw without shadows resets the

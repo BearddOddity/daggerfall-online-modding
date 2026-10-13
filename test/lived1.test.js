@@ -242,8 +242,8 @@ test('LIVED1 words: a deadline on the character\'s clock is said in their time a
   assert.equal(worldNightfallText(), null, 'at night there is nothing to wait for');
   const w = rd('src/scenes/world.js');
   assert.match(w, /function withNightfall\(text\) \{ const nf = worldNightfallText\(\); return nf \? `\$\{text\} \$\{nf\}` : text; \}/, 'the host\'s one composer');
-  assert.equal((w.match(/withNightfall\(/g) ?? []).length, 3, 'PARTY-TRAVEL\'s two, to the chat');
-  assert.equal((w.match(/sayWithNightfall\(/g) ?? []).length, 3, 'and the map door\'s two rungs, as two HUD rows (AUDIT LIVED1 M)');
+  assert.equal((w.match(/withNightfall\(/g) ?? []).length, 2, 'PARTY-TRAVEL\'s one, to the chat');   // PIN MOVED (HOOD-CAREER): the party's two sun rungs are one read (careerFastTravelBlock ?? racialFastTravelBlock), said once
+  assert.equal((w.match(/sayWithNightfall\(/g) ?? []).length, 5, 'and the map door\'s two rungs, as two HUD rows (AUDIT LIVED1 M) - and the driver\'s map\'s two online (AUDIT IT1 W2, PIN MOVED)');
 });
 
 test('LIVED1: the tavern\'s calendar is the WORLD\'s - a Heart\'s Day room is free by the world\'s date, whatever day the character\'s own clock reads', () => {

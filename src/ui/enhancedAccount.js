@@ -29,11 +29,13 @@
 import { STAGES, FIELDS, FIELD_SPEC, AGREEMENTS, AGREEMENT_SPEC } from './accountFlow.js';
 import { TITLE_TEXT, AURA_TEXT, glyphBadges, glyphArtNode, badgeClass } from './playerBadge.js';   // ACC3c: the SAME table the name over a head reads, so the picker shows what a player will actually wear - the COLOUR is the skin's (this card may not style itself, and a pin holds that)
 import { duelRecordText } from '../net/duelRecord.js';   // DUEL1: the account card's K/D row
-import { renownText, renownProgressText } from '../net/renown.js';   // RENOWN1: Renown, left of the name and in its rows
+import { renownText, renownProgressText, renownProgress } from '../net/renown.js';   // RENOWN1: Renown, left of the name and in its rows
 import { gateRecordText } from '../net/gateClaims.js';   // WB5b: and its gates-closed row
 import { marksText } from '../net/marksLaw.js';   // MARKS1: and its Marks row
 import { raidRecordText } from '../net/raidClaims.js';   // RAID4: and its towns-defended row
 import { t, localizedTable, intlLocale } from '../systems/textManager.js';   // L10N4: the card's words in the player's language, read when it is drawn
+import { serpentRecordText } from '../net/serpentClaims.js';   // AUDIT SERPENT D4: and its serpents-slain row
+import { sdRecordText } from '../net/sdClaims.js';   // SD9b: and its Hours-broken row
 
 /** RENOWN-CHAR (Mac: "Can we make renown per character again"): the card's Renown tracks as the service sends them -
  *  its characters', the most recently played first - or none: none earned yet, or a service from RENOWN-ACCOUNT's day
@@ -41,6 +43,9 @@ import { t, localizedTable, intlLocale } from '../systems/textManager.js';   // 
 export function renownTracksOfCard(r) {
   return Array.isArray(r) ? r.filter((t) => renownText(t?.level) && Number.isSafeInteger(t?.xp) && t.xp >= 0) : [];
 }
+
+/** NAME-AS: the two names the room may read, in the order the toggle draws them - the account's, then the character's. */
+export const NAME_AS_CHOICES = Object.freeze([['account', 'Account name'], ['character', 'Character name']]);
 
 /** COPY LIVES IN ONE TABLE, so a stage cannot be drawn with a heading
  *  from one slice and a paragraph from another. Keyed by stage, and a
@@ -65,6 +70,10 @@ export const GLYPH_LABEL = localizedTable({   // L10N4: each word a getter, read
   crownDF: () => t('account.glyph.crownDF', 'The Crown of Daggerfall'),   // SEAT1c: a crown seat's crown, its kingdom's
   crownWR: () => t('account.glyph.crownWR', 'The Crown of Wayrest'),
   crownSN: () => t('account.glyph.crownSN', 'The Crown of Sentinel'),
+  laurel: () => t('account.glyph.laurel', 'Arena Champion'),   // ARENA4: the laurel, while its wearer is the season's #1
+  aegis: () => t('account.glyph.aegis', 'Aegis of Oblivion'),   // AEGIS: the pillars through the ring over the void, beside Sureme's name
+  primarch: () => t('account.glyph.primarch', 'Primarch'),   // PRIMARCH: the three-barred cross, beside GA00250's name
+  crystalfist: () => t('account.glyph.crystalfist', 'Crystal Fist'),   // CRYSTAL-FIST: the three slashes, beside Flylighter's name
 });
 
 /** ACC4: THE TWO FACTS MAC ASKED FOR, as words. Pure, so node pins
@@ -145,7 +154,7 @@ export const STAGE_ACTS = Object.freeze({   // L10N4: the button's word a getter
  * @param {Document} doc
  * @param {ReturnType<typeof import('./accountFlow.js').AccountFlow>} flow
  */
-export function accountCard(doc, flow, { onClose = null } = {}) {
+export function accountCard(doc, flow, { onClose = null, face = null, character = null } = {}) {
   const el = (t, cls, txt) => {
     const n = doc.createElement(t);
     if (cls) n.className = cls;
@@ -172,6 +181,57 @@ export function accountCard(doc, flow, { onClose = null } = {}) {
   let wanted = null;   // { key, stage, caret } - the control the focus goes back to, on a card of that stage
   let painted = null;  // the stage the card on screen was built for
   const keyedAs = (n, key) => { n.acctKey = key; keyed.set(key, n); return n; };
+  /** PROFILE-MENU: where a section's boxes land - the card itself, or the section being built. */
+  let host = root;
+
+  /**
+   * PROFILE-MENU - THE PORTRAIT, the one the corner mark wears (ui/profileBadge.js): the face of the character last
+   * played, handed in by the door as it hands the mark its own (`face`, loadFace's promise of a canvas), in a round well.
+   * A hooded silhouette stands until the face lands, and for good with none - the mark's own NEVER TRAPS. The face is
+   * drawn ONCE per card: a repaint moves the same canvas into the new well, never asks for another.
+   */
+  let faceArt = null;
+  // AUDIT PROFILE-MENU P7: ONE SHAPE, the one the producer mints - loadFace is async, so the door hands a promise; a
+  // canvas handed bare was a branch nothing in the game could reach
+  if (face && typeof (/** @type {any} */ (face).then) === 'function') {
+    /** @type {Promise<any>} */ (face).then((art) => { if (art) { faceArt = art; if (flow.stage === 'in') paint(); } }).catch(() => {});
+  }
+  function portrait() {
+    const well = el('div', faceArt ? 'acctportrait hasface' : 'acctportrait');
+    well.setAttribute?.('aria-hidden', 'true');
+    well.append(faceArt ?? el('span', 'acctsilhouette'));
+    return well;
+  }
+
+  /**
+   * PROFILE-MENU - UNDER THE NAME, WHAT IT WEARS AND WHO IT PLAYS: the title worn, in the colour it wears over a head
+   * (the skin's class - this card brings no colour); the glyphs shown, each its own drawing; and the character the
+   * portrait is (`character`, the corner mark's own line). Nothing worn, nothing drawn - no empty row.
+   */
+  function plateFacts(into) {
+    const w = flow.wardrobe;
+    const worn = typeof w?.title === 'string' && w.title ? w.title : null;
+    const off = Array.isArray(w?.glyphsOff) ? w.glyphsOff : [];
+    const shown = glyphBadges(w).filter((g) => !off.includes(g.key));
+    if (worn || shown.length) {
+      const line = el('div', 'acctworn');
+      if (worn) {
+        const t = el('span', `acctworntitle ${badgeClass('tl', worn)}`);
+        t.append(el('span', 'acctwornword', TITLE_TEXT[worn] ?? worn));
+        line.append(t);
+      }
+      for (const g of shown) {
+        const chip = el('span', `acctglyph ${badgeClass('gl', g.key)}`);
+        chip.title = GLYPH_LABEL[g.key] ?? g.key;
+        const svg = glyphArtNode(doc, g, 'acctglyphart', 1.6);
+        if (!svg) continue;
+        chip.append(svg);
+        line.append(chip);
+      }
+      into.append(line);
+    }
+    if (typeof character === 'string' && character) into.append(el('span', 'acctcharline', character));
+  }
 
   /** One field, wearing exactly the shape ONLINE1 and NAME-F2 built. */
   function field(key) {
@@ -267,7 +327,7 @@ export function accountCard(doc, flow, { onClose = null } = {}) {
     const w = flow.wardrobe;
     const held = Array.isArray(w?.titles) ? w.titles : [];
     const glyphs = glyphBadges(w);
-    const auras = Array.isArray(w?.auras) ? w.auras : [];   // WB9g: the Broker's auras this account owns
+    const auras = Array.isArray(w?.auras) ? w.auras : [];   // WB9g: the Broker's auras this account owns; AEGIS: and a listed title's (PRIMARCH: the Golden Radiance; SHADOW-CLOAK: the Holo Shadow Cloak; SERAPH-WINGS: a developer's Seraph Wings)
     if (!held.length && !glyphs.length && !auras.length) return;
 
     const box = el('div', 'acctwear');
@@ -338,7 +398,7 @@ export function accountCard(doc, flow, { onClose = null } = {}) {
       }
       box.append(row);
     }
-    root.append(box);
+    host.append(box);
   }
 
   function paint() {
@@ -369,6 +429,39 @@ export function accountCard(doc, flow, { onClose = null } = {}) {
   }
 
   /**
+   * NAME-AS (2026-10-12, Mac: "I want to add an option to the profile menu where players can toggle to use their account
+   * name or character name for ingame use") - THE NAME THE ROOM READS, a toggle of two: the account's (the plate's own
+   * name) or the character's being played. A press asks the flow (chooseName: the service keeps the choice and every
+   * later mint signs it), and the one chosen is pressed - `worn`, aria-pressed - as a title worn is, in the wardrobe's own
+   * vocabulary (this card brings no design language of its own). One line under it says what the other players see: the
+   * account's name, by name; or the character's, and the account's where the character's cannot be shown (the mint says
+   * why, and the game says it once). A service from before NAME-AS states no choice, and gets no toggle.
+   */
+  function nameAsRow() {
+    const a = flow.account;
+    if (a?.nameAs !== 'account' && a?.nameAs !== 'character') return;
+    const box = el('div', 'acctwear acctnameas');
+    box.append(el('span', 'fieldlabel', 'Name in game'));
+    const row = el('div', 'acctwearrow');
+    for (const [as, label] of NAME_AS_CHOICES) {
+      const on = a.nameAs === as;
+      const b = keyedAs(el('button', `acttitle${on ? ' worn' : ''}`), `nameas:${as}`);
+      b.append(el('span', 'acttitleword', label));
+      b.type = 'button';
+      b.disabled = !!flow.busy;
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.title = on ? 'Shown in game now' : `Show your ${label.toLowerCase()} in game`;
+      b.onclick = () => flow.chooseName(as);
+      row.append(b);
+    }
+    box.append(row);
+    box.append(el('p', 'meta', a.nameAs === 'character'
+      ? `Others see the name of the character you play online, or ${a.name} where it cannot be shown.`
+      : `Others see ${a.name} over your head and in chat.`));
+    host.append(box);
+  }
+
+  /**
    * PATREON-LINK — THE PATRON'S OWN LINK (Mac: "having to manually hand out titles ... its really hard to keep up with
    * it"). A registered account, on a service with linking on, gets one row: Link Patreon, or Linked with what the
    * pledge holds, a Refresh (the same link - Patreon asked again) and an Unlink.
@@ -395,7 +488,7 @@ export function accountCard(doc, flow, { onClose = null } = {}) {
     }
     if (p.linked) row.append(act(t('account.patreon.unlink', 'Unlink'), () => flow.unlinkPatreon(), { disabled: !!flow.busy, key: 'patreon:unlink' }));
     box.append(row);
-    root.append(box);
+    host.append(box);
   }
 
   /** PATREON-LINK: BACK FROM THE BROWSER, the account is read again - a link that landed, or a pledge that moved, is on
@@ -412,6 +505,27 @@ export function accountCard(doc, flow, { onClose = null } = {}) {
   function build(stage) {
     const copy = STAGE_COPY[stage];
 
+    // PROFILE-MENU (2026-10-07, Mac: "organize and detail the player profile (the top right icon section)"): SIGNED
+    // IN, THE CARD IS A PROFILE, not a list. It was one centred column of eleven key-and-value rows - who you are, what
+    // you have done and what your account is, all at one weight, the Renown rows wrapping to three lines on a phone. Now
+    // it reads in the order a player looks: WHO (the plate - the portrait the corner mark wears, the name with its
+    // Renown, the title and glyphs worn, the character), then WHAT THEY HAVE DONE (the record, a tile a deed; each
+    // character's Renown with how far into it they are, drawn), then WHAT THEY WEAR (the wardrobe), then THE ACCOUNT
+    // (its facts and the Patreon link). Each in a section of its own under its own head; side by side where the window
+    // is wide (enhancedStyle.js .acctgrid), one column on a phone. Every fact is the one the card already said - none is
+    // new, and none is said twice.
+    const signedIn = stage === 'in' && !!flow.account;
+    root.className = signedIn ? 'card acct acctin' : 'card acct';
+    host = root;
+    let head = root;
+    if (signedIn) {
+      const plate = el('div', 'acctplate');
+      plate.append(portrait());
+      head = el('div', 'acctident');
+      plate.append(head);
+      root.append(plate);
+    }
+
     // The tag earns its place only where it is NOT a restatement of the
     // heading below it: "Write this down" over "Your recovery code" is
     // a different sentence; "Account" over "Your account" is the same
@@ -426,24 +540,104 @@ export function accountCard(doc, flow, { onClose = null } = {}) {
     const heading = stage === 'in' ? (flow.account?.name ?? copy.title) : copy.title;
     const lvText = renownText(tracks[0]?.level);
     if (lvText) {
-      const head = el('h3', null, null);
+      const h = el('h3', null, null);
       const chip = el('span', 'acctrenown', lvText);
       chip.title = typeof tracks[0].name === 'string' && tracks[0].name ? t('account.card.renownWhose', 'Renown {level} - {name}', { level: tracks[0].level, name: tracks[0].name })
         : t('account.card.renownLevel', 'Renown {level}', { level: tracks[0].level });   // AUDIT RENOWN1 UI-10: whose Renown it is
-      head.append(chip, el('span', 'acctname', heading));
-      root.append(head);
-    } else root.append(el('h3', null, heading));
+      h.append(chip, el('span', 'acctname', heading));
+      head.append(h);
+    } else head.append(el('h3', null, heading));
+    if (signedIn) plateFacts(head);
     if (copy.blurb) root.append(el('p', 'meta', copy.blurb));
 
-    // ── THE SIGNED-IN FACTS ─────────────────────────────────────────
-    if (stage === 'in' && flow.account) {
-      const rows = el('ul', 'acctfacts');
+    // ── THE SIGNED-IN PROFILE ───────────────────────────────────────
+    if (signedIn) {
+      const grid = el('div', 'acctgrid');
+      const deeds = el('div', 'acctcol');
+      const kept = el('div', 'acctcol');
+      root.append(grid);
+      /** A section: its head, and the list its rows go in - `row` writes a key and a value into the list in hand. It
+       *  stands in its column only once a row is in it (`keep`): ACC1e's rule, no heading over an empty box. */
+      let rows = null;
+      let last = null;
+      const section = (title, cls = '') => {
+        const sec = el('section', 'acctsec');
+        sec.append(el('h4', 'acctsechead', title));
+        rows = el('ul', cls ? `acctfacts ${cls}` : 'acctfacts');
+        sec.append(rows);
+        return sec;
+      };
+      const keep = (into, sec) => { if (rows.children.length) into.append(sec); };
       const row = (k, v) => {
         const li = el('li');
         li.append(el('span', 'acctkey', k));
         li.append(el('span', 'acctval', v));
         rows.append(li);
+        last = li;
       };
+      /** Under the row just written, a bar: `value` of `max`, said in words for a reader that cannot see it. */
+      const bar = (value, max, words) => {
+        if (!last || !(max > 0)) return;
+        const b = el('progress', 'acctbar');
+        b.max = max;
+        b.value = Math.max(0, Math.min(max, value));
+        b.title = words;
+        b.setAttribute?.('aria-label', words);
+        last.append(b);
+      };
+
+      // THE RECORD - what the account has done, a tile a deed. A service from before a deed says nothing of it, and a
+      // section with nothing in it is not drawn (ACC1e: no heading over an empty box).
+      const record = section(t('account.card.record', 'Record'), 'acctrecord');
+      // DUEL1 (Mac: "Add a dueling K/D to the profile menu"): the account's record, the service's count of the duels
+      // it won and lost (net/duelRecord.js says whose word each result is). A service from before it says nothing.
+      const duels = duelRecordText(flow.account.duels);
+      if (duels) row(t('account.card.duels', 'Duels'), duels);
+      // PROFILE-MENU: and the wins' share of them, drawn - a K/D is a ratio, and a bar says it at a glance
+      const won = Number.isSafeInteger(flow.account.duels?.wins) && flow.account.duels.wins > 0 ? flow.account.duels.wins : 0;
+      const lost = Number.isSafeInteger(flow.account.duels?.losses) && flow.account.duels.losses > 0 ? flow.account.duels.losses : 0;
+      if (duels && won + lost > 0) bar(won, won + lost, t('account.card.duelsWon', '{percent}% of duels won', { percent: Math.round((100 * won) / (won + lost)) }));
+      // WB5b: the Oblivion Gates this account closed - each a kill the relay signed and this service counted once
+      // (net/gateClaims.js carries the receipts). A service from before it says nothing.
+      const gates = gateRecordText(flow.account.gates);
+      if (gates) row(t('account.card.gates', 'Breaches closed'), gates);   // WB12a
+      // RAID4: the towns this account defended - each a raid's cleanse the relay signed and this service counted once
+      // (net/raidClaims.js carries the receipts). A service from before it says nothing.
+      const raids = raidRecordText(flow.account.raids);
+      if (raids) row(t('account.card.raids', 'Towns defended'), raids);
+      // AUDIT SERPENT D4 (SERPENT1): the sea serpents this account helped slay - each a kill the relay signed and this
+      // service counted once (net/serpentClaims.js carries the receipts). A service from before it says nothing.
+      const serpents = serpentRecordText(flow.account.serpents);
+      if (serpents) row(t('account.card.serpents', 'Serpents slain'), serpents);
+      // SD9b: the Hours this account broke - each a Brass Remnant's fall the relay signed and this service counted once
+      // (net/sdClaims.js carries the receipts). A service from before it says nothing.
+      const hours = sdRecordText(flow.account.sds);
+      if (hours) row(t('account.card.hours', 'Hours broken'), hours);
+      // MARKS1: the account's Marks - the server's currency, struck for acts a server witnessed (PROF0 10.5). Null where
+      // Marks are not this account's (a guest, the service's switch), and a service from before it says nothing.
+      if (Number.isSafeInteger(flow.account.marks)) row(t('account.card.silver', 'Silver'), marksText(flow.account.marks));
+      keep(deeds, record);
+
+      // RENOWN1: each character's Renown and how far into it they are - online's own level, never the save's. The
+      // service sends the RENOWN_CARD_TRACKS (five) most recently played (RENOWN-CHAR: a row each again).
+      // PROFILE-MENU: under a head of their own, each with the way to its next level drawn.
+      const chars = section(t('account.card.characters', 'Characters'), 'acctchars');
+      for (const tr of tracks) {
+        row(t('account.card.renown', 'Renown'), t('account.card.renownRow', '{name} - Renown {level}, {progress}', { name: typeof tr.name === 'string' && tr.name ? tr.name : t('account.card.aCharacter', 'A character'), level: tr.level, progress: renownProgressText(tr.xp) }));
+        const p = renownProgress(tr.xp);
+        bar(p.need > 0 ? p.into : 1, p.need > 0 ? p.need : 1, renownProgressText(tr.xp));   // at the cap, a full bar
+      }
+      keep(deeds, chars);
+
+      // THE WARDROBE (ACC3c) and THE PATRON'S LINK (PATREON-LINK), each under its head, where there is one to draw
+      host = el('section', 'acctsec');
+      host.append(el('h4', 'acctsechead', 'Wardrobe'));
+      wardrobe();
+      if (host.children.length > 1) kept.append(host);
+
+      // THE ACCOUNT - what it is: the name it goes by, its kind, when it was made and the time played on it - NAME-AS: and
+      // which name the room reads - and its Patreon link, which is the account's too.
+      const account = section('Account');
       // A GUEST IS NOT A LESSER ACCOUNT, and the card says so rather
       // than showing an empty username and a nag. It is an account
       // with no username attached YET - ACC0's own framing, and the
@@ -458,34 +652,22 @@ export function accountCard(doc, flow, { onClose = null } = {}) {
       const joined = registeredText(flow.account.registeredAt);
       if (joined) row(t('account.card.registered', 'Registered'), joined);
       row(t('account.card.played', 'Time played'), playedText(flow.account.playedS));
-      // DUEL1 (Mac: "Add a dueling K/D to the profile menu"): the account's record, the service's count of the duels
-      // it won and lost (net/duelRecord.js says whose word each result is). A service from before it says nothing.
-      const duels = duelRecordText(flow.account.duels);
-      if (duels) row(t('account.card.duels', 'Duels'), duels);
-      // WB5b: the Oblivion Gates this account closed - each a kill the relay signed and this service counted once
-      // (net/gateClaims.js carries the receipts). A service from before it says nothing.
-      const gates = gateRecordText(flow.account.gates);
-      if (gates) row(t('account.card.gates', 'Breaches closed'), gates);   // WB12a
-      // MARKS1: the account's Marks - the server's currency, struck for acts a server witnessed (PROF0 10.5). Null where
-      // Marks are not this account's (a guest, the service's switch), and a service from before it says nothing.
-      if (Number.isSafeInteger(flow.account.marks)) row(t('account.card.silver', 'Silver'), marksText(flow.account.marks));
-      // RAID4: the towns this account defended - each a raid's cleanse the relay signed and this service counted once
-      // (net/raidClaims.js carries the receipts). A service from before it says nothing.
-      const raids = raidRecordText(flow.account.raids);
-      if (raids) row(t('account.card.raids', 'Towns defended'), raids);
-      // RENOWN1: each character's Renown and how far into it they are - online's own level, never the save's. The
-      // service sends the RENOWN_CARD_TRACKS (five) most recently played (RENOWN-CHAR: a row each again).
-      for (const tr of tracks) {
-        row(t('account.card.renown', 'Renown'), t('account.card.renownRow', '{name} - Renown {level}, {progress}', { name: typeof tr.name === 'string' && tr.name ? tr.name : t('account.card.aCharacter', 'A character'), level: tr.level, progress: renownProgressText(tr.xp) }));
-      }
-      root.append(rows);
-      wardrobe();
+      kept.append(account);
+      host = account;
+      nameAsRow();   // NAME-AS: the name the room reads - the account's own section, beside the name it goes by
       patreonRow();   // PATREON-LINK
       if (!flow.account.handle) {
-        root.append(el('p', 'meta', t('account.card.guestNote', 'Adding a username keeps everything this account already has.')));
+        account.append(el('p', 'meta', t('account.card.guestNote', 'Adding a username keeps everything this account already has.')));
       }
+      host = root;
+      // AUDIT PROFILE-MENU P2: A COLUMN WITH NOTHING IN IT IS NOT DRAWN - a new guest, or an account a service before the
+      // record knows, has no deeds, and its Account stood in the right half of the wide window beside an empty left one.
+      // Two columns (and the wide window) only when both have something to say.
+      const both = deeds.children.length > 0;
+      grid.className = both ? 'acctgrid acctgrid2' : 'acctgrid';
+      if (both) grid.append(deeds);
+      grid.append(kept);
     }
-
     // ── THE CODE, THE ONE TIME IT EXISTS ────────────────────────────
     if (stage === 'code' && flow.recoveryCode) {
       const plaque = el('div', 'acctcode');

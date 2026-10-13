@@ -183,7 +183,7 @@ test('FAR-CLIP1: drawTerrain binds the installed set\'s clip program when asked 
   assert.equal(lanePlain.fs, EL_TERRAIN_FS);
   const laneClip = drawTerrain(r, rig, true);
   assert.equal(terrainFragment(laneClip.fs)(CLIP_SENTINEL, [TILE, TILE]).discarded, true, 'the lane\'s clip program discards the byte');
-  assert.equal(rig.compiled() - beforeLane, 22 + 2, 'the lane\'s twenty-two (EL1; AUDIT BAY A12: the shadow pass\'s cutting program among them), and its clip program once asked');
+  assert.equal(rig.compiled() - beforeLane, 26 + 2, 'the lane\'s twenty-six (EL1; AUDIT BAY A12: the shadow pass\'s cutting program among them; CACHE-COPY: and the copy that puts the shadow cache into the live layers; RW1: and the caster that cuts a cutout picture\'s holes), and its clip program once asked');
   assert.deepEqual([...valuesOf(laneClip).keys()].sort(), [...valuesOf(lanePlain).keys()].sort(), 'the lane\'s uniforms reach its clip program too');
   assert.ok(valuesOf(laneClip).has('uELExposure') && valuesOf(laneClip).has('uSunShadow'), 'the exposure and the shadow maps among them');
   for (const d of [lanePlain, laneClip]) for (const e of d.uploads) assert.equal(e.loc.p, d.prog, `lane ${e.loc.name}: the bound program's own location`);
@@ -289,7 +289,7 @@ test('FAR-CLIP1: on a coast the port\'s own terrain pipeline builds, every clipp
 
 test('FAR-CLIP1: the world draws a pixel whose TileMap the cap patched with the clip program and every other with the plain one, the patched pixels after the rest, and builds the clip program as the mod mounts; the byte has one home; the other three hosts draw no carved sea (mutants: every pixel plain; the cull\'s pixels only; every pixel clipped; unsorted; clipped first; no warm)', () => {
   const w = rd('src/scenes/world.js');
-  assert.match(w, /renderer\.drawTerrain\(p\.dwTerrain \?\? p\.terrain, pixelMatrix,[^\n]*\n\s+renderer\.tileArrays\.get\(p\.groundArchive\), p\.tilemapTex, 6\.4, !!p\._dwBytes\);/,
+  assert.match(w, /renderer\.drawTerrain\(p\.dwTerrain \?\? p\.terrain, pixelMatrix,[^\n]*\n\s+renderer\.tileArrays\.get\(p\.groundArchive\), p\.tilemapTex, 6\.4, !!p\._dwBytes, ecoDraw\(p\)\);/,   // ECOTONE1: PIN MOVED - the border pixel's neighbours ride after the clip
     'the ground of a pixel the cap patched (dwSetTilemap\'s `_dwBytes`: its TileMap on the texture) draws with the clip program, as the mod swaps the material of each terrain it clips');
   assert.match(w, /renderer\.setCloudShadow\(sky\?\.cloudShadow \?\? null\);\n\s+if \(deepWaters\) groundQueue\.sort\(dwClipLast\);[^\n]*\n\s+for \(const p of groundQueue\) \{/, 'the queue is ordered before the drain');
   const cmp = w.match(/function dwClipLast\(a, b\) \{ (return [^}]+) \}/);

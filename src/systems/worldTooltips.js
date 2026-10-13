@@ -59,6 +59,8 @@ import { itemLongName } from './itemInfo.js';   // RF6: ResolveItemLongName, the
 import { buildingClosedText, buildingLockValue } from './buildingLocks.js';
 import { BUILDING_TYPES } from '../world/buildingNames.js';
 import { TRIGGER_FLAGS } from '../world/rdbLayout.js';   // DFBlock.RdbTriggerFlags has ONE home; this arm compares against it rather than a second copy by name
+import { isActionDoorObject } from '../world/actionSystem.js';   // SENSE1: GetComponent<DaggerfallActionDoor>, the door band's own question
+import { DUNGEON_TIER_TEXT } from './dungeonTier.js';   // TIER1: a dungeon's tier, in the words every surface draws
 
 /** The mod's switch, and its one knob. Online forces every mod on
  *  (OL1), which `modSetting` already applies - right for this one: a
@@ -366,11 +368,26 @@ export const TOTEM_ARCHIVE = 211;
 export const TOTEM_RECORD = 54;
 export const TOTEM_TEXT = 'The Totem of Tiber Septim';
 
+/** The item a quest ITEM stand is named by - `((Item)qrb.TargetResource)
+ *  .DaggerfallUnityItem` (.cs:509), the Item resource's own
+ *  `daggerfallUnityItem` (quest/item.js). WHERE-ROBES (FIELD BUGS
+ *  2026-10-04c): both hosts' namers read `res.daggerfallItem ?? res.item`,
+ *  fields no resource has, so every quest item in the world stood
+ *  nameless - O0A0AL00's robes a bare pile of cloth beside a wardrobe
+ *  that said "Wardrobe" - and only the Totem, named by hand, ever read.
+ *  A Person or a Foe carries none, so it answers null (and the namers
+ *  gate on them first, the mod's `is Item`). */
+export const questStandItem = (resource) => resource?.daggerfallUnityItem ?? null;
+
 /** A quest resource's word - items only; a quest PERSON or FOE stand
  *  answers nothing, exactly as the mod's `is Item` gate does. */
-export function questResourceName(item, { archive = -1, record = -1 } = {}) {
+export function questResourceName(item, { archive = -1, record = -1, getQuest = null } = {}) {
   if (archive === TOTEM_ARCHIVE && record === TOTEM_RECORD) return TOTEM_TEXT;
   if (!item) return null;
+  // AUDIT WHERE-ROBES N1: `getQuest` is the host's quest resolver. ResolveItemLongName's quest-letter arm
+  // (ItemHelper.cs:334-350) finds the letter's quest through QuestMachine.Instance and says "Letter: <signoff>"; the
+  // port's arm (itemInfo.js questLetterName) runs only with the resolver handed in, so a quest letter standing in the
+  // world read "Parchment" - a branch no one met until ROBES-NAME named the stands at all.
   // AUDIT-WH M4: `ResolveItemLongName(item, FALSE)` (.cs:509). The
   // second argument is `differentiatePlantIngredients`, which DFU
   // defaults TRUE - it is what puts "(northern)"/"(southern)" on the
@@ -380,7 +397,7 @@ export function questResourceName(item, { archive = -1, record = -1 } = {}) {
   // stand read "Yellow Rose (northern)" where the mod reads "Yellow
   // Rose". The port's own resolver already carries the switch; this
   // is the one caller that turns it off.
-  return itemLongName(item, { differentiatePlantIngredients: false }) || null;
+  return itemLongName(item, { differentiatePlantIngredients: false, getQuest }) || null;
 }
 
 // ── DOORS ───────────────────────────────────────────────────────
@@ -391,6 +408,26 @@ export function questResourceName(item, { archive = -1, record = -1 } = {}) {
  *  back apart at the draw would parse what the namer already knew. */
 export function actionDoorName(locked, lockValue) {
   return locked ? { title: 'Door', subs: [`Lock Level: ${lockValue}`] } : { title: 'Door' };
+}
+
+/**
+ * SENSE1 (the delve arc): ONE ACTION OBJECT'S WORD, THE MOD'S TWO BANDS IN THE MOD'S ORDER - the action band
+ * (.cs:400-471: the object's DaggerfallAction, by trigger flag and model) and, only when it said nothing, the door band
+ * (.cs:641-650: `CheckComponent<DaggerfallActionDoor>`). Both hosts had the door band FIRST and asked it of every
+ * `kind === 'door'`, and that is two departures from the mod:
+ *   - a SPECIAL door (DaggerfallActionDoorSpecial - the wall a lever swings open) is a separate MonoBehaviour the
+ *     door band's GetComponent never returns (isActionDoorObject), so the mod names it only by its action band, which
+ *     is silent for the chain-only trigger flags such walls carry. The port called every secret wall "Door".
+ *   - an action door whose own record is Direct-flagged is "<Interact>" (or its model's name) in the mod, because the
+ *     action band runs first and the door band is guarded on an empty `ret`.
+ * `o` is the action system's object (its triggerFlag, modelIdNum, kind, special, currentLockValue).
+ */
+export function actionObjectName(o, { hideInteract = false } = {}) {
+  if (!o) return null;
+  const t = actionName(o.triggerFlag, o.modelIdNum, { hideInteract });
+  if (t) return { title: t };
+  if (isActionDoorObject(o)) return actionDoorName((o.currentLockValue ?? 0) > 0, o.currentLockValue ?? 0);
+  return null;
 }
 
 /**
@@ -437,12 +474,19 @@ export function actionDoorName(locked, lockValue) {
 export function staticDoorName(kind, {
   displayName = '', locationName = '', regionName = '',
   buildingType = BUILDING_TYPES.None, unlocked = true, quality = 0,
-  inTown = false, elite = false,
+  inTown = false, tier = null, size = null,
 } = {}) {
-  // ELITE: the mouth of an elite spawned dungeon says so, in the plaque's title, with the way in beneath
-  if (kind === 'dungeonEntrance' && elite) {
+  // ELITE: the mouth of an elite spawned dungeon says so, in the plaque's title, with the way in beneath.
+  // TIER1 (Super-Dungeons.md section 12): and every dungeon's mouth says its TIER the same way where the host names one -
+  // online, where the tiers differ (systems/dungeonTier.js) - Regular, Elite or Super, and beneath the way in, the
+  // size the room builds it at (SD-ONLINE's Small, Medium or Large). Offline the host names none and the mouth keeps the
+  // mod's own "To <name>". The `Elite ` a spawn's name carries is the title's now, not the way in's.
+  if (kind === 'dungeonEntrance' && Object.hasOwn(DUNGEON_TIER_TEXT, tier ?? '')) {
     const name = String(locationName ?? '').replace(/^Elite /, '');
-    return { title: 'Elite Dungeon', subs: name ? [`To ${name}`] : [] };
+    const subs = [];
+    if (name) subs.push(`To ${tier === 'super' ? name.replace(/^The /, 'the ') : name}`);   // AUDIT SD II (L6 F20): "To the Brass Hollow"
+    if (size) subs.push(String(size));
+    return { title: DUNGEON_TIER_TEXT[tier], subs };
   }
   if (kind === 'buildingExit' || kind === 'dungeonEntrance') {
     return locationName ? { title: `To\n${locationName}` } : null;

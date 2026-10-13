@@ -20,6 +20,7 @@ import { getBinding } from '../systems/inputActions.js';
 import { bindings } from './input.js';   // B5: the live InputManager registry, as restWindow.js reads it
 import { localizedText } from '../systems/textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language
 import { restClockLine } from './restWindow.js';   // AUDIT LIVED1 O (U3): the classic window's clock line, one home for its words
+import { REST_ACT_TEXT, ambushNight, actAtChannelEnd, channelBroken, channelHealTick, campNightStep } from '../systems/restAct.js';   // REST1: the act's words   // AUDIT REST-PARTY A2: and the night it runs
 
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -70,6 +71,7 @@ export function mountEnhancedRest(hostEl, deps, ignoreAllocatedBed = false) {
     _remainingHoursRented: -1,
     _allocatedBed: null,
     _pendingRest: null,   // RESTFIX3: 'while' | 'healed' - which button is waiting on the illegal-rest confirm
+    _loiterOffer: false,   // LOITER-ANYWHERE: an act refusal offers Loiter in its place (online only)
     _refusalLines: null,   // RESTFIX3: canRest's own refusal text, shown once and then the window closes
     _hoursValue: PROMPT_INITIAL,
     _endLines: null,
@@ -84,9 +86,15 @@ export function mountEnhancedRest(hostEl, deps, ignoreAllocatedBed = false) {
   deps.setResting?.(true);
   overlay.abortForEnemySpawn = () => {
     if (overlay.session) overlay.session.abortForEnemySpawn();
-    else overlay._pendingEnemySpawn = true;
+    else if (!ambushNight()) overlay._pendingEnemySpawn = true;   // AUDIT REST-PARTY A2: the act's night is restAct.js's own session, run in one call - a quest foe stood inside it breaks it there
   };
   const isTop = () => (deps.topWindow ? deps.topWindow() === overlay : true);
+  // REST1 (bible/06-Systems/Rest-Arc.md): online the card opens on the ACT - restWindow.js's own law, the same three
+  // deps (restAct, restNight, restShort): refused, or the channel held, then the night or the short rest, then the
+  // ordinary wake card. Offline restAct is null and the card is the one it always was.
+  const act = deps.restAct?.() ?? null;
+  let _actT = 0;
+  let _actRefs = null;
 
   const startFixed = (mode, hours) => {
     overlay.mode = mode;
@@ -110,8 +118,10 @@ export function mountEnhancedRest(hostEl, deps, ignoreAllocatedBed = false) {
   // RemoveExpiredRentedRooms as the first arm of EndRest, the presence re-roll on close.
   const moveToBed = () => { if (overlay._allocatedBed != null && !ignoreAllocatedBed) deps.moveToBed?.(overlay._allocatedBed); };
   overlay._end = (result) => {
+    deps.camp?.settle?.();   // CAMP-ROLL: an act that ended with no night heard is no camp's roller any more (restWindow.js _end)
     if (result.rentExpired) deps.onRentExpired?.();
-    overlay._endLines = result.text ? [result.text] : (deps.endLines?.(result.textId) ?? ['You wake up.']);
+    if (overlay.mode !== 'loiter' && (overlay.session?.totalHours ?? 0) >= 6) deps.onNightSlept?.();   // REST2: a night slept spends your own camp's charge, as restWindow.js
+    overlay._endLines = result.text ? [result.text, ...(result.extra ? [result.extra] : [])] : (deps.endLines?.(result.textId) ?? ['You wake up.']);   // REST1: a short rest says when a night may pass again
     if (result.died || !overlay._endLines?.length) { close(); deps.onRestFinished?.(); return; }
     overlay.state = 'ended';
     render();
@@ -122,11 +132,20 @@ export function mountEnhancedRest(hostEl, deps, ignoreAllocatedBed = false) {
   // refuses anything over loiterLimitHours() (3-12), a rest over 99 was silently cut to 99 where classic shows
   // TEXT.RSC 26, and an empty field started an hour's rest where classic returns to the selection page. The refusal
   // is a page of its own whose OK goes back to selection, as classic's does: a retry is a fresh While/Loiter press.
+  /** LOITER-ANYWHERE: from the act (its refusal or its channel) to the loiter prompt. */
+  const toLoiter = () => { overlay._loiterOffer = true; deps.camp?.settle?.(); overlay.state = 'hours'; overlay.mode = 'loiter'; overlay._hoursValue = PROMPT_INITIAL; render(); };
+  /** LOITER-ANYWHERE: where a prompt goes BACK to - the selection card offline; online (no selection card: its Rest
+   *  buttons would start a rest with no fire or bed) the act's refusal again, Loiter still offered, or out. */
+  const home = () => {
+    if (!act) { overlay.state = 'selection'; render(); return; }
+    if (overlay._refusalLines?.length) { overlay.state = 'refused'; render(); return; }
+    close();
+  };
   const refuseHours = (lines) => { overlay._hoursLines = lines?.length ? lines : ['You cannot rest that long.']; overlay.state = 'hoursRefused'; overlay._hoursValue = PROMPT_INITIAL; render(); };
   const startTimed = (mode) => {
     const raw = String(overlay._hoursValue ?? '').trim();
     const hours = raw === '' ? NaN : Number(raw);
-    if (!Number.isFinite(hours) || hours < 0) { overlay.state = 'selection'; overlay._hoursValue = PROMPT_INITIAL; render(); return; }
+    if (!Number.isFinite(hours) || hours < 0) { overlay._hoursValue = PROMPT_INITIAL; home(); return; }
     if (mode === 'loiter' && hours > loiterLimitHours()) { refuseHours(cannotLoiterLines()); return; }
     if (mode === 'timed' && hours > MAX_REST_HOURS) { refuseHours(deps.endLines?.(CANNOT_REST_MORE_THAN_99_HOURS_ID) ?? null); return; }
     startFixed(mode, Math.floor(hours));
@@ -171,6 +190,91 @@ export function mountEnhancedRest(hostEl, deps, ignoreAllocatedBed = false) {
     else { startFixed('full', 0); moveToBed(); }
   }
 
+  /** REST1: the act's open - the town's refusal, no rest point, a building's own law (canRest), then the channel. */
+  function openAct() {
+    if (act.meditate) { overlay.mode = 'act'; overlay.state = 'channel'; return; }   // REST6: a candle's kneel - anywhere a rest may begin
+    // LOITER-ANYWHERE (2026-10-04, Discord: "the new rest system ... has no loiter"): every refusal of the act offers
+    // Loiter in its place, as restWindow.js's - DFU's loiter is never gated by a bed, a camp or the town
+    overlay._loiterOffer = true;
+    const place = deps.restPlace?.();
+    if (place?.inTownOutside) { overlay._refusalLines = [REST_ACT_TEXT.inTown]; overlay.state = 'refused'; return; }
+    if (!act.point) { overlay._refusalLines = [REST_ACT_TEXT.noPoint]; overlay.state = 'refused'; return; }
+    if (!canRestNow(false)) return;
+    overlay._loiterOffer = false;
+    moveToBed();
+    overlay.mode = 'act';
+    overlay.state = 'channel';
+    overlay._actHealth = deps.vitals?.()?.health;   // AUDIT REST-PARTY A5: a blow while holding interrupts
+    deps.restChannelOpen?.();   // REST-CHANNEL-HEAL: the bar heals as it fills (restAct.js openChannelHeal)
+    deps.camp?.open?.(!!act.night);   // CAMP-ROLL: my act is open on a night - the camp's roll may be mine (restWindow.js _openAct)
+  }
+  /** REST1: the channel held to its end - enemies, or the night, or the short rest. */
+  function finishAct() {
+    if (overlay._pendingEnemySpawn || deps.enemiesNearby?.()) {
+      overlay._pendingEnemySpawn = false;
+      deps.onEnemyBreak?.();
+      overlay._end({ textId: REST_TEXT.enemiesNearby, enemyBroke: true, died: false });
+      return;
+    }
+    const at = actAtChannelEnd(act, deps.restAct?.() ?? null, overlay._actHealth, deps.vitals?.()?.health);   // AUDIT REST-PARTY A5: the point asked again
+    if (!at) { overlay._end({ textId: null, text: REST_ACT_TEXT.interrupted, enemyBroke: false, died: false }); return; }
+    if (at.meditate) { overlay._end(deps.restMeditate?.() ?? { textId: REST_TEXT.wakeUp, enemyBroke: false, died: false }); return; }
+    _actPlan = at;
+    campStep();
+  }
+  /** CAMP-ROLL: the night is the camp's (restAct.js campNightStep) - restWindow.js _campStep, this skin's card. */
+  let _actPlan = null, _campWho = null;
+  function campStep() {
+    const s = campNightStep(deps, _actPlan, overlay._remainingHoursRented);
+    if (s.wait) {
+      const fresh = overlay.state !== 'campWait' || _campWho !== s.wait;
+      overlay.state = 'campWait';
+      _campWho = s.wait;
+      if (fresh) render();   // in place while it holds: a rebuild a frame would tear the Stop button out from under a click (RESTFIX1)
+      return;
+    }
+    overlay._end(s.r ?? { textId: REST_TEXT.wakeUp, enemyBroke: false, died: false });
+  }
+  function campWaitCard() {
+    const c = el('div', 'card');
+    c.append(el('h2', null, REST_ACT_TEXT.campWait(_campWho ?? 'A party member')));
+    const acts = el('div', 'acts');
+    const stop = el('button', 'act', 'Stop');
+    stop.onclick = () => stopOrClose();
+    acts.append(stop);
+    c.append(acts);
+    return c;
+  }
+  function channelCard() {
+    const c = el('div', 'card');
+    const where = act?.point?.where;
+    c.append(el('h2', null, act?.meditate ? REST_ACT_TEXT.meditating : where ? REST_ACT_TEXT.channel(where) : REST_ACT_TEXT.channelBed));
+    const meter = el('div', 'meter');
+    const track = el('div', 'meter-track');
+    const fill = el('div', 'meter-fill brass');
+    track.append(fill);
+    meter.append(track);
+    c.append(meter);
+    const acts = el('div', 'acts');
+    const stop = el('button', 'act', 'Stop');
+    stop.onclick = () => stopOrClose();
+    if (!act?.meditate) {   // LOITER-ANYWHERE: wait instead of sleeping, at the fire as anywhere
+      const loiter = el('button', 'act', 'Loiter Instead');
+      loiter.onclick = () => toLoiter();
+      acts.append(loiter);
+    }
+    acts.append(stop);
+    c.append(acts);
+    _actRefs = { fill };
+    updateChannel();
+    return c;
+  }
+  function updateChannel() {
+    if (!_actRefs) return;
+    const frac = Math.max(0, Math.min(1, _actT / (act?.channelSeconds || 1)));
+    _actRefs.fill.style.width = `${Math.round(frac * 100)}%`;
+  }
+
   function selectionCard() {
     const c = el('div', 'card');
     c.append(el('h2', null, 'Rest'));
@@ -201,7 +305,12 @@ export function mountEnhancedRest(hostEl, deps, ignoreAllocatedBed = false) {
     const c = el('div', 'card');
     for (const line of overlay._refusalLines ?? []) c.append(el('p', null, line));
     const acts = el('div', 'acts');
-    const ok = el('button', 'act', 'OK');
+    if (overlay._loiterOffer) {   // LOITER-ANYWHERE: no fire or bed is no reason not to wait
+      const loiter = el('button', 'act', 'Loiter');
+      loiter.onclick = () => toLoiter();
+      acts.append(loiter);
+    }
+    const ok = el('button', 'act', overlay._loiterOffer ? 'Cancel' : 'OK');
     ok.onclick = () => close();
     acts.append(ok);
     c.append(acts);
@@ -213,7 +322,7 @@ export function mountEnhancedRest(hostEl, deps, ignoreAllocatedBed = false) {
     for (const line of overlay._hoursLines ?? []) c.append(el('p', null, line));
     const acts = el('div', 'acts');
     const ok = el('button', 'act', 'OK');
-    ok.onclick = () => { overlay._hoursLines = null; overlay.state = 'selection'; render(); };
+    ok.onclick = () => { overlay._hoursLines = null; home(); };
     acts.append(ok);
     c.append(acts);
     return c;
@@ -233,7 +342,7 @@ export function mountEnhancedRest(hostEl, deps, ignoreAllocatedBed = false) {
     const start = el('button', 'act', 'Start');
     start.onclick = () => startTimed(overlay.mode);
     const back = el('button', 'act', 'Back');
-    back.onclick = () => { overlay.state = 'selection'; render(); };
+    back.onclick = () => home();
     acts.append(start, back);
     c.append(acts);
     requestAnimationFrame(() => input.focus());
@@ -359,6 +468,8 @@ export function mountEnhancedRest(hostEl, deps, ignoreAllocatedBed = false) {
             : overlay.state === 'refused' ? refusedCard()
               : overlay.state === 'hoursRefused' ? hoursRefusedCard()
               : overlay.state === 'resting' ? restingCard()
+                : overlay.state === 'channel' ? channelCard()
+                : overlay.state === 'campWait' ? campWaitCard()
                 : endedCard(),
     );
     win.append(body);
@@ -401,6 +512,7 @@ export function mountEnhancedRest(hostEl, deps, ignoreAllocatedBed = false) {
     overlay.dispose?.();
   };
 
+  if (act) openAct();   // REST1: online, the act's own first page
   render();
   releaseLock();
   lockHandler = releaseLock;
@@ -417,6 +529,7 @@ export function mountEnhancedRest(hostEl, deps, ignoreAllocatedBed = false) {
   // press that opened this window never reaches it (the window did not exist yet), so the press is enough.
   const stopOrClose = () => {
     if (overlay.state === 'resting') { deps.onManualStop?.(); if (overlay.session) overlay._end(overlay.session.endEarly()); return true; }
+    if (overlay.state === 'channel') { if (act?.meditate) deps.snuffCandle?.(); close(); return true; }   // REST1: a channel stopped is no rest - nothing slept, no raise owed; REST6: a kneel stopped leaves the candle unspent
     if (overlay.state === 'ended') { close(); deps.onRestFinished?.(); return true; }
     if (overlay.state === 'confirm') return false;   // the box's own Yes/No answer it
     close();
@@ -434,6 +547,11 @@ export function mountEnhancedRest(hostEl, deps, ignoreAllocatedBed = false) {
   overlay.hover = () => {};
   overlay.draw = () => { /* DOM, not canvas */ };
   overlay.tick = (dt) => {
+    // REST1: the channel counts real seconds and lands at its end
+    // AUDIT REST II P8: and ends the moment the hold is broken - restWindow.js's own law, the end check's own lines
+    // REST-CHANNEL-HEAL: restWindow.js's own order - the break first, then the bar's share paid and the new mark
+    if (overlay.state === 'channel') { _actT += dt; if (channelBroken(act, overlay._pendingEnemySpawn, () => deps.enemiesNearby?.(), overlay._actHealth, deps.vitals?.()?.health, () => deps.restAct?.() ?? null)) finishAct(); else { overlay._actHealth = channelHealTick(act, deps, _actT, overlay._actHealth); if (_actT >= act.channelSeconds) finishAct(); else updateChannel(); } return; }   // AUDIT REST III C6: and the point, while held
+    if (overlay.state === 'campWait') { if (channelBroken(act, overlay._pendingEnemySpawn, () => deps.enemiesNearby?.(), overlay._actHealth, deps.vitals?.()?.health, () => deps.restAct?.() ?? null)) finishAct(); else campStep(); return; }   // CAMP-ROLL: the wait is still the hold (restWindow.js tick)
     if (overlay.state !== 'resting' || !overlay.session) return;
     const r = overlay.session.tick(dt);
     if (r) { overlay._end(r); return; }

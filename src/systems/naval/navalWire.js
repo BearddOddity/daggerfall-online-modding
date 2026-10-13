@@ -37,6 +37,9 @@
 //   t - AUDIT NAV1 (online #15): the owner's Ships at sea, by navalDirector.js DENSITY_KEYS' row - said only when it is
 //       not TRAFFIC_DEFAULT, which a word without it (or no word at all) stands for; a shared sea is sailed at the lowest
 //       of its players' (the stander's alone sailed everyone's)
+//   g - AUDIT GN-G3 (the galleon audit): the owner's own boat's laid broadsides, a bit a side in SIDE_CODES' order as a
+//       ship's runOut - her shutters up and her guns run out on every screen as on hers; said only while one is laid
+//       (an older build's word says none, and its reader ignores this one)
 //   f - AUDIT NAV1 (online #15): the casks of a sunk ship's cargo afloat in the owner's sea, each [id, x, y, z, cls, lot]
 //       - the ship's class by its row and the lot's key by navalPlunder.js LOT_KEYS' row, the place to half a metre (a
 //       cask drifts, and a word said again for every centimetre of it would be a frame every FOES_MS), at most
@@ -53,6 +56,14 @@
 //   l - AUDIT BAY A18: the lanes' packets the owner has seen spent (sunk, struck, boarded, taken) - each her
 //       voyage's seed (systems/naval/seaLanes.js), the last NAVAL_WIRE_SPENT - so no player stands her again where she
 //       went down (a player who never saw her go stood her afresh, to every player's sight)
+//   w - SALVAGE (2026-10-03): the wreckage a sunk ship leaves afloat in the owner's sea, each [id, x, y, z, cls] as a
+//       cask of `f` (its lot navalPlunder.js SALVAGE_LOT, never one of LOT_KEYS) - hauled in and claimed as a cask is;
+//       at most NAVAL_WIRE_CASKS. A key of its own as `k`, `m` and `l` are: an older build reads none of it, where a lot
+//       past its LOT_KEYS would fail its door and the whole word with it
+//   d - AUDIT CAPTAIN'S SEA D8: the ships of `s` launched of the deep waters (CAPT-WATERS `deep`), each her number - her
+//       hold, her casks and the chart in her papers the deep's on every client (a peer's copy of her was open water's)
+//   e - AUDIT CAPTAIN'S SEA D8: the casks of `f` of a deep ship's (or the Etheric Sea's) cargo, each its id - a peer's
+//       haul of one drawn as rich as its owner's (it was DEEP_TIER tiers poorer)
 //   `k`, `m` and `l` are keys of their own because an older build's door checks every field of `s` and `p` by count: it
 //   passes a word with them whole and reads none of them, and a newer door reads an older build's word as saying none.
 //   Nor are theirs counted: a newer build's longer entry reads as its first fields, never the whole word refused.
@@ -75,7 +86,7 @@
 
 import { POSE_BOUND, POSE_Y_BOUND } from '../../net/wire.js';
 import { SHIP_CLASSES, CROWNS } from './navalShips.js';
-import { LOT_KEYS } from './navalPlunder.js';
+import { LOT_KEYS, SALVAGE_LOT, isSalvage } from './navalPlunder.js';
 import { NOTORIETY } from './navalLaw.js';
 import { DENSITY_KEYS } from './navalDirector.js';
 import { REGION_NAMES } from '../../formats/mapsFile.js';
@@ -119,10 +130,11 @@ const U32 = 0xffffffff;
  * point to the wire frame - and (AUDIT NAV1, online) my own boat at sea and my notoriety by crown. Null when there is
  * nothing to say (the reader drops mine).
  * @param {{ ships?: any[], volleys?: any[], barrels?: any[], me?: { hull: number, crippled: boolean, boarders: boolean, crew?: number, battle?: boolean, boatHull?: number } | null,
- *   law?: Record<string, number>, traffic?: string, casks?: { id: number, pos: number[], from: string, lot: string }[], spent?: number[] }} view
+ *   law?: Record<string, number>, traffic?: string, casks?: { id: number, pos: number[], from: string, lot: string, deep?: boolean }[], spent?: number[],
+ *   laid?: string[] }} view
  */
 export function navalWireRecord(view, toWire = (p) => p) {
-  const s = [], v = [], b = [], k = [];
+  const s = [], v = [], b = [], k = [], d = [], e = [];
   for (const sh of view?.ships ?? []) {
     if (s.length >= NAVAL_WIRE_SHIPS) break;
     const cls = SHIP_CLASSES.findIndex((c) => c.id === sh.classId);
@@ -134,6 +146,7 @@ export function navalWireRecord(view, toWire = (p) => p) {
     // AUDIT NAV2 F1/F3/F5: her captain - a ship said without a temper (a caller's older view) is said without one
     const temper = TEMPER_CODES.indexOf(sh.temper);
     if (temper >= 0) k.push([sh.n | 0, temper, Math.max(0, MODE_CODES.indexOf(sh.mode)), Number.isInteger(sh.struckTo) && sh.struckTo >= 0 && sh.struckTo <= 0xffff ? sh.struckTo : -1]);
+    if (sh.deep) d.push(sh.n | 0);   // AUDIT CAPTAIN'S SEA D8
   }
   for (const vo of view?.volleys ?? []) {
     if (v.length >= NAVAL_WIRE_VOLLEYS) break;
@@ -149,17 +162,25 @@ export function navalWireRecord(view, toWire = (p) => p) {
     b.push([ba.id >>> 0, r2(p[0]), r2(p[1]), r2(p[2]), Number.isInteger(ba.shooter) && ba.shooter >= 0 && ba.shooter <= 0xffff ? ba.shooter : -1]);
   }
   const out = { s, v, b };
-  const f = [];
+  const f = [], w = [];
   for (const c of view?.casks ?? []) {
-    if (f.length >= NAVAL_WIRE_CASKS) break;
+    const salvage = isSalvage(c.lot);   // SALVAGE: the wreckage on `w`
+    if ((salvage ? w : f).length >= NAVAL_WIRE_CASKS) continue;
     const cls = SHIP_CLASSES.findIndex((k) => k.id === c.from), lot = LOT_KEYS.indexOf(c.lot);
-    if (cls < 0 || lot < 0 || !Array.isArray(c.pos)) continue;
+    if (cls < 0 || (!salvage && lot < 0) || !Array.isArray(c.pos)) continue;
     const p = toWire(c.pos.map((x) => Math.round(x * 2) / 2));
-    f.push([c.id >>> 0, r2(p[0]), r2(p[1]), r2(p[2]), cls, lot]);
+    if (salvage) w.push([c.id >>> 0, r2(p[0]), r2(p[1]), r2(p[2]), cls]);
+    else { f.push([c.id >>> 0, r2(p[0]), r2(p[1]), r2(p[2]), cls, lot]); if (c.deep) e.push(c.id >>> 0); }   // AUDIT CAPTAIN'S SEA D8
   }
   if (f.length) out.f = f;
+  if (w.length) out.w = w;
+  if (d.length) out.d = d;
+  if (e.length) out.e = e;
   const me = view?.me;
   if (me) out.p = [pct(me.hull), me.crippled ? 1 : 0, me.boarders === false ? 0 : 1];
+  // AUDIT GN-G3: my boat's laid broadsides - a bit a side (SIDE_CODES), said only while one is
+  const laid = (view?.laid ?? []).reduce((m, side) => { const i = SIDE_CODES.indexOf(side); return i >= 0 ? m | (1 << i) : m; }, 0);
+  if (laid) out.g = laid;
   if (k.length) out.k = k;
   if (me && int(me.crew, 0, 0xffff) && int(me.boatHull, 0, HULL_NAMES.length - 1)) out.m = [me.crew, me.battle ? 1 : 0, me.boatHull];   // AUDIT NAV2 F2/F3
   const law = [];
@@ -169,7 +190,7 @@ export function navalWireRecord(view, toWire = (p) => p) {
   if (t >= 0 && view?.traffic !== TRAFFIC_DEFAULT) out.t = t;
   const l = (view?.spent ?? []).filter((x) => int(x, 0, U32)).slice(-NAVAL_WIRE_SPENT);   // AUDIT BAY A18
   if (l.length) out.l = l;
-  return s.length || v.length || b.length || out.p || out.n || out.t !== undefined || out.f || out.l ? out : null;
+  return s.length || v.length || b.length || out.p || out.n || out.t !== undefined || out.f || out.w || out.l || out.g ? out : null;
 }
 
 /** AUDIT NAV2 F1/F3/F5: the captains' key through the door - a Map from a ship's number to her temper, her captain's
@@ -188,8 +209,9 @@ function validCaptains(raw) {
 /**
  * A peer's word through the door - whole or not at all.
  * @returns {{ ships: any[], volleys: any[], barrels: any[], me: { hull: number, crippled: boolean, boarders: boolean } | null,
- *   law: Record<string, number>, traffic: string, casks: { id: number, pos: number[], from: string, lot: string }[],
- *   captains: Map<number, { temper: string, mode: string, struckTo: number }>, boat: { crew: number, battle: boolean, hull: number } | null, spent: number[] } | null}
+ *   law: Record<string, number>, traffic: string, casks: { id: number, pos: number[], from: string, lot: string, deep?: boolean }[],
+ *   captains: Map<number, { temper: string, mode: string, struckTo: number }>, boat: { crew: number, battle: boolean, hull: number } | null, spent: number[],
+ *   laid: string[] } | null}
  */
 export function validNavalRecord(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
@@ -252,6 +274,15 @@ export function validNavalRecord(raw) {
       casks.push({ id: w[0], pos, from: SHIP_CLASSES[w[4]].id, lot: LOT_KEYS[w[5]] });
     }
   }
+  if (raw.w !== undefined) {   // SALVAGE: the wreckage - casks to the reader, its lot the salvage's
+    if (!Array.isArray(raw.w) || raw.w.length > NAVAL_WIRE_CASKS) return null;
+    for (const w of raw.w) {
+      if (!Array.isArray(w) || w.length !== 5 || !w.every(Number.isFinite) || !int(w[0], 0, U32)) return null;
+      const pos = [w[1], w[2], w[3]];
+      if (!inBounds(pos) || !int(w[4], 0, SHIP_CLASSES.length - 1)) return null;
+      casks.push({ id: w[0], pos, from: SHIP_CLASSES[w[4]].id, lot: SALVAGE_LOT });
+    }
+  }
   // AUDIT NAV2 F1-F3/F5: the captains and the owner's boat - an older build's word says neither
   const captains = validCaptains(raw.k);
   if (!captains) return null;
@@ -263,7 +294,16 @@ export function validNavalRecord(raw) {
   // AUDIT BAY A18: the spent packets - an older build's word says none
   const spent = raw.l ?? [];
   if (!Array.isArray(spent) || spent.length > NAVAL_WIRE_SPENT || !spent.every((x) => int(x, 0, U32))) return null;
-  return { ships, volleys, barrels, me, law, traffic: raw.t === undefined ? TRAFFIC_DEFAULT : DENSITY_KEYS[raw.t], casks, captains, boat, spent: [...spent] };
+  // AUDIT GN-G3: the owner's laid broadsides (an older build's word says none)
+  if (raw.g !== undefined && !int(raw.g, 0, 15)) return null;
+  const laid = SIDE_CODES.filter((_, i) => ((raw.g ?? 0) & (1 << i)) !== 0);
+  // AUDIT CAPTAIN'S SEA D8: the deep's ships and casks (an older build's word says none - open water's)
+  const deepShips = raw.d ?? [], deepCasks = raw.e ?? [];
+  if (!Array.isArray(deepShips) || deepShips.length > NAVAL_WIRE_SHIPS || !deepShips.every((x) => int(x, 0, 0xffff))) return null;
+  if (!Array.isArray(deepCasks) || deepCasks.length > NAVAL_WIRE_CASKS || !deepCasks.every((x) => int(x, 0, U32))) return null;
+  for (const sh of ships) if (deepShips.includes(sh.n)) sh.deep = true;
+  for (const c of casks) if (c.lot !== SALVAGE_LOT && deepCasks.includes(c.id)) c.deep = true;
+  return { ships, volleys, barrels, me, law, traffic: raw.t === undefined ? TRAFFIC_DEFAULT : DENSITY_KEYS[raw.t], casks, captains, boat, spent: [...spent], laid };
 }
 
 /** A change key: the word rides a delta frame only when it moved (the full frame always carries it). */

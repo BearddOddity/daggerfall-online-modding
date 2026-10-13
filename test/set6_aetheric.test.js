@@ -11,7 +11,7 @@ import {
 } from '../src/systems/aetheric.js';
 import {
   RARITY_ORDER, RARITIES, ROLLED_TIERS, rarityOf, rarityRank, applyRarity, rarityEligible, bestRarity, rarityLines, rollRarity,
-  affixesWorth, validAffix, AFFIX_RANGES, isProcAffix,   // LOOT4: a line that does something, appended in a door's last pass
+  affixesWorth, validAffix, AFFIX_RANGES, isProcAffix, isTechniqueAffix,   // LOOT4: a line that does something, appended in a door's last pass; TECH1: a technique, its very last
 } from '../src/systems/lootRarity.js';
 import { rollSpoils, spoilsBase, magicOrBetter, SPOILS_GOLD_PER_LEVEL, SPOILS_LEGENDARY } from '../src/systems/gateSpoils.js';
 import { spoilsList } from '../src/scenes/spoilsPool.js';
@@ -34,8 +34,8 @@ const seq = (...v) => { let i = 0; return () => v[i++]; };
 const counted = (fn) => { const c = { n: 0 }; c.rolls = () => { c.n++; return fn(); }; return c; };
 
 test('SET6 the rung: Aetheric stands between the Legendary and the Artifact - rank 4, the Artifact moved to 5 - in the aether\'s pale blue-white, a tint of its own; an Aetheric piece wears its own field; the ladder never ROLLS it and never re-rolls a piece that wears it (mutants: the rung out of its place; the roll taking it)', () => {
-  assert.deepEqual(RARITY_ORDER, ['common', 'magic', 'rare', 'legendary', 'aetheric', 'artifact']);
-  assert.deepEqual(RARITY_ORDER.map((t) => RARITIES[t].rank), [0, 1, 2, 3, 4, 5], 'the order is the rank');
+  assert.deepEqual(RARITY_ORDER, ['common', 'magic', 'rare', 'legendary', 'aetheric', 'artifact', 'gilded'], 'GILDED1: the Gilded rung over the Artifact');
+  assert.deepEqual(RARITY_ORDER.map((t) => RARITIES[t].rank), [0, 1, 2, 3, 4, 5, 6], 'the order is the rank');
   assert.equal(AETHERIC, 'aetheric');
   assert.deepEqual({ label: RARITIES.aetheric.label, colour: RARITIES.aetheric.colour }, { label: 'Aetheric', colour: '#bfe8ff' });
   assert.equal(RARITIES.aetheric.tint.length, 4);
@@ -160,7 +160,10 @@ test('SET6 the drop: the spoils\' LAST roll - a Regalia piece a sixth of the tim
     // LOOT2/LOOT4 (bible/06-Systems/Loot-Arc.md sections 4 and 6): an Exalted Legendary's extra line and a Magic's or a
     // Rare's line that does something are drawn AFTER everything and appended - the lines before them are still the
     // seed's, exactly
-    const drawn = (it) => (it.exalted ? it.affixes.slice(0, -1) : it.affixes?.filter((a) => !isProcAffix(a)));
+    // PIN MOVED (TECH1, bible/05-Combat/Weapon-Techniques.md): and a weapon's technique line, the door's very last draw, is
+    // set aside first - an Exalted's line is the last line before it
+    const own = (it) => it.affixes?.filter((a) => !isTechniqueAffix(a));
+    const drawn = (it) => (it.exalted ? own(it).slice(0, -1) : own(it)?.filter((a) => !isProcAffix(a)));
     assert.deepEqual(s.pieces.slice(0, 3).map((p) => JSON.stringify(drawn(p.item) ?? null)), b.affixes);
     const has = s.pieces.length === 4;
     assert.equal(has, b.next < REGALIA_CHANCE, `seed ${seed}: the next roll decides it`);
@@ -182,11 +185,12 @@ test('SET6 the floor and the card: a Regalia piece is laid as an item in its tie
   while (seed < 500 && rollSpoils(seed, 12).pieces.length !== 4) seed++;
   assert.ok(seed < 500, 'a kill whose spoils carry a Regalia piece, within the first five hundred seeds');
   const list = spoilsList(seed, 12);
-  assert.equal(list.length, 6, 'three graded pieces, the Regalia piece, the stone, the gold');
+  assert.equal(list.length, 7, 'three graded pieces, the Regalia piece, (GEM2, PIN MOVED) the Warden\'s gem, the stone, the gold');
   assert.equal(list[3].kind, 'item');
   assert.equal(list[3].tier, 'aetheric');
-  assert.equal(list[4].item.name, 'Deadlands Ember');
-  assert.equal(list[5].kind, 'gold');
+  assert.equal(list[4].item.group, 'Gems');
+  assert.equal(list[5].item.name, 'Deadlands Ember');
+  assert.equal(list[6].kind, 'gold');
   assert.ok(SPOILS_LINE_H.aetheric > SPOILS_LINE_H.legendary && SPOILS_LINE_H.aetheric < SPOILS_LINE_H.artifact);
   assert.deepEqual(tierColour('aetheric').map((c) => Math.round(c * 255)), [0xbf, 0xe8, 0xff]);
   setPref('lootRarity', true);

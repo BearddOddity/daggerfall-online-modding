@@ -30,10 +30,16 @@ the grass nor the water; two exterior hosts to wire.
 
 ## The departure
 
+**Superseded by WATER-NEXT 2-4 (below; AUDIT WATER-NEXT M4).** What this
+section and "What it does not do" describe is WATER1 as it shipped: the
+water is now its own sheet over a carved bed, the terrain pass paints the
+bed, and the surface refracts, foams and ripples. The record below is
+WATER1's.
+
 `render/waterSurface.js` and `drawWaterSurface` in `render/renderer.js`.
 Enhanced skin only, switch `enhancedWater` (on by default, its row in
 the enhanced pane), `?water=off` the kill door. The classic lane and
-the terrain pass are untouched.
+the terrain pass were untouched.
 
 **The geometry is the terrain's.** There is no water mesh. The pass
 draws the pixel's own terrain surface again - the same positions and
@@ -165,6 +171,13 @@ differed from the reference in 17% of draws by an ulp and moved the
 tile threshold itself for 1% of corners), the nature scatter's twin
 compare is float32, and `SCALED_OCEAN_ELEVATION` is the float
 `3.4f * 8` is in C# - one value of the ocean elevation in the port.
+LW-DRY (2026-10-05) gave the job's height and its water compare one
+home (`terrainTiles.js` `sampleHeight`, `isWaterHeight`), which the
+living world's dry ground reads as well (`world/dryGround.js`: a road
+party's camp, halt and fallen stand where no water shows); PIN MOVED:
+`terrain`. AUDIT LW-DRY (the same day): the nature scatter's three
+beach reads (`terrainNature.js`) still wrote the product out
+themselves - they read `sampleHeight` now, and `terrain` pins it.
 
 Two consequences to know. A location on a pixel where every sample
 clamps has its whole rect flattened to the clamp and stamped only
@@ -206,7 +219,7 @@ the eye: the shore up close, the river and the lake, the rain up close.
 
 ## What it does not do
 
-No point-light GLINTS on the water (a dock's lantern lights the surface
+(WATER1's, as it shipped - AUDIT WATER-NEXT M4: WATER-NEXT 2-4 below draws refraction, foam and wakes.) No point-light GLINTS on the water (a dock's lantern lights the surface
 as it lights the bank, and is not mirrored in it), no
 refraction, no foam, no underwater view (DFU has no exterior
 submersion), no wake. (Depth-tinted shallows: WATER2 below, off the
@@ -811,3 +824,432 @@ still whole; the CPU's turn against the shader's, texel for texel, and
 the grass placer asking it; and, with ARENA2, the desert puddle a pool (not the tile)
 and the desert's and the woods' record 9 dry. Mutants (21, 21 dead):
 `tools/mutants/waterpuddle.json`.
+
+## PUDDLE-DRY - A TOWN'S PUDDLES ARE DRY GROUND (2026-10-07)
+
+Mac: *"removing the water puddles entirely from town layouts"*; asked,
+"Puddles only" (the moats and the docks' water stay) and "Both skins".
+Port-Ledger section A, row PUDDLE-DRY.
+
+**What a puddle is, measured.** A census of BLOCKS.BSA (a scratch script
+over every RMB block's 16x16 ground, not committed; the figures are
+pinned with ARENA2 in `test/puddledry.test.js`): 920 blocks, 1,311
+patches of water - 4-connected, a tile counted wet where the draw's table
+(`WATER_DRAW_MASK_TABLE`) gives it any water corner, so a pond's shore
+ring is part of its pond. 674 patches are ONE tile: 632 of them DFU's
+shallow-water art (records 8: 141, 9: 353, 23: 138 - a pool painted on
+sand or grass, WATER-PUDDLE's "one square"), the rest a lone shore
+corner or edge, two lone record-0 tiles (WATER-DRAW1's sentinel tiles)
+and a few records 33 and 36. The rest are laid-out water: a water heart
+in its shore ring, a garden pond, a hard-edged basin of two to four
+open-water tiles (a trough, a fountain's bowl), a shore ring round a
+statue, the castles' moats (a CASTAA block's runs to 202 tiles with its
+ring), Sentinel's harbour.
+
+**The rule** (`world/puddleDry.js` dryPuddles): a patch is a puddle when
+it is one tile, or every tile of it is shallow-water art
+(`PUDDLE_RECORDS`: SHALLOW_WHOLE and SHALLOW_DRAWN, one list). Each of
+its tiles takes the ground most of its eight dry neighbours stand on, the
+byte whole (its turn and flip with it), a tie to the first in the walk's
+order; a wet neighbour and a random marker are no ground; a puddle with
+no dry neighbour is left. 700 patches dried, 611 kept (686 and 560 since
+WATER-DRAW2, below: the islands joined their ponds). Daggerfall city's
+61 puddle tiles (records 8: 17, 9: 33, 23: 11) became 31 dirt, 11 road,
+10 grass, 6 of record 11, 2 of 47 and 1 of 10 - the terrain test's city
+histogram moved with them.
+
+**One door.** It runs where a block is served - `formats/blocksFile.js`
+getBlock, BLOCKS.BSA's block and a world-data mod's - once a ground. So
+every reader of the ground sees one ground with no puddle law of its own:
+the streamed stamp (`terrainTiles.js` setLocationTiles), the fixed town
+(`scenes/exterior.js`), the streamed town's tilemap (`scenes/world.js`),
+the layout (`rmbLayout.js` buildGroundTilemap), the townsfolk's paths
+(`cityNavigation.js`), the town map (`ui/inkTown.js`); the feet
+(`exteriorSurface.js`, PUDDLE-RAIN's whole-tile swim gone with the tile),
+the grass (GRASS-WET1) and the water pass follow. `readClassicBlock` (a
+mod's diff base) keeps the file's bytes. Both skins: the classic town
+loses its puddles too, the departure Mac chose so the two never
+disagree. WATER-PUDDLE's art mask stays for the shallow art that still
+meets a pond.
+
+**Pinned** in `test/puddledry.test.js` (7), its fixtures the block
+reader's own ground decode: the list; a pool in the sand is sand, the
+byte whole, a wet neighbour never taken; a patch of art and a lone tile
+of anything wet dried; a pond in its ring, a basin and art meeting a
+shore kept; once a ground, never from nothing; the one door by source;
+with ARENA2, every block served with no puddle, 686 dried, 560 kept (PIN
+MOVED by WATER-DRAW2), a
+moat whole. Moved: `test/terrain.test.js`'s Daggerfall city histogram and
+`test/rr3b_worlddata.test.js`'s GetBlock pin (PIN MOVED). Mutants (12,
+12 dead): `tools/mutants/puddledry.json` - the first run's two survivors
+were a redundant sentinel ternary (taken out: `convertTile` answers
+record 0 for the zero byte either way) and a wet diagonal neighbour no
+pin offered (pinned).
+
+## WATER-NEXT - THE OVERHAUL, AS DECIDED (2026-10-07)
+
+Mac: *"overhauling the water to appear as real translucent water with
+proper waves and shoreline interactivity completely replacing our current
+water implementation"*; asked: the new water is the ENHANCED skin's (the
+classic skin keeps DFU's flat tile - the doctrine; AUDIT WATER-NEXT m3: the skin, not the lighting lane); the waves modest and
+the weather's (calm lakes and rivers, a sea's swell that grows in a
+storm); the gameplay's water line fixed. The plan, a pull request a phase,
+each landed on a shot from the real game (THE REVERT's lesson):
+
+1. **PUDDLE-DRY** (above) - shipped first, apart from the renderer.
+2. **The surface.** One water renderer for WATER1's terrain water and
+   Deep Waters' sea top alike: a tessellated surface of its own, summed
+   Gerstner waves moving it; the frame's opaque colour and depth copied
+   after the opaque passes, so the water refracts what is under it,
+   darkens with depth (absorption) and meets the ground softly; Fresnel
+   over the sky. Behind the `enhanced-water` row; its cost measured on
+   the game page against PERF-EXT13's pass, with a cheaper setting for a
+   weak GPU.
+3. **The shore and the beds.** Foam where the water is shallow, the
+   swell running up a beach, the breakers built from the same waves
+   (Come Sail Away's sprite breakers retired for it); a shallow bed
+   carved under a lake, pond or moat, whose ground today sits at the
+   surface - clear water must have something under it (the sea has Deep
+   Waters' floor, the rivers LANDFORM3's channel).
+4. **The ripples.** A ripple field round the camera - the player's, a
+   boat's and a creature's wakes, wading rings and splashes.
+
+**What does not move.** Every reader of water as play keeps its line:
+the feet (`exteriorSurface.js`), `onExteriorWater`, fishing, climbing,
+the swim motor, the townsfolk's paths, Deep Waters' swim, the boats'
+`WaterLevel` (a boat bobs on the waves' own function, drawn only), the
+dungeon's level. WATER2-5's revert is the warning: a look is landed on
+the game page, not the lab.
+
+## WATER-NEXT 2 - THE SURFACE: A SHEET THAT MOVES, A BODY THAT SWALLOWS LIGHT, A BED UNDER IT (2026-10-07)
+
+Mac: *"real translucent water with proper waves and shoreline interactivity completely replacing our current water
+implementation"*, then *"keep building within this pr"* and *"You have autonomy"*. Enhanced skin only (asked); the
+classic skin draws DFU's flat tile as it did (AUDIT WATER-NEXT m3: the skin - the Enhanced skin on the classic lighting
+lane draws the new water, its blend arm). Every step was judged on shots of the real game
+(`tools/waterLookProbe.mjs`, Daggerfall's moat and Sentinel's palace pool and harbour, headless on SwiftShader with
+the player's own ARENA2 - the renders stay out of the tree), THE REVERT's lesson.
+
+**The bed** (`world/waterBed.js`). A grid vertex is wet when every tile meeting it calls that corner water (the
+draw's corner table; a tile past the map's edge is no vote, so a river is not dammed at a pixel's seam); its distance
+to the bank is a 3-4 chamfer; its depth a smoothstep to `BED_DEPTH` (4) over `BED_RAMP` (19.2, three tiles). The
+first cut eased OUT (steep off the bank) and the real moat showed why not: a tile from the bank was already 2.2 deep
+and the shallows were a sliver; the smoothstep leaves a shelf a unit deep a tile out. `carveBed` lowers a COPY of
+the grid the ground uploads and re-lights the slopes it made (a strided grid's skirt goes down with its edge); the
+SHEET keeps the grid as it stood, the bed's depth on attribute 1 (`renderer.createWaterSheet`). DRAWN ONLY: world.js
+`heightAt` reads the samples, the fixed town's feet the tilemap and the flat ground - the player swims, foes stand
+and flats are seated where DFU has them. The streamed world carves at the build and at a restride and keeps the bed
+for Deep Waters' re-index (`dwWaterSurface`); the fixed town lays DFU's one ground quad as a grid of its tiles
+(`flatGrid`) so its moats and ponds have a bed; the lab carves as the hosts do. A grid with no wet vertex (a one-tile
+stream) has no bed: its sheet rides the terrain's own buffer and attribute 1 is the constant `NO_BED_DEPTH` (1.2) -
+shallow, tinted, never a shore.
+
+**The bed's face** (`render/waterBedGlsl.js`). The second shot of the moat was as blue as the first, and the reason
+was under the water: the carved ground still wore Daggerfall's WATER TILE, so the look through clear water was a
+look at more painted water. Where the enhanced water lies (`renderer.waterBed`, set by both hosts from `waterOn`;
+the classic skin never sets it) each water texel of the ground - the corner table's coverage, feathered as the
+water's shore - takes the climate's dirt (record 1, the same texel turned the same way) darkened to silt; a puddle
+record keeps its art. Both terrain programs take the text (TERRAIN_FS and the lane's EL_TERRAIN_FS, decoded).
+
+**The swell** (`render/waterSurface.js` SWELL_TRAINS, SWELL_GLSL, swellAt). Three trains - down the wind, +31 and
+-43 degrees off it - of 48, 31 and 25.6 units (none shorter than four of the sheet's cells), at deep water's own
+speed (omega = sqrt(g k)), their height the wind's: `SWELL_CALM` 0.05 to `SWELL_GALE` 0.34 ("modest,
+weather-driven", as asked). The vertex shader lifts the sheet by it, faded over the bank (`SWELL_DEPTH` 2.5: water
+never lifts off its shore); the fragment shader lights the same field's slope per pixel, with WATER1's finer trains
+and the rain over it; `swellAt` is the same sum for the CPU. The open sea (Deep Waters' sheets: merged rectangles,
+no vertices to move) takes the swell as slope only.
+
+**The body and the look through it.** Water swallows light, red first: Beer-Lambert, `exp(-WATER_ABSORB * path)`,
+`WATER_ABSORB` (0.55, 0.30, 0.22) a unit. What is swallowed is replaced by the water's own colour - the climate's
+water texel averaged by its mip chain, tinted, lit by the ground's light (the sun's share softened: light goes INTO
+water). Under the lane the frame's colour and depth are copied ONCE a frame before the first water draw
+(`AirPass.snapshotUnderWater`, one blit into the frame's own formats; `Renderer.captureUnderWater`; units 7 and 6,
+rebound every draw as the billboards rebind 6): the path is the scene's own depth behind the surface (never less
+than the bed's), the look is pushed by the slope (by more the deeper, less the farther off) and never takes what
+stands in front of the water (a pushed look nearer than the surface takes the straight one). Without a copy (the
+classic lane's frame) the blend makes the same sum: the bed is drawn under the sheet, and the sheet's alpha is the
+share the water hides. Schlick's Fresnel over the sky (capped at 0.85), the sun's, the moon's and the lamps' glints
+(WATER-LIT1), the fog (DW-C's too). The first real boot found `uOpen` an int whose default precision differs between
+the stages (no program built, no frame drawn): the fragment stage declares `precision highp int`.
+
+**The open sea.** From above, Iliac Puddle No More's surface sheets are drawn by the same program (`uOpen`: no
+tilemap, no bed attribute - the path is the depth copy's, the floor the mod carved), in the mod's own place in the
+frame (`Renderer.drawSeaSurfaces`, world.js drawDeepWatersSurfaces), coloured by the camera's climate's water under
+the mod's Top Color; from under it, the mod's own underside as before. The first shots of the open sea (Sentinel's
+harbour) found three things the mod's own near-opaque top had hidden, each fixed: the integer tilemap sampler's unit
+left holding another pass's texture for the sea's rows (WebGL refuses the draw, read or not - 74 errors a boot; the
+unit is emptied for them); the mod's fake water column on its floor (COLUMN_GLSL, the depth the classic set never had,
+its surface texture tiled 128 times) showing through clear water as moire and taking the column twice - off under the
+enhanced water (`columnOn`), which measures the column itself; and the sheets' 6.4-unit cells drawing a staircase over
+the beach - the open sea now fades where it covers no water, so the shore is where its plane meets the sand.
+
+**What it costs, and the Simple tier.** Under the lane the copy is one blit of the frame's colour and depth a frame,
+and the water's fragments read up to seven more texels (the copy, its depth twice, the ripple field's four taps - AUDIT
+WATER-NEXT m11); SwiftShader's
+milliseconds are nobody's, so the cost on a real GPU is not measured here. The plan's cheaper setting is the
+`water-quality` row (Features, the Enhanced kind, the player's online): Full by default; Simple takes no copy and keeps no
+ripple field (`renderer.waterSimple`) - the bed, the swell, the foam and the body stand, and the blend does the looking
+through, as on the classic lane's frame.
+
+## WATER-NEXT 3 - THE SHORE (2026-10-07)
+
+Foam where the water runs out: over the band `FOAM_DEPTH` (0.22) deep - wider in a wind - whose edge rides the
+swell's own height (`FOAM_RUNUP` 2.2: the crest pushes it up the bank, the trough draws it back), cut into lace by a
+two-octave noise drifting down the wind; on open water in a strong wind the steep crests whiten (`CREST_SLOPE`).
+Lit by the light the water is; opaque where it lies; no glint through it. The first shot (Sentinel's pool) drew a
+solid white rim round a calm pool - the band was 0.55 deep and the lace's threshold let the whole band through; the
+band is narrower and the lace a thread now, thicker only in the shallowest water and a wind. Come Sail Away's sprite
+breakers are retired under the enhanced water (`csaDrawWaves`): it breaks on its own shore, and the breakers - opaque,
+written into the depth a hand over the sea - were what the clear water then showed as its ground, a striped sea.
+
+## WATER-NEXT 4 - THE RIPPLES (2026-10-07)
+
+`world/waterRipples.js`: a damped wave equation (`RIPPLE_DAMPING` 0.975 a step) on a 96-cell grid 48 units across
+round the camera, stepped at a fixed 30 Hz (a stalled frame runs four steps at most), sliding with the eye a whole
+cell at a time so a wake stays where it was left, its edge still water, asleep when still. Stirred where a body
+moves in the water (`stirOf`: a still swimmer's bob, a wader's wake growing with speed to a cap) - the player, by the
+footsteps' own on-water answer, and every boat afloat (Come Sail Away's). The renderer uploads it (R8, 128 still
+water, `RIPPLE_SCALE` a step) only when it moved, on unit 1 - the billboards' emission unit, whose shadow it forgets
+after the bind - and the water adds its slope inside the field, faded at the field's edge. Drawn only.
+
+**Pinned**: `test/waterbed.test.js` (6), `test/waterripples.test.js` (6), `test/waternext.test.js` (8); WATER1's pins
+moved to the new shapes (`water.test.js`, `waterlit1`, `dwc_fog`, `perfextb`, `perfsun_fragment`, `grain1_terrainmip`,
+`ft6_water`, `terrainworker`, `dwe_decorations` - each PIN MOVED; `rr3b` is PUDDLE-DRY's, above - AUDIT WATER-NEXT m1/m4). Mutants: `tools/mutants/waternext.json`, all dead (the first run's four
+survivors - the chamfer's diagonal, the byte bias after a step, unit 1's shadow pinned on a twin line, the gale pinned
+against itself - each pinned).
+
+## AUDIT WATER-NEXT (2026-10-07) - THE WATER AUDITED, ITS COST MEASURED
+
+Mac: *"I want you to do a comprehensive audit ensuring this is perfection and performance is unaffected"*. Three lenses
+(the GL and the shader; the hosts and the world's lifecycle; the record and the pins) and a performance lens measured
+against main; the findings, the fixes and what is recorded are `01-Overview/Audit-WATER-NEXT.md`. What moved in the laws
+above:
+
+- **The bed is the kernel's** (P1). `terrainGen.js restrideGrid` carves it with the grid it builds - the build's, the
+  promotion's and the restride's, on the terrain worker - and the host uploads what it answers (`bed`: the depths, the
+  sheet's depths, the carved ground, the seam's halo). WATER-NEXT 2 had carved on the host's thread at every build and
+  restride: 0.3 ms for a pixel with no water, 1-2 ms for a coast's.
+- **Deep Waters' cap carves it** (H1). The bed is carved from the TileMap the water draws from (`bedBytesOf`: the cap's
+  where it patched one): a tile the cap repaints is ground (it was a dry pit four units deep), and a tile it clips votes
+  dry, so the bed meets the mod's floor, fitted to the shore, at the clip's edge. `dwRecarve` carves again from the grid
+  as it stood when the cap lands or lifts.
+- **A seam is carved alike from both sides** (F2). A near grid's bed reads `BED_HALO_TILES` (4) of each neighbour's
+  tiles past its edge, classified and marched by the neighbour's own law (`terrainTiles.js tileDataAt`, `marchTile`)
+  from the kernel's ghost samples; a stamped or painted neighbour tile (a town, a road, a river) is not in its kernel,
+  and a strided grid's skirt closes its own seams.
+- **The sheet has its own depths** (H2, `sheetDepthsOf`): the carve's depth where the carve reaches, its bank 0, and
+  `SHEET_NO_BED` (`-NO_BED_DEPTH`) over ground never carved - tinted water that takes no swell (its troughs had gone
+  under the ground in a fair wind).
+- **The composition is premultiplied** (G1/G3): what is seen through the water is fogged once, as its bank is; a glint
+  and the foam are the same strength with or without the copy.
+- **The sea takes its own copy** (G2), after the flats and the people it may stand in front of.
+- **The ripple field** sleeps again after a slide (its edge held still - M1), slides nothing asleep (P2), is placed
+  where its bytes were packed (G13), is stirred by a hull only under way (`BOAT_WAKE_SPEED`, P3) and by the outdoor
+  swimmer's own flag (F4), and runs in the fixed town too through the hosts' one stir (`createRippleStir`, m12). THE
+  FOUR HOSTS: the streaming world and the fixed town draw the enhanced water and stir its field; the interiors
+  (`worldModes.js`) and the dungeons (`dungeonContext.js`) draw no enhanced water - their pools are the classic plane.
+- `WATER_OPACITY` and the sheet's `scroll` retired (m6): nothing drew them.
+
+## WATER-DRAW2 - THE DRAW'S TABLE KNOWS THE WATER ART (2026-10-07)
+
+Mac, with a phone screenshot of a winter town - a pond of WATER-NEXT's water and in it two flat blue squares, each
+round a white island: *"Is there a reason these fucking patches still remain after our most recent water changes?"*
+
+**The reason.** The squares are record 19 (water round an island of grass) and record 4 (round dirt; 29 is the stone
+one) - snow islands in winter. Neither is a marching shape nor in DFU's `OnShallowWaterTile` list, so the corner table
+(`world/waterCorners.js`) gave them no water corner - and every water law of the day asks that table. PUDDLE-DRY's
+census never counted them; WATER-NEXT's bed would not carve under them, its silt left them their painted water, its
+sheet stopped at their edges and its foam ringed them. The pond was the new water and the island tile in it DFU's
+painted tile, flat. Reproduced in the real game: Daggerfall city in winter (`tools/waterLookProbe.mjs`,
+`season=winter`, the first record-19 tile `__findTiles` names on pixel 207,213) - the square in the pond, as in the
+field.
+
+**Every gap, measured on the art.** WATER-PUDDLE's colour rule (record 0's own colours within 24, `cleanMask`'s shapes)
+read at each corner of every record at every turn, through the pass's own turn (`turnFraction`) - a corner is water
+where half its quarter-tile square is. In the four climates the rule reads cleanly (the desert, the woods and the two
+winters; the mountain's and the swamp's summer grounds sit inside the water's tolerance, as WATER-PUDDLE found) the
+method agrees with every shore entry the table already held. Where the art paints water at a corner in all four and
+the table said dry, three kinds, each laid in BLOCKS.BSA:
+
+| Kind | Records | The art's corners | In the 920 RMB blocks | In the world's 15,251 locations |
+|---|---|---|---|---|
+| water round an island | 4, 19, 29 | all four (the desert's 4: three - its sand reaches a corner) | 1,071 | 52,755 |
+| a ground of two or three kinds with water in one corner | 37, 38, 40, 41, 43, 44 | record 7's one corner, turn for turn | 76 | 5,836 |
+| a saddle laid half turned | 48, 49, 50 at turns 2 and 3 | the diagonal of turns 0 and 1 | 138 | 10,191 |
+
+The marching table writes a saddle's two diagonals at turns 0 and 1 only; a block that sets the flip bit asks for turn
+2 or 3, which nothing wrote. 10,302 of the 15,251 locations lay at least one of the three. Almost all of them sit in
+ponds: FIGHAA02's garden pond inside its paving (207 towns lay that block), the graveyards' ponds, the farms'.
+
+**The rule** (`buildWaterMaskTable(true)`): an island whole, a corner record 7's, a saddle's turns 2 and 3 its 0 and
+1. The DRAW's table alone, as WATER-DRAW1's record 9: DFU walks the player over all of them dry, so the law's table -
+the feet, the townsfolk's paths - is byte for byte what it was. Every reader of the draw follows with no law of its
+own: the bed carves under them, the silt covers them, the sheet and the foam take them in, and the grass leaves a
+corner tile as it leaves a shore tile (GRASS-WET1). The classic skin draws DFU's tile as before. THE FOUR HOSTS: the
+streaming world (`scenes/world.js`) and the fixed town (`scenes/exterior.js`, `buildWaterIndices` and its `flatGrid`
+bed) take the new entries through the table they already read; the interiors (`worldModes.js`) and the dungeons
+(`dungeonContext.js`) draw no enhanced water and stand on no RMB ground. In the Enhanced skin an island is the pond's
+water: the island DFU paints goes under the silt with the painted water. It could not stand:
+the bed is carved at the tiles' corners, so an island kept by its art would sit below the sheet in a hole the art's
+mask cut.
+
+**PUDDLE-DRY follows.** Its patches are the draw's water, so the islands joined their ponds: six lone island tiles
+dry, and twenty tiles of ponds an island had cut apart (FARMAA03's shore edges among them) are no longer dried as lone
+slivers - PUDDLE-DRY had been punching holes in those ponds. A puddle beside an island no longer takes the island's byte
+as its ground: twice a dried sliver had taken its neighbour's water art (SENT0's record 6 made a record 4, FARMAA09's
+record 32 a record 43). The census, pinned
+with ARENA2: 1,246 patches (1,311 before), 660 of one tile (674), 686 dried and 560 kept (700 and 611), 720 tiles dried
+(734), the CASTAA25 moat still 202. Daggerfall city's histogram does not move.
+
+**Seen.** The same pose before and after (renders of game data, kept outside the tree): before, the island square flat
+in the pond; after, one pond, its middle deeper now that no island bounds it.
+
+**Recorded, not fixed here.** 285 tiles of puddle art are still served, each in a patch PUDDLE-DRY keeps, and 248 of
+them meet their pond only across a dry edge - the shore tile beside them has its water on its far side - so they read
+as puddles. The blue pool at the left of the after shot is one: Daggerfall city's last record 23, beside a record-22
+corner whose water faces away. A connectivity that asks the corners on the shared edge would dry 199 record-23 tiles,
+20 of record 8, 13 of 9 and 9 of 33; measured on every block it also parts 26 blocks' largest water by a fifth or more
+(CASTAA27's moat, 168 tiles to 87) and dries 28 shore edges with them. That is a rule for Mac to choose, not one to
+ride in on this fix.
+
+**Pinned** in `test/waterdraw2.test.js` (5): the lists, and the table at every turn as literals; the law's table
+untouched; PUDDLE-DRY on the block reader's own ground (a lone island, corner and half-turned saddle dried; an island
+with its shore kept; art meeting a corner kept; a pool among islands made grass, never an island); the sheet and the
+bed over a pond of islands; and, with ARENA2, no record and turn the art paints water at a corner in every clean
+climate left dry, the corners and the saddles exactly the art's (36), and what BLOCKS.BSA lays. PIN MOVED:
+`test/grasspath.test.js`'s WATER-DRAW1 difference (SHALLOW_DRAWN and WATER-DRAW2's three, a saddle only half
+turned) and `test/puddledry.test.js`'s census. Mutants: `tools/mutants/waterdraw2.json` (9, all dead).
+
+## WATER-OFF - THE WATER IS THE PLAYER'S, ONLINE TOO (2026-10-08)
+
+FIELD BUGS 2026-10-08, SylviaBun: *"an option to disable Enhanced Water would be nice (I prefer the textured water over
+'realistic' water anyway and want to switch back if possible)"* - with the frame rate falling round Gothway Garden. The
+`enhanced-water` row (`systems/features.js`) was `online: true`: forced on online, its tile locked, so the switch that
+brings back Daggerfall's flat tile and the Deep Waters sea's own scrolling texture was out of reach where the reporter
+plays. It is `online: 'player'` now - OL-LIGHT's shape (`enhanced-lighting`): the water is what THIS screen draws. No
+wire field, relay law or shared roll reads it; swimming and feet read `WATER_MASK_TABLE` either way; its one other
+reader, the townsfolk's path weights (`world/cityNavigation.js tileWeight`), is this page's alone (the townsfolk ride no
+wire). Off takes effect when the world next loads, as it always did. `water-quality`'s Simple stays the cheaper middle.
+
+Not settled here, recorded for Mac: the falling frame rate itself was not profiled. The investigation found no leak in
+the water or Low Poly Trees (every GL object freed, the buffers reused) and named suspects that FILL rather than leak -
+Iliac Puddle No More's population near the sea (`MaxLiveFish` 720 by default, each fish an update and a ray), Low Poly
+Trees' 3D trees replacing their far pictures as atlases finish, and Full water's frame copy (two with the sea in view).
+Pins: `test/ft6_water.test.js`, `test/water.test.js`, `test/onlinelane.test.js` (the player's enhancements, by name),
+`test/uxb1e_onlinesync.test.js` (PIN MOVED: another forced switch stands in the sync's example).
+
+## FAR-SEA1 - THE SEA REACHES THE HORIZON (2026-10-10)
+
+Mac, with a screenshot from a snowy peak over the sea: *"Anyway we can fix the draw distance for oceans without
+affecting performance?"* The shot, read pixel by pixel: the water dark near the shore and lightening smoothly with
+distance until it is the fog's colour, (122, 134, 187); a pale band of exactly that colour beyond it, its far edge a
+square seen corner-on; and past that edge a plane a shade DARKER, (109, 123, 173), out to the horizon.
+
+**Why.** Three things, each the design of its own slice, met on a flat sea:
+
+- The world's linear fog closes at its end - DFU's 2400 scaled by the Land view distance (EV4, LV1): 4000 units at the
+  default 5, 4800 at 6; Dynamic Skies' Sunny closes at 3600 - and the water fogs with the world (`fogFactorAt`). So
+  the streamed sea was solid fog from there to the streamed grid's square edge (4096 to 6951 units at radius 5): the
+  pale band.
+- Past the grid the far ring (EV8) draws the sea at its haze HOLD, 85% fog, so its silhouettes read through haze:
+  15% of the ring's ocean tint shows, darker than the band in front of it (0.85 x 122 + 0.15 x 35 = 109 for a lit ocean tint near
+  (35, 61, 94) - the shot's own number). Deep-Waters.md had recorded the step as the ring's design.
+- The streamed world is drawn through a 6000-unit far plane, and a grid of radius 5 or 6 reaches past it toward its
+  corners; there neither surface drew (the ring's hole is the grid's rect) and the sky showed through.
+
+**What changed.** No pass is added and no vertex is added. The costs: one uniform on the water; on the ring a byte a
+vertex (the sea's weight, 9,409 bytes), its uniforms, one texel fetch a vertex, and at most a few hundred indices
+on the buffer it already draws - of which a frame draws only the cells that can lie past the world's far plane
+(AUDIT FAR-SEA1 P1, below).
+
+- **One haze for the horizon** (`render/horizonHaze.js` `HORIZON_HAZE_GLSL`): the world fog's linear ramp CAPPED at
+  the hold, min(ramp, hold), closed to 1 over the ring's rim (RING_RIM_START to RING_RIM_END, AUDIT EV F-R3's nearest
+  rim, now exported). EV8's record always worded it so - "the world fog's ramp capped at RING_HAZE_HOLD" - but the
+  shader scaled the ramp (hold x ramp), which is the same past the fog's end and left the ring LESS fogged than the
+  ground beside it wherever it stood inside the ramp (a near grid, or Sunny's late start - AUDIT 61 F9's seam, half
+  closed). The ring takes the law on all three of its fragment shaders (classic, the Enhanced Lighting lane, the
+  classic-shadow lane). At the default distance its picture over land does not move.
+- **The streamed sea holds it too** (`render/waterSurface.js` `uSeaHaze`): on a frame the world host draws the ring
+  (the ring's own gate - linear fog, `?ring=off` not set), it hands the renderer the hold and the sea's height
+  (`Renderer.setSeaHaze`, a frame's, cleared by `beginFrame` and kept across a panel bracket), and the water within
+  `SEA_HAZE_BAND` (1 unit, faded over its outer half) of the sea's level takes the law's half that reaches it - the
+  world's own linear factor floored at 1 - hold (the rim opens at 16.8 km, past the grid's farthest corner) - the
+  terrain's water and Iliac Puddle No More's open sea, one frame block. Only with a sky to reflect and the Enhanced
+  water on: under the classic panorama (`?sky=classic`, Enhanced environments
+  off) `sky.waterSky()` is null and the water reflects WATER1's fixed default day, which the fog hid past its end and
+  the hold would show at night - so there the host sets no haze and the ring's sea stays lit as ground (`uSeaLook`
+  0): the picture before this slice. Nearer than the hold it is the world's fog exactly; past it the sea runs on at the ring's haze and
+  meets the ring's sea at the grid's edge. A lake or a river above the coast keeps the world's fog whole, as the land
+  round it does.
+- **The ring's sea is the water's own** (`SEA_LOOK_GLSL`, `ringSea`): a vertex over a water pixel standing at the
+  clamp (`isWaterPixel` and the sea's height - an Ocean-climate hill is not sea) carries a sea weight (attribute 3),
+  and its colour is the water surface's own open sea at a flat normal - the same body (the camera climate's water
+  texel, averaged by its mip chain, under the water's tint and Iliac Puddle No More's over its open sea), the same
+  light (the sun softly), the same Fresnel over it and sky reflected (`sky.waterSky()`, read once a frame for both),
+  the same glints - from one text the water's fragment shader now calls too. The lane computes it in the water's own
+  (classic) space from the frame's light as the host gave it, as the water does, never through the ground's tonemap.
+  The land pays nothing for it (a branch on the sea's weight).
+- **The sea inside the hole** (`buildSeaFillIndices`): the ring's cells inside the streamed rect whose four corners
+  are all sea are kept as the index buffer's tail, farthest first. At the far plane (the pass's `depthRange(1, 1)`
+  under LEQUAL) they paint only where nothing streamed was drawn - past the world's far plane - and a flat sea cell
+  cannot stand above the streamed silhouette (the case the hole exists for). A frame draws only the cells that can
+  lie past that plane from where the eye stands (`seaFillCount`, the world's own lens) - none with the eye under the
+  sea: a swimmer looks up through the surface, not at the ring.
+
+**THE FOUR HOSTS.** The streaming world (`scenes/world.js`) draws the ring and the enhanced water and sets the sea's
+haze; the fixed town (`scenes/exterior.js`) draws the enhanced water and no ring, so its water keeps the world's fog
+(its own `beginFrame` clears the haze); the interiors (`scenes/worldModes.js`) and the dungeons
+(`scenes/dungeonContext.js`) draw neither.
+
+**What it does not do.** The land keeps its seam past the fog's end: the streamed ground there is still solid fog in
+front of the ring's 85% mountains (EV8's look; inside the fog's ramp the capped law closed AUDIT 61 F9's seam). And
+past 0.85 of the fog's end the sea now holds at the hold while the streamed land, the islands and the boats beside it
+go on to solid fog, so far land reads as a pale flat shape against the sea (AUDIT FAR-SEA1 D3 - recorded for Mac).
+With the Enhanced water off (WATER-OFF) the sea is Daggerfall's flat tile on the terrain program, which takes the
+world's fog alone, so the band stands there, and the ring's sea keeps the ground's look beside it. The sea's look
+past the fog is the ring's hold, one constant (RING_HAZE_HOLD) for land and sea; the fix makes the sea continuous,
+not more visible - with the sky the water reflects close to the fog's colour, the far sea reads a little nearer the
+haze than the ring's flat ocean tint did - and a sea that reads further would want its own hold, which is Mac's call
+(D4). **Not seen on a real GPU with ARENA2** - Mac's eye on the same peak is the gate.
+
+**Pinned** in `test/farsea1.test.js` (10): the law run in the GLSL evaluator (the world's ramp exactly, the hold, the
+rim, a late start; capped, not scaled), the constants, the open sea's one text and the water calling it, all three
+ring shaders (their lines in order, the sea's inputs as the vertex shader mints them, `ringSea` run), the sea
+vertices, the fill's cells and their order, the pass through a recording GL, the water's arm against `FOG_GLSL`'s own
+factor, the renderer's frame block and the world host's wiring; and `test/audit_farsea1.test.js` (AUDIT FAR-SEA1,
+below). PIN MOVED: `test/water.test.js` (the dome's sky read once),
+`test/el2_shadows.test.js` (beginFrame's window), `test/glstate.test.js` (AUDIT 47's sweep reads the new leaf),
+`test/dynamicSkies.test.js` (AUDIT 61 F9's ramp from the fog's start, now the law's), `test/boot2.test.js` (the entry's
+static reach, 75 - the new leaf, which imports nothing), and the
+`tools/mutants/eldistance.json` record of the lane ring's fog (re-aimed by content). Mutants:
+`tools/mutants/farsea1.json` (14, all dead; seven re-aimed by content at the audit's code). Seen in Chromium by
+`tools/farSeaProbe.mjs`: the three ring programs and both water programs link and keep every FAR-SEA1 uniform; over
+an open sea the eye under it leaves the hole to the clear colour and the eye above paints only the counted cells; a
+frame claimed nearer takes nothing; and the sea takes the water's body when its tiles are handed.
+
+## AUDIT FAR-SEA1 (2026-10-11) - THE SEA'S COST MEASURED, ITS SEAM MADE THE WATER'S
+
+Mac: *"Audit this"*. Five lanes read the frozen branch - the shaders and GL, the hosts and the frame, the pins and the
+record, the numbers at the seams, and the cost - each verifying its findings before reporting; the findings, the
+fixes and what is recorded for Mac are `01-Overview/Audit-FAR-SEA1.md`. What moved in the laws above:
+
+- **The fill was not free** (P1, two lanes). The ring wrote `gl_FragDepth`, which runs a fragment shader before its
+  depth test, and the fill rasterized the whole streamed sea: from a raised eye it shaded 55-60% of the frame to show
+  in under a hundredth of it. Now the ring stands at the far plane by `depthRange(1, 1)` (the same picture, byte for
+  byte, the test before the shader - for the ring's own fragments behind the streamed world too), and a frame draws
+  only the fill's cells that can lie past the far plane from the eye: over 300 random views the performance lane
+  measured the shaded fill falling from 54.6% of the screen to 3.4% under that selection, with no shown pixel lost
+  (the pass keeps 1% of the far plane in hand for its float32 lens, a cell or two more).
+- **The seam was not the water's** (L1, L2). The ring's sea had been the overworld tint, lit with the full sun,
+  without a glint: a step of about 3 units at the grid's edge by day, a glitter path that stopped there, and worse
+  than before where the edge stood inside the fog's ramp (Land view 1-3 under Dynamic Skies' Sunny). Now the sea's
+  light is one text (`SEA_LOOK_GLSL`) the water calls too, and the ring's sea takes the water's body: run on the two
+  shaders themselves, the streamed sea and the ring's sea meet to under half a unit - by day, at a low sun ahead, by
+  moonlight, on both lanes, at an edge inside the ramp.
+- **The panel bracket dropped the haze** (H1): a decorator's preview drawn between the water and the open sea took it
+  for the rest of the frame - the bracket keeps it now, as it keeps the sea's fog.
+- **With the Enhanced water off the ring's sea is the ground's** (H2), and the sky is not read for it.
+- **The water's arm is the world's own factor floored** (P3) - no second distance or ramp in the water, and FOG_GLSL
+  stays the water's one fog law - and its band fades over its outer half (L3), so water running down to the sea
+  crosses into its haze without a line.
+- **A crossing builds one buffer** (P4), as the ring alone did.

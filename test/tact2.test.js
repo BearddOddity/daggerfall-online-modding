@@ -158,9 +158,22 @@ test('TACT2: an archer with a token backs off a target closing inside its stand-
   assert.equal(tokensOut(LOCAL_TARGET, 'ranged'), 1);
   resetTactics();
   const three = crowd(3, { bow: true, r: 20 });
-  run(three, 2);
-  assert.equal(tokensOut(LOCAL_TARGET, 'ranged'), TACT.RANGED_TOKENS);
-  assert.equal(three.filter((x) => x.ai._tacShoot === false).length, 1, 'the third holds its fire');
+  // AUDIT PRE-MERGE 1003 (CI, #556): the law on EVERY frame of the two seconds, not the count at their last - a holder
+  // hands its token on (its shot loosed, its target lost) and another takes it the next frame, so the count dips for a
+  // frame by design, and one instant read it 1 in ~40 runs (the same 10 of 400 seeded runs on main's, the PR's and this
+  // tree): never more than RANGED_TOKENS out, all of them taken, and while they are the third holds its fire
+  // AUDIT PRE-MERGE 1003b M3: and the tokens STILL HELD at the end - the per-frame law alone let an archer that never took
+  // a token again after its first shot pass (20 runs of 20); six seconds, and the last three frames' best is both
+  // tokens out (a hand-on dips for one frame by design, so three frames tolerate it: 0 failures in 160 seeded runs)
+  const outs = [];
+  run(three, 6, { each: () => {
+    const out = tokensOut(LOCAL_TARGET, 'ranged');
+    assert.ok(out <= TACT.RANGED_TOKENS, `${out} ranged tokens out`);
+    outs.push(out);
+    if (out === TACT.RANGED_TOKENS) assert.equal(three.filter((x) => x.ai._tacShoot === false).length, 1, 'the third holds its fire');
+  } });
+  assert.equal(Math.max(...outs), TACT.RANGED_TOKENS, 'both tokens taken');
+  assert.equal(Math.max(...outs.slice(-3)), TACT.RANGED_TOKENS, 'and held at the end');
 });
 
 test('TACT2: a turned back is an opening - a waiting foe within reach of the ring strikes', () => {
@@ -206,7 +219,8 @@ test('TACT2: the brain only steers a foe that sees its target in range - out of 
 
 test('TACT2: the motor and the attack read the brain - the step, the stand, the gates; the hosts hand the vitals and the player\'s facing', () => {
   const m = rd('src/characters/enemyMotor.js');
-  assert.match(m, /const _took = tacticsStep\(this, dx, dz\);\n\s*if \(_took && \(!detouring \|\| this\.fleeLeft > 0 \|\| this\._tac\?\.state === 'windup'\)\) return;[^\n]*\n\s*this\._tacDir = null;\n\s*\/\/ Ranged attacks/);
+  // PIN MOVED (TELL6, bible/12-Enhanced-AI/Feud-Arc.md 8.1): a charge's run is never the detour's either
+  assert.match(m, /const _took = tacticsStep\(this, dx, dz\);\n\s*if \(_took && \(!detouring \|\| this\.fleeLeft > 0 \|\| this\._tac\?\.state === 'windup' \|\| this\._tac\?\.state === 'dash'\)\) return;[^\n]*\n\s*this\._tacDir = null;\n\s*\/\/ Ranged attacks/);
   assert.match(m, /if \(this\._tacDir\) \{ this\._tacDir = null; this\._tacBlocked = true; this\.moving = false; \}[^\n]*\n\s*else this\._findDetour\(dir2d\);/);
   const a = rd('src/characters/enemyAttack.js');
   assert.match(a, /if \(ai\._tacStrike === false\) continue;/);

@@ -151,6 +151,11 @@ export const SLOWFALL_VELOCITY = SLOWFALL_SPEED * UNITY_FIXED_DT;   // 2.1 m/s
 export const FALL_DAMAGE_THRESHOLD = 5.0;   // AcrobatMotor fallingDamageThreshold (= PlayerHealth's threshold)
 export const FALL_HP_PER_METRE = 5;         // PlayerHealth.ApplyPlayerFallDamage HPPerMetre
 export const GRAVITY = 20.0;
+/** TELL6e (bible/12-Enhanced-AI/Feud-Arc.md 8.2): a blow's push decays at this (m/s/s)... */
+export const BLOW_PUSH_DECAY = 12;
+/** ...and never carries the body over a drop of more than this (m). */
+export const BLOW_PUSH_EDGE = 2;
+const PUSH_DOWN = Object.freeze([0, -1, 0]);
 /** FALL-KEPT (FIELD BUGS 2026-09-30): the most of a fall a save carries (fallSnapshot / restoreFall) - terrainData
  *  .size.y, MaxTerrainHeight at the game's TerrainScale (DaggerfallTerrain.cs:307), the top of any ground the world
  *  streams. No drop that stands on the world is taller, and one begun above it (a Levitate let go over the peaks)
@@ -327,7 +332,7 @@ import {
 import { PlayerMoveScanner } from './moveScanner.js';
 import { getBool } from '../systems/settings.js';   // AUDIT 28 W5: Controls/ToggleSneak (StartGameBehaviour :277)
 import { localizedText } from '../systems/textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language
-import { TRANSPORT_MODES, isRiding, rideBaseFor, canRunUnlessRiding } from '../systems/transport.js';   // TR1: the mount's speed, run and climb laws
+import { TRANSPORT_MODES, isRiding, rideBaseFor, canRunUnlessRiding, rideWalks } from '../systems/transport.js';   // TR1: the mount's speed, run and climb laws; HORSE-WALK: horse care's walk
 import { timeScale } from '../systems/timeScale.js';   // TO1: Unity's Time.fixedDeltaTime rides Time.timeScale (see update())
 import { CLIMB_MOVE_KINDS, CLIMB_MOVE_RISE_MAX, CLIMB_MOVE_TIME_MAX } from '../net/wire.js';   // CLIMB6: a move on the wire, its kinds and bounds the wire's
 import { clampToRing } from '../net/duelSession.js';   // AUDIT DUEL1 D4: the ring's one clamp
@@ -431,9 +436,15 @@ export class PlayerMotor {
    *  step is a teleport). See eyeAt's snap guard. */
   static SNAP_SPAN = 2;
 
-  constructor(collider, stats = { speed: 50, running: 30, swimming: 30 }, { jumpBoost = null, enhancedJumping = null, climbing = null, carriedWeight = null, parkour = null } = {}) {
+  constructor(collider, stats = { speed: 50, running: 30, swimming: 30 }, { jumpBoost = null, enhancedJumping = null, climbing = null, carriedWeight = null, parkour = null, travelling = null } = {}) {
     this.collider = collider;
     this.stats = stats;
+    /** @type {number[]|null} WAGONS2: where the body is DRAWN instead of its capsule (bodyFeetAt) - a seat of a wagon drawn grown under the Overworld (scenes/wagonRiders.js drawAt); null, the capsule's own */
+    this.drawFeet = null;
+    /** @type {number|null} WAGONS3: the way the body is DRAWN facing instead (bodyYawFor) - a wagon's bench, the way it is driven (scenes/world.js); null, the body's own */
+    this.drawYaw = null;
+    /** @type {number|null} WAGONS3: how many times its size the body is drawn under the Overworld when it sits in a rig grown apart from the traveller (world/wagonModels.js rigGrowOf - its bench, a seat in its back); null, the traveller's own grow */
+    this.drawGrow = null;
     this.jumpBoost = jumpBoost;    // () => AcrobatMotor jumpSpeedMultiplier (systems/skills owns the formula)
     // AUDIT 64 F2: () => PlayerEntity.IsEnhancedJumping (DaggerfallEntity
     // .cs:85, raised/cleared by Jumping.cs:84/:94 - the plain Jump
@@ -465,6 +476,13 @@ export class PlayerMotor {
     // parkourDeps), mounted like the climb's. No deps, or a switch that
     // answers no, and not one ray is cast: the classic lane is untouched.
     this.parkour = parkour;
+    // CLIMB-TRAVEL (FIELD BUGS 2026-10-07b, Shabalako: "Overworld Travel can be used to exploit climbing levelling"):
+    // () => the host's fast travel is running (a journey, or the keys' travel under the view - scenes/world.js
+    // wildTravelling). At x60 a fixed step is a second of game time, so every climb timer runs out within a step or two:
+    // a walk into a wall took it and let go four or five times a real second and rolled Climbing thirty to fifty, and a
+    // rock was climbed a storey a step and fallen from. Nothing climbs at a journey's pace - both lanes refuse the wall
+    // as they refuse it to a rider (climbing.js's abort ladder, the enhanced lane's `unheld`). None: never travelling.
+    this.travelling = travelling;
     this._pkMove = null;         // the move in flight (player/parkour.js planMantle/planVault), null between moves
     this.parkoured = null;       // 'mantle' | 'vault' for the frame a move starts (the fatigue/tally consumer, as `jumped`)
     this.climbEvents = [];       // CLIMB4: the frame's climb events ({ type, ... }) - the feel's and the sounds' (climbFeel.js, climbSounds.js)
@@ -540,8 +558,11 @@ export class PlayerMotor {
     this.waterWalking = false;
     this.waterSurfaceY = null;   // the current block's water surface (world y), null when dry
     this.swimSpeedScale = 1;     // DW-D: Iliac Puddle No More's swim speed multiplier (a walk speed modifier while swimming - swimSpeedNow)
+    this.rideSpeedScale = 1;     // STEED1/WAGONS4: the ride's pace - a horse's Speed, a wagon's soundness and its team's Strength (systems/upkeepRuntime.js rideScale; 1 with both off)
+    this.rideWalking = false;    // HORSE-WALK: the step's ride took the walk (horse care's horse, not galloping) - the gait the clop, the riding sprite's clock, the 3D horse and the saddle panel read
     this.jumped = false;         // set for the frame a jump actually starts (fatigue/tally consumer)
     this.crouching = false;      // P12: toggled via input.crouch (edge); standing needs headroom
+    this._pkCrouchRestore = false; // A low mantle's temporary stance, distinct from the player's crouch toggle.
     // PlayerHeightChanger.heightAction / camTimer: null | 'crouch' |
     // 'stand'. The pending action lives on the RENDER frame, exactly
     // where DFU decides and applies it.
@@ -581,6 +602,13 @@ export class PlayerMotor {
     // PlayerMotor.freezeMotor (:64) - the physics-settle countdown a
     // Teleport action arms; FixedUpdate's block below spends it.
     this.freezeMotor = 0;
+    this.techFlight = false;   // TECH1: a technique's leap or dash in the air (techniqueLaunch) - the Jump spell's air control does not steer it
+    // TELL6e (bible/12-Enhanced-AI/Feud-Arc.md 8.2): what a telegraphed blow's landing does to the body - the port's own,
+    // set only by systems/blowEffects.js (the Enhanced AI switch's): a push (m/s, decaying), a rattle (a share of the
+    // walk for a while), a knockdown (no move, the eye down and up again)
+    this._pushX = 0; this._pushZ = 0;
+    this._rattleLeft = 0; this._rattleShare = 1;
+    this._downLeft = 0; this._downFor = 0; this._downDrop = 0;
     // P15 (PlayerSpeedChanger): the run/sneak STATES - latched from
     // held input only while grounded; airborne keeps the takeoff
     // state (the swim quirk rides it too: waterWalking's Speed read).
@@ -633,6 +661,9 @@ export class PlayerMotor {
   /** PlayerMotor.IsRiding (:138) - the one question every consumer
    *  asks of the transport mode. */
   get riding() { return isRiding(this.transportMode); }
+  /** HORSE-WALK: THE SLOW RIDE - under half its base (IsMovingLessThanHalfSpeed: a sneak in the saddle) or walked. The
+   *  slow clop's word the pose's `hs` carries (systems/riding.js), and the 3D horse's: a slow ride never gallops. */
+  get slowRide() { return !!(this.movingLessThanHalfSpeed || this.rideWalking); }
 
   /** AUDIT 64 F3: InputManager.ToggleAutorun (InputManager.cs:542-545)
    *  - the latch PlayerSpeedChanger.ToggleRun flips (:85-93) and the
@@ -642,6 +673,68 @@ export class PlayerMotor {
   get toggleAutorun() { return this._autorun; }
   /** CSA-D: `InputManager.Instance.ToggleAutorun = false` - Come Sail Away's StopSailing writes the latch. */
   set toggleAutorun(v) { this._autorun = !!v; }
+
+  /** TELL6e: a blow's push - `vx`, `vz` metres a second, decaying at BLOW_PUSH_DECAY, along the collider (a wall
+   *  stops it) and never over an edge of more than BLOW_PUSH_EDGE. */
+  blowPush(vx, vz) { this._pushX = vx; this._pushZ = vz; }
+  /** TELL6e: a rattle - `seconds` at `share` of the walk. */
+  blowRattle(seconds, share) { this._rattleLeft = Math.max(this._rattleLeft, seconds); this._rattleShare = share; }
+  /** TELL6e: a knockdown - `seconds` with no move, the eye `drop` metres down at once and up again at its end.
+   *  AUDIT TELL L4: refused (false) to a body the hands hold (a climb, a hold, a mantle) or the water or the air does
+   *  (a swim, a levitation) - nothing there goes down; systems/blowEffects.js pushes it instead. */
+  blowKnockDown(seconds, drop) {
+    if (this.climb?.isClimbing || this._wall || this._pkMove || this.swimming || this.levitating) return false;
+    this._downLeft = seconds; this._downFor = seconds; this._downDrop = drop; this._pushX = 0; this._pushZ = 0;
+    return true;
+  }
+  /** TELL6e: is the body down (a knockdown)? */
+  isDown() { return this._downLeft > 0; }
+  /**
+   * TECH1 (bible/05-Combat/Weapon-Techniques.md): A TECHNIQUE'S FLIGHT - a leap or a dash a weapon's technique makes
+   * (combat/techniques.js): `dir` the horizontal unit it flies along, `along` metres a second along it, `up` metres a
+   * second up. The body flies as a jump flies - the airborne arm keeps the momentum, the collider stops it on what it
+   * meets, gravity brings it down, the fall counts from the launch - and the Jump spell's air control does not steer it
+   * (`techFlight`, cleared on the ground: a leap's flight keeps its launch, as a parkour leap's does). Refused (false) to a
+   * body the hands hold (a climb, a hold, a mantle), the water or the air (a swim, a levitation, a slow fall), the saddle,
+   * a knockdown and a held motor - nothing there leaps.
+   */
+  techniqueLaunch(dir, along, up) {
+    if (this.swimming || this.levitating || this.slowFalling || this.climb?.isClimbing || this._wall || this._pkMove) return false;   // not from a climb, a wall, a vault, the water or the air's own spells
+    if (this.riding || this.isDown() || this.freezeMotor > 0 || this.paralyzed) return false;
+    if (!Array.isArray(dir) || !(Number.isFinite(along) && Number.isFinite(up))) return false;
+    this.velY = up;
+    this._airVelX = dir[0] * along;
+    this._airVelZ = dir[2] * along;
+    this.grounded = false;
+    this.groundedTime = 0;
+    this.groundKey = null;
+    this.jumping = true;
+    this.falling = false;
+    this.fallStart = this.pos[1];
+    this.techFlight = true;
+    return true;
+  }
+  /** TELL6e: the eye's drop under a knockdown now - down over its first 0.15 s, up over its last 0.3 s. */
+  _downEye() {
+    if (!(this._downLeft > 0)) return 0;
+    const into = this._downFor - this._downLeft;
+    return this._downDrop * Math.min(1, into / 0.15, this._downLeft / 0.3);
+  }
+  /** TELL6e: the push's step - along the collider, stopped by a drop past BLOW_PUSH_EDGE ahead. */
+  _pushStep(dt) {
+    const v = Math.hypot(this._pushX, this._pushZ);
+    if (!(v > 0)) return;
+    // AUDIT TELL L3: a body the motor holds (a teleport's settle) or the hands do (a climb, a hold, a mantle) takes no
+    // push - it is dropped, never stored for the moment they let go
+    if (this.freezeMotor > 0 || this.climb?.isClimbing || this._wall || this._pkMove) { this._pushX = 0; this._pushZ = 0; return; }
+    const dx = this._pushX * dt, dz = this._pushZ * dt;
+    const o = [this.pos[0] + dx * 4, this.pos[1] + 0.5, this.pos[2] + dz * 4];   // the ground a little ahead of the step
+    const below = this.collider.surfaceHit ? this.collider.surfaceHit(o, PUSH_DOWN, BLOW_PUSH_EDGE + 0.5)?.dist : this.collider.raycast?.(o, PUSH_DOWN, BLOW_PUSH_EDGE + 0.5);
+    if (!Number.isFinite(below)) { this._pushX = 0; this._pushZ = 0; return; }   // an edge: no cliff takes a push
+    this.collider.move(this.pos, dx, 0, dz, this.height, this.grounded && !this.jumping && !this.swimming && !this.levitating);   // AUDIT TELL L3: snapped to the ground only from it - a jump, a swim, a levitation is never pulled down
+    const nv = Math.max(0, v - BLOW_PUSH_DECAY * dt);
+    this._pushX *= nv / v; this._pushZ *= nv / v;
+  }
 
   /** SEA-RISE (2026-09-27): drop both latches, as a held MoveBackwards does (InputManager.cs:1851's clear, and
    *  PlayerSpeedChanger.cs:96-99's on the press). The online respawn's - the port's own teleport: a player raised
@@ -674,11 +767,18 @@ export class PlayerMotor {
     return walkSpeed(this.stats.speed) * (this.swimSpeedScale > 0 ? this.swimSpeedScale : 1);
   }
   /** IsMovingLessThanHalfSpeed's base (PlayerMotor.cs:176-180): GetWalkSpeed crouched, else GetBaseSpeed - which,
-   *  uncrouched, is the ride base on a mount and RefreshWalkSpeed off one. */
+   *  uncrouched, is the ride base on a mount (HORSE-WALK: the walk, where horse care walks it) and RefreshWalkSpeed off
+   *  one. */
   _halfSpeedBase() {
     if (this.crouching) return walkSpeed(this.stats.speed);
-    return isRiding(this.transportMode) ? rideSpeed(this.stats.speed, rideBaseFor(this.transportMode)) : this._refreshWalkSpeed();
+    return isRiding(this.transportMode) ? rideSpeed(this.stats.speed, this._rideBaseNow()) * this._rideScale() : this._refreshWalkSpeed();
   }
+  /** HORSE-WALK: the classic base GetBaseSpeed's riding arm adds - DFU's own walk base where horse care walks the horse
+   *  (transport.js rideWalks), so the walk is its base as a walk is on foot and a pace under half of it is a sneak's;
+   *  else the mode's ride base (rideBaseFor). GetRunSpeed's riding arm never reads it: the gallop is the ride base's. */
+  _rideBaseNow() { return rideWalks(this.transportMode) ? DF_WALK_BASE : rideBaseFor(this.transportMode); }
+  /** STEED1/WAGONS4: the ride's pace scale, a finite positive number (1 for anything else). */
+  _rideScale() { const k = this.rideSpeedScale; return Number.isFinite(k) && k > 0 ? k : 1; }
   /** GetSwimSpeed(GetBaseSpeed()) - LevitateMotor's swim: GetBaseSpeed skips the crouch arm while it swims. */
   swimSpeedNow() {
     return swimSpeed(this._refreshWalkSpeed(), this.stats.swimming ?? 0);
@@ -724,10 +824,23 @@ export class PlayerMotor {
    *  teleport would sweep the camera through the world for one frame;
    *  snapping is the honest picture. Recenters never reach this guard
    *  because offsetOrigin shifts both ends of the span. */
+  /** TV-SMOOTH (2026-10-12, Mac with a video: "the overworld traveling at high speed looks stuttery on the character"):
+   *  THE SNAP GUARD SCALES WITH THE STEP. Under an accelerated journey the step is FIXED_DT x the clock (TO1, update's
+   *  `step`), and one step of a body walking at x100 is 8 to 17 m - every step past SNAP_SPAN, so every span read as a
+   *  placement and the picture snapped to the raw feet: the body, the Overworld's camera and its ring moved only when a
+   *  step landed - one frame in two at 120 Hz, two steps in one when a frame ran long - the judder. A span is a
+   *  placement only past what the fastest body could walk in the last step (ODOMETER_MAX_SPEED, MOVE-REAL's own bound
+   *  for "faster than any body moves"), never under SNAP_SPAN: at x1 that is 1 m a step and SNAP_SPAN stands, exactly
+   *  as before. Squared, as the guards compare. */
+  _snapSpan2() {
+    const s = Math.max(PlayerMotor.SNAP_SPAN, ODOMETER_MAX_SPEED * (this._spanStep ?? FIXED_DT));
+    return s * s;
+  }
+
   eyeAt(alpha = this._alpha) {
     const p = this.pos, q = this._prevPos;
     const dx = p[0] - q[0], dy = p[1] - q[1], dz = p[2] - q[2];
-    if (dx * dx + dy * dy + dz * dz > PlayerMotor.SNAP_SPAN * PlayerMotor.SNAP_SPAN) { this._eyeFeetY = null; return this.eye; }   // MAC1: a placement primes the eye filter afresh
+    if (dx * dx + dy * dy + dz * dz > this._snapSpan2()) { this._eyeFeetY = null; return this.eye; }   // MAC1: a placement primes the eye filter afresh
     const a = Math.max(0, Math.min(1, alpha));
     const b = this.bobOffset;
     // MAC1: the height is the low-passed interpolated feet (`_smoothEyeFeet`)
@@ -736,7 +849,7 @@ export class PlayerMotor {
     const feetY = (this._eyeFeetY != null && alpha === this._alpha) ? this._eyeFeetY : q[1] + dy * a;
     return [
       q[0] + dx * a + b[0],
-      feetY + this._eyeLevel() + b[1],
+      feetY + this._eyeLevel() + b[1] - this._downEye(),   // TELL6e: knocked down, the eye drops and rises
       q[2] + dz * a + b[2],
     ];
   }
@@ -768,7 +881,7 @@ export class PlayerMotor {
   feetAt(alpha = this._alpha) {
     const p = this.pos, q = this._prevPos;
     const dx = p[0] - q[0], dy = p[1] - q[1], dz = p[2] - q[2];
-    if (dx * dx + dy * dy + dz * dz > PlayerMotor.SNAP_SPAN * PlayerMotor.SNAP_SPAN) { this._eyeFeetY = null; return [p[0], p[1], p[2]]; }   // MAC1: a placement primes the eye filter afresh
+    if (dx * dx + dy * dy + dz * dz > this._snapSpan2()) { this._eyeFeetY = null; return [p[0], p[1], p[2]]; }   // MAC1: a placement primes the eye filter afresh
     const a = Math.max(0, Math.min(1, alpha));
     const feetY = (this._eyeFeetY != null && alpha === this._alpha) ? this._eyeFeetY : q[1] + dy * a;
     return [q[0] + dx * a, feetY, q[2] + dz * a];
@@ -782,9 +895,10 @@ export class PlayerMotor {
    *  floated as far over it going down. The body stands where the capsule stands; the camera keeps its smoothing,
    *  and the filter is left alone here. The same snap guard as feetAt. */
   bodyFeetAt(alpha = this._alpha) {
+    if (this.drawFeet) return [this.drawFeet[0], this.drawFeet[1], this.drawFeet[2]];   // WAGONS2: seated in a wagon drawn grown under the Overworld, the body is drawn on its seat there (scenes/world.js)
     const p = this.pos, q = this._prevPos;
     const dx = p[0] - q[0], dy = p[1] - q[1], dz = p[2] - q[2];
-    if (dx * dx + dy * dy + dz * dz > PlayerMotor.SNAP_SPAN * PlayerMotor.SNAP_SPAN) return [p[0], p[1], p[2]];
+    if (dx * dx + dy * dy + dz * dz > this._snapSpan2()) return [p[0], p[1], p[2]];
     const a = Math.max(0, Math.min(1, alpha));
     return [q[0] + dx * a, q[1] + dy * a, q[2] + dz * a];
   }
@@ -917,6 +1031,7 @@ export class PlayerMotor {
   setTransportMode(mode) {
     const was = this.riding;
     this.transportMode = mode;
+    this.rideWalking = false;   // HORSE-WALK: the next step's speed derives it for the new mode
     if (this.riding === was) return;
     this.heightAction = this.riding ? 'mount' : 'dismount';
     this.heightTimerMax = this.riding ? HEIGHT_TIMER_MEDIUM : HEIGHT_TIMER_FAST;
@@ -942,10 +1057,12 @@ export class PlayerMotor {
     this._acc = 0;   // the fixed-step accumulator restarts clean
     this.arena = null;   // DUEL1: a placement is never a walk out of the ring - the host's duel law decides what it meant
     this._pkMove = null;   // CLIMB1: a placement is never the end of a mantle
+    this._pkCrouchRestore = false;
     if (this._wall) this._wallEnd();   // CLIMB2: nor a hold
     this._pkOffEdge = null;   // AUDIT CLIMB-ARC L6: nor a run off an edge (a press after it is no late leap)...
     this._pkLeap = null;      // ...nor a leap's flight (the catch looks no old way)
     this._pkRestore = null;   // AUDIT CLIMB2 H1: a placement's own record follows it (restoreFall), never an older one
+    this._pushX = 0; this._pushZ = 0; this._downLeft = 0; this._rattleLeft = 0;   // AUDIT TELL L2: nor a blow's push, knockdown or rattle
     this._heightReset();   // a pending height action does not ride a teleport/load
     this.holdFrame();   // DISC8-G: a landing reported before the warp is not the arrival's
   }
@@ -1015,6 +1132,10 @@ export class PlayerMotor {
     const a = this.arena;
     const c = a?.centre;
     if (!c || !(a.radius > 0)) return;
+    // AUDIT ARENA-LADDER: A CEILING OVER THE SAND (the owner's kit law, 'No cheese spells or potions' - systems/arenaKit.js
+    // SAND_CEILING_M): a ring that names one (`ceilAbove`, metres over its centre - the sand) holds the body under it, its
+    // rise taken away; the duel's and the gate's rings name none, and their height is never touched
+    if (Number.isFinite(a.ceilAbove) && this.pos[1] > c[1] + a.ceilAbove) { this.pos[1] = c[1] + a.ceilAbove; if (this.velY > 0) this.velY = 0; }
     // WB9b: an arena with a clamp of its own - the gate's three courts and the walkways laid between them
     // (world/gateArena.js courtArena, net/gateBrain.js clampToFloor - the relay's law of the floor)
     if (typeof a.clamp === 'function') { this._putBack(a.clamp(this.pos, CAPSULE_RADIUS)); return; }
@@ -1118,6 +1239,7 @@ export class PlayerMotor {
    *  gets a nearly instant camera, DFU's own arithmetic. The eye path
    *  lives in _eyeLevel. */
   _heightAction(dt, input) {
+    if (!this.crouching) this._pkCrouchRestore = false;
     // DecideHeightAction's arm ORDER (:173-207). AUDIT 23 (motor-2):
     // the crouch press only toggles out of water or on solid ground
     // ((!swimming || IsGrounded) && pressedCrouch), and a free swim
@@ -1177,9 +1299,17 @@ export class PlayerMotor {
       this.heightTimerMax = HEIGHT_TIMER_MEDIUM;
       if (this.crouching) this.heightAction = 'stand';
     } else if (input.crouch && (!this.swimming || this.grounded)) {
+      this._pkCrouchRestore = false; // An accepted player stance request takes ownership back.
       this.heightAction = this.crouching ? 'stand' : 'crouch';
       this.heightTimerMax = HEIGHT_TIMER_FAST;
       this.forcedSwimCrouch = false;
+    } else if (this._pkCrouchRestore && !this.swimming && capsuleFits(this.collider, this.pos, CAPSULE_HEIGHT)) {
+      // A mantle may need a short capsule only for its path. Keep it under the ceiling, then restore
+      // the original standing stance once the WHOLE capsule fits, not merely the camera's stand sweep.
+      this._pkCrouchRestore = false;
+      this.heightAction = 'stand';
+      this.heightTimer = 0;
+      this.heightTimerMax = HEIGHT_TIMER_FAST;
     } else if (this.climb?.isClimbing) {
       // (2) CLIMBING forces standing every frame on the medium clock
       // (:184-191) - the timerMax is set whether or not a stand is
@@ -1444,14 +1574,19 @@ export class PlayerMotor {
     // is exactly FIXED_DT and nothing changes.
     const step = FIXED_DT * scale;
     this._acc = (this._acc ?? 0) + frameDt;
+    if (this._acc >= step) this._spanStep = step;   // TV-SMOOTH: the span the reads lerp across is a step of THIS length
+    const moveInput = this._downLeft > 0 ? { ...input, forward: 0, strafe: 0, back: false, jump: false, autoRun: false, up: false, down: false } : input;   // TELL6e: knocked down - no move
     while (this._acc >= step) {
       this._acc -= step;
+      if (this._rattleLeft > 0) this._rattleLeft = Math.max(0, this._rattleLeft - step);   // TELL6e
+      if (this._downLeft > 0) this._downLeft = Math.max(0, this._downLeft - step);
       // EV1: latch the span's START. Per step, so a multi-step frame
       // interpolates across the LAST step only (the standard
       // fix-your-timestep shape) and a zero-step frame keeps the
       // previous span and just advances alpha.
       this._prevPos[0] = this.pos[0]; this._prevPos[1] = this.pos[1]; this._prevPos[2] = this.pos[2];
-      this._step(step, input, yaw, pitch);
+      this._step(step, moveInput, yaw, pitch);
+      this._pushStep(step);   // TELL6e: a blow's push, after the step's own move
       if (this.arena) this._keepInArena();   // DUEL1: after the collider's move, so both ends of the span stand inside
       this._countOdometer(step);   // MOVE-REAL
     }
@@ -1582,6 +1717,7 @@ export class PlayerMotor {
       grounded: this.grounded,
       levitating: this.levitating,
       riding: isRiding(this.transportMode),   // TR1: ClimbingMotor :398 - no climbing from a saddle
+      travelling: !!this.travelling?.(),   // CLIMB-TRAVEL: nor at a journey's pace
       touchingSides: probe.touching,
       horizontalPos: [this.pos[0], this.pos[2]],
       // ":318-320: ground directly below too close for climbing" -
@@ -1663,6 +1799,10 @@ export class PlayerMotor {
 
   /** CLIMB2: on the wall - hanging from a lip, or free-climbing a face. */
   get onWall() { return !!this._wall; }
+  /** AUDIT FB1007b C3: a hold a save (or a re-anchor) carried, waiting for the next step to take it again (restoreFall) -
+   *  the body is on the wall in all but that step, and a host that read it as on foot meanwhile sped the keys' travel up
+   *  under it, and the travel let the hold go. */
+  get holdPending() { return !!this._pkRestore; }
   /** CLIMB4: the move in flight (read-only: its kind, its clock `t`), or null - the feel's and the sounds'. */
   get climbMove() { return this._pkMove; }
   /** AUDIT CLIMB-ARC F3/F8: the body's OWN way on the wall, a frame at a time: the render-frame feet (bodyFeetAt - the
@@ -1694,7 +1834,7 @@ export class PlayerMotor {
   }
   /** CLIMB5: the yaw the body is drawn at (third person) for a view at `viewYaw` - the view's own, except on the climb
    *  and the moment after it, when it turns to the wall and back (BODY_TURN_TAU). */
-  bodyYawFor(viewYaw) { return this._bodyYaw ?? (this._bodyYawOff == null ? viewYaw : viewYaw + this._bodyYawOff); }
+  bodyYawFor(viewYaw) { return this.drawYaw ?? this._bodyYaw ?? (this._bodyYawOff == null ? viewYaw : viewYaw + this._bodyYawOff); }   // WAGONS3: a bench's facing first
   /** CLIMB2: hanging from a lip. */
   get hanging() { return this._wall?.mode === 'hang'; }
   /** CLIMB2: the grip the HUD shows ({ amount, low }) - on the wall, and while it comes back after; null otherwise. */
@@ -1762,7 +1902,7 @@ export class PlayerMotor {
     }
     if (this.grounded || this.swimming || this.sunk || this._wall) this._pkLeap = null;
     const on = this._pkOn = !!pk.enabled?.();
-    const unheld = this.levitating || this.riding || this.paralyzed;   // nothing holds a wall from these
+    const unheld = this.levitating || this.riding || this.paralyzed || !!this.travelling?.();   // nothing holds a wall from these (CLIMB-TRAVEL: nor at a journey's pace)
     if (this._pkRestore) {   // AUDIT CLIMB2 H1: the hold a save (or a re-anchor) carried, taken again where the body was put
       const r = this._pkRestore;
       this._pkRestore = null;
@@ -2648,6 +2788,7 @@ export class PlayerMotor {
     this.moveStrafe = 0;
     this.moveSpeed = 0;
     if (move.crouch && !this.crouching) {
+      this._pkCrouchRestore = this.heightAction !== 'crouch';
       this.standingHeightAdjustment = 0;
       this.crouching = true;
       this.heightAction = 'crouch';
@@ -2993,7 +3134,12 @@ export class PlayerMotor {
     if (this.grounded) {
       // TR1: CanRunUnlessRiding (:137-140) - a mount does not sprint.
       this.isRunning = this._runMode && canRunUnlessRiding(this.transportMode);
-      this.isSneaking = !this.isRunning && this._sneakMode;
+      // CROUCH-SNEAK (a recorded departure, Port-Ledger A): CROUCHED IS SNEAKING. DFU keeps the two apart - a height
+      // (PlayerHeightChanger) and a slow walk (PlayerSpeedChanger's sneakingMode) - and the player asked for one key
+      // that does both, Morrowind's way. So the crouch toggle carries the sneak arm with it: the crouched-sneak speed
+      // below (the crouch base halved, less one classic unit) and with it the P13 stealth half-speed gate. The Sneak
+      // action still answers for a player who binds it (it ships unbound); running still beats both.
+      this.isSneaking = !this.isRunning && (this._sneakMode || this.crouching);
     }
     // F-C3 (self-audit 3, ApplyInputSpeedAdjustment :121-125): running
     // CLEARS sneakingMode - "switch sneaking off if was previously
@@ -3011,15 +3157,20 @@ export class PlayerMotor {
     // TR1: the mode's base, when there is one. GetBaseSpeed tests
     // CROUCH first and riding second, so the order here is DFU's.
     const rideBase = (!this.crouching && isRiding(this.transportMode)) ? rideBaseFor(this.transportMode) : null;
+    // HORSE-WALK: horse care's horse WALKS unless it gallops - GetBaseSpeed's riding arm on the walk's base
+    // (_rideBaseNow), the run on the ride base as ever (GetRunSpeed's riding arm). DFU's ride, which every picture
+    // already drew as a gallop (eotbBillboard.js GALLOP_SPEED, horseModel.js HORSE_GAIT_FROM), is the gallop's base now.
+    this.rideWalking = rideBase != null && !this.isRunning && rideWalks(this.transportMode);
     if (this.isRunning) {
       speed = runSpeed(this.stats.speed, this.stats.running, this.crouching, rideBase);
+      if (rideBase != null) speed *= this._rideScale();   // STEED1: a gallop at the horse's own pace
     } else {
       // ApplyInputSpeedAdjustment (:127-133): the SNEAK arm subtracts
       // from whatever GetBaseSpeed returned - including the RIDE base.
       // TR-AUDIT F-E4: TR1's first cut put the ride arm beside the
       // sneak instead of under it, so a sneaking rider trotted.
       speed = rideBase != null
-        ? rideSpeed(this.stats.speed, rideBase)
+        ? rideSpeed(this.stats.speed, this._rideBaseNow()) * this._rideScale()   // STEED1/WAGONS4: the horse's pace, the wagon's; HORSE-WALK: a walk where horse care walks it
         : (this.crouching ? crouchSpeed(this.stats.speed) : this._refreshWalkSpeed());   // DW-D: GetBaseSpeed's walk arm is RefreshWalkSpeed
       if (this.isSneaking) speed = sneakSpeed(speed);
     }
@@ -3058,6 +3209,7 @@ export class PlayerMotor {
     // while DFU's own gate, the host flag, stays true, and a proxy on
     // `sunk` would walk the swimmer at the full ground speed.
     if (this.isPlayerSwimming && !this.waterWalking) speed = swimSpeed(speed, this.stats.swimming ?? 0);
+    if (this._rattleLeft > 0) speed *= this._rattleShare;   // TELL6e: a slam, a ring or a leap that landed rattles the walk
     this.speed = speed;   // UpdateSpeed writes the field the getter reads
     this._trackHalfSpeed(input, speed);
     // MW-D26: the frame's movement INPUT and applied speed, reported
@@ -3081,6 +3233,7 @@ export class PlayerMotor {
     // liftoff momentum verbatim (airControl false - see constructor).
     let vx, vz;
     if (this.grounded) {
+      this.techFlight = false;   // TECH1: a technique's flight ends on the ground
       vx = (sin * input.forward + cos * input.strafe) * factor * speed;
       vz = (cos * input.forward - sin * input.strafe) * factor * speed;
       // A6 - THE DOORWAY HEAD DIP. GroundedMovement's recompute arm
@@ -3089,7 +3242,7 @@ export class PlayerMotor {
       // above it needs slideWhenOverSlopeLimit or slideOnTaggedObjects
       // and BOTH ship false (:15-18).
       if (!this.paralyzed) this._headDipHandling(sin, cos);
-    } else if (this.enhancedJumping?.() && !this._pkLeap) {   // AUDIT CLIMB-ARC L3: a leap's flight keeps its launch
+    } else if (this.enhancedJumping?.() && !this._pkLeap && !this.techFlight) {   // AUDIT CLIMB-ARC L3: a leap's flight keeps its launch; TECH1: and a technique's
       // AUDIT 64 F2 - AcrobatMotor.CheckAirControl (:130-151), the
       // IsEnhancedJumping disjunct of :145. Its one caller is
       // PlayerMotor.cs:349-353, the airborne arm, with the `speed`
@@ -3125,7 +3278,7 @@ export class PlayerMotor {
 
     // HandleJumpInput, verbatim gates: 0.1 s of grounded time (the
     // bunny-hop gate - a HELD jump re-fires each landing past it, as
-    // classic), slowfall cancels outright; the boost multiplier is
+    // classic), slowfall no longer cancels it (JUMP-SLOW, below); the boost multiplier is
     // the scene's jumpSpeedMultiplier (Jumping skill; athleticism +
     // jump spell pend); crouched jumps scale by crouchingJumpDelta;
     // a MOVING jump adds forward * jumpSpeed * 0.05 of momentum.
@@ -3152,7 +3305,10 @@ export class PlayerMotor {
     // HandleJumpInput while the player wades a record-0 tile and
     // refuses the leap; the port granted the full JUMP_SPEED * boost.
     // (The paralysis clause is covered host-side by the zeroed bag.)
-    if (this.grounded && input.jump && !this.slowFalling && !this._pkJumpLatch   // AUDIT CLIMB1 F7: not the Jump a move spent
+    // JUMP-SLOW (FIELD BUGS 2026-10-11b, Mac: "Give the jump back"; a departure, Port-Ledger A): DFU's IsSlowFalling
+    // clause of this cancel (AcrobatMotor.cs:68) is dropped - the rise is the jump's, and the spell's 2.1 m/s takes the
+    // descent from the apex (ApplyGravity below). Still ground-gated (0.1 s): no jump from the air, so no climbing on air.
+    if (this.grounded && input.jump && !this._pkJumpLatch   // AUDIT CLIMB1 F7: not the Jump a move spent
         && !this.onExteriorWater
         && this.transportMode !== TRANSPORT_MODES.Cart
         && (this.climb?.wasClimbing || this.groundedTime >= GROUNDED_JUMP_GATE_S)) {
@@ -3184,7 +3340,7 @@ export class PlayerMotor {
     // fallStart re-anchored every tick (expiry mid-fall only bills
     // the rest of the drop); otherwise integrate normally.
     if (!this.grounded) {
-      if (this.slowFalling && this.falling) {
+      if (this.slowFalling && this.falling && !(this.jumping && this.velY > 0)) {   // JUMP-SLOW: a jump's rise is the jump's
         this.fallStart = this.pos[1];
         this.velY = -SLOWFALL_VELOCITY;   // F032: DFU's step, not ours
       } else {

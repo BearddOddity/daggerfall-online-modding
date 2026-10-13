@@ -39,7 +39,7 @@
 //
 // The three clauses that stood here are all closed (D1):
 // - the TALK button routes to TalkManager.TalkToStaticNPC (:263):
-//   worldModes.js:"ROAD-C c2/S2: this" supplies `onTalk: () => openStaticNpc(pn,
+//   worldModes.js:"endurance: () =>".."onTalk: () => openStaticNpc(pn, { forceTalk: true })," supplies `onTalk: () => openStaticNpc(pn,
 //   { forceTalk: true })`, which this file consumes at :256 and :265.
 // - AddPermanentScene (:246) shipped at P1 - systems/tavern.js:"?? room?.mapId, buildingKey"
 //   addPermanentScene / :93 removePermanentScene, with this window

@@ -229,11 +229,12 @@
   {
     "name": "AUDIT-RENOWN1-tracker-no-backoff",
     "file": "src/net/renownTracker.js",
-    "old": "  const waitMs = () => (refused ? Math.min(RENOWN_BACKOFF_MAX_MS, RENOWN_REPORT_MS * 2 ** (refused - 1)) : RENOWN_REPORT_MS);",
-    "new": "  const waitMs = () => RENOWN_REPORT_MS;",
+    "old": "  const waitMs = () => (refused ? Math.min(RENOWN_BACKOFF_MAX_MS, RENOWN_REPORT_MS * 2 ** (refused - 1)) : soonNow() ? RENOWN_REPORT_MS : RENOWN_COALESCE_MS);",
+    "new": "  const waitMs = () => (soonNow() ? RENOWN_REPORT_MS : RENOWN_COALESCE_MS);",
     "tests": [
       "test/auditrenown1.test.js"
-    ]
+    ],
+    "note": "SCALE4h (re-aimed by content): the coalescing's pace beside it."
   },
   {
     "name": "AUDIT-RENOWN1-tracker-early-after-a-refusal",
@@ -541,8 +542,8 @@
   {
     "name": "AUDIT-RENOWN1-box-written-once",
     "file": "src/ui/nameLayer.js",
-    "old": "        setText(tag.lv, renownText(p.lv) ?? '');   // RENOWN1: \"12\" in its box, or nothing",
-    "new": "        if (!tag.lv.textContent) setText(tag.lv, renownText(p.lv) ?? '');   // RENOWN1: \"12\" in its box, or nothing",
+    "old": "        if (tag.lvOf !== p.lv) { tag.lvOf = p.lv; setText(tag.lv, renownText(p.lv) ?? ''); }   // RENOWN1: \"12\" in its box, or nothing",
+    "new": "        if (!tag.lv.textContent) { tag.lvOf = p.lv; setText(tag.lv, renownText(p.lv) ?? ''); }   // RENOWN1: \"12\" in its box, or nothing",
     "tests": [
       "test/auditrenown1.test.js"
     ]

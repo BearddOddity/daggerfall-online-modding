@@ -211,13 +211,15 @@ test('AUDIT SILVER-WAYS B1: a claim reads past the contracts it may be paid by -
     }
     return batch(list);
   };
-  const both = await Promise.all(pair.map((w) => s.raid(w, raidKey(DF, 70))));
+  const answers = await Promise.all(pair.map((w) => s.raid(w, raidKey(DF, 70))));
   db.prepare = prepare; db.batch = batch;
-  // whichever write lands first is "the first": the two claims are released together, and which batch the store runs
-  // first is the scheduler's (under a loaded runner it was the second one, at the merge of main into L10N)
-  const [x, y] = both[0].body.contracts.length === 3 ? both : [both[1], both[0]];
-  assert.deepEqual(x.body.contracts.map((c) => c.pay + c.tax), [50, 50, 50], 'the first: the three best, each its last deed');
-  assert.deepEqual(y.body.contracts.map((c) => c.contract), [next.body.contract.id], 'the second: the next, read past the three');
+  // HAUL-CARDS (FOUND - the full suite's load): which held batch the barrier lets go first is the scheduler's, so the
+  // pin reads the pair by what each was paid, not by who asked first (L10N met it too, at its merge of main: under a
+  // loaded runner the second claim's batch ran first)
+  const paid = answers.map((r) => r.body.contracts ?? []);
+  const first = paid.find((p) => p.length === 3), second = paid.find((p) => p !== first);
+  assert.deepEqual(first?.map((c) => c.pay + c.tax), [50, 50, 50], `one claim the three best, each its last deed: ${JSON.stringify(paid)}`);
+  assert.deepEqual(second?.map((c) => c.contract), [next.body.contract.id], 'the other the next, read past the three');
   assert.ok(s.addsUp());
 });
 

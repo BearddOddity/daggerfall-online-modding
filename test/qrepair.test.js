@@ -203,9 +203,9 @@ test('QREPAIR the door, by source: every host\'s pause hands repairQuests off it
   assert.match(qb, /repair\(\) \{\n\s+const world = ctx\.world \?\? null;\n\s+return repairActiveQuests\(machine, \{/);
   assert.match(qb, /mountCurrentSite: \(\) => world\?\.mountCurrentSiteQuestResources\?\.\(\),/);
   const menu = rd('src/ui/enhancedMenu.js');
-  assert.match(menu, /if \(catId === 'game'\) return portRowsGame\(opts\);/);
+  assert.match(menu, /\.\.\.portRowsGame\(\{ pause \}\)/, 'ORG2: the screen builds it with the port\'s other rows, and the map puts it under Gameplay, Quests');
   assert.match(menu, /const can = pause && typeof hooks\?\.repairQuests === 'function';/, 'live only in a game\'s pause');
   assert.match(menu, /ask\(t\('menu\.questRepair\.title', 'Repair Active Quests'\), questRepairAsk\(\), t\('menu\.questRepair\.go', 'Repair'\), \(\) => \{/, 'confirmed first');
   assert.match(menu, /main\.append\(el\('div', 'row-note', can \? \(questRepairSaid \?\? questRepairNote\(\)\) : questRepairAway\(\)\)\);/, 'the door\'s row says where it lives');
-  assert.match(menu, /const liveCount = \(catId\) => portRows\(catId\)\.filter\(\(r\) => r\.dataset\?\.live !== '0'\)\.length/, 'and a greyed row is not counted as working');
+  assert.match(menu, /const r = ctx\.pool\.get\(item\.slice\(5\)\); if \(r && r\.dataset\.live !== '0'\) n\+\+;/, 'and a greyed row is not counted as working (ORG2: tabCount)');
 });

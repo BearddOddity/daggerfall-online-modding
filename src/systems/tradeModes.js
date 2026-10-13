@@ -57,10 +57,16 @@ import { calculateCost, calculateTradePrice, essentialPrice } from './shopStock.
 import { GOLD_PIECE_WEIGHT_KG, isEnchanted } from './inventory.js';
 import { calculateItemRepairCost, repairRefusal } from './repairService.js';
 import { itemValueOf, conditionPercentage } from './itemTemplates.js';
+import { craftedRarityWorth } from './lootRarity.js';   // CRAFT-WORTH: a crafted piece's rolled worth, never a counter's
 import { isOnlinePage } from './onlineLane.js';   // SELL-AS-FOUND: online, a sale reads a piece as it was found
+import { isCampfireKit } from './survival/items.js';   // AUDIT REST: the Campfire an essential online
+import { isFirewood } from './restItems.js';
 import { isPotion } from './useItem.js';   // ESSENTIALS-HALF: the potion, by DFU's own IsPotion   // JAN1: the one value read; RRI2: ConditionPercentage, the Sell arm's third argument
 import { HOLIDAYS } from './holidays.js';
 import { GUILDS } from './guilds.js';
+import { isBagItem } from '../net/bagLaw.js';   // BAG1: a loaded Materials Bag is never sold (the cart's rule)
+import { activeWagonItem } from './wagonKinds.js';   // WAGONS2 (FINAL AUDIT): the wagon driven, read once for every counter (sellGuardOf)
+import { PATRON_COUNTER_MARK } from '../net/patronLaw.js';   // AUDIT LW-II-2 S1: online, a counter's piece is no patron's
 import {
   cureOfferMessageOffset, TRADE_MESSAGE_BASE_ID, NOT_ENOUGH_GOLD_ID,
 } from './guildServiceActions.js';
@@ -130,7 +136,7 @@ export const IDENTIFY_COST_MULTIPLIER = 25;
  *  no magic in it at all. It was never seen because the Identify
  *  destination was a null and the mode could not be opened; X7 opened
  *  it, so the derivation had to be right first. Both paths run at
- *  worldModes.js:"function creditAt(region, price) {".."}" now (commitTrade) - the paid service and the spell. */
+ *  worldModes.js:"function commitTrade" now (commitTrade) - the paid service and the spell. */
 export const itemIsIdentified = (item) => !isEnchanted(item) || item?.isIdentified === true;
 
 /** FormulaHelper.CalculateItemIdentifyCost (:1935-1955). FREE on the
@@ -187,7 +193,7 @@ export function identifySpellPass(items, chance, rolls = Math.random) {
  *  exact: the whole pass returns, nothing is identified, no magicka is
  *  spent and Mercantile is not tallied.
  *  (GodMode's `&& !GodMode` arm has no port counterpart, as
- *  motor.js:"if (this.riding === was)" already records for the levitation term.) */
+ *  motor.js:"this.transportMode = mode" already records for the levitation term.) */
 export const NOT_ENOUGH_SPELL_POINTS_TEXT = 'You do not have enough spell points left.';
 /** L10N3d: ...as the refusal shows it (:962), in the player's language. */
 export const notEnoughSpellPointsText = () => localizedText('notEnoughSpellpointsLeft', NOT_ENOUGH_SPELL_POINTS_TEXT);
@@ -219,7 +225,7 @@ export function buyItemPrice(item, { quality = 0, priceAdjustment = 1000, holida
   // (shopStock.js essentialPrice, rounded up - its law against buying to sell back), at every counter's Buy. AUDIT
   // ESSENTIALS F1: never on top of a holiday's own half - the sale cap reads the full price, so a quarter bought on
   // Merchants Festival sold back for half; the two halves do not stack
-  return isPotion(item) && !holiday ? essentialPrice(held, { online }) : held;
+  return (isPotion(item) || isCampfireKit(item) || isFirewood(item)) && !holiday ? essentialPrice(held, { online }) : held;   // AUDIT REST: REST2's Campfire and Firewood arm
 }
 
 /** SELL-AS-FOUND (AUDIT ECON O1, 2026-10-01): ONLINE A COUNTER PAYS FOR A PIECE AS THE WORLD HANDED IT OVER, AT BEST.
@@ -235,6 +241,32 @@ export function saleConditionPercentage(item, { online = isOnlinePage() } = {}) 
   const found = item?.foundCondition;
   if (!online || !Number.isInteger(found) || !(found < (item?.currentCondition ?? 0))) return conditionPercentage(item);
   return conditionPercentage({ currentCondition: found, maxCondition: item.maxCondition });
+}
+
+/** AUDIT LW-II-2 S1: THE COUNTER'S MARK (net/patronLaw.js PATRON_COUNTER_MARK) - ONLINE, EVERY PIECE AN NPC COUNTER SELLS
+ *  IS MARKED, and no town's patron takes it (patronLaw.js patronTakes): a patron paid more than an online counter asks
+ *  (a book three times its file price, a quality-1 smith's weapon a fifth over its ask), so a player bought at the
+ *  counter, stocked a hired trader and printed the difference. The counter's Buy hands every piece through here
+ *  (worldModes.js commitTrade's Buy arm and the keyed list's doBuy - every shop's shelf, a guild's, a caravan's on the
+ *  road); the mark rides the save, the item law and the market's listing, and a stack keeps it through a merge (either
+ *  part's) and a split (inventory.js addItem, splitStack). Offline nothing is written. Answers how many it marked. */
+export function markCounterBought(items, { online = isOnlinePage() } = {}) {
+  if (!online) return 0;
+  let n = 0;
+  for (const it of items ?? []) if (it && typeof it === 'object') { it[PATRON_COUNTER_MARK] = true; n++; }
+  return n;
+}
+
+/** CRAFT-WORTH (2026-10-11): THE VALUE A COUNTER PAYS A PIECE ON - its own (itemValueOf), less what a crafted piece's
+ *  quality rolled onto it (lootRarity.js craftedRarityWorth): a counter pays for a crafted piece what it pays for the
+ *  plain piece its recipe makes, never for its Magic or Rare lines. Every selling arm reads it - the trade windows'
+ *  Sell and SellMagic, and the keyed shelf's (scenes/worldModes.js sellPrice). AUDIT CRAFT-WORTH: the roll comes off a
+ *  piece's OWN value alone - a piece with none is priced at its template's base (itemValueOf), which never held the roll. */
+export function counterValueOf(item) {
+  const v = itemValueOf(item);
+  if (!Number.isFinite(item?.value)) return v;   // AUDIT CRAFT-WORTH: the base the read falls back to carries no roll to take off
+  const rolled = craftedRarityWorth(item);
+  return rolled > 0 ? Math.max(1, v - rolled) : v;
 }
 
 /**
@@ -275,7 +307,7 @@ export function tradeCost(mode, staged = [], {
         // CalculateCost never reads - see the header; RRI2: Roleplay &
         // Realism: Items' override reads it, so the slot is passed.
         // SELL-AS-FOUND: online, no better than the condition the world handed the piece over at
-        cost += calculateCost(itemValueOf(item), quality, priceAdjustment, saleConditionPercentage(item, { online })) * stack;   // JAN1: an item with no finite value is priced at its base, never NaN
+        cost += calculateCost(counterValueOf(item), quality, priceAdjustment, saleConditionPercentage(item, { online })) * stack;   // JAN1: an item with no finite value is priced at its base, never NaN; CRAFT-WORTH: a crafted piece at its plain worth
         break;
       case 'SellMagic':
         // DFU's own TODO sits on this line: "Fencing base price higher
@@ -283,7 +315,7 @@ export function tradeCost(mode, staged = [], {
         // WITHOUT the stack multiply - a stack of five soul gems fences
         // for the price of one. Verbatim, and deliberately not "fixed".
         modeActionEnabled = true;
-        cost += calculateCost(itemValueOf(item), quality, priceAdjustment);
+        cost += calculateCost(counterValueOf(item), quality, priceAdjustment);   // CRAFT-WORTH: a fenced crafted piece at its plain worth
         break;
       case 'Repair':
         if (isBeingRepaired(item)) break;
@@ -388,40 +420,6 @@ export const LETTER_OF_CREDIT_TEXT = 'You are paid with a letter of credit.';
 /** L10N3d: ...as the box shows it (:1093), in the player's language - both skins read it. */
 export const letterOfCreditText = () => localizedText('letterOfCredit', LETTER_OF_CREDIT_TEXT);
 
-/** SHIP-CREDIT (2026-10-01, Mac's "Buy on credit"): the templates a lot must hold to be bought on credit - Come Sail
- *  Away's parts and deed (systems/comeSailAwayItems.js BOAT_PARTS_TEMPLATE, BOAT_DEED_TEMPLATE; pinned equal). */
-export const CREDIT_ITEM_TEMPLATES = Object.freeze([1320, 1321]);
-/** SHIP-CREDIT: whether a lot staged to buy holds a boat - only a boat is sold on the bank's credit. */
-export const lotHasBoat = (staged = []) => staged.some((it) => CREDIT_ITEM_TEMPLATES.includes(it?.templateIndex));
-/** SHIP-CREDIT (the review before the merge, 2026-10-01: a boat in the basket put the whole basket on the bank's
- *  credit): whether a lot staged to buy is boats and nothing else - the one lot the bank lends on. */
-export const lotAllBoats = (staged = []) => staged.length > 0 && staged.every((it) => CREDIT_ITEM_TEMPLATES.includes(it?.templateIndex));
-/** SHIP-CREDIT: the refusal of a lot that holds a boat among other goods (creditRefusalRows names it). */
-export const CREDIT_BOAT_ALONE = 'boatAlone';
-/** SHIP-CREDIT: the offer's box - what the purse holds against the price, what the bank lends, what is paid now and
- *  owed within the year (banking.js creditDecision's `credit`), and the question. */
-export function creditRows({ loan, pay, owed }, price, purse) {
-  return [
-    { text: `You have ${purse} of the ${price} gold.`, center: true },
-    { text: `The bank will lend you ${loan} gold for the boat.`, center: true },
-    { text: `You pay ${pay} now, and owe ${owed} within a year.`, center: true },
-    { text: 'Buy on credit?', center: true },
-  ];
-}
-/** SHIP-CREDIT: why the bank lends nothing, under the refusal's own box (creditDecision's `refuse`); none for a
- *  refusal it does not name. `empireLines` the Empire's own words online (banking.js empireRefusalLines). */
-export function creditRefusalRows(r, empireLines = null) {
-  if (Array.isArray(empireLines) && empireLines.length) return empireLines.map((text) => ({ text, center: true }));
-  const text = r?.result === CREDIT_REFUSALS.ALREADY_HAVE_LOAN ? 'The bank will not lend: a loan of yours stands here.'
-    : r?.result === CREDIT_REFUSALS.ALREADY_DEFAULTED ? 'The bank lends nothing to one who has defaulted.'
-      : r?.result === CREDIT_REFUSALS.NOT_ENOUGH_GOLD ? `The bank lends on a boat only to one who pays ${r.down} gold down.`
-        : r?.result === CREDIT_REFUSALS.LOAN_REQUEST_TOO_HIGH ? `The bank will lend you no more than ${r.max} gold.`
-          : r?.result === CREDIT_BOAT_ALONE ? 'The bank lends on a boat bought by itself.' : null;
-  return text ? [{ text, center: true }] : [];
-}
-/** SHIP-CREDIT: the refusals creditRefusalRows names - banking.js TRANSACTION_RESULT's (pinned equal). */
-export const CREDIT_REFUSALS = Object.freeze({ ALREADY_DEFAULTED: 288, ALREADY_HAVE_LOAN: 289, LOAN_REQUEST_TOO_HIGH: 295, NOT_ENOUGH_GOLD: 454 });
-
 /** ConfirmTrade's SELL arm (:1035-1050): the proceeds are weighed
  *  BEFORE they are paid, and a purse that would push the player past
  *  MaxEncumbrance becomes a LETTER OF CREDIT for the full amount
@@ -463,13 +461,25 @@ export function localListAccepts(mode, item, { accepts = () => true, enchanted =
  *  textId | text } | { kind: 'ignore' }. Every 'stage' is a
  *  TransferItem call in DFU (:795, :817, :823, :826), so the window
  *  owes it TransferItem's own guards on top of this. */
+/** WAGONS2 (FINAL AUDIT): WHAT A COUNTER'S CLICK READS OFF THE ENTITY - PlayerEntity.WagonItems and .Items.GetItem
+ *  (:789-793; WAGONS1: the wagon DRIVEN, the best owned - a cart left over from an upgrade is an empty cart to sell) and
+ *  BAG1's bag - one home for the six places the two trade windows asked it, each its own copy (the copies were pinned
+ *  nowhere: any one turned back to the first wagon in the pack sold a loaded caravan while a spare cart was held). */
+export const sellGuardOf = (entity) => ({
+  wagonLoaded: (entity?.wagonItems ?? []).length > 0,
+  bagLoaded: (entity?.bagItems ?? []).length > 0,   // BAG1: the Materials Bag holding anything
+  usedWagon: activeWagonItem(entity?.items ?? []),
+});
 export function localClickDecision(mode, item, {
   inBasket = () => false, allowMagicRepairs = false, usingIdentifySpell = false,
-  wagonLoaded = false, usedWagon = null,
+  wagonLoaded = false, usedWagon = null, bagLoaded = false,
 } = {}) {
   switch (mode) {
     case 'Sell':
     case 'SellMagic':
+      // BAG1: the Materials Bag is the cart's own case, said - a bag sold with materials in it would strand them in a list
+      // nobody owns (systems/materialsBag.js bagMayLeave)
+      if (isBagItem(item) && bagLoaded) return { kind: 'refuse', refusal: 'bagLoaded' };
       // "Are we trying to sell the non empty wagon?" (:789-794).
       // PlayerEntity.Items.GetItem(Transportation, Small_cart) is the
       // cart the player actually owns, and the click is dropped

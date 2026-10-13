@@ -100,6 +100,24 @@ scatter above stands byte for byte. The rules and the numbers (measured
 on the real WOODS.WLD) are the Port-Ledger A row (REAL FORESTS); the audit
 is `01-Overview/Audit-Forest1-Grass.md`; pins in test/forest1.test.js.
 
+CLEAR ROADSIDES (VERGE1, 2026-10-07, Mac: "Making sure objects, like
+trees, avoid pathways and roads") keeps the disc of every wild flat's
+widest picture - a Low Poly tree's crown among them - off the painted roads
+and tracks, in both scatters, with the herbs, the veins on the stone and
+World of Daggerfall's flats; behind the enhanced row `roadVerges`, forced on
+online. The record is `03-World/Roads.md` VERGE1; pins in
+test/verge1.test.js.
+
+BLENDED CLIMATES (ECOTONE1, 2026-10-07, Mac: "Making it where bione
+transitions are insta t and instead fade and transition naturally into each
+other") gives every map pixel's edge a wandering, patchy border two hundred
+metres deep in place of DFU's straight line: the ground samples its
+neighbours' tile sets across it, a border tile's flats are laid by the
+climate that owns it (between two wooded climates only the species change),
+the grass grows by the ground under it. Behind the enhanced row
+`climateBlend`, forced on online. The record is `07-Rendering/Rendering.md`
+ECOTONE1; pins in test/ecotone1.test.js.
+
 ## Milestone 7 - locations on terrain (SHIPPED)
 
 `src/formats/umRandom.js` is a 1:1 translation of Unity.Mathematics
@@ -136,7 +154,9 @@ addGroundPlane = FALSE - the stamped terrain tilemap IS the ground;
 marker cells (>= 56) stay unstamped and take generated tiles.
 Integration pins for pixel (207,213): avg 0.166147 / max 0.171953, rect
 {11,116,11,116}, 9989 stamped, post-blend s(64,64) = avg with corners
-untouched, post-assign histogram 2:8173 / 1:3142 / 46:1706 / 11:899,
+untouched, post-assign histogram 2:8183 / 1:3173 / 46:1717 / 11:905
+(PUDDLE-DRY's: the city's 61 puddle tiles are ground; it was
+2:8173 / 1:3142 / 46:1706 / 11:899 - AUDIT WATER-NEXT m5),
 climate 231 -> ground 302. Pins in test/terrain.test.js.
 AUDIT NOTE (M7 audit): the 64-entry marching-squares lookup was
 machine-verified against a source-parsed reconstruction - identical
@@ -245,6 +265,17 @@ marker facing the interior bounding center; `SHOT_QUERY` drives the shot
 tool at any scene. Routed onward: people flats (Characters), furniture
 actions / loot / spawn points (Systems), point lights (Rendering), ladder +
 door behavior (Player). Pins in test/interior.test.js.
+
+TOWER-FLOORS (FIELD BUGS 2026-10-07b, `01-Overview/Field-Bugs-2026-10-07b.md`; Jacob: "The two Daggerfall Castle
+courtyard tower interiors are very bugged") - the port's one departure in AddModels: an ObjectType 5 model is
+stood on its lowest vertex at the storey it is written at (`FLOOR_MODEL_TYPE`), where DFU places it centred like any
+model. Classic writes the type at a storey - 1,250 of its 1,433 interior records are flat planes, which do not
+move (2700's two by its 0.1 mm) - and in seven records it writes centred room shells so: Castle Daggerfall's two
+courtyard towers (CUSTAA05 #0 and #1, five storeys), the castle's three dungeon-door wings and two House2 rooms of
+blocks no location places (LIBRAM00 #7, BOOKAS00 #8). Each stood half its height under its storey - the towers'
+furniture 1.625 m over the floor and their lights and markers 1.575 m, a stair 3.2 m under its own, the room's door
+1.6 m under the street's. The two House2 rooms' hall 28703 is written off even this convention and left as written
+(AUDIT FB1007b F1, `01-Overview/Audit-FB1007b.md`). Pinned by `test/fb1007b_towerfloors.test.js`.
 
 ## Milestone 3 - flats and billboards (SHIPPED)
 
@@ -488,7 +519,9 @@ motor hosts (the standing host rule; one shared seam module):
   is now in %s mode.", no-op on the same mode); the activation ray
   vs the person's controller cylinder (radius 0.45, height 1.8) at
   the verbatim distances (mobile NPC 6.4; pickpocket 3.2 with "You
-  are too far away" beyond); Info/Grab/Talk all talk a mobile NPC
+  are too far away" beyond) - MODE-WHEEL (2026-10-08, Port-Ledger A):
+  F1-F4 now ship unbound and a held Left Alt opens a wheel that picks
+  the mode through this same setMode (ui/modeWheel.js); Info/Grab/Talk all talk a mobile NPC
   (DFU routing); Steal pickpockets ONCE per person
   (PickpocketByPlayerAttempted). Lazily loads FACTION.TXT +
   TEXT.RSC + FONT0003 through the host's fetchBytes. The refusal is

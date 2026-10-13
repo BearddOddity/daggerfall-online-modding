@@ -26,6 +26,13 @@
 // the gold it cost (half of which comes back when it is removed).
 // ═══════════════════════════════════════════════════════════════════
 import { PROVENANCE_RE, makerName } from './recipeLaw.js';   // PROF4: a crafted piece's id and mark, one home
+import { TEMPLATES } from '../systems/itemKinds.js';   // INT9: the kept-back list's templates - a leaf
+import { isNpcFlat } from '../world/npcFlatArchives.js';   // DECOR-FIGURE: a person's flat (RDBLayout.NPCFlatArchives) - a leaf
+
+/** The items kept back by name: paper worth money or a house (a letter of credit, a deed) and the book of the
+ *  player's own spells - set down in a home, it would be out of reach wherever the player went (DECOR2a; INT9: its home
+ *  here, since a death in the zone's drop keeps them too, on the account Worker - systems/decorItems.js re-exports it). */
+export const DECOR_OWN_KEPT_BACK = Object.freeze(new Set([TEMPLATES.Spellbook, TEMPLATES.Letter_of_credit, TEMPLATES.House_Deed, TEMPLATES.Ship_Deed]));
 
 /** How many pieces one home holds - a room full of furniture, not a frame-rate. */
 export const DECOR_CAP = 200;
@@ -129,6 +136,22 @@ export function decorFlatMirrored(piece) {
   return Number.isFinite(yaw) && Math.abs(yaw) > 90;
 }
 
+/**
+ * DECOR-FIGURE (2026-10-10, the owner: "remove the scaling option for npc sprites with house decoration
+ * interior/exterior"): A FIGURE STANDS AT ITS OWN SIZE. A piece that is one of Daggerfall's people - a flat in a person's
+ * archive (RDBLayout.NPCFlatArchives; the catalogue's Vendors), never one's own item - is placed, moved and drawn at
+ * scale 1: the placer takes no size step for it (systems/decorPlacer.js), the bar offers none (ui/decorPanel.js), the
+ * service refuses one written at another (decorScaleOk - server-account/src/decor.js), and one grown or shrunk before
+ * this stands at its own size for every visitor (decorDrawnScale - scenes/decorRoom.js), its record kept as it was paid.
+ */
+export function decorIsFigure(piece) {
+  return !!piece && piece.model == null && !piece.item && Array.isArray(piece.flat) && isNpcFlat(piece.flat[0]);
+}
+/** DECOR-FIGURE: the scale a piece is drawn at - a figure's own size, any other its record's. */
+export const decorDrawnScale = (piece) => (decorIsFigure(piece) ? 1 : piece?.scale ?? 1);
+/** DECOR-FIGURE: whether a piece's scale is one the service writes - a figure's is 1, any other's the law's range. */
+export const decorScaleOk = (piece) => !decorIsFigure(piece) || piece.scale === 1;
+
 /** DECOR2c: how far a mount hangs off its surface, in metres - the blood marks' own hair (combat/bloodDecals.js
  *  SURFACE_LIFT), so it wins the depth test against the wall behind it. */
 export const DECOR_MOUNT_LIFT = 0.02;
@@ -172,6 +195,9 @@ export function decorWhatOf(raw) {
     && Number.isSafeInteger(flat[0]) && flat[0] >= 0 && flat[0] <= DECOR_ARCHIVE_MAX
     && Number.isSafeInteger(flat[1]) && flat[1] >= 0 && flat[1] <= DECOR_RECORD_MAX) {
     if (item === null) return { model: null, flat: [flat[0], flat[1]] };
+    // AUDIT HOME-VOTE II C1: an own item is never one of Daggerfall's people - an item said beside a person's flat made it
+    // no figure (decorIsFigure), and stood one at any size past the figure's law; no item's picture is in their archives
+    if (isNpcFlat(flat[0])) return null;
     const own = decorItemOf(item);
     return own ? { model: null, flat: [flat[0], flat[1]], item: own } : null;
   }
@@ -191,19 +217,19 @@ export function decorLightOf(raw) {
 /** HOME-STATIONS (2026-09-27, Discord - Tabitha: "CRAFTABLE / PURCHASABLE CRAFT / GUILD STATIONS [Spellmaking, Alchemy,
  *  Enchanting] FOR HOMES / SHIPS"): the three crafts a placed piece may be made to serve - the guilds' own makers
  *  (DFU's MakePotions, MakeSpells and MakeMagicItems services), at home. */
-export const DECOR_STATIONS = Object.freeze(['alchemy', 'spells', 'enchant', 'forge', 'workbench', 'loom', 'mason', 'jeweller']);   // PROF2: the forge - smelting at home (bible/06-Systems/Professions-Arc.md 23); PROF4: the workbench (25); PROF7: the loom and tanning rack (29); PROF11: the mason's bench (professionLaw MASON_FEE); PROF10: the jeweller's bench (JEWEL_FEE)
+export const DECOR_STATIONS = Object.freeze(['alchemy', 'spells', 'enchant', 'forge', 'workbench', 'loom', 'mason', 'jeweller', 'vendor']);   // HOME-VENDOR: a hired trader (net/vendorLaw.js)   // PROF2: the forge - smelting at home (bible/06-Systems/Professions-Arc.md 23); PROF4: the workbench (25); PROF7: the loom and tanning rack (29); PROF11: the mason's bench (professionLaw MASON_FEE); PROF10: the jeweller's bench (JEWEL_FEE)
 /** What a station costs to make, once - a licence for the craft in that piece, not the piece's own price (`paid`), so
  *  nothing of it comes back when the piece is removed or the room sold. STATION-FEES (2026-09-27, Discord: "Make
  *  crafting stations in interiors way more expensive"): ten times the first pass (5,000, 10,000 and 20,000) - a
  *  guild's maker at home is a hall's worth of gold, not an afternoon's. */
-export const DECOR_STATION_FEES = Object.freeze({ alchemy: 50_000, spells: 100_000, enchant: 200_000, forge: 50_000, workbench: 50_000, loom: 50_000, mason: 50_000, jeweller: 50_000 });   // PROF2: a forge as the alchemy station; PROF4: a workbench as the forge; PROF7: a loom as the workbench; PROF11: a mason's bench as the loom; PROF10: a jeweller's bench as the mason's
+export const DECOR_STATION_FEES = Object.freeze({ alchemy: 50_000, spells: 100_000, enchant: 200_000, forge: 50_000, workbench: 50_000, loom: 50_000, mason: 50_000, jeweller: 50_000, vendor: 25_000 });   // HOME-VENDOR: a trader's licence   // PROF2: a forge as the alchemy station; PROF4: a workbench as the forge; PROF7: a loom as the workbench; PROF11: a mason's bench as the loom; PROF10: a jeweller's bench as the mason's
 /** The guild service each craft opens - the same maker windows the Mages Guild and the temples offer (worldModes.js
  *  openServiceFlow's destinations). PROF2: the forge is no guild's - it opens the Stores' forge (ui/profPages.js);
  *  PROF4: nor the workbench - the Stores' workbench; PROF7: nor the loom - the Stores' loom; PROF11: nor the mason's
  *  bench - the Stores' bench; PROF10: nor the jeweller's bench. */
 export const DECOR_STATION_SERVICES = Object.freeze({ alchemy: 'guildServicePotionMaker', spells: 'guildServiceSpellMaker', enchant: 'guildServiceItemMaker' });
 /** A station's name, as the panel and the room say it. */
-export const DECOR_STATION_NAMES = Object.freeze({ alchemy: 'Alchemy station', spells: 'Spellmaking station', enchant: 'Enchanting station', forge: 'Forge', workbench: 'Workbench', loom: 'Loom', mason: 'Mason\'s bench', jeweller: 'Jeweller\'s bench' });   // PROF11; PROF10
+export const DECOR_STATION_NAMES = Object.freeze({ alchemy: 'Alchemy station', spells: 'Spellmaking station', enchant: 'Enchanting station', forge: 'Forge', workbench: 'Workbench', loom: 'Loom', mason: 'Mason\'s bench', jeweller: 'Jeweller\'s bench', vendor: 'Hired trader' });   // HOME-VENDOR   // PROF11; PROF10
 
 /**
  * WHERE a piece stands and what it cost - the half a move may change - projected and rounded (a millimetre, a tenth
@@ -282,10 +308,14 @@ export function mintDecorId(rand = Math.random) {
 // account service (server-account/src/decor.js), so every visitor walks
 // into the room its owner cleared. Pure, as the rest of this file is.
 
-/** One built-in piece's name - `m<placement>:<model>` or `f<flat>:<archive>.<record>`, every number canonical. */
-export const DECOR_BASE_KEY_RE = /^(?:m(?:0|[1-9]\d{0,3}):(?:0|[1-9]\d{0,5})|f(?:0|[1-9]\d{0,3}):(?:0|[1-9]\d{0,2})\.(?:0|[1-9]\d{0,2}))$/;
+/** One built-in piece's name - `m<placement>:<model>` or `f<flat>:<archive>.<record>`, every number canonical. WD3: a
+ *  flat's archive runs to five digits - the town mods' interiors (Beautiful Villages, Beautiful Cities) and Detailed
+ *  Ships' cabins lay flats of the mods' own archives (DET's 10010-10028, the table clutter's 56790), and a name with a
+ *  classic archive's three digits could not name them: online the room's whole list was refused, offline the piece came
+ *  back at the next load. */
+export const DECOR_BASE_KEY_RE = /^(?:m(?:0|[1-9]\d{0,3}):(?:0|[1-9]\d{0,5})|f(?:0|[1-9]\d{0,3}):(?:0|[1-9]\d{0,4})\.(?:0|[1-9]\d{0,2}))$/;
 /** How many built-in pieces one room may keep taken out - more than any interior lays, and a whole list at its widest
- *  (sixteen bytes a name) still one write under the service's 4 KiB body (service.js MAX_BODY_BYTES). */
+ *  (eighteen bytes a name) still one write under the service's 4 KiB body (service.js MAX_BODY_BYTES). */
 export const DECOR_HIDDEN_CAP = 200;
 export const decorBaseModelKey = (placement, model) => `m${placement}:${model}`;
 export const decorBaseFlatKey = (flat, archive, record) => `f${flat}:${archive}.${record}`;
@@ -326,6 +356,24 @@ export function decorHiddenOf(raw) {
 export const DECOR_YARD_CAP = 60;
 /** How far from the building's origin a yard's piece may stand, on each axis, metres - past any lot. */
 export const DECOR_YARD_POS_MAX = 48;
+/**
+ * YARD-HEIGHT (2026-10-06, Mac: "limit the height at which players can build ... People currently can build towers that
+ * seem out of place"; Mac's call: 4 m): HOW HIGH A YARD'S PIECE MAY STAND - its place (`pos`) at most this far over the
+ * ground, metres. A town stands on a flat block, so its ground is the building's own origin's height (the yard's `pos`
+ * is from it). A flat's place is its foot and a hung one's where it hangs; AUDIT YARD-HEIGHT Y8: a model's is its own
+ * origin, which the placer stands above the surface by as much as the model reaches below it (systems/decorPlacer.js
+ * lift) - so a model scaled up stands its origin higher on the same ground. The service knows no model's shape, so both
+ * ends ask the one place they share. A fence with a lantern on it, a cart, a crate on a crate - never a tower: each piece
+ * stood on the one below climbed as far as DECOR_YARD_POS_MAX. A piece placed or moved past it is refused at both ends
+ * (decorYardHighOk - scenes/homeYards.js yardWhyNot, server-account/src/decor.js); YARD-SWEEP (2026-10-11): one standing
+ * from before it is deleted (migration 0109) and never served or stood (decor.js yardsOf, homeYards.js ensure).
+ */
+export const DECOR_YARD_HIGH = 4;
+/** YARD-HEIGHT: whether a yard piece's place stands within DECOR_YARD_HIGH of the ground. */
+export const decorYardHighOk = (pl) => Array.isArray(pl?.pos) && Number(pl.pos[1]) <= DECOR_YARD_HIGH;
+/** YARD-HEIGHT (AUDIT Y3): the refusal in its one sentence - the decorator's (scenes/homeYards.js YARD_TOO_HIGH) and the
+ *  service's `yard-high` (net/accountClient.js), as townSeatLaw.js's rosters' words are the board's and the service's. */
+export const DECOR_YARD_HIGH_WHY = `Too high - a yard's piece stands at most ${DECOR_YARD_HIGH} m above the ground.`;
 /** The most pieces one town's yards answer at once. */
 export const DECOR_YARDS_TOWN_MAX = 2_000;
 

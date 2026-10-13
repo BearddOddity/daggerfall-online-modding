@@ -180,7 +180,8 @@ test('AUDIT-RR2 G14/G16/G19: an RDB/RDI JSON is served whole since WD1 (never wi
   const s = rd('src/formats/worldDataReplacement.js');
   // G14 was the refusal of an RDB/RDI file the converter could not read; WD1 (Aquatic Sprites) ported the RDB
   // and RDI halves, so the block is converted whole and only an RMB takes the building replacements (:382-384)
-  assert.match(s, /const dfBlock = blockFromJson\(json, block\);\s+if \(blockName\.endsWith\('\.RMB'\)\) replaceRmbBlockBuildingData\(blockName, block, dfBlock\);/);
+  // PIN MOVED (AUDIT QA2 B1): the served name rides with the block - the port's curations key on the name the town lays
+  assert.match(s, /const dfBlock = blockFromJson\(json, block, blockName\);\s+if \(blockName\.endsWith\('\.RMB'\)\) replaceRmbBlockBuildingData\(blockName, block, dfBlock\);/);
   const rdb = blockFromJson({ Name: 'W0000000.RDB', Type: 'Rdb', RdbBlock: { ModelReferenceList: [{ ModelId: '63130', ModelIdNum: 63130, Description: 'C0L' }], ObjectRootList: [{ RdbObjects: null }] } }, 1016);
   assert.equal(rdb.rmbBlock, null);
   assert.ok(rdb.rdbBlock, 'an RDB file serves its RDB half, never a null body');
@@ -227,7 +228,8 @@ test('AUDIT-RR2 G20: the encumbrance round drains nothing inside a synthetic-tim
 test('AUDIT-RR2 G21/G22/G23: the five-day box answers Y and N (DaggerfallMessageBox.cs:377); the ship gate asks Travel Options\' port list when that mod is on (:635-644); PitchMaxLimit clamps to PitchMin -90', () => {
   assert.match(rd('src/ui/guildServiceWindows.js'), /if \(t\.buttonsMulti\) \{\s+if \(code === 'KeyY' && t\.buttonsMulti\.includes\(MB_BUTTONS\.Yes\)\) this\._advance\(t\.onButton\?\.\(MB_BUTTONS\.Yes\) \?\? null\);\s+else if \(code === 'KeyN' && t\.buttonsMulti\.includes\(MB_BUTTONS\.No\)\) this\._advance\(t\.onButton\?\.\(MB_BUTTONS\.No\) \?\? null\);\s+return;\s+\}/);
   // SEAT2b part two (PIN MOVED): TO's port answer, a members' Harbour among them (travelPorts.js hasPortFor)
-  assert.match(rd('src/scenes/world.js'), /portTown: \(modSetting\('travel-options', 'Enabled'\) === true \? hasPortFor\(loc\.mapTableData\?\.mapId\) : \(loc\.exterior\?\.exteriorData\?\.portTownAndUnknown \?\? 0\) !== 0\)/);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA P10): past the Veil an isle's place answers by its own kind first, the Bay's as before
+  assert.match(rd('src/scenes/world.js'), /portTown: \(loc\.ether \? loc\.etherKind === 'port' : modSetting\('travel-options', 'Enabled'\) === true \? hasPortFor\(loc\.mapTableData\?\.mapId\) : \(loc\.exterior\?\.exteriorData\?\.portTownAndUnknown \?\? 0\) !== 0\)/);
   setPitchFloorProvider(() => -120);
   try {
     assert.equal(pitchFloor(), (-90 * Math.PI) / 180, 'PlayerMouseLook.cs:87-90');

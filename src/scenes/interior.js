@@ -22,7 +22,7 @@ import { INTERIOR_AMBIENT, INTERIOR_NIGHT_AMBIENT, INTERIOR_LIGHT_DIR } from '..
 import { isNight } from '../world/worldClock.js';   // AUDIT 23 (C12)
 import { skyMinutes } from '../systems/worldTick.js';   // AUDIT 23 (C12); TIME1: the sky's night
 import { nearestLights } from '../world/cityLights.js';
-import { syncLightingLane } from '../render/enhancedLighting.js';   // EL1
+import { syncLightingLane, interiorLightColor, interiorGrade } from '../render/enhancedLighting.js';   // EL1; INTERIOR-DIM: a room's lamps and its grade
 import { INTERIOR_MARKER } from '../world/interiorLayout.js';
 import { lookAt, perspective, mirrorProjectionX, UP_Y } from '../world/mat4.js';   // HANDEDNESS: the one mirror (mat4's law)
 import { fetchBytes, seasonOverride, ensureAudio } from './shared.js';
@@ -45,6 +45,7 @@ import { swallowBrowserKey, actionsOf, keyboardLook } from '../ui/input.js';   /
 import { worldViewportRect, largeHudWorldAspect } from '../ui/hudLarge.js';   // AUDIT RETRO1 A8/C4: the lens and the world rect the other hosts take - the docked bar's, and retro mode's texture aspect and pillarbox
 import { hudShortcutKey } from '../ui/hudShortcuts.js';   // AUDIT RETRO1 C4: DaggerfallHUD's shortcuts, Shift-F11 among them, as in the other hosts
 import { frameCapSkip } from '../systems/frameCap.js';   // FPS-CAP1: DFU's TargetFrameRate, the fourth host's
+import { deliverOwedShots } from '../ui/screenshot.js';   // SHOT1: every drawn foot pays the shots owed (this host routes no PrintScreen of its own)
 
 // Milestone 4 scene: one building interior, standalone at block-local origin.
 export async function bootInterior(canvas, renderer, params, status) {
@@ -367,9 +368,10 @@ export async function bootInterior(canvas, renderer, params, status) {
     const lit = _iil
       ? nearestLights(_iil.lights, cam.pos, renderer.maxPointLights, _iil.ranges, _iil.colorOf)
       : nearestLights(ctx.lights, cam.pos, renderer.maxPointLights, ctx.lights.map((l) => l.range),   // EL1: the installed set's cap
-        (l) => [l.color[0] * l.intensity, l.color[1] * l.intensity, l.color[2] * l.intensity]);
+        (l) => interiorLightColor(!!renderer.lightingLane, l.color, l.intensity));   // INTERIOR-DIM (worldModes.js's interior arm)
     renderer.setPointLights(lit.data, null, lit.colors);
     renderer.everyLightCasts();   // DISC15: the dev route draws the building whole too
+    renderer.setSceneGrade?.(interiorGrade(!!renderer.lightingLane));   // INTERIOR-DIM: the room's grade (worldModes.js's interior arm)
     renderer.beginFrame(proj, view, INTERIOR_LIGHT_DIR, WORLD_FRAME);   // AUDIT-EL F5: a WORLD frame - the lane replays its records for this one
     for (const d of ctx.drawList) renderer.drawMesh(d.mesh, d.matrix, ctx.texRemap);
     // WM4b: the mill's machinery turns at Kamer's rate, in here too.
@@ -395,7 +397,7 @@ export async function bootInterior(canvas, renderer, params, status) {
     // scan, for the reason DFU states on the gate (SetActive(false) on
     // the geometry would mess with the open map's rendering). Update's
     // own call at :1001 is the one-shot lazy init, not a per-frame
-    // driver. dungeon.js:809 and worldModes.js:"dir, dungeonCtx.foes.filter".."if (f) { host.lockToggle?.(f); return true; }"/worldModes.js:"a line said there" gate the same
+    // driver. dungeon.js:"if (!overlayHeld) ctx.automapTick?.(dt, cam.pos, fwd)" and worldModes.js:"if (!overlayHeld) dungeonCtx.automapTick?.(dt, cam.pos, fwd)"/worldModes.js:"if (!overlayHeld) interiorCtx.automapTick?.(dt, cam.pos, fwd)" gate the same
     // way; this is that gate for this host.
     lookGate(!!overlay);   // AUDIT-AMAP H8
     if (!gamePaused()) ctx.automapTick?.(dt, cam.pos, fwd);
@@ -405,6 +407,7 @@ export async function bootInterior(canvas, renderer, params, status) {
       if (overlay) overlay.draw(renderer, canvas, mapFont, 1);
     }
     renderer.resolveFrame();   // AUDIT RETRO1 E5/C8: a frame that drew no screen quad (the enhanced skin, a sheathed weapon) is shown NOW, not at the next beginFrame
+    deliverOwedShots();   // SHOT1: the PrintScreen shots owed to a drawn frame, read from this one (ui/screenshot.js)
 
     frames++;
     if (shotMode && frames === 5) window.__shotReady = true;

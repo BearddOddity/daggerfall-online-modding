@@ -2,8 +2,8 @@
   {
     "name": "P2-live-portrait-is-the-newest-save",
     "file": "src/ui/enhancedMenu.js",
-    "old": "const save = mode === 'pause' ? liveCharacter(playerEntity) : newestPortraitSave();",
-    "new": "const save = newestPortraitSave();",
+    "old": "  return mode === 'pause' ? liveCharacter(playerEntity) : newestPortraitSave();",
+    "new": "  return newestPortraitSave();",
     "tests": [
       "test/profile2_pause_profile.test.js",
       "test/profile1_badge.test.js"
@@ -138,7 +138,7 @@
   {
     "name": "P2-session-halos-untold",
     "file": "src/net/online.js",
-    "old": "    for (const [, h] of this._halo) if (h.lookOk && h.status === 'open' && h.ws) socks.push(h.ws);\n",
+    "old": "    for (const [, h] of this._halo) if (h.status === 'open' && h.ws) { if (!this._welcomed.has(h.ws)) return; if (h.lookOk) socks.push(h.ws); }\n",
     "new": "",
     "tests": [
       "test/profile2_pause_profile.test.js"

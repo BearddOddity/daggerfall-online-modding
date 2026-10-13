@@ -1,12 +1,18 @@
-# Daggerfall Online
+# DFO Online
 
-**Daggerfall Online** - an open-source reimplementation of The Elder Scrolls
-II: Daggerfall. Data layer and game logic translated from Daggerfall Unity
-(MIT, Interkarma and contributors); presentation rebuilt on hand-rolled WebGL2.
-MIT licensed, with Daggerfall Unity's notice alongside (LICENSE). The project's
-working name in the docs and the code is `project-dagger`, and the repository,
-the live domain and the desktop app's identifier still carry the old
-`daggerfall-js` spelling - renaming those is a move outside this tree (BR1).
+**DFO Online** - an open-source reimplementation of a classic 1996 RPG,
+played from your own copy of The Elder Scrolls II: Daggerfall. Data layer and
+game logic translated from Daggerfall Unity (MIT, Interkarma and
+contributors); presentation rebuilt on hand-rolled WebGL2. MIT licensed, with
+Daggerfall Unity's notice alongside (LICENSE). DFO Online is an independent,
+unofficial project, not affiliated with or endorsed by Bethesda Softworks or
+ZeniMax Media. The Elder Scrolls and Daggerfall are trademarks of ZeniMax
+Media Inc.
+
+The project's working name in the docs and the code is `project-dagger`, and
+the repository, the live domain, the servers and the desktop app's identifier
+still carry the old `daggerfall` spellings - renaming those is a move outside
+this tree (BR1, BR5).
 
 Play it: https://daggerfalljs.dev/
 
@@ -22,12 +28,14 @@ with `ARENA2_PATH`.
 
 ## Support development
 
-Daggerfall Online is free and open source. Active development currently
+DFO Online is free and open source. Active development currently
 costs about **$600 per month** to sustain across development tooling,
 multiplayer infrastructure, testing, builds, releases, and mod compatibility
 work.
 
 Support on Patreon: https://www.patreon.com/c/dfenhanced
+
+Support on Ko-fi: https://ko-fi.com/daggerfallonline
 
 The monthly goal, suggested support levels, and funding breakdown are in
 [`SUPPORT.md`](SUPPORT.md). Sponsorship does not lock gameplay, source code,
@@ -40,7 +48,7 @@ or normal releases behind a paywall.
 - `npm run build` - production build
 - `npm run lint` - eslint over `src/` (no-undef, no-dupe-keys, ...)
 - `npm run check` - lint + test + build (pre-push gate)
-- `npm run cites [-- --apply]` - re-resolve line cites into files you changed (tools/citeShift.mjs)
+- `npm run cites [-- --apply | -- --check]` - write a line number cited into our code as an anchor, `file.js:"the line's text"`, and resolve every anchor (tools/citeAnchor.mjs)
 - `npm run shot [out.png]` - headless render proof (needs ARENA2_PATH + provisioned Chromium)
 - `node tools/landingProbe.mjs` - the landing page and `/play/` in a real browser, no ARENA2 needed
 - `node tools/verify-deploy.mjs` - after a push: proves the live `/play/` serves your commit
@@ -77,7 +85,7 @@ whole once every OS built) at `app-v<major>.<minor>.<commit count>` -
 the version is derived from the commit, never bumped by hand - with the
 `## Patch notes` of every pull request it brings as its notes (written in
 the PR description, never as a file in the tree). The files carry no version in
-their names, so `releases/latest/download/DaggerfallOnline-win-x64-setup.exe`
+their names, so `releases/latest/download/DFO-Online-win-x64-setup.exe`
 (and `-mac-arm64.dmg`, `-linux-x86_64.AppImage`) is always the newest,
 and the landing page links each directly. Pushing a tag shaped `app-v*`
 cuts one by hand. Details

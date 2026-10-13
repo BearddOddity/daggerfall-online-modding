@@ -272,8 +272,10 @@ WaterWalking (31,255), ChameleonNormal (23,0) - so the starting
 spellbooks WORK: incumbent self-effects tracked by kind on
 activeEffects, a re-cast STACKS rounds onto the incumbent (the F12
 correction superseded this record's original 'renews, not stacked'
-claim - AUDIT 23 annotates it here), expiry clears the hasActiveEffect
-query. CONSUMERS THREADED
+claim - AUDIT 23 annotates it here; and STACK-CAP, 2026-10-11, the
+owner's call, renews it again: a re-cast tops the incumbent up to a
+fresh cast's rounds and never stacks - effects.js renewRounds,
+Port-Ledger A), expiry clears the hasActiveEffect query. CONSUMERS THREADED
 (no globals - the first cut's function-property hook was killed for
 the same smell audits keep burying): slowfall scales the player
 motor's gravity (fallScale 0.15, fed per frame by BOTH hosts from a
@@ -318,7 +320,11 @@ magic skills (Destruction/Restoration/Alteration/Thaumaturgy/
 Illusion). CONSUMERS: the cast gate, the HUD readied line, and the
 spellbook all show/spend the LIVE skill-scaled cost - a Destruction
 novice pays more for the same Shock than a master, who bottoms at
-the floor.
+the floor. SPELL-COST-PAST (2026-10-12, `01-Overview/Field-Bugs-2026-10-12c.md`):
+online, a skill past 100 prices a spell at its cost at 100 times
+100 / skill (`skillScaledCost`) - DFU's `110 - skill` went under
+nothing past 110, and a mastered school with gear cast everything
+for the floor.
 
 ## S11 (save/load - the player snapshot): SHIPPED
 
@@ -645,7 +651,8 @@ classicSub).
   ported: the chance rolls ALWAYS (SetChanceSuccess in Start); an
   incumbent re-cast stacks its rounds INSIDE Start (AddState) BEFORE
   the chance and saving-throw gates - so a re-cast always stacks,
-  chance/save notwithstanding (verbatim quirk, pinned); a NEW
+  chance/save notwithstanding (verbatim quirk, pinned; STACK-CAP,
+  2026-10-11, renews it instead - the gate order stands); a NEW
   instance needs the chance, then non-CasterOnly no-magnitude
   effects save against the ENTIRE effect on a FULL save (flags =
   Paralysis | element). "You are paralyzed." (youAreParalyzed) fires
@@ -3196,7 +3203,7 @@ collapse is a bare `RaiseTime(1 * SecondsPerHour)` (`:2429`) that
 returns; `Update` is not re-entered.
 
 The port's hosts implement that same RaiseTime as
-`playerTicker.advance(60)` (`exterior.js:"playerTicker.advance(60);"`, `world.js:"const TERRAIN_INDICES_LOD"`), fired
+`playerTicker.advance(60)` (`exterior.js:"playerTicker.advance(60);"`, `world.js:"playerTicker.advance(60);"`), fired
 from inside `sinks.drainFatigue` - so it re-enters `tickPlayerMinutes`
 from inside that function's own fatigue band. The nested tick wrote the
 marker an hour ahead, the outer frame's own `setWorldMinutes` then
@@ -3354,7 +3361,7 @@ PNG through the DOM and cached `{ width, height, data }` - the shape
 pass that object straight on as a colour32
 (`const color32 = swap ?? t.getColor32(bitmap, ...)`), and
 `renderer.uploadTexture` reads `color32.colors` and calls `asBytes` on
-it (`renderer.js:"in vec2 vUV; in vec3".."uniform vec2 uFogRange;"`). `colors` was `undefined`, `asBytes` reads
+it (`renderer.js:"// WW3: the shape's"`). `colors` was `undefined`, `asBytes` reads
 `.buffer` off it, and the upload threw. Every pin on this door held:
 they asserted the cache stored the object the decoder returned, by
 IDENTITY, which is precisely the assertion that cannot see a wrong
@@ -3365,7 +3372,7 @@ orientation is not its only problem".
 **And orientation was the other half.** The port's texel convention is
 bottom-up: `getColor32` writes `dstRow = (dstHeight - 1 - border - y) *
 dstWidth` (`baseImageFile.js:"const headerLength".."const dstRow = (dstHeight - 1 - border - y) * dstWidth;"`, `BaseImageFile.cs:250`), the upload
-leaves `UNPACK_FLIP_Y_WEBGL` off (`renderer.js:"if (!this.charQuadProgram)".."uniform mat4 uProj, uView;"`), and `BB_VS`
+leaves `UNPACK_FLIP_Y_WEBGL` off (`renderer.js:"if (old) this.gl.deleteTexture".."gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);"`), and `BB_VS`
 samples the quad's top at v=1 (`renderer.js:"+ uUp * ((cn.y + 0.5) * uSize.y)"`). A browser decode
 is TOP row first. So a swap named correctly would still have drawn
 mirrored beside the classic art in the same batch loop - the exact
@@ -3890,7 +3897,43 @@ map by day and its arrival is not pushed to dusk. Bare-headed, the
 door says DFU's line and then "Raise the hood of a cloak or robe to
 travel by day." Online this was the whole wait: the shared clock's day
 is one real hour, and no rest or trip moves it. The day's -20 is the
-street's sun on the stats (FIELD BUGS 2026-10-01b), and stays under a hood.
+street's sun on the stats (FIELD BUGS 2026-10-01b).
+
+HOOD-SUN (2026-10-07, Mac: "The vampire cloak and hood doesn't work ingame for shielding against the sun") - the hood shields the stats too. VAMP-HOOD let a raised hood lift the travel
+rules alone, so a hooded vampire in the street at noon still stood 20
+down - since VAMP-DAY the sun's only bite, and the one the player sees.
+`systems/vampirism.js` vampirismMagicRound now hands vampireStatMod
+racialSunAverse, the one hood law: under a raised hood the street's sun
+reaches the curse no more than a roof's, and the vampire has DFU's +20;
+bare-headed, the -20 stands; a hood in the pack shields nothing.
+`test/fb0929_vampirehood.test.js` (its stats pin moved),
+`test/fb1001b_vampsun.test.js` (the law's line); mutants
+`tools/mutants/vamphood.json` (three added), the vampday, fb1001b_vampsun
+and lived1 records re-aimed by content - all dead.
+
+HOOD-CAREER (2026-10-07, Mac: "Wearing a hood should protect you from the disadvantage of being damaged by sunlight") -
+the hood shields the career too. A custom class with "Damage / From
+Sunlight" (DFCareer's CFG bit 16, chargen's pick or a classic save's)
+still burned 12 every 4th round in the street under a raised hood, and
+its two travel rules - DFU's career box at the map's door
+(DaggerfallUI.cs:614-621) and the arrival clamp's second arm
+(DaggerfallTravelPopUp.cs:350-351) - read the bit bare. Every rule the
+bit keys asks `systems/passiveSpecials.js` careerSunAverse now: the bit,
+UNLESS the wearer's hood is up (survival/temperature.js cloakState, the
+one hood law the racial arm reads). The burn (PassiveSpecialsEffect's
+DamageFromSunlight) asks it; the map door, the party's refusal and the
+driver's map online ask `systems/vampirism.js` careerFastTravelBlock -
+the racial rung's shape, DFU's line bare-headed and the hood's way out
+after it, never reading the racial override; the arrival clamp's
+career arm asks careerSunAverse. A hood in the pack shields nothing;
+under a roof and by night nothing burns, as in DFU. THE FOUR HOSTS: the
+burn rides worldTick's round in every host; the door and the clamp are
+world.js's alone (exterior.js mounts no map, the interior and dungeon
+hosts are inside, where the door refuses first). `test/hoodcareer.test.js`
+(4); pins moved in `audit64_travel`, `auditit1`, `auditlived1`,
+`fb0929_vampirehood`, `fb1001b_vampsun` and `partyArrivalTransaction`;
+mutants `tools/mutants/hoodcareer.json` (9), and the vamphood, vampday
+and auditit1 records re-aimed by content - 61 judged, all dead.
 
 THE SEAM IS REGISTERED BY THE MODE MACHINE. worldModes owns mode and
 interiorBuilding for BOTH town pages - world.js and exterior.js each
@@ -4597,7 +4640,7 @@ the true clause along with the false ones is in the campaign, because
 over-retiring is the equal and opposite failure.
 
 **And one delegation pointed at a flag nobody had ever written.**
-`world.js:"it broke, instead".."//"` said the dungeon-mode enchant ctx was "FLAGGED there
+`world.js` line 5671 said the dungeon-mode enchant ctx was "FLAGGED there
 with the rest of its enchant wiring" in `dungeonContext.js`. It was
 not. `setDefaultEnchantCtx` had exactly **one** caller in the tree, so
 the standalone `?dungeon` host ran every arm that needs a host
@@ -5347,7 +5390,7 @@ blocked.
 Mac: "let's work on the horses and carts". The port has carried the CART
 as an inventory fact since the W-slice - the wagon's 750kg, the
 dungeon-exit prompt, the transfer guards - and the HORSE as an item
-nobody could sit on. `motor.js:"_eyeLevel() {"` passed `riding: false` into the
+nobody could sit on. `motor.js:"prev/target fields"` passed `riding: false` into the
 climbing gate with the note "the transport arc pends", and
 `DaggerfallTransportWindow` is the last of DFU's 60 real windows the
 port does not have (UI-Arc.md's table).
@@ -5575,7 +5618,7 @@ to that cite and moves under the same content check; citeMerge had
 done this since CS2 and citeShift only reported them, so the two
 regexes are one law now, exported from citeShift (`ANY_CITE`,
 `CONTINUATION`) and imported by citeMerge. (2) A TEST'S ESCAPED
-LITERAL FOLLOWS THE ROW IT PINS: `world\.js:10981` in citedrift.test.js
+LITERAL FOLLOWS THE ROW IT PINS: `world\.js` line 12471 in citedrift.test.js
 is a quote of a Ledger row's text; the row is STRUCK and its number
 held, and the literal used to move anyway, parting the pin from its
 row at every shift. The CLI plans every doc first, learns which
@@ -8095,7 +8138,8 @@ line.
   the mod's regional tavern menus keyed by climate with the meal, the
   drink and the blackout. 6 tests.
 - SURV6 the hunt (`survival/hunting.js`, `ui/huntWindow.js`,
-  `scenes/hunting.js`): hunting, foraging and the water search as
+  `scenes/hunting.js` - all three DELETED, the hunt RETIRED by HUNT-OUT,
+  2026-10-04; `Climates-Calories.md`): hunting, foraging and the water search as
   REAL-TIME events - the wilderness roll, the mod's Yes/No box, a busy
   page running the search's minutes in real seconds, the finds and the
   harms, "the hunted" standing when the box closes. 6 tests.
@@ -8129,7 +8173,7 @@ hours and a legal rough rest took 480 health a night; the kit never
 reached a chargen character; a dungeon rest paid its night awake), the
 rest gate's handler leak, four camp doors, nine law bugs and a dozen
 surface faults - all fixed, recorded in `06-Systems/Climates-Calories.md`
-"The audit", pinned by `test/auditsurv.test.js` (8) and
+"The audit", pinned by `test/auditsurv.test.js` (8; 7 since HUNT-OUT took the hunt window's) and
 `tools/mutants/auditsurv.json`.
 
 ## CHARID1 - A CHARACTER IS AN ID, NOT A NAME (2026-09-21)

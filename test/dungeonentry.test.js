@@ -128,8 +128,13 @@ test('DE2: every dungeon facing LEVELS THE PITCH, as all three DFU calls do', ()
   assert.match(modes, /cam\.yaw = Math\.atan2\(landing\.normal\[0\], landing\.normal\[2\]\);[\s\S]{0,700}?cam\.pitch = 0;/,
     'the exit levels the pitch');
   // exactly two transition sites level it - a third would mean some
-  // other path started snapping the view without a DFU member behind it
-  assert.equal((modes.match(/cam\.pitch = 0;/g) ?? []).length, 2);
+  // other path started snapping the view without a DFU member behind it.
+  // ARENA6: the one other is the arena floor's own arrival - a private
+  // session's fighter stood on its mark as the floor's entry stands a
+  // fighter (standOnArenaMark), named here so no other snap hides behind it
+  const arenaMark = /function standOnArenaMark\(kind\) \{[\s\S]{0,500}?cam\.pitch = 0;/;
+  assert.match(modes, arenaMark, 'the arena mark levels as the floor\'s entry does');
+  assert.equal((modes.replace(arenaMark, '').match(/cam\.pitch = 0;/g) ?? []).length, 2);
   // and BUILDINGS still do not face at all: neither TransitionInterior
   // nor BuildingTransitionExteriorLogic touches PlayerMouseLook, so a
   // shop door leaves the player's bearing alone
@@ -148,7 +153,7 @@ test('DE2: the standalone host is already level by construction', () => {
 test('DE1: each host call site takes the member it actually is', () => {
   const modes = read('src/scenes/worldModes.js');
   // the walk-in default is the transition - the common way in
-  assert.match(modes, /async function tryEnterDungeon\(hit, entries, \{ preferEnterMarker = false, fromLoad = false \} = \{\}\)/,   // MAP-KEEP: the load's arm rides the same bag
+  assert.match(modes, /async function tryEnterDungeon\(hit, entries, \{ preferEnterMarker = false, fromLoad = false, holdOpen = false \} = \{\}\)/,   // MAP-KEEP: the load's arm rides the same bag; PIN MOVED (HOLD-ONCE): and the Hold's `holdOpen`
     'the DEFAULT is the door transition, because that is how a player gets in');
   assert.match(modes, /const spawn = ctx\.startSpawn\(\{ preferEnterMarker \}\);/);
   // AUDIT 39 (#29) MOVED THIS PIN. The one-liner it held said the
@@ -167,7 +172,7 @@ test('DE1: each host call site takes the member it actually is', () => {
   // of the member it IS, and applies it - did not change.
   assert.match(modes, /const _yaw = ctx\.entryFacingYaw\(spawn, \{ preferEnterMarker \}\);\n\s*if \(_yaw !== null\) \{/);
   // a new game is the OTHER member
-  assert.match(modes, /return tryEnterDungeon\(hit, entries, \{ preferEnterMarker: true, fromLoad \}\);/);   // MAP-KEEP: the load's arm passed on
+  assert.match(modes, /return tryEnterDungeon\(hit, entries, \{ preferEnterMarker: true, fromLoad, holdOpen \}\);/);   // MAP-KEEP: the load's arm passed on; PIN MOVED (HOLD-ONCE): and `holdOpen`
   // and the standalone host is StartDungeonInterior by definition
   assert.match(read('src/scenes/dungeon.js'), /ctx\.startSpawn\(\) \?\? \[0, 2, 0\]/,
     'it keeps the default, and carries its own floor for the refusal');

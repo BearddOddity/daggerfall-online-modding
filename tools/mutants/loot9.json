@@ -47,11 +47,12 @@
   {
     "name": "LOOT9-shard-unlisted",
     "file": "src/net/realmTradeLaw.js",
-    "old": "Object.freeze([570, 571]);",
-    "new": "Object.freeze([570]);",
+    "old": "Object.freeze([570, 571, 572, 580, 582]);",
+    "new": "Object.freeze([570, 572, 580, 582]);",
     "tests": [
       "test/loot9_reforge.test.js"
-    ]
+    ],
+    "note": "WALLET1 (PIN MOVED): re-aimed by content - the list names the Wallet's 580 too (systems/walletItem.js)."
   },
   {
     "name": "LOOT9-salvage-magic-two",
@@ -164,8 +165,8 @@
   {
     "name": "LOOT9-purse-counts-the-locked",
     "file": "src/systems/reforge.js",
-    "old": "isWelkyndShard(it) && !isLocked(it) ? (it.stackCount ?? 1) : 0",
-    "new": "isWelkyndShard(it) ? (it.stackCount ?? 1) : 0",
+    "old": "const spendable = (it) => isWelkyndShard(it) && !isLocked(it) && !isEquipped(it);",
+    "new": "const spendable = (it) => isWelkyndShard(it) && !isEquipped(it);",
     "tests": [
       "test/loot9_reforge.test.js"
     ]
@@ -182,7 +183,7 @@
   {
     "name": "LOOT9-spend-the-locked",
     "file": "src/systems/reforge.js",
-    "old": "    if (!isWelkyndShard(it) || isLocked(it)) continue;",
+    "old": "    if (!spendable(it)) continue;",
     "new": "    if (!isWelkyndShard(it)) continue;",
     "tests": [
       "test/loot9_reforge.test.js"
@@ -290,7 +291,7 @@
   {
     "name": "LOOT9-exalted-every-line",
     "file": "src/systems/lootRarity.js",
-    "old": "&& item.exalted === true && list.length) lines = [list.length - 1];",
+    "old": "&& item.exalted === true && list.length) lines = [list.filter((a) => a?.gem == null).length - 1];",
     "new": "&& item.exalted === true && list.length) lines = list.map((_, i) => i);",
     "tests": [
       "test/loot9_reforge.test.js"
@@ -353,20 +354,22 @@
   {
     "name": "LOOT9-name-stays",
     "file": "src/systems/lootRarity.js",
-    "old": "  if (tier !== 'legendary') item.name = rarityName(item, tier, item.affixes);\n",
-    "new": "\n",
+    "old": "  if (tier !== 'legendary') item.name = rarityName(item, tier, item.affixes.filter((a) => a?.gem == null));",
+    "new": "",
     "tests": [
       "test/loot9_reforge.test.js"
-    ]
+    ],
+    "note": "AUDIT BAL/GEM (PIN MOVED, 2026-10-10): its line changed with the audit's fix; re-aimed by content."
   },
   {
     "name": "LOOT9-price-stays",
     "file": "src/systems/lootRarity.js",
-    "old": "  item.value = (Number.isFinite(item.value) ? item.value : itemBaseValue(item)) - affixesWorth([old]) + affixesWorth([line]);\n",
+    "old": "  item.value = (Number.isFinite(item.value) ? item.value : itemBaseValue(item)) - affixesWorth([old], item) + affixesWorth([line], item);\n",
     "new": "\n",
     "tests": [
       "test/loot9_reforge.test.js"
-    ]
+    ],
+    "note": "LOOT14 (RE-AIMED BY CONTENT): the price line reads a garment's half (bible/06-Systems/Loot-II-Arc.md section 6) - the law it pins unmoved."
   },
   {
     "name": "LOOT9-line-unmarked",
@@ -443,8 +446,8 @@
   {
     "name": "LOOT9-card-salvages-the-worn",
     "file": "src/ui/enhancedInventory.js",
-    "old": "if (side === 'local' && !line.equipped && salvageShards(picked) > 0 &&",
-    "new": "if (side === 'local' && salvageShards(picked) > 0 &&",
+    "old": "if (side === 'local' && !line.equipped && (salvageShards(picked) > 0 ||",
+    "new": "if (side === 'local' && (salvageShards(picked) > 0 ||",
     "tests": [
       "test/loot9_reforge.test.js"
     ]

@@ -30,6 +30,7 @@
 // unregistered type the same way rather than indexing past its
 // tables.
 import { templateByIndex, itemUseHandler } from './itemTemplates.js';   // RRI2: ItemHelper's registered use handlers
+import './fletching.js';   // FLETCH: the pack's arrow craft - its wood's handlers, registered before the ladder asks
 import { doItemEnchantmentPayloads, PAYLOAD } from './enchantments.js';   // E2: the Used payload arm
 import { inflictPoison } from './poisons.js';
 import { inflictDisease } from './diseases.js';   // SURV2: a bad meal's sickness, handed to the food law
@@ -40,6 +41,7 @@ import { SURVIVAL_RULES } from './survival/difficulty.js';   // AUDIT SURV-TIERS
 import { setLightSource } from './lightSource.js';   // DISC7: the light in hand's one door
 import { localizedStrings } from './textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language
 import { hoodCapable, hoodUp } from './survival/temperature.js';   // HOOD-SAID: the one hood law, for toggleHood
+import { sandPotionRefusal } from './arenaKit.js';   // AUDIT ARENA-LADDER: no potion on the sand
 
 /** THE ARMS WHOSE DESTINATION WINDOW THE PORT HAS NOT BUILT, named so a use
  *  SAYS something rather than eating itself. Keyed by this module's own result
@@ -56,28 +58,13 @@ export const USE_PENDING = Object.freeze({
   spellbook: 'You cannot open your spellbook here.',
   pitchCamp: 'There is nowhere to set that up here.',   // SURV3: a host with no ground for a camp
   placeFire: 'There is nowhere to set that up here.',
+  openPortal: 'A portal can only be opened under the open sky.',   // PORTAL1: a host with no open world (systems/portalStone.js PORTAL_TEXT.notHere)
 });
 
-/** The template indices the predicates name (ItemEnums.cs). */
-export const TEMPLATES = Object.freeze({
-  Spellbook: 132,          // MiscItems
-  Soul_trap: 274,
-  Letter_of_credit: 275,
-  Potion_recipe: 278,
-  House_Deed: 285,
-  Ship_Deed: 286,
-  Map: 287,                // MiscItems.Map AND Maps.Map (287 both ways)
-  Glass_Bottle: 83,        // UselessItems1 - a POTION is a filled bottle
-  Torch: 247,              // UselessItems2
-  Lantern: 248,
-  Bandage: 249,
-  Oil: 252,
-  Candle: 253,
-  Parchment: 279,
-  Holy_candle: 269,        // ReligiousItems
-  Arrow: 131,              // Weapons (ItemEnums.cs:230 - AUDIT 23: was 130, the Long_Bow)
-  Helm: 107,               // Armor (ItemEnums.cs:202 - AUDIT 23: was 103, the Gauntlets)
-});
+/** The template indices the predicates name (ItemEnums.cs) - INT9: their home is systems/itemKinds.js (a leaf the account
+ *  Worker bundles: a death in the zone's drop is the service's to take), re-exported here. */
+export { TEMPLATES } from './itemKinds.js';
+import { TEMPLATES, isLightSource, isPotion } from './itemKinds.js';
 
 /** The first drug template, and DFU's own (wrong) offset. */
 export const FIRST_DRUG_TEMPLATE = 78;
@@ -85,17 +72,8 @@ export const DRUG_POISON_OFFSET = 66;   // verbatim; see the header
 
 // ── the predicates (DaggerfallUnityItem.cs :316-371) ──────────────
 
-/** IsLightSource (:316-323): Torch, Lantern, Candle - and the Holy
- *  candle, which is in a DIFFERENT group and is easy to miss. */
-export const isLightSource = (it) =>
-  (it?.group === 'UselessItems2' && (it.templateIndex === TEMPLATES.Torch
-    || it.templateIndex === TEMPLATES.Lantern || it.templateIndex === TEMPLATES.Candle))
-  || (it?.group === 'ReligiousItems' && it.templateIndex === TEMPLATES.Holy_candle);
-
-/** IsPotion (:352-355). A potion IS a glass bottle - classic decides
- *  by whether the record has a PotionMix sublist, and DFU's comment
- *  says so where it uses this. */
-export const isPotion = (it) => it?.group === 'UselessItems1' && it.templateIndex === TEMPLATES.Glass_Bottle;
+// IsLightSource (:316-323) and IsPotion (:352-355) - INT9: in systems/itemKinds.js, re-exported here
+export { isLightSource, isPotion } from './itemKinds.js';
 /** IsPotionRecipe (:344-347). */
 export const isPotionRecipe = (it) => it?.group === 'MiscItems' && it.templateIndex === TEMPLATES.Potion_recipe;
 /** IsParchment (:360-363). */
@@ -356,12 +334,15 @@ export function useItem(item, collection, {
   // the arc off it was Hard's roll (the law's default for no rules), so a meal carried over from a session with
   // the arc on could give a disease in the classic game - the one tier that promises no survival cost at all.
   // Off eats as Casual does: fed, never sickened.
-  if (isSurvivalItem(item)) out = useSurvivalItem(item, collection, { entity, now: nowMinute, rolls, currentDay: Math.trunc(nowMinute / 1440), inflict: inflictDisease, rules: survivalRules() ?? SURVIVAL_RULES.casual });
+  if (isSurvivalItem(item)) out = useSurvivalItem(item, collection, { entity, now: nowMinute, rolls, currentDay: Math.trunc(nowMinute / 1440), inflict: inflictDisease, rules: survivalRules() ?? SURVIVAL_RULES.casual, offMeal: survivalRules() == null });   // ENDLESS PROVISIONS: Off, a meal is never refused for hunger - it gives stamina
   // B1: the book arm hands the ITEM to the window's openBook hook
   // (DaggerfallInventoryWindow pushes the reader; a failed open shows
   // the ruined-book box - failText - which the WINDOW shows on the
   // hook's failure callback, not immediately).
   else if (isBook(item)) out = { kind: 'book', item, failText: named('bookUnavailable') };
+
+  // AUDIT ARENA-LADDER: the sand's kit law - no potion in a bout of one's own, and the bottle is kept (systems/arenaKit.js)
+  else if (isPotion(item) && sandPotionRefusal()) out = { kind: 'refused', refused: true, text: sandPotionRefusal() };
 
   else if (isPotion(item)) {
     // DrinkPotion + RemoveOne. AUDIT 22 F5: RemoveOne takes THIS

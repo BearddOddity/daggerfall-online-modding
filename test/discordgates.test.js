@@ -14,7 +14,7 @@ import {
 } from '../src/net/gateHerald.js';
 import { gateTimes, gateBossOf, gateModsOf, GATE_COLLAPSE_MS } from '../src/net/gateLaw.js';
 import {
-  validGateIn, parseClient, gatePlaceWire, relaySupportsGateSite, GATE_SITE_RELAY_MIN, GATE_PLACE_MAX, GATE_INTERNAL_FELL, SOCIAL_ROOM, RELAY_VERSION, ACCOUNT_SWEEP_MS,
+  validGateIn, parseClient, gatePlaceWire, relaySupportsGateSite, GATE_SITE_RELAY_MIN, GATE_PLACE_MAX, GATE_INTERNAL_FELL, SOCIAL_ROOM, RELAY_VERSION, ACCOUNT_SWEEP_MS, SD_KEY,
 } from '../src/net/wire.js';
 import { fakeRoom } from './fakeRoom.mjs';
 import { OnlineSession } from '../src/net/online.js';
@@ -153,8 +153,14 @@ const quiet = (fn) => { const warn = console.warn; console.warn = () => {}; retu
 async function withHerald(fn, { env = { GATE_DISCORD_WEBHOOK: HOOK, GATE_DISCORD_ROLE: ROLE }, start = TT.omenAt - 10 * 60_000 } = {}) {
   const r = fakeRoom(SOCIAL_ROOM);
   Object.assign(r.env, env);
+  // SERPENT2: the gate's herald alone - the serpent's posts and alarms on the same door are serpent2_herald.test.js's
+  r.room._serpentHeraldBeat = async () => {}; r.room._serpentHeraldArm = async () => {};
   const realNow = Date.now, realFetch = globalThis.fetch;
   let clock = start;
+  // SD3: the Super dungeon's director beats on the hub's one alarm too (server/src/index.js _sdBeat) - its record seeded
+  // with a rise ten years off, so this harness's alarms are the sweep's and the heralds' alone (the director's own are
+  // sd3_relay.test.js's)
+  r.store.set(SD_KEY, { s: 0, ph: 'gone', r: -1, at: clock, until: clock, next: clock + 10 * 365 * 86_400_000 });
   const posts = [];
   const discord = { answer: () => ({ ok: true, status: 204 }), during: null };
   Date.now = () => clock;
@@ -322,5 +328,6 @@ test('DISCORD-GATES config: the webhook is a Worker SECRET the repository never 
   assert.ok(!/discord(?:app)?\.com\/api\/webhooks\/\d/.test(toml), 'and no webhook URL is written down');
   const idx = rd('server/src/index.js');
   assert.match(idx, /heraldWebhook\(this\.env\?\.GATE_DISCORD_WEBHOOK\)/);
-  assert.match(idx, /heraldRole\(this\.env\?\.GATE_DISCORD_ROLE\)/);
+  assert.match(idx, /role: heraldRole\(role\('gateRole'\)\)/);   // PIN MOVED (SCALE5b): the role through relayCfgValue - the hub's setting when it holds one, else GATE_DISCORD_ROLE (net/relayCfg.js RELAY_CFG_VARS, test/scale5b.test.js)
+  assert.match(idx, /const cfg = this\._relayCfg, role = \(k\) => relayCfgValue\(cfg, this\.env, k\);/);
 });

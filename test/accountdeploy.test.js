@@ -23,10 +23,11 @@
 // and both are asked here in the shape that would actually break.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { tmpdir } from 'node:os';
 import { graph } from './importGraph.mjs';   // ACC4: the deploy filter is held to the Worker's real import graph
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -133,6 +134,32 @@ test('ACC1-CI: the migrations are applied by the tool that remembers, never enum
   // at all, which answers 503 to every route.
   assert.match(toml, /^\[\[d1_databases\]\]/m, 'the D1 binding is still commented out');
   assert.match(toml, /^binding\s*=\s*"DB"/m, 'the binding is no longer named DB, which is what src/index.js reads');
+});
+
+test('MIGRATION-PREFIX (the arena\'s third merge of main, 2026-10-03): every migration\'s four-digit prefix is its own, and each is the one before it plus one', () => {
+  // Two branches that each add migrations off the same main take the same
+  // next numbers, and git merges them without a word - the files' NAMES
+  // differ, so nothing conflicts. #547 shipped 0071_silver_ways.sql and
+  // 0072_motherlodes.sql while the arena branch held 0071_home_layout.sql,
+  // 0072_arena.sql and 0073_arena4b.sql; the naive merge of the two had two
+  // 0071s and two 0072s and every test green. The ledger keys a migration
+  // by its whole name, so both of a pair would apply - but in name order,
+  // not the order the arcs were written in, and the number is the name
+  // every note, pin and deploy line uses: a second 0071 is a branch that
+  // was never renumbered past main. A merge renumbers its side's migrations
+  // past main's (the arena's merges did, acct and migrations together);
+  // this is the pin that makes forgetting it red.
+  const dir = 'server-account/migrations';
+  const files = readdirSync(join(root, dir)).filter((f) => f.endsWith('.sql')).sort();
+  assert.deepEqual(files.filter((f) => !/^\d{4}_[a-z0-9_]+\.sql$/.test(f)), [], 'a migration not named NNNN_name.sql');
+  const byPrefix = new Map();
+  for (const f of files) byPrefix.set(f.slice(0, 4), [...(byPrefix.get(f.slice(0, 4)) ?? []), f]);
+  const shared = [...byPrefix.values()].filter((fs) => fs.length > 1).map((fs) => fs.join(' + '));
+  assert.deepEqual(shared, [], 'two migrations share a prefix - renumber the merged side\'s past the other\'s');
+  const nums = [...byPrefix.keys()].map(Number);
+  assert.equal(nums[0], 1, 'the first migration is not 0001');
+  const gaps = nums.filter((n, i) => i > 0 && n !== nums[i - 1] + 1).map((n) => `${String(n).padStart(4, '0')} after ${String(nums[nums.indexOf(n) - 1]).padStart(4, '0')}`);
+  assert.deepEqual(gaps, [], 'a migration is not the one before it plus one');
 });
 
 test('ACC1-CI: the signing pair is NEVER re-minted, and never leaves the pipe', () => {
@@ -345,7 +372,10 @@ test('ACC1-CI: the deploy is verified BY CONTENT, and reads the host and version
   assert.match(live, /workers\\\.dev.*GITHUB_OUTPUT|GITHUB_OUTPUT[\s\S]{0,200}deployed to/,
     'the deploy step no longer publishes the URL it deployed to');
 
-  const steps = wf.split(/\n      - name: /).slice(1);
+  // PIN MOVED (SCALE4d): a step's LIVE lines - the split hands each step the comment block written above the next one,
+  // and the read replicas' PUT (a curl to Cloudflare's API, no `v1/` of this service) read as a verifier because the
+  // deploy step's comment below it names `/v1/` routes
+  const steps = wf.split(/\n      - name: /).slice(1).map((s) => s.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n'));
   const verifiers = steps.filter((s) => /curl/.test(s) && /v1\//.test(s));
   assert.ok(verifiers.length >= 2, `expected the health and pubkey checks - found ${verifiers.length}`);
   for (const v of verifiers) {
@@ -385,6 +415,28 @@ test('ACC1-CI: the deploy is verified BY CONTENT, and reads the host and version
   for (const f of outside) {
     assert.ok(listed.includes(f), `${f} is bundled into the account Worker and a change to it would not deploy`);
   }
+});
+
+test('IMPORT-GRAPH1: the walk is what the bundler bundles - each Worker\'s graph is exactly the files esbuild bundles from its entry, a JSON table a leaf; the relay\'s order is the hash\'s (mutants: a re-export unread; a named re-export unread; a dynamic import unread; a table parsed; a package walked)', async () => {
+  // test/importGraph.mjs parses each file - the regex it replaced stripped block comments before line comments, so a stray
+  // `/*` in a line comment swallowed the account Worker's imports of nine files, and the filter above never asked for
+  // them. Held here to the bundler itself: wrangler bundles with esbuild, so its inputs ARE the Worker.
+  const { build } = await import('esbuild');
+  for (const entry of ['server/src/index.js', 'server-account/src/index.js']) {
+    const r = await build({ entryPoints: [entry], bundle: true, write: false, metafile: true, format: 'esm', platform: 'neutral', logLevel: 'silent', external: ['cloudflare:*', 'node:*'], loader: { '.json': 'json' } });
+    const bundled = Object.keys(r.metafile.inputs).filter((f) => !f.includes('node_modules')).sort();
+    assert.deepEqual([...graph(entry)].sort(), bundled, `${entry}: the walk and the bundle`);
+  }
+  const account = graph('server-account/src/index.js');
+  for (const f of ['src/systems/partyScale.js', 'src/systems/books.js', 'src/formats/rscTable.js', 'src/systems/lootThemes.js']) assert.ok(account.includes(f), `${f}: one of the nine the comment hid`);
+  assert.ok(account.some((f) => f.endsWith('.json')), 'a JSON table the Worker imports is in the graph, a leaf');
+  // every shape the walk reads, in one fixture: the stray `/*`, an import, a re-export, a literal dynamic import(), a
+  // double-quoted specifier, a JSON leaf, a named re-export and a
+  // built-in the bundler leaves outside (never walked) - in the order they are written; a block comment's text never walked
+  const dir = 'test/fixtures/importgraph/';
+  assert.deepEqual(graph(dir + 'entry.js'), ['entry.js', 'a.js', 'b.js', 'c.js', 'e.js', 'd.json', 'f.js'].map((f) => dir + f));
+  const fx = await build({ entryPoints: [dir + 'entry.js'], bundle: true, write: false, metafile: true, format: 'esm', platform: 'neutral', logLevel: 'silent', external: ['node:*'], loader: { '.json': 'json' } });
+  assert.deepEqual([...graph(dir + 'entry.js')].sort(), Object.keys(fx.metafile.inputs).sort(), 'the fixture: the walk and the bundle');
 });
 
 test('ACC1-CI: nothing in the service still claims a person has to do this by hand', () => {
@@ -562,4 +614,19 @@ test('AUDIT pre-merge S3: the service check\'s ask survives a timeout or a reset
   const wf = readFileSync(new URL('../.github/workflows/account-deploy.yml', import.meta.url), 'utf8');
   assert.match(wf, /claim\(\) \{\n\s*curl -sS --max-time 15 -o \/tmp\/gate\.json -w '%\{http_code\}' -X POST "\$base\/v1\/gate\/claim" \\\n[^\n]*\|\| true\n\s*\}/, 'the one ask, never the step\'s end');
   assert.match(wf, /for i in \$\(seq 1 12\); do\n\s*code=\$\(claim\); code=\$\{code:-000\}/, 'an empty answer is 000 - asked again');
+});
+
+test('INT1 (its audit): THE ACCOUNT WORKER LOADS WHERE A MODULE\'S URL IS NO URL - bundled as wrangler bundles it, `import.meta.url` undefined (a Worker need not have one), and imported: nothing the item law carries into the Worker reads it as it loads (the audit: comeSailAwayModels.js made its model URLs so, through the boats\' items - "TypeError: Invalid URL", the deploy\'s start refused)', async () => {
+  const { build } = await import('esbuild');
+  const r = await build({
+    entryPoints: [fileURLToPath(new URL('../server-account/src/index.js', import.meta.url))], bundle: true, format: 'esm', write: false,
+    platform: 'neutral', define: { 'import.meta.url': 'undefined' }, logLevel: 'silent',
+  });
+  const dir = mkdtempSync(join(tmpdir(), 'worker-'));
+  const file = join(dir, 'worker.mjs');
+  writeFileSync(file, r.outputFiles[0].text);
+  try {
+    const m = await import(pathToFileURL(file).href);
+    assert.equal(typeof m.default?.fetch, 'function', 'the Worker\'s fetch, loaded');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });

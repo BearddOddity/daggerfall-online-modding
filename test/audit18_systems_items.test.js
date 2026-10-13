@@ -22,10 +22,12 @@ import {
 import { planTake, applyTransfer } from '../src/systems/itemTransfer.js';   // E4: the transfer door
 import { goldAmount } from '../src/systems/court.js';
 import { stockShopShelf, randomizeArmorVariant } from '../src/systems/shopStock.js';
+import { yardStock } from '../src/systems/merchantYards.js';
 import { ITEM_TEMPLATES, inventoryItemImage, templateByIndex } from '../src/systems/itemTemplates.js';
 import { playerArchiveFor } from '../src/characters/paperdollArt.js';
 import { CLOTHING_DYES, DYE_COLORS } from '../src/characters/dyes.js';
 import { BUILDING_TYPES } from '../src/world/buildingNames.js';
+import { PELLET_TEMPLATE } from '../src/characters/thunderlockIds.js';   // SHOP-PELLETS
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // Exhausted seq HOLDS its last value (the loot.test.js convention).
@@ -226,7 +228,9 @@ test('audit18 items: RandomizeArmorVariant verbatim, and the shelf takes its rol
   // the variant roll second (ApplyArmorSettings' tail).
   // .95 -> plate, .99 -> Dwarven (0x0204), .9 -> Range(1,4) = 3.
   const one = stockShopShelf({ buildingType: BUILDING_TYPES.Armorer, quality: 20 }, { level: 5, gender: 'male' }, { rolls: seq(0, 0.95, 0.99, 0.9, 0.999) });
-  assert.deepEqual(one, [{ group: 'Armor', templateIndex: 102, material: 0x0204, variant: 3, name: 'Cuirass', value: 4800, maxCondition: 12288, currentCondition: 12288 }]);   // AUDIT 23 (items-5): plate scales 4096 x 12/4
+  assert.deepEqual(one.filter((i) => i.templateIndex !== PELLET_TEMPLATE && i.templateIndex !== 131), [{ group: 'Armor', templateIndex: 102, material: 0x0204, variant: 3, name: 'Cuirass', value: 4800, maxCondition: 12288, currentCondition: 12288 }]);   // AUDIT 23 (items-5): plate scales 4096 x 12/4   // PIN MOVED (SHOP-PELLETS): the Armorer's counter carries the gun's shot beside it, from no roll   // PIN MOVED (SHOP-ARROWS): and a quiver (Arrow, 131)
+  assert.deepEqual(one.filter((i) => i.templateIndex === PELLET_TEMPLATE).map((i) => i.stackCount), [14], 'and that shot drew nothing from the stream');
+  assert.deepEqual(one.filter((i) => i.templateIndex === 131).map((i) => i.stackCount), [29], 'SHOP-ARROWS: nor the quiver');
 });
 
 // ---------------------------------------------------------------
@@ -355,11 +359,11 @@ test('audit18 items: every minted shop/loot row carries the template ItemName', 
   // spot pins straight off ItemTemplates.txt
   const gs = stockShopShelf({ buildingType: BUILDING_TYPES.GeneralStore, quality: 20 }, { level: 5, gender: 'male' }, { rolls: () => 0.4 });
   assert.equal(gs.find((i) => i.templateIndex === OIL_TEMPLATE).name, 'Oil');
-  assert.equal(gs.find((i) => i.templateIndex === 94).name, 'Horse');
+  assert.equal(yardStock('stable').find((i) => i.templateIndex === 94).name, 'Horse');   // PIN MOVED (MERCHANT-YARDS, 2026-10-10): the horse is the Stable's row now, minted as a shelf mints one
 });
 
 // ---------------------------------------------------------------
-// 10. RETIRING A FLAG DELETES THE SENTENCE. inventory.js:"hasNoEncumbrance bit" claimed
+// 10. RETIRING A FLAG DELETES THE SENTENCE. inventory.js line 12 claimed
 //     "Armor material weight pends S2b (FLAGGED - leather/chain/plate
 //     multipliers)" while the file implemented all three 130 lines
 //     below, and bible/Home.md's Open-flags ledger carried the row.
@@ -379,6 +383,7 @@ test('audit18 items: the retired flags are gone from source and from Home.md', (
   assert.ok(!shop.includes('dye/variant paperdoll pends'), 'shopStock.js still claims the clothing dye/variant pends');
 
   const home = readFileSync(join(ROOT, 'bible/Home.md'), 'utf8');
-  assert.equal(home.split('\n').filter((l) => /src\/systems\/inventory\.js:12/.test(l)).length, 0);
+  // the retired row named its site by number; an entry names its file now (CITE-ANCHOR), and its words the flag
+  assert.equal(home.split('\n').filter((l) => /^- `src\/systems\/inventory\.js` - /.test(l) && /S2b/.test(l)).length, 0);
   assert.equal(home.split('\n').filter((l) => /weight pends S2b/.test(l)).length, 0);
 });

@@ -235,7 +235,7 @@ test('WOD1: the registry row, the credit, the Features row and the online lane a
   assert.match(row, /`03-World\/World-Of-Daggerfall\.md`/);
 
   const credit = CREDITS.mods.filter((m) => m.author === 'Kamer');
-  assert.deepEqual(credit.map((m) => m.title), ['Windmills of Daggerfall', 'World of Daggerfall', 'Warm Ashes - Ships', 'World Events - Raiding Parties'], 'the mill first (CR1 finds it by his name), then this (WA1: then his third; RAID1: his fourth)');
+  assert.deepEqual(credit.map((m) => m.title), ['Windmills of Daggerfall', 'World of Daggerfall', 'Warm Ashes - Ships', 'World Events - Raiding Parties', 'Daggerfall Arena'], 'the mill first (CR1 finds it by his name), then this (WA1: then his third; RAID1: his fourth; ARENA1: his fifth)');
   assert.deepEqual([...credit[1].vendor], ['world-of-daggerfall']);
   assert.equal(credit[1].version, '2.0');
   assert.equal(credit[1].contact, 'DFU forums', 'the manifest\'s ContactInfo, verbatim');
@@ -243,12 +243,13 @@ test('WOD1: the registry row, the credit, the Features row and the online lane a
   const mod = MOD_SETTINGS['world-of-daggerfall'];
   assert.equal(mod.title, 'World of Daggerfall');
   assert.equal(mod.author, 'Kamer');
-  assert.deepEqual(Object.keys(mod.keys), ['Enabled'], 'no modsettings.json ships, so Enabled alone');
+  assert.deepEqual(Object.keys(mod.keys), ['Enabled', 'Mountains'], 'no modsettings.json ships, so Enabled - and the port\'s own Mountains switch (WOD-PEAKS), off');   // PIN MOVED (WOD-PEAKS)
+  assert.equal(mod.keys.Mountains.default, false, 'the spires stand only when asked for');
   const row2 = FEATURES.find((f) => f.id === 'mod-world-of-daggerfall');
   assert.equal(row2.effect, 'Takes effect when the world next loads.');
   assert.equal(row2.group, 'world');
 
   // The ground the room stands on: room-owned, like the roads.
-  assert.deepEqual({ ...ONLINE_ROOM_MOD_KEYS['world-of-daggerfall'] }, { Enabled: true });
+  assert.deepEqual({ ...ONLINE_ROOM_MOD_KEYS['world-of-daggerfall'] }, { Enabled: true, Mountains: false });   // PIN MOVED (WOD-PEAKS): the spires the room's too, off
   assert.ok(!ONLINE_PLAYERS_OWN_MODS.includes('world-of-daggerfall'));
 });

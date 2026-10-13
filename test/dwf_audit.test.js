@@ -75,14 +75,17 @@ test('AUDIT DW-F E5-6: the loot\'s unordered compares are the C#\'s own forms - 
   assert.doesNotMatch(lootSrc + spawner, /!\((rate|s\.rate|s\.clusterRate|reveal|column\.depth|column\.oceanY)[^)]*[<>]=?[^)]*\)/, 'no ordered negation left in their place');
 });
 
-test('AUDIT DW-F E5-1/E5-4: the view the loot and the guards test is the one the frame is about to draw, and the velocity is the motor\'s - rebased at a crossing, let go across a door, a teleport, a load (pins)', () => {
+test('AUDIT DW-F E5-1/E5-4: the view the loot and the guards test is the one the frame is about to draw (its wide lens - the captain\'s glass narrows the frame\'s alone), and the velocity is the motor\'s - rebased at a crossing, let go across a door, a teleport, a load (pins)', () => {
   const w = rd('src/scenes/world.js');
   const view = w.slice(w.indexOf('  function dwSpawnView() {'), w.indexOf('  /** The frame\'s CharacterController.velocity'));
   assert.match(view, /const V = lookAt\(eye, \[eye\[0\] \+ forward\[0\], eye\[1\] \+ forward\[1\], eye\[2\] \+ forward\[2\]\], UP_Y\);/, 'this frame\'s camera');
   // CLIMB4: the frame's lens carries the climb's kick (a leap's), and so does this one - the same lens, kicked or not
-  assert.match(view, /const worldAspect = largeHudWorldAspect\(canvas\.clientWidth, canvas\.clientHeight\);[^\n]*\n\s+const P = mirrorProjectionX\(perspective\(fieldOfView\(\) \+ climbFeel\.fovRad\(\), worldAspect, 0\.2, 6000\)\);/, '...through the frame\'s own lens');
+  assert.match(view, /const worldAspect = largeHudWorldAspect\(canvas\.clientWidth, canvas\.clientHeight\);[^\n]*\n\s+const P = mirrorProjectionX\(perspective\(fieldOfView\(\) \+ climbFeel\.fovRad\(\), worldAspect, 0\.2, 6000\)\);/, '...through the frame\'s own wide lens (AUDIT CAPTAIN\'S SEA H22: the glass\'s narrowing its own, below)');
   assert.doesNotMatch(view, /renderer\._view|renderer\._proj/, 'not the last pass\'s matrices');
-  assert.match(w, /const proj = mirrorProjectionX\(perspective\(fieldOfView\(\) \+ climbFeel\.fovRad\(\), worldAspect, 0\.2, 6000\)\);/, 'the frame draws through the same lens');
+  // PIN MOVED (SPYGLASS, 2026-10-11): the frame's lens narrowed by the captain's glass while it is up - the spawners keep the
+  // wide one, so nothing they place pops into the view the glass comes down from
+  // PIN MOVED (GLASS-CLEAR, 2026-10-11): and its near plane the glass's focus - the eye's own 0.2 while it is down
+  assert.match(w, /const proj = mirrorProjectionX\(perspective\(glassFov\(fieldOfView\(\) \+ climbFeel\.fovRad\(\), spyglass\.lens\), worldAspect, spyglass\.near, 6000\)\);/, 'the frame draws through the same lens - the glass\'s narrowing on it while the glass is up (AUDIT CAPTAIN\'S SEA H22)');
   assert.match(w, /for \(let i = 0; i < 3; i\+\+\) _dwEyeOffset\[i\] = mwv\.eye\[i\] - cam\.pos\[i\];/, 'the camera machine\'s eye, relative (a crossing moves cam.pos, not the offset)');
   assert.match(w, /if \(_dwLootVel\.last\) for \(let i = 0; i < 3; i\+\+\) _dwLootVel\.last\[i\] \+= r\.offset\[i\];/, 'FloatingOrigin moves the player by transform: no velocity');
   assert.match(w, /dwLoot\?\.pump\(f\);[^\n]*\n\s+dwLootLetGoVelocity\(\);/, 'indoors: the way out is a reposition');
@@ -119,7 +122,7 @@ test('AUDIT DW-F CD-4: behind a pausing window the underwater presentation is no
   assert.match(block, /anySwimming: _dwOutdoor \|\| \(_dwNowPlaying && !player\.waterWalking && !!player\.swimming\),/, 'IsAnySwimming too');
   assert.match(block, /audio\.setListenerLowPass\(_dwNowPlaying && dwPlayer\.swim\.presentationUnderwater\(/, 'UpdateAudioFilter');
   assert.match(block, /if \(_dwNowPlaying && player\.isPlayerSwimming && !player\.waterWalking\) \{ if \(_dwSwimSound\.step\(_dwCentre\)\)/, 'UpdateSwimSfxAndWeather');
-  assert.match(w, /const gamePaused = \(\) => townTalk\.overlayActive \|\| \(modes\?\.overlayHeld \?\? false\);\n\s+_dwOverlayUp = \(\) => gamePaused\(\);/, 'IsPlayingGame over every stack');
+  assert.match(w, /const gamePaused = \(\) => (?:staffTeleportHeld \|\| )?townTalk\.overlayActive \|\| \(modes\?\.overlayHeld \?\? false\);\n\s+_dwOverlayUp = \(\) => gamePaused\(\);/, 'IsPlayingGame over every stack');
 });
 
 test('AUDIT DW-F CD-1/CD-6: the breath drains only while the game runs its FixedUpdate, and the frame runs the mod\'s execution order - the stroke beside the motor, then the after phase, each on the camera the move left (mutants: the breath ungated; the stroke after the after phase; last frame\'s camera)', () => {
@@ -221,7 +224,7 @@ test('AUDIT DW-F E-1: a foe under the carved sea takes the water column\'s share
   // one column law, three programs: the floor, the decorations, and both lanes' flats
   const renderSrc = rd('src/render/renderer.js');
   const bb = renderSrc.slice(renderSrc.indexOf('const BB_FS = `'), renderSrc.indexOf('// Dungeon water: one horizontal quad'));
-  assert.match(bb, /\$\{FOG_GLSL\}\n\$\{COLUMN_GLSL\}\n\$\{HIT_FLASH_GLSL\}\n\$\{ELITE_GLOW_GLSL\}\n\$\{FLAT_DISSOLVE_GLSL\}\nvoid main\(\)/, 'the classic flats declare it after the fog block, and HITFLASH1\'s term after it (ELITE FOES\' glow, then DISSOLVE\'s burn last)');   // PIN MOVED (REVENANT-FATE: the dissolve's declarations close the block)   // AUDIT PRE-MERGE 0928 N7: no longer optional - BB_FS calls hitFlashLit, so without the term the classic flats' program does not compile
+  assert.match(bb, /\$\{FOG_GLSL\}\n\$\{COLUMN_GLSL\}\n\$\{HIT_FLASH_GLSL\}\n\$\{ELITE_GLOW_GLSL\}\n\$\{GLINT_GLSL\}\n\$\{FLAT_DISSOLVE_GLSL\}\nvoid main\(\)/, 'the classic flats declare it after the fog block, and HITFLASH1\'s term after it (ELITE FOES\' glow, TELL2\'s glint, then DISSOLVE\'s burn last)');   // PIN MOVED (REVENANT-FATE: the dissolve's declarations close the block)   // PIN MOVED (TELL2: the glint's declarations before the burn's)   // AUDIT PRE-MERGE 0928 N7: no longer optional - BB_FS calls hitFlashLit, so without the term the classic flats' program does not compile
   assert.match(bb, /outColor = vec4\(dwWaterFog\(dwColumn\(mix\(uFogColor, lit, fogFactorAt\(vBBWorld\)\), vBBWorld\), vBBWorld\), alpha\);/, 'the world fog, the share, the sea\'s fog - the floor\'s own order');
   assert.ok(EL_BB_FS.includes(COLUMN_GLSL), 'the lane\'s flats too');
   assert.match(EL_BB_FS, /outColor = vec4\(dwColumn\(elFinish\(lit, vBBWorld\), vBBWorld\), alpha\);/, 'on the finished display colour (the sea\'s fog is off whenever the share is on)');
@@ -274,7 +277,7 @@ test('AUDIT DW-F E-1: the renderer hands the column to the flats the host flagge
 test('AUDIT DW-F E-1: the host flags the flats that STAND in a carved column - a foe\'s feet or a pile\'s spot, under the sea\'s line, over a carved point - and draws them flagged (pins)', () => {
   const w = rd('src/scenes/world.js');
   assert.match(w, /if \(c && dwPlayer && b\._quads === 1\) \{[^\n]*\n\s+const o = b\.origin, x = b\.bounds\[0\] \+ \(o \? o\[0\] : 0\), y = b\.bounds\[1\] \+ \(o \? o\[1\] : 0\), z = b\.bounds\[2\] \+ \(o \? o\[2\] : 0\);\n\s+on = y < c\.seaY && !!dwPlayer\.rawColumnAt\(x, z\);/);
-  assert.match(w, /if \(deepWaters && livePersonBatches\.length\) dwFlagColumnFlats\(livePersonBatches\);[^\n]*\n\s+if \(livePersonBatches\.length\) renderer\.drawBillboards\(livePersonBatches, camRight, bbUp\);/);   // TV1: the flats' up is the view's lean (UP_Y off the view)
+  assert.match(w, /if \(deepWaters && livePersonBatches\.length\) dwFlagColumnFlats\(livePersonBatches\);[^\n]*\n\s+renderer\.holdBlended\(livePersonBatches\);[^\n]*\n\s+if \(livePersonBatches\.length\) renderer\.drawBillboards\(livePersonBatches, camRight, bbUp\);/);   // PIN MOVED (GRASS-PORTAL, FIELD BUGS 2026-10-12b): flagged, then the blended ones held back for after the grass   // TV1: the flats' up is the view's lean (UP_Y off the view)
   assert.match(w, /_dwColumnNow = cf\.columnOn && cf\.surfaceTexture \? \{/, 'on while the top is drawn over the sea');
   assert.match(w, /renderer\.setWaterColumn\(_dwColumnNow\);/);
 });

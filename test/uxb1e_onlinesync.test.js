@@ -25,7 +25,7 @@ function fresh() {
   resetPrefs(); resetSettings(); _resetModSettings();
 }
 
-test('UXB1-E: the plan is the lane\'s tables, whole - every forced pref, every forced setting, the full-size dungeon, every key the room owns - and nothing on an online page', () => {
+test('UXB1-E: the plan is the lane\'s tables, whole - every forced pref, every forced setting, the room\'s dungeon size, every key the room owns - and nothing on an online page', () => {
   fresh();
   const plan = onlineSyncPlan({ search: '' });
   const ids = plan.map((r) => r.id);
@@ -41,9 +41,15 @@ test('UXB1-E: the plan is the lane\'s tables, whole - every forced pref, every f
   assert.deepEqual(ids, want);
   assert.ok(ids.includes('prefs:enhancedAI'), 'the registry\'s `online: true` rows are in the lane\'s table by the time the plan reads it');
   assert.ok(!ids.includes('prefs:mwArms'), 'MWA4: the arms\' switch is retired - the attached files are it, so there is nothing to copy');
-  assert.ok(ids.includes('settings:Experimental/SmallerDungeons'), 'online every dungeon is full size (useSmallerDungeon)');
+  assert.ok(ids.includes('settings:Experimental/SmallerDungeons'), 'online no dungeon is DFU\'s small one (useSmallerDungeon)');
   assert.equal(ONLINE_LAYOUT_SETTINGS.Experimental.SmallerDungeons, 'False');
-  assert.match(read('src/world/smallerDungeons.js'), /if \(online\) return false;/, '...which is the law the row copies');
+  // SD-ONLINE (PIN MOVED): online the size law answers the WORLD's size for each dungeon (it was the whole dungeon), and
+  // the world-dungeon-sizes row is forced on there - a registry row, so the forced prefs carry it and the sync copies it
+  // home with Smaller Dungeons off (and the medium row off: the world's sizes win over it anyway)
+  assert.match(read('src/world/smallerDungeons.js'), /if \(online\) return onlineDungeonSize\(dfLocation\);/, '...which is the law the rows copy (DSIZE1: the size law answers a size; SD-ONLINE: online it is the world\'s)');
+  assert.ok(ids.includes('prefs:worldDungeonSizes'), 'SD-ONLINE: the world\'s sizes, forced on online');
+  assert.equal(ONLINE_FORCED_PREFS.worldDungeonSizes, true);
+  assert.equal(ONLINE_FORCED_PREFS.mediumDungeons, false);
   for (const r of plan) assert.ok(r.label && !/^[a-z]+[A-Z]/.test(r.label), `${r.id} reads as words: ${r.label}`);
   assert.equal(onlineSyncPlan({ search: '?online' }), null, 'online, every read is the room\'s - the player\'s own cannot be seen');
 });
@@ -51,27 +57,30 @@ test('UXB1-E: the plan is the lane\'s tables, whole - every forced pref, every f
 test('UXB1-E: a sync writes only what differs, each into its own store, keeps what it replaced, and Undo puts it back', () => {
   fresh();
   setPref('enhancedAI', false);
-  setPref('enhancedWater', false);
+  setPref('enhancedClimbing', false);   // PIN MOVED (WATER-OFF, 2026-10-08): the water is the player's online now, so another forced switch stands in
   setValue('Controls', 'AllowMagicRepairs', 'False');
   setValue('Experimental', 'SmallerDungeons', 'True');
   setModSetting('pcaao', 'Enabled', false);
   setModSetting('roleplay-realism', 'RefinedTraining.intensiveTraining', true);
   saveSettings();
   const before = onlineSyncPlan({ search: '' });
+  // SD-ONLINE (PIN MOVED): the world's sizes are forced on online and off by default, so a fresh profile differs there too
   assert.deepEqual(before.filter((r) => !r.same).map((r) => r.id).sort(), [
-    'mods:pcaao/Enabled', 'mods:roleplay-realism/RefinedTraining.intensiveTraining',
-    'prefs:enhancedAI', 'prefs:enhancedWater',
+    'mods:pcaao/Enabled', 'mods:roads-hazelnut/RiversAndStreams', 'mods:roleplay-realism/RefinedTraining.intensiveTraining',
+    'prefs:enhancedAI', 'prefs:enhancedClimbing', 'prefs:worldDungeonSizes',
     'settings:Controls/AllowMagicRepairs', 'settings:Experimental/SmallerDungeons',
-  ]);
+  ]);   // LANDFORM3: the room's rivers are on, past the mod's shipped off - so a fresh store differs there too
   const rec = applyOnlineSync(before, { now: 1234 });
   assert.equal(rec.at, 1234);
-  assert.equal(rec.rows.length, 6);
+  assert.equal(rec.rows.length, 8);   // (the merge of main's LANDFORMS: its rivers and SD-ONLINE's sizes, both)
   assert.equal(getPref('enhancedAI'), true);
-  assert.equal(getPref('enhancedWater'), true);
+  assert.equal(getPref('enhancedClimbing'), true);
+  assert.equal(getPref('worldDungeonSizes'), true, 'SD-ONLINE: offline play at the world\'s sizes');
   assert.equal(getBool('Controls', 'AllowMagicRepairs'), true);
   assert.equal(getBool('Experimental', 'SmallerDungeons'), false);
   assert.equal(modSetting('pcaao', 'Enabled'), true);
   assert.equal(modSetting('roleplay-realism', 'RefinedTraining.intensiveTraining'), false);
+  assert.equal(modSetting('roads-hazelnut', 'RiversAndStreams'), true, 'LANDFORM3: the rivers come home on');
   assert.ok(onlineSyncPlan({ search: '' }).every((r) => r.same), 'synced: nothing differs');
   // the settings were SAVED - a reload reads them back
   resetSettings();
@@ -81,14 +90,16 @@ test('UXB1-E: a sync writes only what differs, each into its own store, keeps wh
   assert.equal(applyOnlineSync(onlineSyncPlan({ search: '' })), null, 'a second sync with nothing to do writes nothing');
   assert.ok(lastOnlineSync(), '...and leaves the undo standing');
 
-  assert.equal(undoOnlineSync(), 6);
+  assert.equal(undoOnlineSync(), 8);   // (the merge of main's LANDFORMS: its rivers and SD-ONLINE's sizes, both)
   assert.equal(getPref('enhancedAI'), false);
-  assert.equal(getPref('enhancedWater'), false);
+  assert.equal(getPref('enhancedClimbing'), false);
+  assert.equal(getPref('worldDungeonSizes'), false);
   assert.equal(getString('Controls', 'AllowMagicRepairs'), 'False');
   resetSettings();
   assert.equal(getBool('Experimental', 'SmallerDungeons'), true, 'saved back');
   assert.equal(modSetting('pcaao', 'Enabled'), false);
   assert.equal(modSetting('roleplay-realism', 'RefinedTraining.intensiveTraining'), true);
+  assert.equal(modSetting('roads-hazelnut', 'RiversAndStreams'), false, '...and go back to the mod\'s shipped off');
   assert.equal(lastOnlineSync(), null, 'the undo is spent');
   assert.equal(undoOnlineSync(), 0);
 });
@@ -99,15 +110,15 @@ test('AUDIT UXB1 F2: a second sync ADDS to the undo - the first sync\'s rows sta
   const first = applyOnlineSync(onlineSyncPlan({ search: '' }), { now: 1 });
   const id = (r) => `${r.store}:${r.section ?? r.vendor ?? ''}/${r.key}`;
   assert.ok(first.rows.some((r) => id(r) === 'prefs:/enhancedAI'));
-  setPref('enhancedWater', false);
+  setPref('enhancedClimbing', false);
   const second = applyOnlineSync(onlineSyncPlan({ search: '' }), { now: 2 });
-  const want = [...new Set([...first.rows.map(id), 'prefs:/enhancedWater'])].sort();
+  const want = [...new Set([...first.rows.map(id), 'prefs:/enhancedClimbing'])].sort();
   assert.deepEqual(second.rows.map(id).sort(), want, 'the first sync\'s rows kept beside the second\'s, one a rule');
   assert.equal(second.at, 2);
   assert.deepEqual(lastOnlineSync(), JSON.parse(JSON.stringify(second)), 'and that is the record stored');
   assert.equal(undoOnlineSync(), want.length);
   assert.equal(getPref('enhancedAI'), false, 'the FIRST sync is undone too - it was replaced, and beyond reach');
-  assert.equal(getPref('enhancedWater'), false);
+  assert.equal(getPref('enhancedClimbing'), false);
 
   fresh();
   const row = (offline) => ({ id: 'prefs:enhancedAI', store: 'prefs', key: 'enhancedAI', label: 'Enhanced AI', online: true, offline, same: false });
@@ -150,6 +161,9 @@ const find = (n, cls, out = []) => {
 
 test('UXB1-E: the Online pane\'s card - what differs, now and then, one press to sync, and Undo after it; nothing to press when nothing differs', () => {
   fresh();
+  // PIN MOVED (BAL4, bible/05-Combat/Balance-Arc.md section 6): the Enhanced AI ships On offline as in every room, so a
+  // default shelf no longer differs there - the player who turned it Off does
+  setPref('enhancedAI', false);
   globalThis.document = { createElement: fakeEl };
   try {
     let card = onlineSyncCard();
@@ -160,7 +174,7 @@ test('UXB1-E: the Online pane\'s card - what differs, now and then, one press to
     assert.equal(rows.length, differ.length);
     assert.deepEqual(rows.map((r) => find(r, 'svsync-name')[0].textContent), differ.map((r) => r.label));
     const ai = rows.find((r) => find(r, 'svsync-name')[0].textContent === 'Enhanced AI');
-    assert.ok(ai, 'a default shelf differs from the room in Enhanced AI - off offline, on in every room');
+    assert.ok(ai, 'a shelf with the Enhanced AI turned off differs from the room - on in every room');
     assert.deepEqual([find(ai, 'svsync-was')[0].textContent, find(ai, 'svsync-to')[0].textContent], ['Off', 'On']);
     const [go] = find(card, 'svsync-go');
     assert.equal(go.textContent, `Sync ${differ.length} setting${differ.length === 1 ? '' : 's'}`);

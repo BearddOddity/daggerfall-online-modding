@@ -328,9 +328,10 @@ test('ACC1a: PURE, and both ends can import it', async () => {
   // it imports the wire's name law and the guild's shapes (GUILD1c - guildLaw.js imports nothing), and the heraldry's
   // colours (SEASON1 part two, PIN MOVED: a Season's banner ribbon - heraldryLaw.js imports nothing), and - SEAT2b part two
   // (b), PIN MOVED: a siege pass's works - siegeRef.js's worksOf (it imports nothing, and the relay bundles it already),
-  // and nothing else
+  // and - LEGACY7 part two, PIN MOVED: a house's claims - houseLaw.js's houseClaimOk (it imports nothing; the relay bundles
+  // it too, world174 - world172 on its branch), and nothing else
   const imports = [...text.matchAll(/from\s+'(\.[^']+)'/g)].map((m) => m[1]);
-  assert.deepEqual(imports, ['./wire.js', './guildLaw.js', './heraldryLaw.js', './siegeRef.js'], 'a new import here is a new file in the relay\'s bundle');
+  assert.deepEqual(imports, ['./wire.js', './guildLaw.js', './heraldryLaw.js', './siegeRef.js', './houseLaw.js'], 'a new import here is a new file in the relay\'s bundle');
 });
 
 // ═══ ACC1d: THE TRIPWIRE FIRED, AND THIS IS WHAT REPLACED IT ═══════
@@ -370,11 +371,11 @@ async function namedOf(room, m, now) {
   // MOD1: `_named` asks `_loadKey` for the key now (the mute order checks
   // with the same one), so that method is lifted off the SOURCE too.
   const loadBody = methodBody(text, '  async _loadKey() {');
-  const load = new Function('importPublicKeyB64', 'crypto', 'console', `return async function () {${loadBody}};`)(importPublicKeyB64, globalThis.crypto, console);
+  const load = new Function('importPublicKeyB64', 'crypto', 'console', `return async function () {${loadBody}\n};`)(importPublicKeyB64, globalThis.crypto, console);
   if (!room._loadKey) room._loadKey = load;
   // the module-level names the method closes over
   const fn = new Function('m', 'now', 'verifyToken', 'importPublicKeyB64', 'MAX_TTL_S', 'SPENT_MAX', 'crypto', 'console', 'REALM_DOOR_WORD',
-    `return (async () => {${body}})()`);
+    `return (async () => {${body}\n})()`);   // ARENA4: the body's last line may end in a comment - the close on a line of its own
   return fn.call(room, m, now, verifyToken, importPublicKeyB64, MAX_TTL_S, 4096, globalThis.crypto, console, REALM_DOOR_WORD);
 }
 

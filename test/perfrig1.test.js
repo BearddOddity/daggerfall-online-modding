@@ -278,17 +278,17 @@ test('PERF-ZONE2 the world frame\'s CPU zones tile in order, and each new mark s
   const w = rd('src/scenes/world.js');
   const frame = w.slice(w.indexOf('  function frame(now) {'));
   const names = [...frame.matchAll(/meterFor\(renderer\.gl\)\?\.markCpu\('(\w+)'\)/g)].map((m) => m[1]);
-  assert.deepEqual(names, ['online', 'sim', 'bodies', 'batches', 'ring', 'flats', 'people', 'arrows', 'rig', 'hud', 'ui']);   // PERF-READ1: `ui` after the HUD's draw
+  assert.deepEqual(names, ['online', 'sim', 'motor', 'stream', 'hosts', 'view', 'weather', 'snow', 'storms', 'scene', 'gates', 'skyset', 'pools', 'lamps', 'lightset', 'sails', 'boats', 'begin', 'bodies', 'batches', 'ring', 'flats', 'people', 'arrows', 'rig', 'hud', 'ui']);   // PERF-READ1: `ui` after the HUD's draw
   const after = (mark, subject) => { const i = frame.indexOf(`markCpu('${mark}')`); const j = frame.indexOf(subject, i); assert.ok(i > 0 && j > i && j - i < 600, `${mark} sits directly on ${subject}`); };
   const before = (subject, mark) => { const j = frame.indexOf(subject); const i = frame.indexOf(`markCpu('${mark}')`, j); assert.ok(j > 0 && i > j && i - j < 400, `${mark} follows ${subject}`); };
   // the bodies mark is the NEXT statement after beginFrame: nothing the
   // renderer's own 'world' mark used to swallow may sit between them
   { const j = frame.indexOf('renderer.beginFrame(proj, view, sunDirection(minute), WORLD_FRAME);'); const lineEnd = frame.indexOf('\n', j); const nextLine = frame.slice(lineEnd + 1, frame.indexOf('\n', lineEnd + 1)); assert.match(nextLine, /markCpu\('bodies'\)/, 'the bodies mark is the line after beginFrame'); }
   after('bodies', 'mwViewDrawBody(canvas,');
-  before('sky.draw(tvf ? tvf.yaw : cam.yaw, tvf ? tvf.pitch : cam.pitch + climbFeel.pitch(), fieldOfView() + climbFeel.fovRad(), worldAspect,', 'ring');   // CLIMB4: the climb's pitch and kick   // TV1: the sky turns to the travel view's eye
+  before('sky.draw(tvf ? tvf.yaw : cam.yaw, tvf ? tvf.pitch : cam.pitch + climbFeel.pitch(), glassFov(fieldOfView() + climbFeel.fovRad(), spyglass.lens), worldAspect,', 'ring');   // PIN MOVED (SPYGLASS): the glass's lens   // CLIMB4: the climb's pitch and kick   // TV1: the sky turns to the travel view's eye
   after('arrows', 'arrows.update(foeDt, {');
   after('rig', 'if (walkMode && playerSpawned) {');
-  { const i = frame.indexOf("markCpu('rig')"); const j = frame.indexOf('weaponRig.frame(dt, { paralyzed })', i); const k = frame.indexOf("markCpu('hud')", i); assert.ok(j > i && j < k, 'the rig\'s frame is inside the rig span'); }
+  { const i = frame.indexOf("markCpu('rig')"); const j = frame.indexOf('weaponRig.frame(dt, { paralyzed: paralyzed || knockedDown() })', i);   /* PIN MOVED (TELL6e: no swing knocked down) */ const k = frame.indexOf("markCpu('hud')", i); assert.ok(j > i && j < k, 'the rig\'s frame is inside the rig span'); }
   after('hud', 'const _hfw = [-view[2], -view[10]];');
   { const i = frame.indexOf("markCpu('hud')"); const j = frame.indexOf('drawHud(renderer, canvas, hudArt, playerEntity,', i); const next = frame.indexOf('markCpu(', i + 1); assert.ok(j > i && (next < 0 || j < next), 'the HUD draw is inside the hud span - no other mark between'); }
 });
@@ -304,7 +304,7 @@ test('PERF-ZONE2 the world frame\'s CPU zones tile in order, and each new mark s
 test('AUDIT PERF-RIG1 F2: releasing a mesh clears the texture handle on every range it deletes (by content - the release needs a GL)', () => {
   const arm = rd('src/combat/fpArm.js');
   const body = arm.slice(arm.indexOf('function releaseGpu(m) {'), arm.indexOf('\n  }\n', arm.indexOf('function releaseGpu(m) {')));
-  assert.match(body, /for \(const r of m\.ranges \|\| \[\]\) if \(r\.tex\) \{ gl\.deleteTexture\(r\.tex\); r\.tex = null; \}/);
+  assert.match(body, /for \(const r of m\.ranges \|\| \[\]\) if \(r\.tex\) \{ releaseCharacterTexture\(renderer, r\.tex\); r\.tex = null; \}/);   // PIN MOVED (MWNPC3): the texture is shared now - the release lets go of the range's hold (the last hold deletes), and the handle goes with it as before
   // and every release site that keeps its assembly drops its pack beside the mesh - the two laws together
   for (const m of arm.matchAll(/releaseMesh\(\);(.{0,40})/g)) {
     const tail = arm.slice(m.index, m.index + 400);

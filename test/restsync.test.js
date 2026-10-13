@@ -10,6 +10,10 @@ import { readFileSync } from 'node:fs';
 import * as acorn from 'acorn';
 import { validFoeRecord, hitPoisonOf, hitSpellOf, FOE_HEALTH_MAX, FOE_LEVEL_MAX, FOES_FRAME_MAX, PARTY_MAX } from '../src/net/wire.js';
 import { ELITE_FOE_MULTIPLIER } from '../src/world/spawnedDungeons.js';
+import { blowClassOf } from '../src/ai/puppetBlows.js';   // AUDIT FEUD: the hit door builds a blow's class whenever its weakness rides (the real one)
+import { feudWeakBlow } from '../src/systems/feudLedger.js';   // AUDIT FEUD: ...asked of the real test (none registered here)
+import { ARENA_PUPPET_OWNER } from '../src/net/arenaLaw.js';   // ARENA4: the kill door's puppet test, the real owner word (no puppet here)
+import { foeSeed, applyWireLook } from '../src/characters/foeBodies.js';   // AUDIT MW-NPC II K3: the dungeon context's look seed, in the mounted scope
 
 const D = readFileSync(new URL('../src/scenes/dungeonContext.js', import.meta.url), 'utf8');
 const W = readFileSync(new URL('../src/scenes/world.js', import.meta.url), 'utf8');
@@ -40,6 +44,8 @@ const scoped = (state) => new Proxy(state, {
   set: (t, k, v) => { t[k] = v; return true; },
 });
 const mount = (body, state) => new Function('__s', `with (__s) { ${body} }`)(scoped(state));
+/** DESYNC-ZERO: the host's layout count and the surplus puppets ride the same frame door. */
+const surplusSrc = () => ['FOE_SEQ_MAX_SURPLUS', '_surplus', '_surplusPending', '_hiddenFrom', '_layoutMismatchSaid'].map(declSrc).join('\n') + '\n' + ['sayLayoutMismatch', 'hideBeyondHostLayout', 'surplusRecord', 'dropSurplus', 'clearSurplus'].map(fnSrc).join('\n');
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
 const CONSTS = ['REST_ASK_WAIT_MS', 'REST_ASK_GAP_MS', 'REST_ASK_BAND_MAX', 'SHARED_FOES_MAX', 'HIT_POS_MAX', 'HIT_DMG_MAX', 'q2', 'q3'];
@@ -59,10 +65,16 @@ const HIT = { mobileType: 5, minDistance: 4, maxDistance: 20, lineOfSightCheck: 
 function restDoors(over = {}) {
   const spawned = [], asked = [];
   const state = {
+    foeSeed, applyWireLook,   // AUDIT MW-NPC II K3: the records' look seed (roomRecord, applyFoeRecord, the puppets' stands)
     opts: { selfId: () => null, onActions: (d) => { asked.push(d); return true; } },
-    _authority: true, lastPlayerFeet: [1.234, 2, 3.456], _motorYaw: 0.5, _locationKey: 'dungeon:7', _restAskAt: null,
+    _authority: true, lastPlayerFeet: [1.234, 2, 3.456], _motorYaw: 0.5, _locationKey: 'dungeon:7', _restAskAt: null, _restAskSentAt: -Infinity,   // AUDIT III E1: the joiner's own last ask
     _askAt: new Map(), ENEMY_BASICS: { 5: {}, 9: {} }, clock: 1000,
     _spawnEncounter: (hit, o) => { spawned.push([hit, o]); return Promise.resolve(null); },
+    // AUDIT REST II F1 (RE-AIMED): a joiner asks only where the host's own placement finds a spot outside a fire's ward
+    // (encounterSpot), and a night running hears the ask at once (ambushNight) - here a spot stands and no night runs
+    // (a paced window), so these doors keep their own question; test/auditrest2_fires.test.js asks the others
+    encounterSpot: () => ({ x: 9, y: 0, z: 9 }), ambushNight: () => false,
+    restReturn: () => false,   // PIN MOVED (RVN7d: offline a due revenant may answer the rest's roll - none here)
     ...over,
   };
   state.Date = { now: () => state.clock };
@@ -90,9 +102,10 @@ test('REST-SYNC: offline the rest\'s encounter is the player\'s own; the host st
   assert.equal(j.roomEncounterComing(), false, 'nothing asked, nothing coming');
   j.restEncounter(HIT);
   assert.deepEqual(j.spawned, [], 'a joiner stands no foe only it can see');
-  assert.deepEqual(j.asked, [{ k: 'dungeon:7', rs: { t: 5, lo: 4, hi: 20, v: 1, f: [1.23, 2, 3.46], y: 0.5 } }], 'it asks the host, by its own feet and facing');
+  assert.deepEqual(j.asked, [{ k: 'dungeon:7', rs: { t: 5, lo: 4, hi: 20, v: 1, f: [1.23, 2, 3.46], y: 0.5, s: [9, 0, 9] } }], 'it asks the host, by its own feet and facing (AUDIT III E1 re-aim: and the spot its placement found)');
   assert.equal(j.roomEncounterComing(), true, 'the rest breaks at the hour\'s check, as DFU\'s does');
   assert.equal(j.roomEncounterComing(), false, 'once');
+  j.state.clock += K.REST_ASK_GAP_MS + K.REST_ASK_WAIT_MS;   // AUDIT III E1 re-aim: past the host's gap - an ask inside it is none
   j.restEncounter(HIT);
   j.state.clock += K.REST_ASK_WAIT_MS + 1;
   assert.equal(j.roomEncounterComing(), false, 'an ask older than the wait breaks nothing');
@@ -110,7 +123,7 @@ test('REST-SYNC: the host stands a joiner\'s ask by the JOINER\'s feet, shared -
   const ask = { t: 5, lo: 4, hi: 20, v: 1, f: [10, 1, -4], y: 0.25 };
   const h = restDoors({ opts: { selfId: () => 'host', onActions: () => true } });
   assert.equal(h.roomEncounterAsked('peerA', ask), true);
-  assert.deepEqual(h.spawned, [[{ mobileType: 5, minDistance: 4, maxDistance: 20, lineOfSightCheck: true }, { feet: [10, 1, -4], yaw: 0.25, shared: true }]], 'by the asker\'s feet and facing, the room\'s');
+  assert.deepEqual(h.spawned, [[{ mobileType: 5, minDistance: 4, maxDistance: 20, lineOfSightCheck: true }, { feet: [10, 1, -4], yaw: 0.25, shared: true, asked: null }]], 'by the asker\'s feet and facing, the room\'s (AUDIT III E1 re-aim: a client a build behind names no spot)');
   assert.equal(h.roomEncounterAsked('peerA', ask), false, 'one ask a player a gap');
   assert.equal(h.roomEncounterAsked('peerB', { ...ask, v: 0 }), true, 'another player\'s is its own');
   assert.equal(h.spawned[1][0].lineOfSightCheck, false);
@@ -136,6 +149,7 @@ function side({ authority, layout = [], shared = [], over = {} }) {
   const foes = [...layout, ...shared];
   const built = [], applied = [], destroyed = [], dropped = [];
   const state = {
+    foeSeed, applyWireLook,   // AUDIT MW-NPC II K3: the records' look seed (roomRecord, applyFoeRecord, the puppets' stands)
     _authority: authority, _layoutFoes: layout.length, foes, _sharedById: new Map(shared.map((f) => [f._encId, f])),
     _sharedSeq: Math.max(0, ...shared.map((f) => f._encId)), _sharedPending: new Map(), _ctxDead: false,
     _foesSeq: 0, _foesSeqIn: -1, _foesFrom: null, _locationKey: 'dungeon:7', _keyMismatchSaid: false, _retypeFails: new Map(), RETYPE_TRIES: 3,
@@ -160,6 +174,7 @@ function side({ authority, layout = [], shared = [], over = {} }) {
     ${fnSrc('foesFrame')}
     ${fnSrc('roomRecord')}
     ${fnSrc('applyFoesFrame')}
+    ${surplusSrc()}
     ${fnSrc('applySharedRecords')}
     ${fnSrc('standSharedPuppet')}
     ${fnSrc('dropSharedFoe')}
@@ -290,7 +305,7 @@ test('REST-SYNC: a joiner\'s blow at the room\'s encounter goes to the host by t
   const sent = [];
   const layout0 = foe(), pup = foe({ _encId: 7 });
   const j = {
-    _authority: false, foes: [layout0, pup], _layoutFoes: 1, lastPlayerFeet: [1, 0, 1], _ecvT: 0,
+    _authority: false, ARENA_PUPPET_OWNER, blowClassOf, feudWeakBlow, foes: [layout0, pup], _layoutFoes: 1, lastPlayerFeet: [1, 0, 1], _ecvT: 0,
     opts: { onFoeHit: (h) => sent.push(h) }, renownFoeStruck() {}, takeWholeBlow: () => false, markFoeStruck() {}, markConcealedHit() {},
   };
   const jd = mount(`${consts()}\n${declSrc('isRoomFoe')}\n${fnSrc('damageFoe')}\nreturn { damageFoe };`, j);
@@ -343,7 +358,7 @@ test('REST-SYNC: the encounter is weighed by who fights it and hands over with t
     attack: { machine: { state: 'Swing', acc: 3 }, firedRanged: true, swingSeq: 4 }, mobile: { doMeleeDamage: true, shootArrow: true },
   });
   const s = { _authority: false, _foesSeqIn: 5, _foesFrom: 'old', foes: [layout0, own, enc, ally], _layoutFoes: 1, _sharedById: new Map([[3, enc], [9, ally]]), ownRides: () => false };   // PSCALE-OWN / SUMMON-SYNC: nothing of mine on the own lane here
-  const d = mount(`${declSrc('isRoomFoe')}\n${fnSrc('_sharedFoe')}\n${fnSrc('setAuthority')}\nreturn { _sharedFoe, setAuthority };`, s);
+  const d = mount(`${declSrc('isRoomFoe')}\n${fnSrc('_sharedFoe')}\n${fnSrc('setAuthority')}\n${surplusSrc()}\nreturn { _sharedFoe, setAuthority };`, s);
   assert.equal(d._sharedFoe(enc), true, 'the room\'s encounter is weighed by its fighters');
   assert.equal(d._sharedFoe(layout0), true);
   assert.equal(d._sharedFoe(own), false, 'my own foe past the run is not');

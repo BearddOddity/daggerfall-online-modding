@@ -26,7 +26,7 @@
 
 import { shotPosition, segmentBoxEntry, segmentCrossesDown, toBoxLocal } from './navalBallistics.js';
 import { hitZone } from './navalDamage.js';
-import { GUNS, BARREL } from './navalShips.js';
+import { GUNS, BARREL, SHIP_TOUGHNESS } from './navalShips.js';
 
 /** A ball's longest flight (s). */
 export const BALL_LIFE = 9;
@@ -37,8 +37,9 @@ export const BALL_STEP_S = 0.1;
 export const FLOAT_DRIFT = 0.1;
 /** A fire barrel is harmless this long after it is dropped (s). */
 export const BARREL_ARM = 1.6;
-/** Flotsam: how long it floats (s), and how near a collector's box must come (m). */
-export const FLOTSAM_LIFE = 150;
+/** Flotsam: how long it floats (s), and how near a collector's box must come (m). TOUGHER-SHIPS: 150 s before, as much
+ *  longer as a fight now lasts - a two-ship fight's first cask still afloat when the second strikes. */
+export const FLOTSAM_LIFE = Math.round(150 * SHIP_TOUGHNESS);
 export const FLOTSAM_REACH = 3;
 /** How far a swept ball is tested for the ground, at most - a flight over open sea never asks. */
 const GROUND_STEP = 4;
@@ -72,7 +73,7 @@ export function createShotField(deps) {
     const back = Math.max(0, since);
     for (const l of launches) {
       balls.push({
-        volley: id, shooter, owner, resolve, side, gun: l.gun, index: l.index, count: launches.length,
+        volley: id, shooter, owner, resolve, side, gun: l.gun, weight: l.weight ?? 1, index: l.index, count: launches.length,   // GALLEON-WEIGHT: to its hit
         p0: [...l.p0], v0: [...l.v0], born: clock - back + Math.max(0, l.delay ?? 0), t: 0, shown: false, prev: [...l.p0], pos: [...l.p0], spin: random() * Math.PI * 2,
       });
     }
@@ -83,9 +84,12 @@ export function createShotField(deps) {
     floaters.push({ kind: 'barrel', id, shooter, owner, resolve, pos: [...pos], born: clock, life: BARREL.life, phase: random() * Math.PI * 2 });
   }
   /** A cask of a sunk ship's cargo, worth `lot` (NAV-D's); `owner` (AUDIT NAV1, online #15) the player whose sea it
-   *  floats in, when another's - hauled in here, it is only claimed of them. */
-  function dropFlotsam({ id, pos, lot = 0, from = null, owner = null }) {
-    floaters.push({ kind: 'flotsam', id, from, lot, owner, pos: [...pos], born: clock, life: FLOTSAM_LIFE, phase: random() * Math.PI * 2 });
+   *  floats in, when another's - hauled in here, it is only claimed of them. CAPT-WATERS: `deep` a ship of the deep
+   *  waters' - her casks rolled richer (navalHost.js pickFlotsam). CAPT-BOARD: a contract's wreck's cask a string lot
+   *  of its own (navalHost.js SITE_LOT) and its own `life`.
+   *  @param {{ id: string, pos: number[], lot?: number|string, from?: string|null, owner?: string|null, deep?: boolean, life?: number }} f */
+  function dropFlotsam({ id, pos, lot = 0, from = null, owner = null, deep = false, life = FLOTSAM_LIFE }) {
+    floaters.push({ kind: 'flotsam', id, from, lot, owner, deep: !!deep, pos: [...pos], born: clock, life, phase: random() * Math.PI * 2 });   // CAPT-BOARD: a wreck's casks their own `life`
   }
 
   const nearestHit = (targets, a, b, radius, shooter) => {
@@ -135,13 +139,13 @@ export function createShotField(deps) {
     // the canvas it tears on the way - before whatever stops it
     for (const r of rigsCrossed(targets, a, next, radius, b, firstT)) {
       (b.rigged ??= new Set()).add(r.t.id);
-      emit({ type: 'hit', volley: b.volley, shooter: b.shooter, owner: b.owner, target: r.t.id, gun: b.gun, point: r.e.point, zone: 'rig', dir, resolve: b.resolve });
+      emit({ type: 'hit', volley: b.volley, shooter: b.shooter, owner: b.owner, target: r.t.id, gun: b.gun, weight: b.weight, point: r.e.point, zone: 'rig', dir, resolve: b.resolve });
     }
     if (firstT === Infinity) return false;
     const at = (k) => [a[0] + (next[0] - a[0]) * k, a[1] + (next[1] - a[1]) * k, a[2] + (next[2] - a[2]) * k];
     if (ship && ship.e.t === firstT) {
       emit({
-        type: 'hit', volley: b.volley, shooter: b.shooter, owner: b.owner, target: ship.t.id, gun: b.gun, point: ship.e.point,
+        type: 'hit', volley: b.volley, shooter: b.shooter, owner: b.owner, target: ship.t.id, gun: b.gun, weight: b.weight, point: ship.e.point,
         zone: hitZone(ship.e.point[1] - seaY), dir, resolve: b.resolve,
       });
     } else if (land != null && land === firstT) emit({ type: 'land', volley: b.volley, shooter: b.shooter, gun: b.gun, point: at(land) });
@@ -188,7 +192,7 @@ export function createShotField(deps) {
       }
       if (f.kind === 'flotsam') {
         const c = (deps.collectors?.() ?? []).find((k) => insideGrown(k.box, f.pos, FLOTSAM_REACH));
-        if (c) { emit({ type: 'pickup', id: f.id, lot: f.lot, from: f.from, owner: f.owner, collector: c.id, point: [...f.pos] }); continue; }
+        if (c) { emit({ type: 'pickup', id: f.id, lot: f.lot, from: f.from, owner: f.owner, deep: !!f.deep, collector: c.id, point: [...f.pos] }); continue; }
       }
       floatKeep.push(f);
     }
@@ -206,7 +210,7 @@ export function createShotField(deps) {
     /** The balls in the air, for the draw: `{ pos, gun, spin }`. */
     balls: () => balls.filter((b) => b.shown).map((b) => ({ pos: b.pos, gun: b.gun, spin: b.spin + (clock - b.born) * 12 })),
     /** What floats, for the draw: `{ kind, pos, phase }`. */
-    floaters: () => floaters.map((f) => ({ kind: f.kind, pos: f.pos, id: f.id, phase: f.phase, lot: f.lot, from: f.from, owner: f.owner ?? null })),
+    floaters: () => floaters.map((f) => ({ kind: f.kind, pos: f.pos, id: f.id, phase: f.phase, lot: f.lot, from: f.from, owner: f.owner ?? null, deep: !!f.deep })),   // CAPT-WATERS: a deep ship's cask
     /** AUDIT NAV1 (online #15): one floater itself, by id (its place and owner the host's to set), or null. */
     floater: (id) => floaters.find((f) => f.id === id) ?? null,
     /** AUDIT NAV1 (online #15): a floater gone without a word - hauled in by another, sunk in another's sea. */

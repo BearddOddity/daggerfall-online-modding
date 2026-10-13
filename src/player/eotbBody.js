@@ -47,11 +47,12 @@ import { modSettingIfDeclared, modSettingsOf, modSettingsGeneration } from '../s
 import {
   chooseTable, deathTable, ORIENTATIONS, orientationFor, facingFor, boatForwardOf, frameTime, speedMod, frameCount, isFootstepFrame,
   stateFor, STATE_TABLES, STRING, meleeAnimTickTime, RANGED_TICK, SPELL_TICK, LYCAN_TICK, DEATH_TICK,
-  usesPingPong, pingPongFrames, forwardFrames, holdDrawFrames, pingPongTickFrames, mirrorFlips, mirrorRevertTime,
-  DELAYED_FRAMES, ORIENTATION_TIME, signedAngleY, tableMoveSpeed,
+  meleeStrokeFrames, forwardFrames, holdDrawFrames, mirrorFlips, mirrorRevertTime,
+  DELAYED_FRAMES, ORIENTATION_TIME, signedAngleY, tableMoveSpeed, portrayedYaw,
 } from './eotbBillboard.js';
-import { spriteFor, eotbSpriteUrl, spriteCount, spriteSize, spriteOffset, flipRows, worldOrderColors } from './eotbSprite.js';
+import { spriteFor, eotbSpriteUrl, spriteCount, spriteSize, spriteOffset, flipRows, worldOrderColors, lookedPixels } from './eotbSprite.js';
 import { decodePng } from '../systems/textureReplacement.js';   // EOTB-FLIP: the one PNG decoder the world's other PNG billboards take
+import { horseLookCode, horseLookOfCode, lookSuffix } from '../systems/horseCoats.js';   // COATS1: the ridden horse's look
 import { getMeleeWeaponAnimTime } from '../characters/weaponStates.js';   // [IL] GetMeleeAnimTickTime reads FormulaHelper's own
 import { setPlayerTorchOffsetOverride, setPlayerWaistLightOverride } from '../systems/playerTorch.js';   // [IL] TorchOffset writes PlayerTorch's position; HT-WAIST: and the lantern at the waist lights from where it hangs
 import {
@@ -69,6 +70,8 @@ const FP_DEPTH = -0.25;
 /** [IL] The head the first-person camera point sits at (IL_3e13): 0.9
  *  up from the parent, the standing capsule's half height. */
 const FP_HEAD = 0.9;
+/** AUDIT COATS3D A6: the mounted sprites fetched in a new look a frame (a dye each, some milliseconds). */
+export const HORSE_PRELOAD_A_FRAME = 3;
 /** [IL] `UpdateMaterial`'s three tints (IL_4f1e, IL_4f5f, IL_4f9f):
  *  invisible white at 0.4, a shade BLACK at 0.6, blending white at 0.8.
  *  The renderer's billboard shader draws them through `uConceal`:
@@ -81,6 +84,8 @@ export const MATERIAL = Object.freeze({
 /** [IL] `PlayFootstep`'s volume factor (IL_58cd-IL_58e1): the third-person
  *  billboard plays its step at TWICE `FootstepVolumeScale`, the
  *  first-person one at once. */
+/** ARENA-FIX 14: feet carried further than this in one frame (horizontally, metres) were placed, not walked. */
+export const PLACE_JUMP_M = 8;
 export const FOOTSTEP_VOLUME_SCALE = Object.freeze({ thirdPerson: 2, firstPerson: 1 });
 
 // ═══ HT-WAIST: THE LANTERN AT THE WAIST, ON THE SPRITE ═════════════
@@ -122,7 +127,6 @@ function look() {
     turnToView: s['Graphics.TurnToView'] ?? 2,
     attackStrings: s['Graphics.AttackStrings'] ?? 3,
     mirrorTime: s['Graphics.MirrorTime'] ?? 3,
-    pingPongOffset: s['Graphics.PingPongOffset'] ?? 1,
     visibility: s['Graphics.FirstPersonBillboard'] ?? 1,       // [IL] `visibility`: 0 none, 1 "Shadows Only", 2 visible
     torchOffset: s['Graphics.TorchOffset'] ?? 1,                // [IL] `torchOffset`: 0 vanilla, 1 billboard, 2 selfie
     syncFootsteps: s['Animation.SyncFootsteps'] !== false,
@@ -153,6 +157,7 @@ export function bodyState(s = {}) {
     died: !!s.died,
     transformed: !!s.transformed,
     lycanthropyType: s.lycanthropyType ?? 0,
+    horseLook: horseLookCode(horseLookOfCode(s.horseLook ?? 0)),   // COATS1: the ridden horse's look (systems/horseCoats.js, its code) - the mounted tables wear it
     riding,
     stopped,
     sheathed: s.sheathed ?? !s.weaponReady,
@@ -194,7 +199,7 @@ export function bodyState(s = {}) {
 export async function decodeSprite(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${url}: ${res.status}`);
-  return worldOrderColors(await decodePng(new Uint8Array(await res.arrayBuffer())));
+  return worldOrderColors(await decodePng(new Uint8Array(await res.arrayBuffer())), { owned: true });   // PERF-PEERS5: the decode is this door's alone - turned in its own bytes
 }
 
 const norm2 = (v) => { const l = Math.hypot(v[0], v[2]); return l > 0 ? [v[0] / l, 0, v[2] / l] : [0, 0, 0]; };
@@ -230,6 +235,18 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
   let stateCurrent = 'Idle';
   let stateLast = null;
   let lastOrientation = 0;
+  /** SPRITE-FLICKER (2026-10-07, Mac: "it's very finicky when moving and then switching to run at angles. Like it
+   *  flickers like it doesn't know which direction it wants to face"): the orientation UpdateOrientation last CHOSE.
+   *  `lastOrientation` is the one that has LANDED - UpdateBillboard writes it, three frames after the choice - and the
+   *  mod hands that to every repaint the walk clock, a table change and the mirror revert queue. One queued inside
+   *  those three frames lands AFTER the turn and paints the old view back: the walk clock's, the new view for a frame
+   *  and the old one until the next tenth-of-a-second check (a run halves the walk's frame, speedMod, so a strafe met
+   *  it 41 times in 120 at a 60 fps run, measured, against 17 at a walk); the table change's (a start at an angle) and
+   *  the revert's, landing in the turn's own frame, the turn held back that tenth. Those three queue THIS - the view
+   *  the next one to land should show. A departure from the assembly, recorded in the Ledger; the clips keep the IL's
+   *  `lastOrientation` (they paint at once, so the view they paint never undoes a later choice). */
+  let orientationChosen = 0;
+  let forceOrient = false;      // HORSE-FACE: a placing's repaint, owed to the next UpdateOrientation - never an orientation of its own
   let lastMoveDirection = null;
   let currentAngle = 0;
   let orientationTimer = 0;
@@ -238,7 +255,7 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
   let died = false;
   let mirrorCount = 0;
   let mirrorTimer = 0;
-  let pingpongCount = 0;
+  let strokeCount = 0;          // ONE-STROKE: the body's own blow count, for a rig that names none (swingN)
   let footstepAlt = false;
   let hasPlayedFootstep = false;
   let wasGrounded = false;
@@ -256,7 +273,9 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
   const decoded = new Map();    // key -> the decoded pixels, so a mirrored twin needs no second fetch
   let batch = null;
   let batchRec = null;
-  let batchSize = null;
+  let batchSize = null, batchPx = 0;   // AUDIT 3 (SERAPH-WINGS): and the frame's own pixels tall - the figure's metres a pixel
+  let figure = null;   // SERAPH-WINGS: the frame last drawn, as an aura reads it - its base over the feet (m), its metres a pixel and its form (AUDIT 3)
+  let facingDrawn = null;   // SPRITE-FACE: the frame last drawn's facing, as an aura reads it - { yaw, turn } (facing(), below)
   /** The one sprite that decides whether this lane may open at all. See `ready()`. */
   let firstUp = false;
 
@@ -272,6 +291,19 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
   /** HT-WAIST-BACK: is it DRAWN this frame - it hangs, and the sprite is painted from behind (eotbLantern.js
    *  isRearView: orientation 4). */
   const lanternShown = () => lanternHangs() && isRearView(shown?.orientation);
+  /** SPRITE-FACE (2026-10-05, Mac: "The sprite rotation on character input is a little finicky and make the aura
+   *  misallign"): THE FACING THE BODY TURNS BY, as a yaw (forward (sin, cos)) - its walk's facing (UpdateOrientation's
+   *  `lastMoveDirection`), or null with none (Vector3.zero, before a first walk or placing). Not where an aura is HUNG -
+   *  that is the picture's facing (facing().yaw): this one turns smoothly where the picture snaps a bucket at a time,
+   *  and ahead of it by the delayed repaint; it is what the aura's swing reads, so the hem and the wing tips answer the
+   *  body's turning, never a picture's change. With none, the body turns as its picture faces (facing()'s `?? seen`):
+   *  SignedAngle reads the camera's own line and the sprite shows the eye its FRONT (ARENA-FIX 14), so it faces the eye
+   *  (WINGS-FIT) - which is the picture's own facing, so no second reading of the eye is kept here (the AUDIT's mutation
+   *  run: one could never differ from the other). */
+  function turnYaw() {
+    const f = lastMoveDirection;
+    return f && Math.hypot(f[0], f[2]) > 1e-6 ? Math.atan2(f[0], f[2]) : null;
+  }
   /** The frame the sprite faces: its walk's facing (UpdateOrientation's `lastMoveDirection`), else the yaw. */
   function facingBasis() {
     const f = lastMoveDirection && (lastMoveDirection[0] || lastMoveDirection[2]) ? lastMoveDirection : cam.forward;
@@ -345,8 +377,9 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
     if (!urlFor(s.key)) { tex.set(cacheKey(s), null); return null; }
     const p = (async () => {
       const img = await pixels(s.key);
+      if (tex.get(cacheKey(s)) !== p) return null;   // COATS1: let go while in flight (a look left behind) - never uploaded
       if (!img) throw new Error(`${s.key}: no art`);
-      const { width, height, colors } = img;
+      const { width, height, colors } = lookedPixels(s, img);   // COATS1: the mount's look, dyed first
       // the MIRROR is applied here, on the way to the upload, because
       // the renderer's billboard batch has no flip - a mirrored sprite
       // is its own pixels under its own key (`s.rec`, EOTB5)
@@ -355,8 +388,8 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
       return { w: width, h: height };
     })();
     tex.set(cacheKey(s), p);
-    p.then((r) => { tex.set(cacheKey(s), r); firstUp = true; },
-      () => { tex.set(cacheKey(s), null); });
+    p.then((r) => { if (tex.get(cacheKey(s)) !== p) return; tex.set(cacheKey(s), r); firstUp = true; },
+      () => { if (tex.get(cacheKey(s)) === p) tex.set(cacheKey(s), null); });
     return null;
   }
   /** PR-WW1 (2026-09-24, player report: "Werewolf morrowind sprite not
@@ -366,9 +399,41 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
    *  spriteFor here asked for the werewolf, and a wereboar saw the wolf
    *  on themselves while the others (net/peerRiders.js, off the pose's
    *  `wb`) draw the boar. The look is the settings plus the live form. */
-  const lookNow = () => ({ ...cfg, lycanthropyType: last.lycanthropyType });
+  const lookNow = () => ({ ...cfg, lycanthropyType: last.lycanthropyType, horse: last.horseLook ?? 0 });   // COATS1: and the horse's look, off the rig's record
   /** PR-WW1: the form the lycan tables were last fetched for */
   let preloadedForm = null;
+  /** COATS1: the look the mounted tables were last fetched in */
+  let preloadedLook = 0;
+  /** AUDIT COATS3D A6: the mounted tables' sprites still to fetch in the look - HORSE_PRELOAD_A_FRAME a frame (each a
+   *  dye of some milliseconds; all 136 in one task were a third of a second's frame). The sprite drawn is asked for
+   *  where it is drawn, whatever the queue. */
+  let horseQueue = [];
+  /** COATS1: a look chosen fetches its mounted tables whole, as a set chosen does - and lets the last look's dyed
+   *  pictures go (EVERY ALLOCATION HAS AN OWNER: a Stable's every press is a look). The bay as drawn is the art's. */
+  function preloadHorse() {
+    const lk = lookNow();
+    const was = preloadedLook;
+    preloadedLook = lk.horse;
+    if (was && was !== lk.horse) {
+      const tail = lookSuffix(was);
+      for (const [k] of [...tex]) {
+        if (!k.endsWith(tail)) continue;
+        tex.delete(k);
+        renderer?.evictTexture?.(k.replace(':', '_'));   // the cache's `archive:rec` is the renderer's `archive_rec`
+      }
+    }
+    horseQueue = [];
+    for (const table of Object.keys(STATE_TABLES)) {
+      if (!table.endsWith('Horse')) continue;
+      for (let f = 0; f < frameCount(table); f++) for (let o = 0; o < ORIENTATIONS; o++) horseQueue.push([table, o, f]);
+    }
+  }
+  /** AUDIT COATS3D A6: a frame's share of the mounted tables' fetch, in the look worn now. */
+  function stepHorseQueue() {
+    if (!horseQueue.length) return;
+    const lk = lookNow();
+    for (const [table, o, f] of horseQueue.splice(0, HORSE_PRELOAD_A_FRAME)) ensure(spriteFor(table, o, f, lk));
+  }
   /** [IL] `InitializeTextures`: every frame of every table of the
    *  archives the settings pick, fetched up front - the mod's whole
    *  load, spread over the seconds a browser needs. PR-WW1: the lycan
@@ -377,6 +442,7 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
   function preload(onlyLycan = false) {
     const lk = lookNow();
     preloadedForm = lk.lycanthropyType;
+    if (!onlyLycan) preloadedLook = lk.horse;
     for (const table of Object.keys(STATE_TABLES)) {
       if (onlyLycan && !table.endsWith('Lycan')) continue;
       for (let f = 0; f < frameCount(table); f++) {
@@ -419,9 +485,8 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
   }
 
   // ── the one-shots ─────────────────────────────────────────────────
-  /** [IL] The three coroutines, one record: `PlayAnimationCoroutine`
-   *  (frames forward, `freeze` skips the closing UpdateOrientation),
-   *  `PlayAnimationPingPongCoroutine` (the order pre-computed), and
+  /** [IL] The coroutines, one record: `PlayAnimationCoroutine`
+   *  (frames forward, `freeze` skips the closing UpdateOrientation) and
    *  `PlayAnimationHoldCoroutine` (draw down to 0, hold while the swing
    *  is held, release forward). StartCoroutine runs the body to its
    *  first yield at once, so the first frame paints in the same
@@ -450,16 +515,13 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
     const c = isAnimating;
     // IL_5d77-IL_5dd9 (PlayAnimationCoroutine): under Mirror or Mixed a
     // melee clip bumps the mirror count and resets its clock, ANY other
-    // clip - the loose, the cast, the death - zeroes the count; under
-    // Mixed every clip bumps the ping-pong count. The ping-pong
-    // coroutine (IL_5f23-IL_5f35) bumps that count alone; the hold
-    // coroutine (IL_614d-IL_615c) keeps no counts at all.
-    if (c.kind === 'forward') {
-      if (cfg.attackStrings === STRING.Mirror || cfg.attackStrings === STRING.Mixed) {
-        if (c.table === 'AttackMelee' || c.table === 'AttackMeleeLycan') { mirrorTimer = 0; mirrorCount++; } else mirrorCount = 0;
-      }
-      if (cfg.attackStrings === STRING.Mixed) pingpongCount++;
-    } else if (c.kind === 'pingpong' && cfg.attackStrings === STRING.Mixed) pingpongCount++;
+    // clip - the loose, the cast, the death - zeroes the count; the hold
+    // coroutine (IL_614d-IL_615c) keeps no counts at all. ONE-STROKE: the
+    // ping-pong count went with the ping-pong (eotbBillboard.js
+    // meleeStrokeFrames).
+    if (c.kind === 'forward' && (cfg.attackStrings === STRING.Mirror || cfg.attackStrings === STRING.Mixed)) {
+      if (c.table === 'AttackMelee' || c.table === 'AttackMeleeLycan') { mirrorTimer = 0; mirrorCount++; } else mirrorCount = 0;
+    }
     isAnimating = null;
     if (!c.freeze) updateOrientation(true);
   }
@@ -476,8 +538,10 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
     endClip();
   }
   /** [IL] `PlayMeleeAttackAnimation` (IL_5050-IL_514e): never in the
-   *  saddle, never over a clip; PingPong by `usesPingPong`; the tick is
-   *  the weapon's own.
+   *  saddle, never over a clip; the tick is the weapon's own. ONE-STROKE:
+   *  the blow's own stroke (`meleeStrokeFrames` - the rig's blow count, or
+   *  the body's own where the rig names none), over the weapon's whole
+   *  animation; the IL's ping-pong arm is retired.
    *
    *  AUDIT DISC28 AR-2: THE WEAPON'S OWN, overrides and all. [IL]
    *  `GetMeleeAnimTickTime` (IL_545c-IL_548e) hands FormulaHelper
@@ -492,10 +556,8 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
     if (last.riding || isAnimating) return null;
     const n = frameCount('AttackMelee');
     const animTime = getMeleeWeaponAnimTime(last.liveSpeed, last.animCtx);
-    if (usesPingPong(cfg.attackStrings, pingpongCount)) {
-      return startClip('AttackMelee', pingPongFrames(n, cfg.pingPongOffset), meleeAnimTickTime(animTime, pingPongTickFrames(n, cfg.pingPongOffset)), { kind: 'pingpong' });
-    }
-    return startClip('AttackMelee', forwardFrames(n), meleeAnimTickTime(animTime, n));
+    const frames = meleeStrokeFrames(n, Number.isInteger(last.swingN) ? last.swingN : strokeCount++);
+    return startClip('AttackMelee', frames, meleeAnimTickTime(animTime, frames.length));
   }
   function playRangedAttack() {
     if (last.riding || isAnimating) return null;
@@ -523,6 +585,18 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
     return startClip(table, forwardFrames(frameCount(table)), DEATH_TICK, { freeze: true });
   }
 
+  /** ARENA-FIX 14: the facing a placing writes (the object's `faceYaw`, below).
+   *  HORSE-FACE (FIELD BUGS 2026-10-04e, "When on the horse in the overworld, the sprite doesnt face the direction of
+   *  travel"): it asks the next UpdateOrientation for a repaint (`forceOrient`). It wrote -1 into `lastOrientation`
+   *  for that, and every repaint the walk loop queued in the meantime painted -1 - which stateFor wraps to 7, one
+   *  fixed front-three-quarter view whatever the heading. A gallop under the Overworld's time scale passes
+   *  PLACE_JUMP_M in a frame, so it was placed every frame and the walk loop's sixteen repaints a second won. */
+  function faceYaw(yaw) {
+    if (!Number.isFinite(yaw)) return;
+    lastMoveDirection = [Math.sin(yaw), 0, Math.cos(yaw)];
+    forceOrient = true;
+  }
+
   // ── UpdateOrientation ─────────────────────────────────────────────
   /** [IL] IL_4520-IL_48bd. The tenth-of-a-second gate first (it gates the
    *  forced calls too); the player-to-camera vector; the facing; the
@@ -548,7 +622,8 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
     lastMoveDirection = facing;
     currentAngle = signedAngleY(toCamera, facing);
     const o = orientationFor(facing, toCamera);
-    if (o !== lastOrientation || force || !shown) updateBillboardDelayed(frameCurrent, o, stateCurrent);
+    orientationChosen = o;   // SPRITE-FLICKER
+    if (o !== lastOrientation || force || forceOrient || !shown) { forceOrient = false; updateBillboardDelayed(frameCurrent, o, stateCurrent); }
     // [IL] TorchOffset (IL_47df-IL_48bd), third person only: Selfie (2)
     // parks PlayerTorch half way from the head to the camera; Billboard
     // (1) puts it 0.45 up the sprite and half a metre along the facing.
@@ -616,12 +691,12 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
       if (frameTimer > frameTime(last.riding, cfg.walkAnimSpeedMod) * mod) {
         if (frameCurrent < n - 1) frameCurrent++; else frameCurrent = 0;
         if (frameCurrent > n - 1) frameCurrent = 0;
-        updateBillboardDelayed(frameCurrent, lastOrientation, stateCurrent);
+        updateBillboardDelayed(frameCurrent, orientationChosen, stateCurrent);   // SPRITE-FLICKER: the IL's lastOrientation
         frameTimer = 0;
       } else frameTimer += dt;
     }
     stateCurrent = chooseTable({ ...last, readyStance: cfg.readyStance });
-    if (stateLast !== stateCurrent || (animating && !isAnimating)) updateBillboardDelayed(frameCurrent, lastOrientation, stateCurrent);
+    if (stateLast !== stateCurrent || (animating && !isAnimating)) updateBillboardDelayed(frameCurrent, orientationChosen, stateCurrent);   // SPRITE-FLICKER
     if (isAnimating && !animating) animating = true;
     else if (!isAnimating && animating) animating = false;
     stateLast = stateCurrent;
@@ -637,7 +712,7 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
       if (mirrorCount > 0 && !isAnimating && t > 0) {
         if (mirrorTimer > t) {
           mirrorCount = 0; mirrorTimer = 0;
-          updateBillboardDelayed(frameCurrent, lastOrientation, stateCurrent);
+          updateBillboardDelayed(frameCurrent, orientationChosen, stateCurrent);   // SPRITE-FLICKER
           return;
         }
         mirrorTimer += dt;
@@ -707,13 +782,13 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
 
   /** [IL] `Initialize` (IL_3b10-IL_3c8c), ToggleBillboard's call: the
    *  settings taken, `died` cleared, a clip in flight stopped, the
-   *  Mirror and PingPong counts zeroed, the table the last one or Idle,
+   *  Mirror count zeroed (ONE-STROKE: the PingPong count is retired), the table the last one or Idle,
    *  the vanilla stride disabled or restored, one forced orientation. */
   function initialize() {
     cfg = look();
     died = false;
     isAnimating = null;
-    mirrorCount = 0; mirrorTimer = 0; pingpongCount = 0;
+    mirrorCount = 0; mirrorTimer = 0;
     stateCurrent = stateLast ?? 'Idle';
     vanillaDisabled = cfg.syncFootsteps;
     updateOrientation(true);
@@ -762,6 +837,24 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
 
   return {
     /**
+     * ARENA-FIX 14 (2026-10-02, the port's own): THE BODY TURNED WITH A PLACING (`tick` sees one: PLACE_JUMP_M). The mod's sprite faces its last walk
+     * (UpdateOrientation's `lastMoveDirection`, a field that only a walk writes) - and a body PLACED with a facing (a
+     * fighter stood on its mark in the arena's instance, a probe's pose) had walked nowhere: it kept the old walk's
+     * facing, or none (Vector3.zero, which SignedAngle reads as the camera's own line - the sprite's FRONT to the
+     * camera), so the player's own sprite stood facing the lens at the head of every bout. A placing writes the facing
+     * it places with, as the walk it stands for would; the next orientation pass repaints it. `yaw` the facing's.
+     */
+    /** SERAPH-WINGS (2026-10-05): THE FIGURE LAST DRAWN - { base, h }, the quad's foot and its height over the feet (m),
+     *  this frame's; null when nothing was drawn or in the saddle. What an aura on the back reads for the bones a sprite
+     *  has not got (render/auraRing.js auraSpriteBones). */
+    figure() { return figure; },
+    /** SPRITE-FACE (2026-10-05): THE WAY THE FRAME LAST DRAWN FACES - { yaw, turn }: `yaw` the facing its picture shows
+     *  (the shown orientation about the eye it was drawn for - eotbBillboard.js portrayedYaw), `turn` the facing the body
+     *  turns by (its walk's); this frame's, in the saddle too; null when nothing was drawn or in first person. An aura on
+     *  the sprite is hung on `yaw` and swings by `turn` (render/auraRing.js auraCapeStep, auraMotionStep). */
+    facing() { return facingDrawn; },
+    faceYaw,
+    /**
      * Called by `combat/weaponRig.js` beside `fpArm.attach`.
      *
      * `playerState` is the per-frame answer only the rig can give -
@@ -786,7 +879,7 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
       if (renderer) {
         preload();
         setEotbBodyReady(() => this.ready());
-        setEotbDrawBody((canvas, f) => this.draw(canvas, f));
+        setEotbDrawBody((canvas, f) => this.draw(canvas, f), () => this.figure(), () => this.facing());   // SERAPH-WINGS: and the figure it drew; SPRITE-FACE: and the way it faces
         setEotbPlayerState(playerState);
       }
       eotbCamera.setBillboard(this);
@@ -812,6 +905,11 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
     /** HT-WAIST: another body has the frame (mwView's Morrowind lane) - the sprite's lantern, its batch and the
      *  light point it wrote, stand down, so the Morrowind body's hip is lit from its own hook. */
     standDown() { dropLantern(); },
+    /** HORSE-FACE: the floating origin moved the world under the feet - they move with it, so the shift is no placing. */
+    rebase(delta) {
+      if (!delta || !cam.feet) return;
+      cam.feet = [cam.feet[0] + delta[0], cam.feet[1] + delta[1], cam.feet[2] + delta[2]];
+    },
 
     /**
      * EOTB4's gate. The lane may open when the mod is on, the build
@@ -840,11 +938,19 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
     tick(dt, state = {}) {
       last = bodyState(state);
       if (renderer && last.lycanthropyType !== preloadedForm) preload(true);   // PR-WW1: a curse caught (or changed) fetches its own beast
+      if (renderer && last.horseLook !== preloadedLook) preloadHorse();   // COATS1: a look chosen fetches its mounted tables whole, as a set chosen does
+      stepHorseQueue();   // AUDIT COATS3D A6: a few a frame
       fell = false;
+      const was = cam.feet;
       if (state.feet) cam.feet = state.feet;
       if (state.cameraPos) cam.pos = state.cameraPos;
       if (Number.isFinite(state.yaw)) { cam.yaw = state.yaw; cam.forward = [Math.sin(state.yaw), 0, Math.cos(state.yaw)]; }
       if (state.cameraForward) cam.forward = state.cameraForward;
+      // ARENA-FIX 14: a PLACING (feet carried further in one frame than any walk, fall or ride goes - a door, a warp, a
+      // fighter stood on its mark in the arena's instance) faces the body the way the view was placed facing.
+      // HORSE-FACE: never while the body is moving under its own input - the Overworld's time scale carries a walk or a
+      // ride further than that in a frame, and the facing is the move's (UpdateOrientation's moveDir)
+      if (state.feet && was && !(last.forward || last.strafe) && Math.hypot(state.feet[0] - was[0], state.feet[2] - was[2]) > PLACE_JUMP_M) faceYaw(Math.atan2(cam.forward[0], cam.forward[2]));
       // the first-person billboard stands ON the camera point (IL_3e48-IL_3e6d):
       // the parent's head, so the orientation reads 0 through the zero vector
       if (FP) cam.pos = [cam.feet[0], cam.feet[1] + FP_HEAD, cam.feet[2]];
@@ -859,6 +965,7 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
 
     draw(canvas, { eye, feet, yaw, face: faceNow = null } = {}) {
       face = faceNow && Number.isFinite(faceNow.yaw) ? faceNow : null;
+      figure = null; facingDrawn = null;
       if (!renderer || !activeFlag || !shown) return false;
       if (!cfg.graphic) { dropLantern(); return false; }   // HT-WAIST: no body drawn, no lantern on it
       if (feet) cam.feet = feet;
@@ -886,18 +993,33 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
           batch.noShadow = grow > 1;   // AUDIT OW5 R2: OW-BIG's giant casts NOTHING - selfCard off was never that (render/shadowPass.js: it only keeps the card out of the lamps' maps when it is not the player's own; the sun's cascades drew the tenfold card, a fifty-metre shadow at a low sun, and the lamps' maps baked it)
           batchRec = key;
         }
-        batchSize = size;
+        batchSize = size; batchPx = up.h;
       }
       if (!batch) return false;                 // nothing up yet: the last sprite stays until one is
       const c = place();
       if (!c) return false;
       batch.origin[0] = c[0]; batch.origin[1] = c[1]; batch.origin[2] = c[2];
+      figure = last.riding || FP ? null : { base: c[1] - cam.feet[1], mpp: batchPx > 0 ? batchSize.h * grow / batchPx : 0, beast: !!last.transformed };   // SERAPH-WINGS: a rider's frame is the horse's too - no shoulders read off it; AUDIT 3: nor the first-person billboard's (the camera is in it), and its metres a pixel (the shoulders by the pixel - auraSpriteBones) and its form
+      // SPRITE-FACE: AND THE WAY THIS FRAME FACES - the picture's (portrayedYaw: the shown orientation about this frame's
+      // eye, the repaint that has LANDED), which the wings and the cloak hang on; and the body's own turning (turnYaw),
+      // which their swing reads. In the saddle too (the horse's picture faces as the rider's does); none in first person
+      const seen = FP ? null : portrayedYaw(shown.orientation, [cam.pos[0] - cam.feet[0], 0, cam.pos[2] - cam.feet[2]]);
+      facingDrawn = seen === null ? null : { yaw: seen, turn: turnYaw() ?? seen };
       batch.conceal = material();
       // AUDIT DEEP R-2: under the travel view the quad turns to the VIEW's eye (and leans with the flats) - on the
       // traveller's own heading it went edge-on as the view orbited, a sliver at 90 degrees, mirrored at 180
       const by = face ? face.yaw : cam.yaw;
       const camRight = [Math.cos(by), 0, -Math.sin(by)];
-      renderer.drawBillboards([batch], camRight, face?.up ?? [0, 1, 0]);
+      // FP-SHADOW1 (2026-10-10, Mac: "when i look up i see my eye of the beholder skin"): THE FIRST-PERSON BILLBOARD'S
+      // VISIBILITY, which was read and never applied. The mod's FirstPersonBillboard is its renderer's
+      // shadowCastingMode: 2 the body drawn (a quarter metre behind the eye, so looking down shows it), 1 - the default,
+      // "Shadows Only" - a body that casts and is never seen, 0 none at all. The port drew all three: the quad stood
+      // behind the head, taller than the eye, and every look upward showed its top. Shadows Only now goes to the shadow
+      // maps alone (renderer.recordShadowBillboards - the same record the drawn body makes; no maps, no shadow, as a
+      // ShadowsOnly renderer under no light), and None to nothing. Third person is untouched.
+      const bbUp = face?.up ?? [0, 1, 0];
+      if (!FP || cfg.visibility === 2) renderer.drawBillboards([batch], camRight, bbUp);
+      else if (cfg.visibility === 1) renderer.recordShadowBillboards?.([batch], camRight, bbUp);
       if (grow === 1) drawLantern();   // HT-WAIST: the lantern at the waist, its own billboard, after the body - OW-BIG: a grown body's waist is not where the lantern hangs
       return true;
     },
@@ -924,7 +1046,7 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
       active: activeFlag, FP, table: stateCurrent, orientation: lastOrientation, frame: frameCurrent, ready: firstUp, cached: tex.size,
       shown: shown ? { ...shown } : null, pending: pending.map((p) => ({ ...p })),
       clip: isAnimating ? { table: isAnimating.table, frames: [...isAnimating.frames], i: isAnimating.i, kind: isAnimating.kind, phase: isAnimating.phase, interval: isAnimating.interval, freeze: isAnimating.freeze } : null,
-      mirrorCount, mirrorTimer, pingpongCount, died, animating, currentAngle, orientationTimer,
+      mirrorCount, mirrorTimer, strokeCount, died, animating, currentAngle, orientationTimer, orientationChosen,   // SPRITE-FLICKER
       lastMoveDirection: lastMoveDirection ? [...lastMoveDirection] : null, last: { ...last }, hasPlayedFootstep, footstepAlt, wasGrounded,
       material: material(), placed: place(),
       lantern: { hangs: lanternHangs(), shown: lanternShown(), swing: { fore: lantern.swing.fore, side: lantern.swing.side }, batch: !!lantern.batch },   // HT-WAIST; HT-WAIST-BACK: hangs, and drawn

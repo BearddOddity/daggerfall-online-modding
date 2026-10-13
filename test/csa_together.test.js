@@ -9,6 +9,7 @@
 import { test } from 'node:test';
 import { HELM_RUDDER_ACTIONS } from '../src/systems/inputActions.js';
 import assert from 'node:assert/strict';
+import { quietFoesGate } from '../src/net/foesQuiet.js';   // SCALE2c
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createComeSailAwayPool } from '../src/scenes/comeSailAwayPool.js';
@@ -155,6 +156,25 @@ test('CSA-K: each boat\'s frame keeps the pose before it - moveOf: none the fram
   const fresh = peers.boatAt('bob', 0);
   assert.ok(fresh);
   assert.equal(peers.moveOf(fresh), null, 'built this frame: no pose before it');
+});
+
+test('FIELD BUGS 2026-10-09 #7: a word that drops a boat (or changes its hull) before the frame realigns it - poseAhead answers null for the place it no longer names, never "reading \'velocity\' of undefined"', async () => {
+  const pool = await readyPool();
+  const peers = createComeSailAwayPeers({ pool, selfId: () => 'me' });
+  peers.applyOwner('ann', { b: [word({ hull: 0 }), word({ x: 10 })], m: [[0, 0, 0], [5, 0, 0]] }, (p) => p, 0);
+  peers.frame(0.1); peers.frame(0.1);
+  const second = peers.boatAt('ann', 1);
+  assert.ok(second && peers.poseAhead(second, 0.1), 'stood and led');
+  // her word now names one boat: the second place still stands until the next frame's realign
+  peers.applyOwner('ann', { b: [word({ hull: 0 })] }, (p) => p, 100);
+  assert.equal(peers.boatAt('ann', 1), second, 'still standing, unmatched');
+  assert.equal(peers.poseAhead(second, 0.1), null, 'no place in her word: no pose ahead');
+  // her word names the first place for another hull
+  const first = peers.boatAt('ann', 0);
+  peers.applyOwner('ann', { b: [word({ hull: 1 })] }, (p) => p, 200);
+  assert.equal(peers.poseAhead(first, 0.1), null, 'another hull: no pose ahead');
+  peers.frame(0.1);
+  assert.equal(peers.boatAt('ann', 1), null, 'the frame matched her word');
 });
 
 // ── aboard ─────────────────────────────────────────────────────────────────────
@@ -373,8 +393,9 @@ test('CSA-K: the host - another\'s boat stands in MY collider beside my boats, a
   const sync = cut(WORLD, 'function csaSyncColliders() {', '\n  }\n');
   // THE MERGE with NAV-H (2026-09-28): MY boats are csaColliderBoats() - mine, and the sea's ships near enough to board
   // and to ram (test/nav_h_host.test.js pins its body) - and every peer's boat joins them on the street, aboard it or not
-  // (FIELD BUGS 2026-10-01b: test/fb1001b_peerboats.test.js runs it)
-  assert.match(sync, /const peers = \(modes\?\.mode \?\? 'exterior'\) === 'exterior' \? csa\.peerBoats : \[\];[^\n]*\n\s+for \(const boat of peers\.length \? \[\.\.\.csaColliderBoats\(\), \.\.\.peers\] : csaColliderBoats\(\)\) \{/);
+  // (FIELD BUGS 2026-10-01b: test/fb1001b_peerboats.test.js runs it) - and below deck in a ship's cabin, where the street's
+  // collider keeps the whole fleet (CABIN-HULL, FIELD BUGS 2026-10-03b: test/fb1003b_cabinhull.test.js runs it)
+  assert.match(sync, /const peers = \(modes\?\.mode \?\? 'exterior'\) === 'exterior' \|\| modes\?\.sailingCabin \? csa\.peerBoats : \[\];[^\n]*\n\s+for \(const boat of peers\.length \? \[\.\.\.csaColliderBoats\(\), \.\.\.peers\] : csaColliderBoats\(\)\) \{/);
   const upd = cut(WORLD, 'function csaUpdate(dt) {', '\n  }\n');
   assert.match(upd, /csaSyncColliders\(\);\n\s+csaPeersFrame\(dt\);[^\n]*\n\s+if \(_csaMovedPlayer\) cam\.pos = player\.eyeAt\(\);/, 'after the colliders, before the eye');
   const peersFrame = cut(WORLD, 'function csaPeersFrame(dt) {', '\n  }\n');
@@ -394,8 +415,10 @@ test('CSA-K: the host - my place aboard rides my foes frame as `ab` (a changed w
   const scope = {
     online: { status: 'open', room: 'world:3,12', isHost: () => false, sendFoes: (f) => { sent.push(f); return true; } },
     isCellRoom: (r) => /^world:/.test(r), isWorldRoom: () => false, FOES_MS: 200, FOES_FULL_MS: 2000, _foesSentAt: -Infinity, _foesFullAt: -Infinity, modes: { mode: 'exterior' },
+    _foesQuiet: quietFoesGate(),   // SCALE2c (PIN MOVED): the host's memory of what its cell last heard - a full frame that says nothing, said once
     exteriorFoes: { foesFrame: (full, force) => (full || force ? { n: 1, k: 'world:3,12', full: full ? 1 : 0, f: [] } : null) },
     _hccDirty: false, camps: { wireRecords: () => [] }, hcc: { wireRecord: () => null }, duelRingWord: () => {}, campToWire: (p) => p,
+    portalWord: () => {},   // PORTAL1: no portal standing on this deck
     csaWord: () => false, csaOn: () => true, csaAboard: { word: () => aboardWord }, player: { pos: [0, 0, 0] }, _csaAboardKey: '',
     csaHelmWord: () => helmAt,   // FIELD BUGS 2026-09-29 (the sea) #1: my place at my own helm, when aboard nothing else
     raidWireWord: () => null,   // THE MERGE: RAID2's word rides the same line
@@ -471,7 +494,9 @@ test('CSA-K: the host - another\'s boat is pressed only where none of mine is un
   assert.match(board, /const deck = raycastColliders\(pick\.boat\.GameObject, o, \[0, -1, 0\], 3, \{ triggers: true, geometry: csaColliderMesh \}\);/, 'set down on THEIR deck within 3 m');
   assert.match(board, /if \(csaAboard\.board\(pick\.boat, CSA_ABOARD_GRACE\)\) csaSyncColliders\(\);/);
   const hover = cut(WORLD, 'const csaHoverName = (key) => {', '\n  };\n');
-  assert.match(hover, /if \(peer\) \{ const boat = csaPeers\.boatAt\(peer\[1\], Number\(peer\[2\]\)\); return boat \? \{ title: CSA_HULL_NAMES\[boat\.hull\] \?\? 'Boat', subs: \[ownedLine\(peerName\(peer\[1\]\)\)\] \} : null; \}/);
+  // PIN MOVED (HOLDINGS, bible/03-World/Holdings.md): the plaque names her by her captain's name where she has one (her hull's under
+  // it), else her hull's - and its owner, as ever
+  assert.match(hover, /const hullName = CSA_HULL_NAMES\[boat\.hull\] \?\? 'Boat', named = csaPeers\.nameAt\?\.\(peer\[1\], Number\(peer\[2\]\)\) \?\? '';[^\n]*\n\s*return \{ title: named \|\| hullName, subs: \[\.\.\.\(named \? \[hullName\] : \[\]\), ownedLine\(peerName\(peer\[1\]\)\)\] \};/);
   assert.match(WORLD, /const csaPassengersOn = \(boat\) => \{ const i = csaRuntime\?\.AllBoats\.filter\(\(b\) => b\.GameObject\?\.activeSelf\)\.indexOf\(boat\) \?\? -1; return i < 0 \|\| !online\?\.id \? 0 : csaAboard\.passengersOn\(online\.id, i\); \};/);
   assert.match(WORLD, /passengersAboard: csaPassengersOn,/, 'OWS2: named, the landfall\'s pack reads it too');
 });
@@ -514,9 +539,9 @@ test('CSA-L: the helm\'s buttons for the mod\'s state - the sails (their label t
   assert.deepEqual(acts(H({ manualTrim: true, hasSquare: true, squareOnly: true })), ['sails', 'trimLeft', 'trimRight', 'light', 'slower', 'normal', 'faster', 'position', 'leave'], 'a square rig alone trims with the bare brackets');
   const by = (h, act) => helmButtons(h).find((b) => b.act === act);
   assert.deepEqual([by(H(), 'sails').label, by(H({ sailsUp: true }), 'sails').label], ['Raise sails', 'Stow sails']);
-  // HELM-KEYS: the sails' button presses what the arrows do - more sail up, less sail down; with the square sails the
-  // player's own, the stow is the mod's own toggle (all her canvas, as it says)
-  assert.deepEqual([by(H(), 'sails').action, by(H({ sailsUp: true }), 'sails').action, by(H({ sailsUp: true, squareToggle: true }), 'sails').action], ['BoatSailUp', 'BoatSailDown', 'BoatToggleSail']);
+  // PIN MOVED (HELM-LADDER): the sails' button is the mod's own toggle, raising or striking all her canvas from any rung -
+  // the arrows climb her oars first now
+  assert.deepEqual([by(H(), 'sails').action, by(H({ sailsUp: true }), 'sails').action, by(H({ sailsUp: true, squareToggle: true }), 'sails').action], ['BoatToggleSail', 'BoatToggleSail', 'BoatToggleSail']);
   assert.deepEqual([by(H({ squareToggle: true }), 'square').label, by(H({ squareToggle: true, squareUp: true }), 'square').label], ['Raise square sails', 'Stow square sails']);
   assert.deepEqual([by(H(), 'light').label, by(H({ light: true }), 'light').label], ['Light lanterns', 'Douse lanterns']);
   assert.deepEqual(by(H({ squareToggle: true }), 'square'), { act: 'square', label: 'Raise square sails', kind: 'tap', action: 'BoatToggleSail', withHeld: 'BoatTrimModifier' }, 'End with the modifier held, as the key\'s chord');
@@ -539,14 +564,14 @@ test('CSA-L: the panel on a page - under the compass, titled with the hull, a ke
     assert.ok(root && root.id === ENHANCED_HELM_ID && doc.body.children.includes(root), 'mounted on the page');
     assert.equal(enhancedHelmBar(), one(root, 'helmpanel-bar'), 'THE MERGE with NAV-F: the bar standing, which the sea\'s target card stands under');
     assert.equal(one(root, 'helmpanel-name').textContent, 'At the helm - Large Boat');
-    assert.equal(one(root, 'helmpanel-hint').textContent, 'Sails UP DOWN · Steer LEFT RIGHT · Free the mouse (Y) to use these', 'HELM-KEYS: the helm\'s hand at a glance');
+    assert.equal(one(root, 'helmpanel-hint').textContent, 'Oars & sails UP DOWN · Steer LEFT RIGHT · Free the mouse (Y) to use these', 'HELM-KEYS: the helm\'s hand at a glance (HELM-LADDER: her oars and her sails on one ladder)');
     const btn = (act) => all(root, 'helmpanel-btn').find((b) => b.dataset.act === act);
-    assert.equal(one(btn('sails'), 'helmpanel-key').textContent, 'UP', 'the key it stands for (HELM-KEYS: more sail\'s)');
+    assert.equal(one(btn('sails'), 'helmpanel-key').textContent, 'End', 'the key it stands for (HELM-LADDER: the toggle\'s)');
     assert.equal(one(btn('leave'), 'helmpanel-key').textContent, "'");
     btn('sails').fire('click');
     btn('square').fire('click');
     btn('position').fire('click');
-    assert.deepEqual(pressed, [['BoatSailUp', null], ['BoatToggleSail', 'BoatTrimModifier'], ['position']]);
+    assert.deepEqual(pressed, [['BoatToggleSail', null], ['BoatToggleSail', 'BoatTrimModifier'], ['position']]);
     btn('trimRight').fire('pointerdown', { pointerId: 1 });
     assert.deepEqual(holds, [['BoatTrimRight', true]]);
     btn('trimRight').fire('pointerdown', { pointerId: 1 });
@@ -567,7 +592,7 @@ test('CSA-L: the panel on a page - under the compass, titled with the hull, a ke
     drawEnhancedHelm({ helm: H({ squareToggle: true, manualTrim: true, hasSquare: true, sailsUp: true }), keyOf, mouseFree: true }, hooks, { doc });
     assert.equal(root.style.display, '');
     assert.equal(one(btn('sails'), 'helmpanel-label').textContent, 'Stow sails', 'updated in place');
-    assert.equal(one(root, 'helmpanel-hint').textContent, 'Sails UP DOWN · Steer LEFT RIGHT', 'the mouse free: the legend alone');
+    assert.equal(one(root, 'helmpanel-hint').textContent, 'Oars & sails UP DOWN · Steer LEFT RIGHT', 'the mouse free: the legend alone');
     // a disabled button presses nothing
     btn('slower').fire('click');
     assert.equal(pressed.length, 3, 'nothing slower than one');
@@ -732,6 +757,6 @@ test('CSA-L: the host\'s helm seam - the panel\'s and the pad\'s presses reach t
   assert.match(WORLD, /csaDrawHelmPanel\(\);[^\n]*\n\s+spoilsRecoverFrame\(\);[^\n]*\n\s+if \(onlineOn && playerSpawned\) \{ if \(!online\) onlineStart\(\); onlineFrame\(now, dt\); \}/);
   const draw = cut(WORLD, 'function csaDrawHelmPanel() {', '\n  }\n');
   assert.match(draw, /if \(!csaRuntime \|\| !csaOn\(\) \|\| !isEnhancedPlus\(\) \|\| typeof document === 'undefined' \|\| !walkMode\) \{ if \(enhancedHelmMounted\(\)\) hideEnhancedHelm\(\); csaHelmInput\.held\.clear\(\); return; \}/);
-  assert.match(draw, /covered: townTalk\.hudCovered \|\| \(modes\?\.hudCovered \?\? false\) \|\| gamePaused\(\) \|\| !hudRenderEnabled\(\) \|\| !!travelView\?\.active,/);   // PIN MOVED (AUDIT NAV2 F17): and under the travel view, where a journey holds the helm
+  assert.match(draw, /covered: townTalk\.hudCovered \|\| \(modes\?\.hudCovered \?\? false\) \|\| gamePaused\(\) \|\| !hudRenderEnabled\(\) \|\| !!travelView\?\.active \|\| !!_travelUIHolder\.ui\?\.isShowing,/);   // PIN MOVED (AUDIT NAV2 F17): under overhead and first-person journey controls, where a journey holds the helm
   assert.match(WORLD, /up: \(\) => !!\(csaRuntime\?\.isSailing\(\) && csaOn\(\) && isEnhancedPlus\(\)\),\n\s+gesture: \(dir, kind\) => \{ let r = false; csaCall\(\(\) => \{ r = helmPadGesture\(dir, kind, csaRuntime\?\.helmPanelState\(\) \?\? null, \{ press: csaHelmPress, hold: csaHelmHold \}\); \}\); return r; \},/);
 });

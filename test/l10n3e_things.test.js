@@ -234,10 +234,11 @@ test('L10N3e things: the item maker\'s name label reads the shortName as shown (
 });
 
 test('L10N3e things: the use-magic-item list names each item by its own name as shown', () => {
+  // UMI-NAMES (main): a row is the item's long name (itemLongName), which reads the shown name (itemInfo.js)
   const rows = () => createUseMagicItemWindow({ items: [dagger({ enchantments: [{ type: 0, param: 14 }] })], isEnchanted: () => true }).items;
   const { en, fr } = inFrench({ Internal_Items: [['113', 'Poignard factice']] }, rows);
-  assert.deepEqual(en, ['Dagger']);
-  assert.deepEqual(fr, ['Poignard factice']);
+  assert.deepEqual(en, ['Steel Dagger']);
+  assert.deepEqual(fr, ['Steel Poignard factice']);
 });
 
 // ─── the spells ───────────────────────────────────────────────────────────────────────────────────────────────────

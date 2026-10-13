@@ -242,8 +242,8 @@
   {
     "name": "AUDIT-TV-B9-cancel-picks",
     "file": "src/scenes/travelView.js",
-    "old": " && state === 'up' && e.type !== 'pointercancel') {",
-    "new": " && state === 'up') {",
+    "old": " && p.button === 0 && state === 'up' && e.type !== 'pointercancel') {",
+    "new": " && p.button === 0 && state === 'up') {",
     "tests": [
       "test/tv1_travel_view.test.js"
     ],
@@ -382,8 +382,8 @@
   {
     "name": "AUDIT-DEEP-X1-a-video-keeps-the-view",
     "file": "src/scenes/world.js",
-    "old": " drawGateGround(null); travelView?.exit('video', true); return; }",
-    "new": " drawGateGround(null); return; }",
+    "old": " drawGateGround(null); travelView?.exit('video', true); if (spyglass.up) lowerGlass(); return; }",
+    "new": " drawGateGround(null); if (spyglass.up) lowerGlass(); return; }",
     "tests": [
       "test/tv1_travel_view.test.js"
     ],
@@ -552,8 +552,8 @@
   {
     "name": "AUDIT-DEEP-R7-leaned-tops-pop",
     "file": "src/render/bounds.js",
-    "old": "  out[3] = s[3] + (b.size?.h ?? 0) * _flatLean;",
-    "new": "  out[3] = s[3];",
+    "old": "  out[3] = batchReach(b) + (b.size?.h ?? 0) * _flatLean;",
+    "new": "  out[3] = batchReach(b);",
     "tests": [
       "test/tv1_travel_view.test.js"
     ],
@@ -732,8 +732,8 @@
   {
     "name": "AUDIT-DEEP2-A9-out-of-a-duel",
     "file": "src/scenes/world.js",
-    "old": "    danger: () => duelEnemyNear() || areEnemiesNearby(exteriorFoePool()),",
-    "new": "    danger: () => areEnemiesNearby(exteriorFoePool()),",
+    "old": "    danger: () => duelEnemyNear() || areEnemiesNearby(wildSeen(exteriorFoePool())),",
+    "new": "    danger: () => areEnemiesNearby(wildSeen(exteriorFoePool())),",
     "tests": [
       "test/tv1_travel_view.test.js"
     ],

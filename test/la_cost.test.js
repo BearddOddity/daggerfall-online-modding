@@ -21,7 +21,7 @@ import {
 import { BAYER_GLSL } from '../src/render/orderedDither.js';
 import { billboardKey, keyId, sortByKey } from '../src/render/billboardKey.js';
 import { AIR_CONTACT_GLSL, AIR_CONTACT_RANGE_FRACTION } from '../src/render/airPass.js';
-import { SHADOW_GLSL } from '../src/render/shadowPass.js';
+import { SHADOW_GLSL, SHADOW_POINT_CASTERS } from '../src/render/shadowPass.js';
 import { perspective, lookAt, mirrorProjectionX } from '../src/world/mat4.js';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -210,7 +210,7 @@ test('LA-COST1: THE SECOND CALL IN A FRAME SENDS ONLY ITS OWN - a billboard call
   const pairs = [
     // merged beside main's HITFLASH1 and WEAPON-MOUNT: a batch's hit flash is its own (uHitFlash), and a decal call
     // says whether it hangs a picture or lays a film (uPicture) - both the call's, beside the atlas
-    ['billboards', () => r.drawBillboards(bbs, R, UP), ['uRight', 'uUp', 'uFlatWind', 'uSpectral', 'uConceal', 'uHitFlash', 'uEliteGlow', 'uSize', 'uOrigin', 'uSway']],   // ELITE FOES: a batch's glow is its own too, as the flash is
+    ['billboards', () => r.drawBillboards(bbs, R, UP), ['uRight', 'uUp', 'uFlatWind', 'uWindfallSway', 'uWindfallAxis', 'uSpectral', 'uConceal', 'uHitFlash', 'uEliteGlow', 'uSize', 'uOrigin', 'uSway']],   // ELITE FOES: a batch's glow is its own too, as the flash is; WINDFALL1: Windfall's law is the call's, as the wind is
     ['decals', () => r.drawDecals(decal, { id: 'atlas' }), ['uPicture']],
     ['a character', () => r.drawCharacter(rig, I), ['uModel', 'uTex', 'uUseTex', 'uAlphaCut']],
   ];
@@ -233,7 +233,12 @@ test('LA-COST1: THE SECOND CALL IN A FRAME SENDS ONLY ITS OWN - a billboard call
   // ELITE FOES: and a batch's glow (uEliteGlow, one more on the billboards' every call)
   // DISSOLVE (the 2026-10-02 audit): and the burn, set whole (one more - a reset that sends nothing left the last burning
   // flat's share live under every flat after it)
-  assert.deepEqual(counts, ['billboards 102 -> 29', 'decals 85 -> 12', 'a character 86 -> 13']);
+  // ARENA5: and a batch's wash, set white (one more - a washed crowd batch's colour must not ride onto the next frame's flats)
+  // TELL2 (bible/12-Enhanced-AI/Feud-Arc.md 4.2): and a wind-up's glint, set to none (one more - a glinting foe's colour
+  // must not ride onto the next frame's flats)
+  // LPT1 (bible/07-Rendering/Low-Poly-Trees.md): and the low-poly trees' mesh mode and handover, set off (two more - a
+  // call the trees drew in leaves the handover on for the flats after it)
+  assert.deepEqual(counts, ['billboards 108 -> 30', 'decals 85 -> 12', 'a character 86 -> 13']);   // PIN MOVED (VEIN-HUE, FIELD BUGS 2026-10-12b): +1 a billboard call's first - the frame block's uBatchDye, reset with the wash   // PIN MOVED (PERF-ARENA, 2026-10-10): -1 a billboard call - its two still flats share their arena's VAO, one bind where there were two   // PIN MOVED (WINDFALL1, 2026-10-08): +2 a billboard call - Windfall's two vec4s, the call's own as the wind is
   // ...and the next frame sends them all again
   r.beginFrame(PROJ, VIEW, new Float32Array([0.3, 0.8, 0.2]), WORLD_FRAME);
   calls.length = 0; r.drawBillboards(bbs, R, UP);
@@ -370,7 +375,10 @@ test('LA-COST1: THE LAW, READ OFF THE SOURCE - every field the four gated frame 
     '_bbFrameStamp', '_dFrameStamp', '_cFrameStamp', '_tFrameStamp', '_frameStamp', ...AUTOMAP,
     '_bbColumnOn', '_dwCamFwd',   // merged beside DW-F: the column switch's GL-state shadow, and the camera-forward scratch
     '_bbTipOn',   // PROF4: the felled tree's tip, the same kind of GL-state shadow
-    '_bbDissolveOn'];   // DISSOLVE: the burn's switch, the same kind of GL-state shadow
+    '_bbDissolveOn',   // DISSOLVE: the burn's switch, the same kind of GL-state shadow
+    '_bbTintOn',   // ARENA5: a batch's wash (the arena crowd's half in a banner's colours), the same kind of GL-state shadow
+    '_bbGlintOn',   // TELL2: a wind-up's glint, the same kind of GL-state shadow
+    '_bbLptCutOn'];   // LPT1: a far picture's handover to its 3D tree, the same kind of GL-state shadow
   const { canvas } = stateGl();
   const r = new Renderer(canvas);
   for (const lane of [null, EL_LANE]) {
@@ -391,7 +399,7 @@ test('LA-COST1: THE LAW, READ OFF THE SOURCE - every field the four gated frame 
   }
   const BIRTH = new Set(['constructor']);
   const IN_BEGIN_FRAME = new Set(['_renderPasses', '_buildClusters']);   // run inside beginFrame, before its own stamp
-  const FORGETS_ITS_BLOCK = new Set(['_renderCharacterSprite', 'renderCharacterSprite']);   // borrows that draw the character program alone
+  const FORGETS_ITS_BLOCK = new Set(['_renderCharacterSprite', 'renderCharacterSprite', '_renderCharacterSpriteTiles']);   // borrows that draw the character program alone (MWNPC2: and the body batch's one bind)
   const writers = [...methods].filter(([, b]) => W.test(b)).map(([n]) => n);
   assert.ok(writers.length >= 20, `the law sees the writers (${writers.join(', ')})`);
   for (const n of writers) {
@@ -411,7 +419,15 @@ test('LA-COST1: THE LAW, READ OFF THE SOURCE - every field the four gated frame 
       if (n === '_renderCharacterSprite') {
         assert.equal((b.match(/this\._cFrameStamp = -1;/g) || []).length, 2, 'the sprite pass forgets the character block on the way in and on the way out');
         assert.ok(b.indexOf('this._cFrameStamp = -1;') < b.indexOf('this.drawCharacter(') && b.lastIndexOf('this._cFrameStamp = -1;') > b.indexOf('finally {'), '...in, before its draw; out, in its finally');
-        assert.equal((b.match(/this\.draw[A-Z]\w*\(/g) || []).join(), 'this.drawCharacter(', 'and it draws the character program alone');
+        // PIN MOVED, COATS3D: a rider's horse is drawn in the rider's picture (`also`) - more draws, the one program's
+        assert.ok((b.match(/this\.draw[A-Z]\w*\(/g) || []).every((d) => d === 'this.drawCharacter('), 'and it draws the character program alone');
+      } else if (n === '_renderCharacterSpriteTiles') {
+        // MWNPC2: each tile forgets the block before its draw (its own camera's block, as the lone pass sends it), and
+        // the finally forgets it on the way out
+        const loop = b.indexOf('for (let i = from; i < to; i++) {'), f = b.indexOf('finally {');
+        assert.ok(loop > 0 && b.indexOf('this._cFrameStamp = -1;', loop) < b.indexOf('this.drawCharacter(', loop), `${n}: a tile forgets the block before it draws`);
+        assert.ok(b.lastIndexOf('this._cFrameStamp = -1;') > f && f > loop, `${n}: and the finally forgets it on the way out`);
+        assert.ok((b.match(/this\.draw[A-Z]\w*\(/g) || []).every((d) => d === 'this.drawCharacter('), `${n}: it draws the character program alone`);   // PIN MOVED, COATS3D: and a rider's horse
       } else {
         const t = b.indexOf('try {'), f = b.indexOf('finally {');
         assert.ok(t > 0 && b.indexOf('this._renderCharacterSprite(') > t && f > t, `${n}: its borrow wraps the sprite pass, which forgets the block`);
@@ -528,7 +544,7 @@ test('LA-COST3: THE FLAT\'S SUN IS READ ONCE A QUAD - the lane\'s billboard vert
   assert.ok(sources.filter((s) => s === classic).length >= 3, 'BB_VS for the classic set, the shadow pass\'s flats and the air pass\'s emitters');
   const src = read('src/render/renderer.js');
   assert.match(src, /bb: this\._buildProgram\(bbVertexShader\(src\.bbVs\), src\.bbFs\),/);
-  assert.match(src, /vs: \{ mesh: VS, bb: BB_VS, terrain: TERRAIN_VS, char: CHAR_VS \}/, 'the shadow pass: BB_VS');
+  assert.match(src, /vs: \{ mesh: VS, bb: BB_VS, terrain: TERRAIN_VS, char: CHAR_VS, charSkin: CHAR_SKIN_VS \}/, 'the shadow pass: BB_VS');   // PIN MOVED (MWNPC16): the skinned body's VS beside it
   assert.match(src, /vs: \{ mesh: VS, bb: BB_VS \}, glsl:/, 'the air pass: BB_VS');
   assert.equal(EL_LANE.bbVs, EL_BB_VS_EXT);
 });
@@ -548,7 +564,7 @@ const litBindings = (lights, colours, casters, extra = {}) => ({
   uPointColors: [...colours, ...Array.from({ length: 48 - colours.length }, () => [0, 0, 0])], uCasterOf: [...casters, ...Array(48 - casters.length).fill(-1)],
   uClusterOn: 0, uCamPos: [0.3, 1.7, 6], uStubContact: 0.15, uELExposure: 1.4, uELScatter: 0, uIndirect: [0, 0, 0, 0], uIndirectColor: [0, 0, 0],
   uFogColor: [0.2, 0.22, 0.25], uFogMode: 1, uFogDensity: 0, uFogRange: [4, 40], uDwFog: Array.from({ length: 5 }, () => [0, 0, 0, 0]),
-  uPointShadowParams: Array.from({ length: 8 }, () => [0, 0, 0, 0]), uShadowIndex: Array(8).fill(-1), gl_FragCoord: [10.5, 20.5, 0.5, 1],
+  uPointShadowParams: Array.from({ length: SHADOW_POINT_CASTERS }, () => [0, 0, 0, 0]), uShadowIndex: Array(SHADOW_POINT_CASTERS).fill(-1), gl_FragCoord: [10.5, 20.5, 0.5, 1],   // FLICKER-FIX: sized by the casters, not a literal
   texture: (name) => (name === 'uAdapt' ? [0.55, 0.55, 0.55, 1] : [1, 1, 1, 1]), texelFetch: () => [0, 0, 0, 0], ...extra,
 });
 

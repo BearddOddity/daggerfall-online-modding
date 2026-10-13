@@ -17,7 +17,7 @@ import { RAIDER_SHEER_M, STRUCK_GRACE_S, DECK_SPOTS, SWIMMER } from '../src/scen
 import { navalHudText, drawNavalHud, destroyNavalHud } from '../src/ui/navalHud.js';
 import { choiceOffer, choiceEffect, CHOICES, PAPERS_NOTORIETY, PIRATE_PAPERS_TITLE } from '../src/systems/naval/navalPlunder.js';
 import { SHIP_STATES, STRUCK_AT } from '../src/systems/naval/navalDamage.js';
-import { navalHitData } from '../src/systems/naval/navalWire.js';
+import { navalHitData, NAVAL_HIT_MAX } from '../src/systems/naval/navalWire.js';
 import { NAVAL_CLASSIC } from '../src/systems/naval/navalSounds.js';
 import { NOTORIETY } from '../src/systems/naval/navalLaw.js';
 import { QuestMachine } from '../src/systems/quest/machine.js';
@@ -260,7 +260,18 @@ test('AUDIT NAV1 (B6) the world host\'s endRaid, run: its living boarders withdr
 // ── the prize, the fire, the founder (B3, B4) ──────────────────────────────────────────────────────────────────
 
 /** A blow on a ship I stand, landed through the host's own strike - `from` the striker ('local': mine). */
-const blow = (h, e, from, o) => h.host.applyPeerHit(from, navalHitData('local', { n: e.n, ...o }));
+/** A peer's blow - PIN MOVED (TOUGHER-SHIPS): one past a hit's most (navalWire.js NAVAL_HIT_MAX, a broadside's worth) lands
+ *  as several, her fire and her men with the first; a toughened hull outweighs one hit. The pieces after one that strikes
+ *  her are the same volley's (STRUCK_GRACE_S: floored at 1) - a blow meant to take her from afloat straight under is
+ *  two blows a grace apart, never one. */
+const blow = (h, e, from, o) => {
+  let left = Math.max(0, o.hull ?? 0), first = true;
+  do {
+    const hull = Math.min(left, NAVAL_HIT_MAX);
+    h.host.applyPeerHit(from, navalHitData('local', first ? { n: e.n, ...o, hull } : { n: e.n, hull, zone: o.zone }));
+    left -= hull; first = false;
+  } while (left > 0);
+};
 /** A merchant struck alongside, boarded from my helm and the fight begun. */
 async function boarding() {
   const h = await sea({ hull: 2 });
@@ -412,7 +423,7 @@ test('AUDIT NAV1 (B14) NO SAVE MID-FIGHT: a boarding under way, or the player on
   h.host.setEnabled(false);
   assert.equal(h.host.saveRefused(), false, 'no sea');
   assert.match(WORLD, /if \(naval\?\.saveRefused\?\.\(\)\) \{ if \(!quiet\) townTalk\.say\('You cannot save now\.'\); return false; \}/, 'F9 and the checkpoints');
-  assert.match(WORLD, /savingPrevented: \(\) => !!naval\?\.saveRefused\?\.\(\),/, 'the pause window greys its Save');
+  assert.match(WORLD, /savingPrevented: \(\) => !!naval\?\.saveRefused\?\.\(\)( \|\| [^,\n]+)?,/, 'the pause window greys its Save');   // AUDIT CARDS-2 H1: a later refusal may join it (chips on a card table)
 });
 
 test('AUDIT NAV1 (B11) BACK AT THE HELM: her fate decided, "Leave her" pressed, or her going down under the fight - over my own rail and at my wheel (Come Sail Away\'s StartSailing); the back key and the scrim only shut her window, her deck still underfoot (mutants: the wheel never taken, Leave her a plain close)', async () => {
@@ -422,9 +433,12 @@ test('AUDIT NAV1 (B11) BACK AT THE HELM: her fate decided, "Leave her" pressed, 
   const m = h.log.plunder.at(-1);
   assert.deepEqual(h.log.helm, [], 'on her deck while her window stands');
   m.leave();
-  assert.deepEqual(h.log.helm, [h.boat], 'Leave her: my wheel');
+  // Count and identity keep failure diagnostics bounded: a boat carries its whole cyclic render graph.
+  assert.equal(h.log.helm.length, 1, 'Leave her takes the wheel once');
+  assert.ok(h.log.helm[0] === h.boat, 'Leave her: my wheel');
   m.fate('adrift');
-  assert.deepEqual(h.log.helm, [h.boat, h.boat], 'her fate decided: my wheel');
+  assert.equal(h.log.helm.length, 2, 'settling her fate takes the wheel once more');
+  assert.ok(h.log.helm.every((boat) => boat === h.boat), 'her fate decided: my wheel');
   assert.equal(h.runtime.sailing, true);
   assert.match(WORLD, /if \(reason === 'leave'\) model\.leave\?\.\(\);/, 'the door\'s Leave her reaches the model');
   assert.match(WORLD, /takeHelm: \(boat\) => \{ if \(boat && csaRuntime\) csaCall\(\(\) => csaRuntime\.StartSailing\(boat\)\); \},/);

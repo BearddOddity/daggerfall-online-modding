@@ -233,8 +233,10 @@ test('SEAT1a the banners: the palace door\'s two, a gate\'s on its town side bes
   assert.deepEqual(b.top, [0.5, 2 + BOARD_PENNANT_RISE_M, 0.1]);
   const frames = new Map([[makeBuildingKey(1, 2, 1), { at: [0, 0, 0], box: [-5, 0, -5, 5, 8, 5], door: { a: [-1, 0, 5], b: [1, 0, 5] } }]]);
   const boards = [{ local: I, box: [0, 0, 0, 1, 2, 0.2] }, { local: I, box: [3, 0, 0, 4, 2, 0.2] }];
-  const all = seatBannerAnchors({ frames, palaceKeys: [makeBuildingKey(1, 2, 1)], gates: [gate], boards, bounty: new Set([1]), centre: [0, 20] });
+  const all = seatBannerAnchors({ frames, palaceKeys: [makeBuildingKey(1, 2, 1)], gates: [gate], boards, bounty: new Set([1]), centre: [0, 20] });   // ONE-BOARD REVERTED (PIN MOVED): a pennant over every rumour board
   assert.equal(all.length, 4, 'the door\'s two, the gate\'s one, the rumour board\'s one - never the bounty board\'s');
+  assert.deepEqual(all[3], boardPennantAnchor(boards[0]), 'the pennant over the rumour board itself');
+  assert.equal(seatBannerAnchors({ boards, centre: [0, 20] }).length, 2, 'no bounty board: a pennant over each');
   const many = seatBannerAnchors({ gates: Array(12).fill(gate), centre: [0, 20] });
   assert.equal(many.length, SEAT_BANNERS_MAX);
   assert.deepEqual(townCentreOf(new Map([[1, { at: [2, 0, 4] }], [2, { at: [4, 0, 8] }]])), [3, 6]);
@@ -253,14 +255,17 @@ test('SEAT1a the banners: the palace door\'s two, a gate\'s on its town side bes
 
 test('SEAT1a the hosts by source: the boot pass derives the seats over the hubs\' own rows; the book online; the arrival line a seat\'s, and the seat reported; the map\'s seatAt; the banners measured at the build and hung with the halls\'; /seat strike; the four hosts (mutants: the rows; the arrival; the witness; the anchors; the merge)', () => {
   const w = src('src/scenes/world.js');
-  assert.match(w, /const townSeats = deriveTownSeats\(_hubRows, \{ regionNameOf: \(r\) => maps\.getRegionName\(r\), isHub: \(k\) => regionHubs\.byMapId\.has\(k\) \}\);\n\s*_hubRows\.length = 0;/, 'the game\'s own rows, before they are let go');
+  // PIN MOVED (AUDIT LEGACY III W1): the rows are let go once the Living World's two indices over them stand (releaseHubRows)
+  // - emptied here at the boot, every index read nothing
+  assert.match(w, /const townSeats = deriveTownSeats\(_hubRows, \{ regionNameOf: \(r\) => maps\.getRegionName\(r\), isHub: \(k\) => regionHubs\.byMapId\.has\(k\) \}\);/, 'the game\'s own rows');
+  assert.match(w, /const releaseHubRows = \(\) => \{ if \(_livingTowns && _livingDungeons\) _hubRows\.length = 0; \};/, '...let go once both indices stand');
   // SEAT1b (PIN MOVED): the book's door is named once, for the Watch's account beside it
   assert.match(w, /const _seatDoor = params\.has\('online'\) \? accountSeats\(\{ fetch: \(u, i\) => globalThis\.fetch\(u, i\), storage: appStorage\(\) \}\) : null;\n\s*const seatBook = _seatDoor\n\s*\? createTownSeatBook\(\{\n\s*door: _seatDoor,/);
   assert.match(w, /const seatHere = \(mapId\) => \(seatBook\?\.open === true \? seatBook\.dressed\(seatAtMapId\(townSeats, mapId\)\) : null\);/);   // SEAT1c (PIN MOVED): dressed in its holder
   assert.match(w, /if \(seat\) \{ townTalk\.say\(seatArrivalLine\(seat\), 5\); seatBook\.witness\(seat\); \}\n\s*else if \(hub\) townTalk\.say\(hubArrivalLine\(hub\), 5\);/);
   assert.match(w, /seatAt: seatBook \? \(summary\) => seatHere\(summary\?\.mapID \?\? summary\?\.mapId\) : null,/);
   assert.match(w, /const seatAnchors = pixelBoardSplit \? seatBannerAnchors\(\{/);
-  assert.match(w, /gates: pixelGates\.map\(\(g\) => \(\{ local: g\.local, box: g\.entry\?\._box \}\)\), boards: pixelBoards, bounty: pixelBoardSplit,/);   // PIN MOVED (AUDIT SEATS-3 F5): the anchors' own, not the siege field's
+  assert.match(w, /gates: pixelGates\.map\(\(g\) => \(\{ local: g\.local, box: g\.entry\?\._box \}\)\), boards: pixelBoards, bounty: pixelBoardSplit,/);   // PIN MOVED (AUDIT SEATS-3 F5): the anchors' own, not the siege field's; ONE-BOARD REVERTED (PIN MOVED)
   assert.match(w, /const pixelBoardSplit = dfLocation && locBlocks && seatAtMapId\(townSeats, dfLocation\.mapTableData\?\.mapId\) \? boardSplitOf\(\{ boards: pixelBoards \}\) : null;/, 'BOUNTY1\'s split through its one memo (AUDIT 28 H8)');
   assert.match(w, /if \(isBulletinBoard\(placed\.modelIdNum\)\) pixelBoards\.push\(\{ box, local \}\);/);
   // PIN MOVED (AUDIT SEATS-3): the halls' and the seats' merged into one kept list (C4: no spread a frame)
@@ -268,6 +273,6 @@ test('SEAT1a the hosts by source: the boot pass derives the seats over the hubs\
   assert.match(w, /const hung = bannersHung\(\);/);
   assert.match(w, /const seatCmd = parseSeatCommand\(text\);/);
   assert.match(src('src/ui/heldMap.js'), /seatAt: \(s\) => this\.deps\.seatAt\?\.\(s\) \?\? null,/);
-  assert.match(src('src/ui/heldMap.js'), /const hubRows = \[\.\.\.\(hub \? \[hubTitle\(hub\)\] : \[\]\), \.\.\.\(seat \? \[seatInfoLine\(seat\)\] : \[\]\)\];/);
+  assert.match(src('src/ui/heldMap.js'), /const hubRows = \[\.\.\.\(hub \? \[hubTitle\(hub\)\] : \[\]\), \.\.\.\(seat \? \[seatInfoLine\(seat, seat\.holder\?\.guild \?\? null\)\] : \[\]\), \.\.\.\(tier \? \[tier\] : \[\]\)\];/);   // PIN MOVED (FIELD BUGS 2026-10-04e SEAT-TIP): the holder named; PIN MOVED (TIER1): a dungeon's tier after it
   for (const f of ['src/scenes/exterior.js', 'src/scenes/dungeonContext.js', 'src/scenes/worldModes.js']) assert.doesNotMatch(src(f), /seatBook|createSeatBanners|deriveTownSeats/, `${f}: no seat there`);
 });

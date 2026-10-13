@@ -92,12 +92,72 @@ export const staticTeamOf = (mobileType) => ENEMY_BASICS[mobileType]?.team ?? 'P
 /** GetTargets' priority arithmetic (:829-841): +5 when the candidate
  *  is not already targeting someone, +10 when seen, plus the distance
  *  band 30 - d floored at 0. */
+/** ASSIST (FIELD BUGS 2026-10-05c, the port's own; 'revenants just "stand there" during fight sometimes' - "have to kite
+ *  them INTO the enemy at times to register even if enemy is hitting me or im hitting them"): a COMPANION (a sworn
+ *  revenant, a ship's hand ashore - CREW-COMPANIONS) puts a foe fighting his side first: one whose target is a player,
+ *  another companion, or himself. DFU has no companion and its chain knows no fight but the candidate's own: its +5 goes
+ *  to a foe that targets NO ONE, so an idle foe in the spawn band behind a wall (unseen candidates are kept there,
+ *  :824-825) outranked the one striking the player whenever it stood outside the companion's view cone - he walked into
+ *  the wall at it, or stood at heel holding it. 20 outweighs the idle foe's +5 and fifteen metres of the distance band:
+ *  a foe in the fight is taken unless an idle one stands that much nearer. Every other foe keeps DFU's arithmetic. */
+export const COMPANION_ASSIST_PRIORITY = 20;
+/** Whether a candidate foe (its AI) is fighting `self`'s side - a player, a companion, or `self`. */
+export const fightsOurSide = (targetAi, self) => {
+  const t = targetAi?.target ?? null;
+  return t != null && (isPlayerTarget(t) || t.companion != null || t === self);
+};
+/**
+ * WATCH-PROTECTS: whether a foe hunts the living world's townspeople (a `civilian` body, systems/livingWorld/quarry.js):
+ * a hostile monster that fights hand to hand. Never the watch, an ally, a companion or a quest's foe; never a class
+ * (a man with a blade is no monster, and the city's own watch is one); never an archer or a caster, whose shot nothing
+ * on the street would stop (arrows and spells meet foes and players alone). DFU weighs no civilian at all
+ * (EnemySenses.cs:739-741) - the living world's lane alone hands one in.
+ */
+export function huntsCivilians(self) {
+  if (!self?.ai?.isHostile || self.isQuestFoe || self.companion != null) return false;
+  const team = self.entity?.team, mobile = mobileTeamOf(self.entity);
+  if (team === 'PlayerAlly' || mobile === 'PlayerAlly' || mobile === 'CityWatch' || self.entity?.isClass) return false;
+  if (self.caster || (self.entity?.spells?.length ?? 0) > 0) return false;
+  return !self.mobile?.basics?.hasRangedAttack1;
+}
 export function targetPriority(targetHasNoTarget, seen, distance) {
   let p = 0;
   if (targetHasNoTarget) p += 5;
   if (seen) p += 10;
   p += Math.max(0, 30 - distance);
   return p;
+}
+
+/**
+ * ARENA2 (2026-10-02, Mac: "Players can choose to watch AI fights"): THE BOUT TEAM - an isolation seam beside the
+ * camp's (`campId`). A fighter on the arena's sand carries its bout on its entity (`entity.bout` - `{ id, side, out, hold }`,
+ * stood by scenes/arenaBouts.js), and so may the player (`setPlayerBout`, a ladder bout's own). The law
+ * (bible/11-Multiplayer/Arena.md "2. The fights"): the fighters of one bout target only each other, across their sides
+ * (a Grand Melee is every fighter a side of its own) - never a teammate, never one already out; nobody outside the bout
+ * joins it (the city watch, the passers-by, another foe); and a fighter never takes the player for a target unless the
+ * player is in that bout on another side. Answers true (a bout's pair - the team, ally, infighting and hostility gates
+ * stand aside: two fighters fight whatever their kinds and whatever the infighting setting), false (never), or null (no
+ * bout on either side - the classic chain decides). Pure.
+ */
+let _playerBout = null;
+/** The player's bout - `{ id, side, out?, hold? }` - or null (the host's, set as a ladder bout stands and cleared after).
+ *  AUDIT ARENA-LADDER A3: THE DRIVER'S OWN TAG, HELD LIVE. The driver writes `out` and `hold` on it as the bout runs (a
+ *  yield, a fall, the word, the verdict - scenes/arenaBouts.js); a copy taken at the bell missed every one, so a player
+ *  out of a Grand Melee stayed the fighters' target, beaten at the breath of life to its end. boutGate reads its fields
+ *  as it reads a fighter's (`String(id)`, `side | 0`); `playerBoutOf` answers the read as plain data. */
+export function setPlayerBout(b) { _playerBout = b ?? null; }
+export const playerBoutOf = () => (_playerBout ? { id: String(_playerBout.id), side: _playerBout.side | 0, out: !!_playerBout.out, ...(_playerBout.hold ? { hold: true } : {}), ...(_playerBout.kit ? { kit: true } : {}) } : null);   // AUDIT ARENA-LADDER 2: `kit` a ladder bout's (systems/arenaKit.js)
+/** AUDIT ARENA-LADDER A2: a fighter on the sand is its bout's alone - no Dispel Daedra/Undead sends it off and no
+ *  Wabbajack changes it (either door removed the body past the foe yield floor, and the driver read the gone body as a
+ *  FALL: a champion dispelled in the Herald's call was a champion beaten, its purse and its title paid). */
+export const inBout = (f) => !!f?.entity?.bout;
+export function boutGate(self, c, isPlayer, playerBout = _playerBout) {
+  const sb = self?.entity?.bout ?? null;
+  const tb = isPlayer ? (isPeerTarget(c) ? (c.bout ?? null) : playerBout) : (c?.entity?.bout ?? null);
+  if (!sb && !tb) return null;
+  if (!sb || !tb) return false;
+  if (String(sb.id) !== String(tb.id) || sb.out || tb.out || sb.hold || tb.hold) return false;   // `hold`: before the word "Fight!" and after the verdict
+  return (sb.side | 0) !== (tb.side | 0);
 }
 
 /**
@@ -118,6 +178,7 @@ export function targetPriority(targetHasNoTarget, seen, distance) {
  */
 export function getTargets(self, candidates, playerFeet, {
   noTargetMode = false,
+  dropLocal = false,   // AUDIT-F5 (the port's own, WILD-ALERT): the LOCAL player left off the list, every other candidate kept
   infighting = enemyInfightingEnabled(),
   // AUDIT 62 F23: the PLAYER candidate's LIVE controller height - DFU
   // reads the component (EnemySenses.cs:896-898 for the eye,
@@ -126,6 +187,7 @@ export function getTargets(self, candidates, playerFeet, {
   // with the capsule bottom planted. The 1.8 default is the headless
   // charter.
   playerHeight = CAPSULE_HEIGHT,
+  playerBout = _playerBout,   // ARENA2: the player's bout (setPlayerBout), or null
 } = {}) {
   const ai = self.ai;
   const selfTeam = self.entity?.team ?? 'PlayerEnemy';
@@ -154,8 +216,17 @@ export function getTargets(self, candidates, playerFeet, {
     // REVENANT-FATE: a beaten revenant on its knees, judged or burning, and COMPANION-PORTAL's body stepping through its
     // portal, are nobody's foe - nothing can reach them, so nothing hunts them
     if (!isPlayer && (c.yielded || c.executing || c.sparing || c.leaving)) continue;
+    // WATCH-PROTECTS: a townsperson is quarry for a hostile monster alone (huntsCivilians), and no team's - the chain
+    // below weighs foes and players
+    const civilian = !isPlayer && c.civilian === true;
+    if (civilian && !huntsCivilians(self)) continue;
+    // ARENA2: THE BOUT TEAM - a bout's pair skips the chain below; anyone else meets no fighter, and no fighter meets them
+    const bout = boutGate(self, c, isPlayer, playerBout);
+    if (bout === false) continue;
+    if (bout !== true && !civilian) {
     // NoTarget mode (:776-777): the BASICS team here
     if ((noTargetMode || !ai.isHostile || selfMobileTeam === 'PlayerAlly' || self.companion != null) && isPlayer) continue;   // AUDIT CC-B2: a companion never the player's foe, whatever his team reads
+    if (dropLocal && isLocalPlayerTarget(c)) continue;   // AUDIT-F5: a wilderness foe unaware of a fast traveller (scenes/exteriorFoes.js) - them alone
     // Pacified enemies should not attack player allies (:780-781)
     if (!ai.isHostile && targetEntity && targetEntity.team === 'PlayerAlly') continue;
     // Player allies should not attack pacified enemies (:784-789)
@@ -194,6 +265,7 @@ export function getTargets(self, candidates, playerFeet, {
     if (self.isQuestFoe && !self.questAttackable && !isPlayer && c.companion == null) continue;   // AUDIT CC-B7: a quest's foe fights the player's companions
     // For now, quest AI can't be targeted (:814-815)
     if (targetAi && c.isQuestFoe && !c.questAttackable && self.companion == null) continue;   // AUDIT CC-B7: and they fight it
+    }   // ARENA2: the bout's pair rejoins here
     const tFeet = isPlayer ? (c.feet ?? playerFeet) : targetAi.feet;   // WORLD3: a peer at its own feet
     if (!tFeet) continue;
     const tHeight = isPlayer ? (c.height ?? playerHeight) : targetAi.height;   // WORLD3: and its own capsule
@@ -207,7 +279,9 @@ export function getTargets(self, candidates, playerFeet, {
     // Neither visible nor in the area around the player (:824-825) -
     // foe candidates only; the player has no senses.
     if (targetAi && !targetAi.wouldBeSpawned && !see) continue;
-    const priority = targetPriority(targetAi ? (targetAi.target ?? null) === null : false, see, distance);
+    // WATCH-PROTECTS: a townsperson has no foe of their own, and is no likelier quarry for it than the player beside them
+    let priority = targetPriority(targetAi && !civilian ? (targetAi.target ?? null) === null : false, see, distance);
+    if (self.companion != null && fightsOurSide(targetAi, self)) priority += COMPANION_ASSIST_PRIORITY;   // ASSIST (FIELD BUGS 2026-10-05c)
     if (priority > highestPriority) {
       secondHighestPriority = highestPriority;
       highestPriority = priority;
@@ -397,9 +471,11 @@ const targetHealth = (c, playerEntity) =>
  */
 export function runTargetMachine(self, candidates, playerFeet, classicDt, {
   noTargetMode = false,
+  dropLocal = false,   // AUDIT-F5: getTargets' own
   infighting,
   playerEntity = null,
   playerHeight = CAPSULE_HEIGHT,   // AUDIT 62 F23: the live player capsule, off the senses context
+  playerBout = _playerBout,   // ARENA2: the player's bout (setPlayerBout), or null
 } = {}) {
   const ai = self.ai;
   ai.classicTargetUpdateTimer = (ai.classicTargetUpdateTimer ?? 0) + classicDt / SYSTEM_TIMER_UPDATES_DIVISOR;
@@ -408,9 +484,13 @@ export function runTargetMachine(self, candidates, playerFeet, classicDt, {
   // Non-hostile mode (:321-327): a pacified foe drops the PLAYER as
   // its target; secondaryTarget likewise.
   if (noTargetMode || !ai.isHostile) {
-    if (isPlayerTarget(ai.target)) ai.target = null;
-    if (isPlayerTarget(ai.secondaryTarget)) ai.secondaryTarget = null;
+    if (isPlayerTarget(ai.target) && boutGate(self, ai.target, true, playerBout) !== true) ai.target = null;   // ARENA2: a bout's opponent stays one
+    if (isPlayerTarget(ai.secondaryTarget) && boutGate(self, ai.secondaryTarget, true, playerBout) !== true) ai.secondaryTarget = null;
   }
+  // ARENA2: THE BOUT TEAM holds a target already chosen too - a blow from outside the bout (the player striking an
+  // exhibition fighter: MakeEnemyHostileToAttacker writes the striker in) and a fighter out of the bout are dropped
+  if (ai.target && boutGate(self, ai.target, isPlayerTarget(ai.target), playerBout) === false) ai.target = null;
+  if (ai.secondaryTarget && boutGate(self, ai.secondaryTarget, isPlayerTarget(ai.secondaryTarget), playerBout) === false) ai.secondaryTarget = null;
   // Reset these values if no target (:330-345). The secondary-switch
   // arm survives on the classic path because MakeEnemyHostileToAttacker
   // writes SecondaryTarget (:197) - DFU's comment ("only if using
@@ -451,7 +531,7 @@ export function runTargetMachine(self, candidates, playerFeet, classicDt, {
     ai.classicTargetUpdateTimer = 0;
     // Is enemy in area around player or can see player? (:392-401)
     if (ai.wouldBeSpawned || playerInSight) {
-      const got = getTargets(self, candidates, playerFeet, { noTargetMode, infighting, playerHeight });
+      const got = getTargets(self, candidates, playerFeet, { noTargetMode, dropLocal, infighting, playerHeight, playerBout });
       ai.target = got.target;
       ai.sawSecondaryTarget = got.sawSecondaryTarget;
       // `targetSenses = target.GetComponent<EnemySenses>()` (:397-400)

@@ -210,8 +210,8 @@ test('MAC1 D: the far rings draw the trees and the flats that move, and nothing 
   // batch's own height and the animator's frame as the "moves" bit
   const w = src('src/scenes/world.js');
   assert.match(w, /import \{ farFlatVisibleAt \} from '\.\.\/world\/flatDistance\.js'/);   // PERF-EXT12: the rule's positional home - no object a batch a frame
-  assert.match(w, /const ring = Math\.max\(Math\.abs\(p\.px - state\.current\.x\), Math\.abs\(p\.py - state\.current\.y\)\);\s*\n(?:\s*\/\/[^\n]*\n)*\s*if \(pixelVisible \|\| pixelCasts\) for \(const b of p\.batches\) \{\s*\n\s*const off = [^\n]*EV3\s*\n\s*if \(off && !renderer\.shadowReach\(b\._box, t\[0\], t\[1\], t\[2\]\)\) continue;[^\n]*\n\s*if \(!farFlatVisibleAt\(ring, b\.size\?\.h \?\? 0, b\.frame != null\)\) continue;/,
-    'the ring is Chebyshev from the player\'s pixel and the rule runs after the frustum test and the reach (AUDIT REACH: a pixel neither seen nor reached walks no batch at all, and the rule is asked only of a batch the frame or a shadow can keep)');
+  assert.match(w, /const ring = Math\.max\(Math\.abs\(p\.px - state\.current\.x\), Math\.abs\(p\.py - state\.current\.y\)\);\s*\n(?:\s*\/\/[^\n]*\n)*\s*if \(pixelVisible \|\| pixelCasts\) for \(const b of p\.batches\) \{\s*\n\s*if \(!farFlatVisibleAt\(ring, b\.farH \?\? b\.size\?\.h \?\? 0, b\.frame != null\)\) continue;[^\n]*\n\s*const off = [^\n]*EV3\s*\n\s*if \(off && !renderer\.shadowReach\(b\._box, t\[0\], t\[1\], t\[2\]\)\) continue;/,
+    'the ring is Chebyshev from the player\'s pixel and the rule runs inside the pixel\'s gate (AUDIT REACH: a pixel neither seen nor reached walks no batch at all) - PIN MOVED (PERF-ORDER, 2026-10-11): ahead of the batch\'s frustum test and reach, three compares before a box (PERF-EXT12 made the rule positional, so it mints nothing a batch); each only skips, so the batches kept are the same');
 });
 
 // ── H ────────────────────────────────────────────────────────────
@@ -502,7 +502,7 @@ test('MAC1 J: the pause door relocks the pointer inside the resume gesture, and 
     // and the ARM is what gets built and asked.
     assert.match(text, /openPauseFlow\(\(w\) => townTalk\.showOverlay\(w\), \{\n\s*at: pauseAt,[^\n]*\n\s*\.\.\.pauseDoorHooks\(\),/, `${file}: the door spreads its bag`);
     const hooks = mountLiteral(text, 'const pauseDoorHooks = () => (', { opts: {}, requestLook: s.requestLook, canvas: `CANVAS-${file}` });
-    assert.equal(typeof hooks.relock, 'function', `${file}: its own pause door hands pauseDoor.js:162 a relock`);
+    assert.equal(typeof hooks.relock, 'function', `${file}: its own pause door hands pauseDoor.js:"if (action !== 'exit')" a relock`);
     hooks.relock();
     assert.deepEqual(s.seen, [`CANVAS-${file}`], `${file}: ...and it relocks THIS host's canvas`);
   }

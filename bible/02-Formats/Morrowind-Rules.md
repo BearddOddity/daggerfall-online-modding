@@ -226,7 +226,9 @@ with it. A step change, no smoothing. It rides the same RotateController
 line as the pitch (`matrix.setTrans(matrix.getTrans() + worldOrientInverse
 * mOffset)`), and the GMST is read from the player's own .esm rather than
 hardcoded. Daggerfall's SNEAK binding is the analogue; its CROUCH is a
-collider height, not an animation state. Rule 32(b), the Lua camera
+collider height, not an animation state. (CROUCH-SNEAK, 2026-10-08,
+Port-Ledger A: a crouch IS a sneak now - `isSneaking` latches on it - so
+the stance follows the crouch key; the sink still reads `sneaking`.) Rule 32(b), the Lua camera
 offset, is not ported and is not a gap: it is settable only from Lua,
 which this port has no counterpart for.
 
@@ -956,11 +958,33 @@ in hand, in the stance the drawn weapon composes, running the equip,
 attack and sheathe sections of that weapon's own group. The three
 sentences that stood here - "untextured", "no weapon", "bare Idle
 forever" - are retired with the flags they described (MW-D11, MW-D12).
-Flat shading still comes from a face normal computed per triangle at pack
-time, and for a MIRRORED piece that normal is NEGATED, because rule 13's
-X negation reverses the winding and without it the left arm lights
-inside-out. That is rule 13's rendering consequence, which MW8 also
-lacked.
+SHADING (MW-SMOOTH, 2026-10-09, Mac: "Can we also enable smooth shading
+for the morrowind models? Not sure what type of shading is used now"):
+every Morrowind mesh - the arms, the third-person and peer bodies, worn
+armour, held weapons, item pictures - is lit per pixel by the character
+program's N.L, and until MW-SMOOTH it was fed ONE NORMAL A TRIANGLE, its
+face's, computed at pack time: flattenNif kept each NIF's per-vertex
+normals and poseAssembly posed positions alone, so every surface came
+out faceted, the smooth normals of our own baked armour (the steel
+plate's, the brigandine's) thrown away. The reference lights a NIF by
+the normals the file authors and makes none ("[C] Vertex/normal/colour
+arrays are set from array EMPTINESS, never from mNumVertices, and OpenMW
+generates nothing", below). So a piece
+now carries its mesh's normals through the pose (`p.normals`): a skinned
+piece's skinned by skinBatch's normal path, a rigid part's mirrored and
+turned with it (`placeNormalsAtBone`, after the part's pre-transform),
+a brigandine's solved through its transferred skin as its positions are
+(`transferSkin`); and packFpArm writes each corner its vertex's normal.
+A surface the modeller smoothed is lit smooth; an edge kept hard (the
+Thunderlock's faces, split per face in its file) stays hard. A PORT
+DECISION: a mesh that authors NO normals is lit by its faces as before,
+and so is a corner whose normal is ZERO (rule 40's collapse, or a file's
+own) where the reference would hand the shader a normal it cannot
+normalise - one cross product a triangle, NEGATED on a MIRRORED piece because rule
+13's X negation reverses the winding and the left arm would light
+inside-out (rule 13's rendering consequence, which MW8 also lacked); a
+posed vertex normal was mirrored with its vertex and takes no flip. Pins
+`test/mwsmooth.test.js`, `tools/mutants/mwsmooth.json`.
 
 THE PORT MAPPER IS RETIRED (MW-D10), AND RULE 54 IS THE PLACEMENT. The
 mapper solved a uniform scale from the arm's clip bounds, pushed it a
@@ -1090,7 +1114,7 @@ you get the arms, empty-handed, with the reason next to the button.
 
 AND ONE MORE DEFECT THAT ONLY RENDERING IT FOUND - THE HANDEDNESS.
 
-mat4's own law (src/world/mat4.js:"const r12 = -sxn"): a right-handed lookAt puts
+mat4's own law (src/world/mat4.js:"The RIGHT-handed"): a right-handed lookAt puts
 world +x on screen-LEFT, and the port shipped exactly that mirror image
 until M1 - every town flipped east-west, every sign reading backwards,
 and the input layer tuned against the mirror so it PLAYED correctly and
@@ -3560,7 +3584,7 @@ sound, this is the condition it must not be read past):
 
 > Nearly everything checks out against upstream, but the sorting claim states as unconditional what the code guards. Confirmed accurate: property.hpp:414-463 has Flag_Blending=0x0001, Flag_Testing=0x0200, Flag_NoSorter=0x2000, uint16 mFlags + uint8 mThreshold, and sourceBlendMode()=(mFlags>>1)&0xF, destinationBlendMode()=(mFlags>>5)&0xF, alphaTestMode()=(mFlags>>10)&0x7. getBlendMode (nifloader.cpp:1899-1928) and getTestMode (1930-1954) match the quoted tables including the SRC_ALPHA / LEQUAL defaults with Log(Debug::Info). handleAlphaTesting uses threshold/255.f, and both handlers really do removeAttribute + removeMode on the OFF branch; collectDrawableProperties (nifloader.cpp:189-211) recurses into the parent first and appends the node's own props last, so a child NiAlphaProperty genuinely cancels an ancestor's on the shared drawable stateset. The DST_ALPHA -> ONE rewrite and the objects.frag ordering (157 `gl_FragData[0].a *= diffuseColor.a * alpha * actorFade;`, 160-161 darkMap, 164 alphaTest) are verbatim correct. The defect: "blending WITHOUT the 0x2000 bit puts the drawable in the TRANSPARENT_BIN (back-to-front); with the bit set it inherits the opaque bin" drops the `if (!mPushedSorter)` guard that sits on BOTH bin calls in the quoted snippet. mPushedSorter is the enclosing NiSortAdjustNode (nifloader.cpp:329, pushed at :800-803). When one is in scope, handleAlphaBlending sets NO bin at all — it only sets hasSortAlpha — and the bin is decided later at nifloader.cpp:2943-2985 from the sorter's mode and subsorter type. That inverts the stated outcome in real cases: under SortingMode::Off a blending drawable with the sorter bit CLEAR gets setBinTraversal (bin 2, "TraversalOrderBin"), not back-to-front; and under a NiClusterAccumulator subsorter a drawable WITH the 0x2000 bit set still gets setBinBackToFront regardless of hasSortAlpha, rather than inheriting. A port that hardcodes the rule as written mis-sorts every mesh under a NiSortAdjustNode. Two smaller inaccuracies ride along: the back-to-front path outside handleAlphaBlending is setRenderBinDetails(0, "SORT_BACK_TO_FRONT"), not the TRANSPARENT_BIN hint (bin 10, DepthSortedBin); and setRenderBinToInherit() means inheriting whatever bin is in effect, which is not necessarily "the opaque bin".
 
-> The rule cannot hold here because its entire subject is absent from this codebase, and the code that actually renders the first-person player body contradicts it. This repository is /home/user/project-dagger, a JavaScript port of Daggerfall (logic from Daggerfall Unity, presentation on hand-rolled WebGL2) — not OpenMW. All three cited sources are non-existent paths: there is no components/ directory, no files/shaders/ directory, no .gitmodules, and zero .cpp/.hpp/.frag/.glsl files anywhere in the tree. A full-tree grep (excluding .git and node_modules) for NiAlphaProperty, nifloader, nifosg, and openmw returns no hits; the sole filename matching *nif* is /home/user/project-dagger/test/manifest.test.js, matching on the substring inside "manifest". Daggerfall assets are ARCH3D/CIF/IMG, never NIF, so no mFlags/mThreshold decode, blend-factor table, test-function table, stateset, or sorting bin exists to be overridden. Where it matters for a first-person player body, the real behaviour is different in kind, not just in detail. Alpha is a fixed 1-bit cutout compiled into the shaders rather than a per-material reference derived from mThreshold/255.0: `if (t.a < 0.5) discard;` at /home/user/project-dagger/src/render/renderer.js:90, :1285 and :895, with the one exception being spectral (ghost) flats at renderer.js:"if (tex.a < ((uSpectral == 1 || uConceal.x > 0.0) ? 0.1 : 0.5))", `if (tex.a < (uSpectral == 1 ? 0.1 : 0.5)) discard;`. The comment at renderer.js:"single-buffer cache" states the governing law: classic art is a 1-bit palette cutout (index 0 transparent, everything else fully opaque), so the default discards and forces alpha 1, with a narrow `uBlendTex` opt-in for art authored outside that palette. Blending, where enabled at all, is one hard-coded pair with no factor decoding — gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA) at renderer.js:"else gl.viewport".."}", renderer.js:"for (const r of mesh.ranges)", renderer.js:"swapped and restored", overworldRenderer.js:370 and :385, and precipitation.js:"vec3 vel = normalize" — so there is no source/destination factor selection and therefore no DST_ALPHA-to-ONE rewrite. Because the renderer is immediate-mode WebGL2 with no stateset graph, the rule's two load-bearing behaviours have no mechanism to exist: nothing can REMOVE a blend func or alpha func from a parent's state to cancel it, and there is no noSorter bit or TRANSPARENT_BIN assignment. The specific special cases the task asked about confirm the same. The first-person viewmodel entry point, drawFirstPersonViewmodel at /home/user/project-dagger/src/render/characterSprite.js:100, is explicitly marked ON ICE (2026-08-17) with "No consumer"; the live first-person path is src/combat/fpsWeapon.js using WEAPON*.CIF sprites, and neith ...
+> The rule cannot hold here because its entire subject is absent from this codebase, and the code that actually renders the first-person player body contradicts it. This repository is /home/user/project-dagger, a JavaScript port of Daggerfall (logic from Daggerfall Unity, presentation on hand-rolled WebGL2) — not OpenMW. All three cited sources are non-existent paths: there is no components/ directory, no files/shaders/ directory, no .gitmodules, and zero .cpp/.hpp/.frag/.glsl files anywhere in the tree. A full-tree grep (excluding .git and node_modules) for NiAlphaProperty, nifloader, nifosg, and openmw returns no hits; the sole filename matching *nif* is /home/user/project-dagger/test/manifest.test.js, matching on the substring inside "manifest". Daggerfall assets are ARCH3D/CIF/IMG, never NIF, so no mFlags/mThreshold decode, blend-factor table, test-function table, stateset, or sorting bin exists to be overridden. Where it matters for a first-person player body, the real behaviour is different in kind, not just in detail. Alpha is a fixed 1-bit cutout compiled into the shaders rather than a per-material reference derived from mThreshold/255.0: `if (t.a < 0.5) discard;` at /home/user/project-dagger/src/render/renderer.js:91, :1371 and :895, with the one exception being spectral (ghost) flats at renderer.js:"if (tex.a < ((uSpectral == 1 || uConceal.x > 0.0) ? 0.1 : 0.5))", `if (tex.a < (uSpectral == 1 ? 0.1 : 0.5)) discard;`. The comment at renderer.js:"U21c: the opt-in" states the governing law: classic art is a 1-bit palette cutout (index 0 transparent, everything else fully opaque), so the default discards and forces alpha 1, with a narrow `uBlendTex` opt-in for art authored outside that palette. Blending, where enabled at all, is one hard-coded pair with no factor decoding — gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA) at renderer.js:"if (blend) { gl.enable", renderer.js:"this._uploadFog(this._waterFog)".."gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);", renderer.js:"blended.sort((a, b) => d2(b) - d2(a))".."gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);", overworldRenderer.js:370 and :385, and precipitation.js:"gl.uniform4fv(this.uColor, cfg._gpu.color)".."gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);" — so there is no source/destination factor selection and therefore no DST_ALPHA-to-ONE rewrite. Because the renderer is immediate-mode WebGL2 with no stateset graph, the rule's two load-bearing behaviours have no mechanism to exist: nothing can REMOVE a blend func or alpha func from a parent's state to cancel it, and there is no noSorter bit or TRANSPARENT_BIN assignment. The specific special cases the task asked about confirm the same. The first-person viewmodel entry point, drawFirstPersonViewmodel at /home/user/project-dagger/src/render/characterSprite.js:100, is explicitly marked ON ICE (2026-08-17) with "No consumer"; the live first-person path is src/combat/fpsWeapon.js using WEAPON*.CIF sprites, and neith ...
 
 **Corrected form offered:** Same as stated for the flags, the bit fields, both lookup tables (SRC_ALPHA / LEQUAL fallbacks), alphaRef = mThreshold/255.0, the remove-on-off cancellation semantics, the DST_ALPHA -> ONE destination rewrite, and the shader ordering — but the sorting rule is conditional on there being no enclosing NiSortAdjustNode. The call site passes sort = !alphaprop->noSorter() (nifloader.cpp:2829-2830), and handleAlphaBlending's blending branch always records hasSortAlpha = sort; the bin, however, is only touched when mPushedSorter == nullptr: sort -> setRenderingHint(TRANSPARENT_BIN), !sort -> setRenderBinToInherit(), and the OFF branch also calls setRenderBinToInherit(). When an ancestor NiSortAdjustNode IS in scope, handleAlphaBlending sets no bin; the end of applyDrawableProperties (nifloader.cpp:2943-2985) assigns it instead: SortingMode::Off -> setRenderBinDetails(2, "TraversalOrderBin") no matter what the alpha flags say; Inherit/Subsort with a NiAlphaAccumulator -> setRenderBinDetails(0, "SORT_BACK_TO_FRONT") if hasSortAlpha else TraversalOrderBin; with a NiClusterAccumulator -> SORT_BACK_TO_FRONT unconditionally. Also, with no pushed sorter, a non-sorting drawable that carries a sten
 
@@ -3659,7 +3683,7 @@ sound, this is the condition it must not be read past):
 
 > The rule omits a guard that inverts its central claim. It asserts only "Two guards run after the loop" and cites :2907-2926 and :2928-2934, but there are two further blocks between the loop and :2907. The decisive one is nifloader.cpp:2899-2906: `if (lightmode == LightMode_Emissive) { diffuse = (0,0,0,diffuse.a()); mat->setDiffuse(diffuse); mat->setAmbient(osg::Vec4f()); }`. Trace a NiVertexColorProperty with VertMode_SrcAmbDif + LightMode_Emissive on a mesh with no colour array: inside the loop (2808-2812) the mode is forced to None and `lightmode` is latched to LightMode_Emissive; at 2899 ambient and diffuse RGB are zeroed to black; at 2907 the !hasVertexColors switch sees mode None, hits `default:`, and writes nothing back to white; at 2930 the material now differs from defaultMat so it IS attached, carrying black ambient and black diffuse. That directly refutes "a NiVertexColorProperty on a colourless mesh yields plain white, not black" — stated as always-true when it holds only while lightmode != LightMode_Emissive — and refutes the corollary that such a shape carries no material state and inherits from above. A second omitted block at 2891-2897 (`mVersion <= VER_MW || !specEnabled`) also runs after the loop and unconditionally stomps specular to (0,0,0,0), shininess to 0 and specularStrength to 1, so on Morrowind-era NIFs a NiMaterialProperty's mSpecular/mGlossiness never reach the stateset. Everything else in the rule checks out against the fetched sources: MaterialConfig defaults at material.hpp:27-36 are exactly as stated; the redundant white re-set of diffuse/ambient is real; the colour mode is indeed the only non-default material state set before the loop; Material::operator== (material.cpp:68-75) compares mVertexColorMode, so a vertex-coloured shape with no NiMaterialProperty does get a material attached with AmbientAndDiffuse; and the property.cpp:505-521 claims hold (mAmbient/mDiffuse read only when bethVersion < 26, mEmissiveMult only when bethVersion >= 22, mAlpha a single float becoming diffuse.a while setAmbient/setEmission/setSpecular each pass 1.f as alpha).
 
-> Refuted on its premise, not by an override. The rule describes OpenMW's C++ NIF loader, and none of it exists in the codebase under review. Working directory is /home/user/project-dagger, a JavaScript 1:1 Daggerfall port on a hand-rolled WebGL2 renderer. Verified: (1) the claimed source components/nifosg/nifloader.cpp:2731-2934 does not exist, and there is no components/, nifosg/, or sceneutil/ directory anywhere; (2) the repo contains ZERO C++ sources - find for *.cpp/*.hpp/*.cc/*.h returns nothing; (3) grep across the whole tree including vendor/ for applyDrawableProperties, NiMaterialProperty, NiVertexColorProperty, SceneUtil, emissiveMult, vertexColorMode, bethVersion and openmw returns zero hits. vendor/ holds only dfu-books, dfu-quests, dfu-settings (Daggerfall Unity text data). The only "Morrowind" matches are a province name at /home/user/project-dagger/src/ui/provinceMap.js:94 and a font remark at /home/user/project-dagger/bible/10-UI/UI-Arc.md:773. The actual rendering model is incompatible with the rule rather than a variant of it: /home/user/project-dagger/src/render/characterMesh.js packs interleaved [pos.xyz, color.rgb, normal.xyz] per vertex and /home/user/project-dagger/src/render/renderer.js lights it in-shader against a scene ambient/sun/point model - no OSG state sets, no material objects, no inheritance from parent state, no NIF property loop, so there is no "attach only if it differs from a default-constructed Material" behaviour to override. The first-person framing has no counterpart either: per /home/user/project-dagger/src/combat/fpsWeapon.js:1-22 first-person view is classic 2D CIF sprite art and the voxel FP viewmodel is explicitly "ON ICE" as of a 2026-08-17 design pivot, so there is no first-person 3D player body carrying material state. Beast/werewolf and vampire handling (/home/user/project-dagger/src/characters/beasts.js, /home/user/project-dagger/src/characters/pieces/beastHead.js, /home/user/project-dagger/src/characters/paperdollPayload.js) drives paperdoll and sprite art, never mesh materials. IMPORTANT CAVEAT: I did not find a caller, subclass, or special case that contradicts the rule as a statement about real OpenMW - I found that OpenMW is not present in this session at all, so the rule is unverifiable here and must not be recorded as confirmed. If the intent was to audit the genuine OpenMW repository, it needs to be attached first; nothing in project-dagger can confirm or refute its NIF material defaults.
+> Refuted on its premise, not by an override. The rule describes OpenMW's C++ NIF loader, and none of it exists in the codebase under review. Working directory is /home/user/project-dagger, a JavaScript 1:1 Daggerfall port on a hand-rolled WebGL2 renderer. Verified: (1) the claimed source components/nifosg/nifloader.cpp:2731-2934 does not exist, and there is no components/, nifosg/, or sceneutil/ directory anywhere; (2) the repo contains ZERO C++ sources - find for *.cpp/*.hpp/*.cc/*.h returns nothing; (3) grep across the whole tree including vendor/ for applyDrawableProperties, NiMaterialProperty, NiVertexColorProperty, SceneUtil, emissiveMult, vertexColorMode, bethVersion and openmw returns zero hits. vendor/ holds only dfu-books, dfu-quests, dfu-settings (Daggerfall Unity text data). The only "Morrowind" matches are a province name at /home/user/project-dagger/src/ui/provinceMap.js:93 and a font remark at /home/user/project-dagger/bible/10-UI/UI-Arc.md:892. The actual rendering model is incompatible with the rule rather than a variant of it: /home/user/project-dagger/src/render/characterMesh.js packs interleaved [pos.xyz, color.rgb, normal.xyz] per vertex and /home/user/project-dagger/src/render/renderer.js lights it in-shader against a scene ambient/sun/point model - no OSG state sets, no material objects, no inheritance from parent state, no NIF property loop, so there is no "attach only if it differs from a default-constructed Material" behaviour to override. The first-person framing has no counterpart either: per /home/user/project-dagger/src/combat/fpsWeapon.js:1-22 first-person view is classic 2D CIF sprite art and the voxel FP viewmodel is explicitly "ON ICE" as of a 2026-08-17 design pivot, so there is no first-person 3D player body carrying material state. Beast/werewolf and vampire handling (/home/user/project-dagger/src/characters/beasts.js, /home/user/project-dagger/src/characters/pieces/beastHead.js, /home/user/project-dagger/src/characters/paperdollPayload.js) drives paperdoll and sprite art, never mesh materials. IMPORTANT CAVEAT: I did not find a caller, subclass, or special case that contradicts the rule as a statement about real OpenMW - I found that OpenMW is not present in this session at all, so the rule is unverifiable here and must not be recorded as confirmed. If the intent was to audit the genuine OpenMW repository, it needs to be attached first; nothing in project-dagger can confirm or refute its NIF material defaults.
 
 **Corrected form offered:** applyDrawableProperties starts from a fresh SceneUtil::Material whose MaterialConfig defaults are diffuse (1,1,1,1), ambient (1,1,1,1), specular (0,0,0,0), emission (0,0,0,1), shininess 0, emissiveMult 1, specularStrength 1, vertexColorMode None (components/sceneutil/material.hpp:27-36), then redundantly re-sets diffuse and ambient to white. The only non-default material state set before the property loop is the colour mode: AmbientAndDiffuse when the geometry has a colour array, None when it does not — so a shape with vertex colours and no NiMaterialProperty still gets a material whose vertex colours drive ambient and diffuse. FOUR things then run after the loop, not two. (1) :2891-2897 — if mVersion <= VER_MW or specular was disabled, specular is forced to (0,0,0,0), shininess to 0 and specularStrength to 1, discarding whatever a NiMaterialProperty or BSLightingShaderProperty set. (2) :2899-2906 — if a NiVertexColorProperty selected VertMode_SrcAmbDif with LightMode_Emissive, diffuse RGB is zeroed (alpha kept) and ambient is set to (0,0,0,0), i.e. genuinely black. (3) :2907-2926 — only if the geometry has no colour array, the channel matching the currently selected mode is writte
 
@@ -3821,7 +3845,7 @@ There are rules about skinning and materials but none about geometry. Unread: `c
 
 **8. Three different animation clocks on one actor.**
 
-`npcanimation.cpp:857-867`: the head's internal controllers get `mHeadAnimationTime`, `PRT_Weapon` gets `mWeaponAnimationTime`, and **every other attached part** gets `mAnimationTimePtr[0]` — the LOWER-BODY winner's clock, not its own bone group's. `weaponanimation.cpp:25-49`: `mWeaponAnimationTime` returns `getCurrentTime(mWeaponGroup) - mStartTime`, and `mStartTime` is `getStartTime(group)` only when relative — which `character.cpp:943-945` sets true **only for Ranged** weapons, with a comment about mods rotating throwing projectiles. The doc has one clock.
+`npcanimation.cpp:857-867`: the head's internal controllers get `mHeadAnimationTime`, `PRT_Weapon` gets `mWeaponAnimationTime`, and **every other attached part** gets `mAnimationTimePtr[0]` — the LOWER-BODY winner's clock, not its own bone group's. `weaponanimation.cpp:25-49`: `mWeaponAnimationTime` returns `getCurrentTime(mWeaponGroup) - mStartTime`, and `mStartTime` is `getStartTime(group)` only when relative — which `character.cpp:943-945` sets true **only for Ranged** weapons, with a comment about mods rotating throwing projectiles. The doc has one clock. (MW-BOW1, 2026-10-10, ported the WEAPON's - the bow's own motion, below; the head's and the lower body's stay unported.)
 
 **9. Ranged aim pitch, and its unresolved first-person form.**
 
@@ -6306,6 +6330,14 @@ A silent arm - a .kf without the key - falls through a 1.2s ceiling
 rather than swallowing the shot, because the whole classic release is
 seven frames at a 0.0625 tick, about 0.44s, so a real release always
 wins that race.
+BOW-CLOCK (FIELD BUGS 2026-10-09g) found that race lost: a Morrowind
+draw runs at the WEAP record's pace, not the classic release's, and a
+draw past 1.2s let the arrow go mid-draw and left its release key over
+for the next draw, whose arrow then left at the click. The ceiling now
+waits while the arm is still drawing (`fpArm.shotBusy`, to a 4s cap), a
+draw clears a release it has not reached, and no shot STARTS while the
+arm cannot draw it - the machine's cycle had outrun the draw and fired
+two arrows from one (`01-Overview/Field-Bugs-2026-10-09g.md`).
 
 THE NOCK. Rule 24's "shoot attach" still drives the arrow wherever the
 data carries it, but the arrow may no longer DEPEND on that key
@@ -6476,6 +6508,38 @@ base meshes attached resolves the iron arrow, carries it as a piece
 and leaves no arrow note; and the console line fires once per reason,
 never without ammunition; every preload and resolve passes the one
 directory.
+
+## MW-BOW1 (2026-10-10): the weapon's own clock
+
+The owner, a fourth time about the bow: "the arrow on the morrowind weapon isnt shown be drawn and shot, or it's
+misalligned", then "Find a way to grab the data yourself and figure it out". The retail files are not free; OpenMW's
+own tracker is, and it names what MW-D16, MW-D42 and MW-D50 could not see on fixtures that never move: "arrow fetching
+animation is baked into bow mesh" (issue 5642), the bow "deforming while string is being pulled" in step with the
+character "by the means of a primitive frame offset counted from the beginning of the whole animation group" (issue
+9322). Section 8 of the audit above already listed the clock as unported: `PRT_Weapon` takes `mWeaponAnimationTime`.
+
+**The law, ported.** `WeaponAnimationTime::getValue` (weaponanimation.cpp): the weapon group's current time, less
+`getStartTime(group)` - the group's first key, rule 46 - when relative; 0 when the group has no state. Relative for
+the Ranged class alone (character.cpp setWeaponGroup: "controllers for ranged weapon should use time for beginning of
+animation to play shooting properly"). The group's state outlives its section - equip and attack play with autodisable
+false - so the clock holds where the last section left it. `combat/fpArm.js` notes it as each weapon-group section
+advances (`noteWeaponClock`), and answers 0 once the stance's group is another (`weaponClockValue`).
+
+**What runs on it** (`formats/mwPartClock.js`): any record's first active NiKeyframeController, its track over its
+rest through the controller's own function ([B]: no rotation keys is the rest rotation); an unskinned shape's first
+active NiGeomMorpherController whose base morph has the shape's vertex count and more than one morph, positions =
+base + sum(weight_i x morph_i), each weight its own keys at the controller's time (handleMorphGeometry,
+MorphGeometry::cull, GeomMorpherController); an AutoPlay node's controllers on frame time instead (setupController).
+`flattenNif` now records each batch's record chain from the file root and its authored vertices, and
+`posePartClocks` (`formats/mwFirstPerson.js`) re-poses the weapon slot's moving pieces before every pose, in both
+views, and puts the arrow under the ArrowBone where the clock has it - the arrow's `preTransform` is that node's REST,
+which is what it was drawn at before.
+
+**Not ported:** every other part's controllers (the lower body's clock, `mAnimationTimePtr[0]`), the head's
+(`mHeadAnimationTime`), and releaseArrow's launch point - the projectile leaves from DFU's GetAimPosition, not the
+ammunition node's world position. Not seen on a retail bow: pinned on `test/fixtures/mw/bowClip.mjs`, a fixture bow
+that carries both controllers (`test/mwbow1.test.js`; `tools/mutants/mwbow1.json`).
+`01-Overview/Field-Bugs-2026-10-09g.md`.
 
 ## MW-D51 (2026-09-16): the held torch
 
@@ -7020,3 +7084,212 @@ by the camera as above; with Eye Of The Beholder off, a third-person
 player falls to the first at the change and stays there. Pinned in
 `test/werewolf1.test.js` (the merge's test), `tools/mutants/werewolf1.json`
 (the `WEREWOLF1-MERGE-*` rows).
+
+## DECLARED DIVERGENCE (MW-PACE1, 2026-10-07): a blow paced by Daggerfall's machine
+
+Mac: *"Morrowind attack animations don't scale with attack speed/multiple
+attacks when attack speed is high"*. The [C] rule above ("weapSpeed is the
+WEAP record's float mData.mSpeed ... and scales ONLY the three attack
+play() calls") is the reference's pace, and the arm played it: a blow took
+the record's own time whatever the player's Speed, while Daggerfall's
+machine - the one that owns the damage - struck on ITS clock
+(`characters/weaponStates.js`, SWING-LAW: one step a frame, the hit at
+frame 2, done at 5). At a high Speed the machine finished a blow and began
+the next while the arm was still in the first; the arm, gated on
+WeaponEquipped, refused the second strike, so one blow in two was drawn
+and the drawn one landed after its damage.
+
+The three attack sections now run on the MACHINE's schedule. The machine
+says, at a strike's first frame, when its hit lands and when the blow is
+done, at that frame's dt (`blowSchedule`: a step is the tick rounded up to
+whole frames, as the machine steps; the unarmed strike to the left its own
+eight ticks), handed over by `combat/playerWeapon.js` strikeSchedule and
+`combat/weaponRig.js` fpAttack. `combat/fpArm.js` fits the wind-up at the
+rate that brings the playhead from "<type> start" through the release to
+"<type> hit" by the machine's hit (`blowPace`), re-fits the release from
+where the arm stands when it begins (a frame that ran long is made up
+there, not carried into the damage) and the follow-through to the blow's
+end (`blowRate`: span over the time left, held to 0.1..12), and a strike
+arriving in the follow-through cuts it for the next blow - the wind-up and
+the release are never cut, the blow they carry has not landed. The
+record's pace stands where there is no deadline to fit: a shot (its hit
+waits for the arm's own "shoot release", MW-D42), a held wind-up, and any
+blow with no schedule. A peer's body has no Speed on the wire, but its
+swing count arrives a blow at a time: the burst's shortest gap paces its
+blows (`net/peerBodies.js` peerBlowPace - a pause only lengthens a gap; a
+gap past 2.2 s ends the burst, whose first blow keeps the record's pace),
+its hit two fifths in. `test/mwpace1.test.js`, `tools/mutants/mwpace1.json`
+(10, all dead). Ledger A (MW-PACE1).
+
+## MW-CAST1 (2026-10-07): the cast, played
+
+Mac: *"We need to implement morrowind spell casting effects and
+animations"*. MW-D39 gave the arm a spellcast stance and a cast, and none
+of it reached the screen. Four faults, each pinned in `test/mwcast1.test.js`
+(6) on an arm whose clips carry the spellcast group
+(`test/fixtures/mw/castClip.mjs` - armfpweapon.kf written back by
+`tools/nifWrite.mjs` with the group appended):
+
+- **The draw gate hid it.** A readied spell hides the weapon (`shown()`'s
+  HasReadySpell leg) and the first-person draw returned before the arm, so
+  the spell stance and the cast were never on screen. The casting hands
+  are the gate's fifth exception (`combat/weaponRig.js`, `armCasts`), beside
+  the torch, the held sheet, the shield and the sliding gun.
+- **The cast was dropped two tenths in.** Daggerfall clears the readied
+  spell AT its release (EntityEffectManager.PlayerSpellCasting_OnReleaseFrame
+  :2136-2141), and the arm took the un-ready for an abort. A cast in flight
+  now plays to its "<type> stop" as the reference's does; the stance it
+  came from drops when it ends (`unreadyAfterCast`).
+- **The spell left on frame 5, not the hands' release.** OpenMW casts on the
+  spellcast group's "<type> release" (character.cpp handleTextKey). The arm
+  signals it (`takeCastRelease`, consumed as MW-D42's shot is), and
+  `combat/fpsSpellCasting.js` HOLDS its release for the Morrowind hands on
+  screen - on their key, or when they stop casting without one, or at
+  `HELD_RELEASE_MAX_S` (1.5 s) whatever happens, so nothing waits for ever.
+  The classic lane's frame 5 is untouched.
+- **The weapon stayed in the casting hand.** OpenMW shows no weapon in the
+  Spell stance; a readied spell and a cast in flight put it out of the hand
+  on both rigs (`weaponInHand`).
+
+And the world starts a cast on the LIVE rig (`scenes/world.js`
+startCastAnim: the mode's rig, the interior's indoors), so its count
+reaches the pose. `tools/mutants/mwcast1.json` (9: 8 dead, 1 equivalent as
+recorded - the Casting leg of the spell stance, which castSpell's latch
+and the deferred un-ready make unreachable today).
+
+## MW-SPELLFX1 (2026-10-07): the spell's effects
+
+The same ask's other half. With Morrowind data attached, a spell is drawn
+as Morrowind draws it - with the player's own masters' visuals:
+
+- **The runtime** (`src/formats/mwVfx.js`, pure): an effect mesh as OpenMW
+  runs one - every controller on the effect's own clock from zero
+  (Animation::addEffect, EffectManager::addEffect), over when the clock
+  reaches the longest ACTIVE controller's stop time
+  (FindMaxControllerLengthVisitor), hidden at once unless it loops, when
+  the remainder carries (UpdateVfxCallback). Keyframed nodes ([B]: no
+  rotation keys is the rest rotation), visibility keys (VisController's
+  upper_bound; a hidden node with no NiVisController skips its meshes,
+  nifloader.cpp :826-843), NiAlphaController (the alpha uniform over the
+  diffuse alpha), NiMaterialColorController (the target in the flags),
+  NiUVController (on the geometry alone; scaled about the centre, U's
+  offset negated), NiFlipController (int(t / delta) % count), billboards
+  (AutoTransform's three modes, rule 60 and [B]), and particle systems
+  (mwParticles.js, each tied to its node; LocalSpace kept in the node's
+  space, anything else in the Morrowind world at the file's own size,
+  emitted through the emitter's orthonormalised world frame). The ROOT's
+  first NiTexturingProperty is what an effect's particle texture replaces,
+  on every other node listing that record and over its subtree
+  (overrideFirstRootTexture). Its frames come out as packed streams in the
+  particle program's format - a triangle is three vertices of size 0 - so
+  the renderer's particle path draws a mesh and its sparks alike
+  (`src/render/vfxGpu.js`, `Renderer.drawWorldParticleEffects`).
+- **The records** (`formats/mwFirstPerson.js` readMagicEffect, readStatic;
+  ARM_RECORDS_VERSION 4): MGEF - INDX, MEDT's school, flags (the three a
+  legacy file may set), colour and speed, PTEX and the four visuals' ids -
+  and the STATs an effect is drawn with (the VFX_ family and any id an MGEF
+  in the same file names), in the one pass every arm record rides.
+- **The plan** (`src/formats/mwSpellFx.js`): a casting visual per model
+  (playSpellCastingEffects), a bolt for a target spell (getMagicBoltData:
+  the particle texture only for one projectile effect, the light the mean
+  of the effects' colours, NegativeLight inverted), each effect's hit
+  (playEffects) and area (explodeSpell, at area x 2 in scale), VFX_Hands
+  wearing the LAST effect's texture; OpenMW's VFX_Default* where an effect
+  names none. **A DECLARED DEPARTURE, AND ONLY A LOOK:** Daggerfall's
+  effects are not Morrowind's, so each is drawn as the Morrowind effect
+  nearest it - harm by the spell's element (Fire, Frost, Shock Damage,
+  Poison; magic's is Damage Health), the rest by family (a Heal Health is
+  Restore Health, a Levitate is Levitate), a family nobody named by its
+  school. What a spell DOES is Daggerfall's, unchanged. Ledger A
+  (MW-SPELLFX1).
+- **The world** (`src/scenes/mwMagicFx.js`), driven by the one cast engine
+  (`scenes/hostMagic.js`) at the reference's moments: the casting visuals
+  about the caster's feet as the cast STARTS (castInput, where the
+  character controller adds them - character.cpp :1574-1613) and VFX_Hands
+  on the hands that began (`fpArm.castHands`, both rigs, the view that is
+  live); every missile's bolt (mine, an enemy's, another player's drawn
+  one), at the missile, its +Y along the flight (launchMagicBolt's pitch
+  then yaw) and spinning a turn a second about it (RotateCallback), the
+  classic flat standing in only where there is no bolt to draw; the hit on
+  whoever a spell lands on (applySpellToFoe - a creature's effect sized off
+  its body, Animation::addEffect's !isNpc rule - and applySpellToPlayer);
+  and the burst where an area goes off (explodeAt, and the area about me).
+  THE FOUR HOSTS: `scenes/dungeonContext.js`, `scenes/world.js` and
+  `scenes/exterior.js` each make the engine, and `scenes/worldModes.js`
+  (the interior) rides `world.js`'s; all four draw it through
+  `magic.drawFx()`, in their world pass. The Morrowind Spell Effects switch
+  (`systems/features.js` `mw-spell-effects`, pref `mwSpellEffects`, on by
+  default, the viewer's) is read at every spawn; off clears what runs.
+
+Not carried, recorded on the modules: lighting past the white ambient,
+AutoPlay's frame clock, roll/path/look-at/morph controllers, sorting, the
+bolt's light, a looping hit (ContinuousVfx), an actor's facing,
+VFX_Multiple's dummies, and the creatures' and other players' VFX_Hands.
+`test/mwspellfx1.test.js` (16), `test/mwload_records.test.js` (the
+records), `tools/mutants/mwspellfx1.json` (38, all dead).
+
+## DECLARED DIVERGENCE (CAST-SPEED, 2026-10-08): one cast clock, both lanes
+
+A player's post on the Discord, "Morrowind magic anims nerf you": *"since you
+cant cast instantly/constantly, it is putting you at a disadvantage over
+players without it"*. It was true. Daggerfall's hands
+(FPSSpellCasting.animSpeed, 0.04 s a step) release on frame 5 at 0.2 s and
+are down at 0.28 s; the Morrowind hands (MW-CAST1) hold the release for
+their own "<type> release". A classic caster cast about three times for
+every Morrowind caster's one. Mac: *"I think we nerf the animation of the
+regular sprite spellcasting to fall in line with the morrowind model. Also
+have casting speed a new rarity affix along with scaling with speed"*.
+
+- **The classic hands step at `CAST_FRAME_PERIOD`** (0.1 s,
+  `src/combat/fpsSpellCasting.js`), two and a half times DFU's animSpeed:
+  the release at 0.5 s, the hands down at 0.7 s. `ANIM_SPEED` stays as
+  DFU's record and nothing steps at it. **The number is the port's own.**
+  The spellcast group's real key times are in the player's
+  base_anim.1st.kf, and no committed file carries them
+  (`test/fixtures/mw/castClip.mjs` uses made-up times a pin can step to).
+  If Mac's eye on a Morrowind cast says the classic lane is still quick or
+  now slow, change this one constant.
+- **The hands own their whole motion.** castInProgress closes at the
+  release, and the hands play on for two more steps. A click in that tail
+  found PlayOneShot refusing ("Do nothing if already playing anim"), and
+  `castInput` took the no-animation arm, a free cast on the spot with no
+  motion. At DFU's clock that window was 0.08 s; at the new one it is
+  0.2 s. `scenes/hostMagic.js` now refuses the click (`castBusy`:
+  FPSSpellCasting.IsPlayingAnim, or a release still held for the arm)
+  before anything is spent, and the spell stays readied. RecastSpell reads
+  the same gate: it is DFU's own (EntityEffectManager.cs:257-266), where
+  the port had used castInProgress in its place.
+- **One rate for both lanes** (`src/systems/castSpeed.js`, a leaf).
+  `castRate(entity)` is the live Speed's share (1 at 50, 0.75 at 0, 1.25
+  at 100, the attribute clamped to its range) plus each registered
+  modifier's percent, clamped to [0.5, 2]. `combat/weaponRig.js`
+  castSpellAnim reads it once a cast and passes it to both lanes: the
+  classic frames step at CAST_FRAME_PERIOD over it, and the Morrowind arm
+  plays its spellcast group from "<type> start" to "<type> stop" at it
+  (`fpArm.castSpell(rangeType, rate)`). OpenMW plays that group at 1.
+- **The castSpeed loot line** (`systems/lootRarity.js`, a proc kind after
+  every kind before it, so the numbers' pass draws as it did - the LAST
+  pass moved all the same: a jewel's proc pool was empty before it, a
+  weapon's one narrower, so a seeded hoard holding such a piece rolls on
+  from a moved stream; CAST-SPEED-PINS re-aimed the serpent hoard pins
+  that found this, `test/serpent1_client.test.js` and
+  `test/serpentset.test.js`): "+N% casting
+  speed" on jewellery and weapons, 3-6 / 6-10 / 10-15, worth 60 a point,
+  suffix words *of Quickening*, *of Alacrity*, *of the Swift Hand*.
+  `systems/lootPowers.js` lootCastSpeed sums every worn line, the weapons
+  in hand included, up to CAST_SPEED_CAP (30%), for my entity only, and
+  registers it on the rate (`registerCastSpeedMod`). Jewellery carries it,
+  so a class that may not wear the armour still finds it.
+- **The four hosts.** The cast reaches the rig through one door in all four
+  of them. exterior.js and dungeonContext.js call
+  `weaponRig.castSpellAnim`. world.js calls the live rig's. worldModes.js
+  (interiors) shares its parent host's cast engine and its rig. The tail
+  gate sits in the one cast engine every host builds and reads the one
+  pair of hands, so no host file changed.
+- **What it leaves alone:** a foe's cast (`characters/enemyCasting.js` has
+  its own clock), and a peer's view of my cast. The wire carries the cast
+  and not its rate, so another player's copy of my arm plays it at 1. That
+  is only how it looks.
+
+`test/castspeed.test.js` (5), `test/hostmagic.test.js` (the tail gate),
+`tools/mutants/castspeed.json` (17, all dead).

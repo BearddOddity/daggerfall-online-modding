@@ -333,6 +333,10 @@ export function talkStripSource(name, arts = { base: _art, categories: _categori
 // and a missing record costs the portrait (warned once), never the
 // conversation.
 export const PORTRAIT_ARCHIVE = Object.freeze({ CommonFaces: 'TFAC00I0.RCI', SpecialFaces: 'FACES.CIF' });
+/** LEGACY-HOME: a race's chargen heads (systems/races.js raceArt `heads`, FACE<nn>I0.CIF - CreateCharFaceSelect's own
+ *  ten records) named as the archive itself - one of Project Legacy's family, spoken to, wears the face they were made
+ *  with, the one the player chose for them at their birth. */
+const HEADS_FILE = /^FACE\d\dI0\.CIF$/;
 export const PORTRAIT_RECT = Object.freeze([119, 65, 64, 64]);
 
 let _portraitDeps = null;
@@ -357,7 +361,7 @@ function _loadPortraitFile(file) {
 
 /** SetNPCPortrait(FacePortraitArchive, recordId) (:360-385). */
 export function setNpcPortrait(archive, recordId) {
-  const file = PORTRAIT_ARCHIVE[archive] ?? PORTRAIT_ARCHIVE.CommonFaces;
+  const file = PORTRAIT_ARCHIVE[archive] ?? (HEADS_FILE.test(String(archive)) ? String(archive) : PORTRAIT_ARCHIVE.CommonFaces);
   const key = `${file}#${recordId}`;
   _portraitKey = key;
   _portrait = _portraitTex.get(key) ?? null;
@@ -505,7 +509,7 @@ export class NativeTalkWindow {
   /** SetListboxTopics' tail (:893-905): a freshly filled list SELECTS
    *  its first row - index 1 when row 0 is the NavigationBack
    *  "previous" row, which this port's flattened lists never carry
-   *  (treeCategories drops them, townTalk.js:"host with no talk engine mounted -") - and SelectIndex
+   *  (treeCategories drops them, townTalk.js:"buildings: (group.listChildItems ?? [])"..".filter((child) => child.type !== LIST_ITEM_TYPE.NavigationBack)") - and SelectIndex
    *  (ListBox.cs:761-770) raises OnSelectItem, so the player-says
    *  label is filled before the player clicks anything.
    *
@@ -778,11 +782,11 @@ export class NativeTalkWindow {
    *  in SORTED index order, with an EMPTY token inserted wherever the
    *  run is broken (`if (idx - prev != 1 && prev > -1)`, :307-308) -
    *  which PlayerNotebook.AddNote turns into a line break
-   *  (notebook.js:"---- notes ----"). The port keeps ONE conversation entry per Q or
+   *  (notebook.js:"for (const token of texts)"). The port keeps ONE conversation entry per Q or
    *  A, exactly one ListBox item each, so the indexes map 1:1 and the
    *  text is the entry's own UNWRAPPED text, not the drawn lines.
    *  AddNote's own `texts.Count > 0` guard (PlayerNotebook.cs:89) is
-   *  already in notebook.js:"this.hiddenQuests = []", so the call is unconditional. */
+   *  already in notebook.js:"if (!texts || texts.length === 0)", so the call is unconditional. */
   _close() {
     this.done = true;
     const tokens = [];
@@ -899,7 +903,7 @@ export class NativeTalkWindow {
       case 'whereIs': audio.playOneShot(SOUND.ButtonClick, 1); this._talkOption = 'whereIs'; this._reopenCategory(); return true;
       // B5-6: the four pages are live at :313-327 - tellMeAbout, then
       // people/things/work behind the whereIs gate - with three of the
-      // hooks supplied at scenes/townTalk.js:"if (!r.success) onCrime?.()" and Work's OKAY
+      // hooks supplied at scenes/townTalk.js:"tellMeAboutTopics:" and Work's OKAY
       // question shipped alongside them (_askWork :293, ButtonOkay's
       // fake Work ListItem at DaggerfallTalkWindow.cs:1534-1543). Each
       // still falls back to consuming the press when its hook is absent

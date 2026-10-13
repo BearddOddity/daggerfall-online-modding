@@ -33,7 +33,7 @@ import { NATIVE_PIXEL, nativeOfPixel, pixelOfNative } from '../src/systems/seaRa
 import { LINER_STAND_M, LINER_DROP_M, LINERS_MAX, LINER_LOOKAHEAD_M, LINER_PORT_M, SHIP_FADE_S } from '../src/scenes/navalHost.js';
 import { DENSITY } from '../src/systems/naval/navalDirector.js';
 import { SHIP_STATES } from '../src/systems/naval/navalDamage.js';
-import { findHarbour } from '../src/systems/naval/shipLife.js';
+import { findHarbour, alongside } from '../src/systems/naval/shipLife.js';
 import { hash32 } from '../src/world/spawnedDungeons.js';
 import { mulberry32 } from '../src/combat/bloodArt.js';
 import { sea } from './navalSea.mjs';
@@ -295,7 +295,9 @@ test('SEA-LANES STEERED BY HER LANE: under way, out of her berth through the har
   const r = e.ship.errand;
   assert.deepEqual([r.kind, r.harbour, r.berth], ['moored', PORT.key, harbour.berths.length - 1]);
   const b = harbour.berths[r.berth];
-  assert.ok(Math.hypot(e.ship.pos[0] - b.pos[0], e.ship.pos[2] - b.pos[1]) < 0.5 && e.ship.sails === 0, 'at the berth, sails stowed');
+  // (SHIPS-2: alongside it - Mac's carrack lies 1.73 m in toward its quay from the berth's point, sounded for the mod's)
+  const along = alongside(b, 4, harbour.hull);
+  assert.ok(Math.hypot(e.ship.pos[0] - along[0], e.ship.pos[2] - along[1]) < 0.5 && e.ship.sails === 0, 'at the berth, sails stowed');
   assert.equal(r.until, Infinity, 'moored till her clock sails her on (AUDIT BAY A6 PIN MOVED: her dwell\'s end, on the shared clock, as her own)');
   // under way: through the mouth first
   const sail = under('L1-2.0.3', 77, 0, 100, { classId: 'merchantCarrack', from: HERE, to: GLEN, leg: [[0, 100], [0, -3000]], yaw: Math.PI });
@@ -427,7 +429,8 @@ function feedOn({ at = { x: 200, y: 200 }, clock = 1.7e12 } = {}) {
 
 test('SEA-LANES THE WORLD\'S FEED: before the frame poses the sea\'s ships, every LANE_LIST_MS the world hands the host every packet of the lanes about the player at the shared clock (AUDIT BAY A19 PIN MOVED: those within LANE_LIST_M of the player) - the lanes of the map\'s own ports (Travel Options\' list, by its water and the ocean\'s climate), a lane\'s way sounded once and only near the player, each packet in the scene with her seeds, her leg, her ports by key and name and her home port\'s region', () => {
   assert.match(WORLD, /if \(_mode\(\) === 'exterior' && !gamePaused\(\) && !_loading\) laneShips\(\);[^\n]*\n\s*naval\.frame\(dt \* worldTimeScale\(\)/, 'stood and steered before the frame poses them, outdoors and running');
-  assert.match(WORLD, /return \{ key: `port:\$\{t\.id\}`, name: t\.name, rect:/, 'the harbour named, its key a lane port\'s');
+  // PIN MOVED (AUDIT CAPTAIN'S SEA H1): and its sounding's reach - an isle port's its shore's
+  assert.match(WORLD, /return \{ key: `port:\$\{t\.id\}`, name: t\.name, rect, ready, reach \};/, 'the harbour named, its key a lane port\'s');   // PIN MOVED (AUDIT HOLDINGS O1): and whether its scan's pixels are built
   // the clock where the lane's first packet lies at her home port, by the player
   const [lane] = laneNetwork(FEED_PORTS.map((p) => ({ id: p.y * 1000 + p.x, name: p.name, px: p.x, py: p.y, region: 1 })), open);
   const way = laneWay(lane, water, waterNative);

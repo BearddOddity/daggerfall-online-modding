@@ -82,9 +82,48 @@ RAID_TOWNS_SHA256 = ""
 # GATE_DISCORD_WEBHOOK` here) - that redeploys the Worker and drops
 # every player once. WITHOUT IT THE RELAY POSTS NOTHING and keeps
 # nothing for it.
+# SCALE5b: each role here is also a setting a developer changes at run
+# time, with no deploy: `/relay gateRole <id>`, `/relay serpentRole <id>`,
+# `/relay sdRole <id>` (src/net/relayCfg.js); the var is the role while
+# the hub holds none.
 # The role: its id handed over 2026-10-02, before the WB12/WB13 merge (it was
 # 1554215379817988167, World Events, from 2026-09-28).
 GATE_DISCORD_ROLE = "1555589839825670258"
+# ═══ SERPENT2: THE ROLE THE SERPENT'S BELLS PING ═══════════════════
+#
+# The Discord id of the opt-in role the hub pings on each sea serpent's
+# bells, fifteen minutes before it rises (net/serpentHerald.js) - posted
+# to the gate's channel, through the gate's webhook above. EMPTY IS A
+# LEGAL STATE: the bells ping the gate's role (GATE_DISCORD_ROLE); name
+# one here to give the serpent its own.
+SERPENT_DISCORD_ROLE = ""
+# ═══ SD-HERALD: THE ROLE AN ABYSS DUNGEON'S RISE AND FIND PING ══════
+#
+# The Discord id of the opt-in role the hub pings when an Abyss
+# Dungeon rises and when it is found (net/sdHerald.js) - posted to the
+# gate's channel, through the gate's webhook above; its fall and its
+# fade ping nobody. EMPTY IS A LEGAL STATE: the posts ping the gate's
+# role (GATE_DISCORD_ROLE); name one here to give the Abyss Dungeon
+# its own.
+SD_DISCORD_ROLE = ""
+# ═══ INT11-INT14: THE LINE THE BOSS FIGHTS' COUNT RUNS BY ════════════
+#
+# The relay counts each fighter's body in a gate, an Abyss Dungeon and
+# a serpent's fight (src/net/bossBody.js), and believes the healing a
+# client says it did out of a budget. MEASURE FIRST (Mac, 2026-10-10:
+# "Measure, then enforce"): EMPTY IS THE DEFAULT LINE, which ENFORCES
+# NOTHING - each boss receipt carries the count's measure and the
+# account service keeps it (`node tools/realmReview.mjs bodies 7`).
+# Staff set the line here once the measure says where, as JSON:
+#   {"enforce": true, "body": {"depth": 1, "perS": 0.05},
+#    "hull": {"depth": 0.15, "perS": 0.012}}
+# (bodyConfig: anything it cannot read whole is the default, which
+# enforces nothing). Changing it here redeploys this Worker and drops
+# every connected player once - SCALE5b: a developer sets it at run time
+# instead, in game: `/relay bossBody <json>` (src/net/relayCfg.js), which
+# the hub keeps and every boss's room reads within a minute; this var is
+# the line while the hub holds none (`/relay bossBody -` hands it back).
+BOSS_BODY = ""
 
 # ═══ WB3: THE RELAY'S ONE SECRET ═══════════════════════════════════
 #
@@ -104,6 +143,16 @@ GATE_DISCORD_ROLE = "1555589839825670258"
 # AUDIT ONLINE A17: an uncaught error in the object is logged, not lost
 [observability]
 enabled = true
+
+# SCALE2b (2026-10-04): the relay's metrics - one Analytics Engine point per
+# room per five minutes in which anything happened (server/src/relayScale.js
+# RoomMetrics says every field, and how to query it). The dataset is created
+# by its first write; no player is identified in any point (the room's kind,
+# the relay's version and counts). A relay without the binding serves exactly
+# as before.
+[[analytics_engine_datasets]]
+binding = "METRICS"
+dataset = "daggerfall_relay"
 
 [[durable_objects.bindings]]
 name = "ROOMS"

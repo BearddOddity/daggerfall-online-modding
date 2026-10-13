@@ -15,6 +15,7 @@ import * as peersMod from '../src/scenes/comeSailAwayPeers.js';
 import * as wireMod from '../src/systems/comeSailAwayWire.js';
 import * as boatMod from '../src/systems/comeSailAwayBoat.js';
 import { createExteriorFoes } from '../src/scenes/exteriorFoes.js';
+import { quietFoesGate } from '../src/net/foesQuiet.js';   // SCALE2c
 import { rendererModel, bundleSlots } from '../src/systems/comeSailAwayModels.js';
 import { FOES_MS, FOES_FULL_MS } from '../src/net/online.js';
 import { isCellRoom, isWorldRoom, FOES_HZ_MAX } from '../src/net/wire.js';
@@ -237,7 +238,9 @@ function sail(speed) {
   const scope = {
     online: { status: 'open', room: 'world:3,12', isHost: () => false, sendFoes: (f) => { sent.push(f); return true; } },
     isCellRoom, isWorldRoom, FOES_MS, FOES_FULL_MS, _foesSentAt: -Infinity, _foesFullAt: -Infinity, modes: { mode: 'exterior' },
+    _foesQuiet: quietFoesGate(),   // SCALE2c (PIN MOVED): the host's memory of what its cell last heard - a full frame that says nothing, said once
     exteriorFoes: foesPool(clock), _hccDirty: false, camps: { wireRecords: () => [] }, hcc: { wireRecord: () => null }, duelRingWord: () => {}, raidWireWord: () => null,   // THE MERGE: RAID2's word rides the same line - no raid here
+    portalWord: () => {},   // PORTAL1: nor a portal
     campToWire: (p) => [...p], csaRuntime: { AllBoats: [boat], isSailing: () => true, state: { CurrentBoat: boat } }, csaOn: () => true,
     csaWireRecord, csaRecordKey, csaAnimatorOf: boatMod.animatorOf, _csaWordKey: null,
     bandWord: () => false,   // TV7b: no band chases on this sea
