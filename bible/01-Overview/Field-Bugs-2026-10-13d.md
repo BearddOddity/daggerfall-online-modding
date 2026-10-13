@@ -11,7 +11,7 @@ is a Ledger A row.
 
 | | Report | What it was | Done |
 |---|---|---|---|
-| 1 | "New affixes on crafted items" - "Added potency and cast speed, cast cost affixes are not rolling on crafted jewelry" (Boar) | the crafting mint takes the loot ladder's rarity roll and never its last pass, the one door the proc lines (focus, cast speed, potency, wellspring) come through | in progress (CRAFT-PROCS) |
+| 1 | "New affixes on crafted items" - "Added potency and cast speed, cast cost affixes are not rolling on crafted jewelry" (Boar) | the crafting mint takes the loot ladder's rarity roll and never its last pass, the one door the proc lines (focus, cast speed, potency, wellspring) come through | fixed (CRAFT-PROCS) |
 | 2 | "Cant turn in writs" - "Have the materials literally on hand. They don't accept them" (Uncon...) | law 3: a writ spends only what the service counted (gathered, or bought with silver); looted, shop-bought, traded and gold-bought Iron is held and never counted - and the card said "0 held" and "Not enough" with 100 in the pack | fixed (WRIT-WALL); the law kept |
 | 3 | "Shared Guild quest doesn't give me map location after friend talked to the quest npc" (Starempire42) | a `reveal` marks the clicker's own map, and a shared quest's copy carried it complete without running it | fixed (SHARE-REVEAL) |
 | 4 | "The current situation where doors lock at shops and inns in Daggerfall Capital" - "Once you get stuck, there's no way out" (Nes) | one player's Lock spell, at the caster's level, reached every visitor through the building's act and its thirty-day memory | fixed (SPELL-LOCK) |
@@ -202,6 +202,38 @@ relay's (`CARD_STAT_MAX`, a relay deploy to move).
 
 `test/fb1013d_macemax.test.js` (4); `tools/mutants/fb1013d_macemax.json` (8, all dead). No pin moved.
 
+## CRAFT-PROCS: a crafted piece never rolled a line that does something (1)
+
+`src/systems/smithItems.js` mintPiece, mintPieces, temperItem; `src/systems/lootRarity.js` lastPass (its `on`);
+`src/net/productRecord.js` (`v`, MINT_VERSION, mintVersionOf); `server-account/src/professions.js` (the craft's stamp,
+the temper's re-sign), `server-account/src/market.js` (pieceOf's `version`).
+
+FOUND. Every line that does something - LOOT4's proc kinds: a jewel's focus (the report's "cast cost"), cast speed,
+potency (BAL9c) and wellspring; a weapon's elemental, leech, slayer, cast speed and potency; armour's thorns - is drawn
+only in a loot door's LAST PASS (lootRarity.js lastPass -> rollProcLine); the ladder's own draw leaves them out. Every
+loot door takes the pass (the gate's spoils, a foe's cap, a host's combat, a raid's). The craft's mint rolled its
+quality's Magic or Rare with applyRarity and never took it, so no crafted piece could carry one: for a jewel, exactly the
+four lines reported. No page excluded crafts on purpose - Professions-Arc's Masterwork takes "one Loot Rarity Rare
+roll", and AUDIT LOOT's "a Masterwork's roll never reach it" (Loot-Arc.md) predates cast speed and BAL9c and is about
+the seeded doors' order. Reproduced on the real mint: 2,000 Superior and 2,000 Masterwork jewels, no line.
+
+FIXED. The craft's mint takes the pass after its roll, on the record's own seeded stream: a Superior's chance at one line
+is a loot door's Magic's (483 of 2,400 jewels), a Masterwork's a Rare's (849 of 2,400), every kind seen; nothing else on
+the piece moves but its worth, by the line's. The Loot Rarity switch is not asked at the mint (the piece is its record's
+on every client; the line's reader asks the switch). THE RECORD SAYS ITS LAW: the market and a temper mint a piece again
+from its record, so a craft's product record now carries its mint version (`v` 1, stamped by the service at the craft,
+kept by a temper's re-sign, carried by the market's piece), and a record made before has none and mints byte for byte
+as it did - no piece already made changes, here or on another client. The account service's acct127 (no migration;
+acct126 on the branch, renumbered past MINE-PERKS at the merge).
+
+NOT SEEN. Pieces made before keep no line, by the version's design. A client not yet updated mints a `v` 1 record
+without its line until it updates. Crafts still take no technique, curse or socket pass (not reported). A record grows
+eight characters (the worst case 457 of 512).
+
+`test/fb1013d_craftprocs.test.js` (5); `tools/mutants/fb1013d_craftprocs.json` (26, all dead). Re-aimed by content, dead:
+loot2, loot4 x3, prof3, prof10, prof7 x2, prof9 x2, audit30, and the account version's line in ten records. PIN MOVED:
+the account version's pin in 19 suites (acct127).
+
 ## THE FOUR HOSTS
 
 - SPELL-LOCK: the law is the ActionSystem's, every host's door graph. worldModes.js (a building: its act through
@@ -220,6 +252,8 @@ relay's (`CARD_STAT_MAX`, a relay deploy to move).
   calculateAttackDamage's Strikes payload - world.js and exterior.js through their foes' and guards' resolvePlayerHit,
   worldModes.js's rooms through the same two pools, dungeonContext.js through its own - and every host mounts the
   enchant clock that stamps a strike.
+- CRAFT-PROCS: the craft's mint, run where a craft's answer, a temper or a market piece is minted (the board's and the
+  stations' pages, every host alike); and the account service. No host seam.
 
 ## Pins
 
@@ -231,3 +265,4 @@ carries the mod's `.cs:701-702` that DOOR-NAME's comment cites.
 `test/fb1013d_hillseat.test.js` (8, one on ARENA2_PATH); `tools/mutants/fb1013d_hillseat.json` 18, all dead.
 `test/fb1013d_writwall.test.js` (3); `tools/mutants/fb1013d_writwall.json` 13, all dead.
 `test/fb1013d_macemax.test.js` (4); `tools/mutants/fb1013d_macemax.json` 8, all dead.
+`test/fb1013d_craftprocs.test.js` (5); `tools/mutants/fb1013d_craftprocs.json` 26, all dead.
