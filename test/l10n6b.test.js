@@ -10,6 +10,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdi
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { parseStringTableCsv, formatStringTableCsv, loadStringTableCsv } from '../src/systems/textManager.js';
+import { catalogLocale } from '../src/systems/localeCatalog.js';   // L10N6: a language still drafting
 import { protectedTokens, checkDraft, planRun, batchesOf, hash, systemPrompt, callClaude, translateTable, parseArgs, SOURCES, TOOL, DEFAULT_MODEL } from '../tools/translate.mjs';
 
 const rd = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
@@ -157,7 +158,10 @@ test('L10N6b the command line, the sources, the prompt\'s rules; and the in-sess
     const rows = new Map(parseStringTableCsv(rd(`locales/${code}/Port_Strings.csv`)));
     const meta = JSON.parse(rd(`locales/${code}/Port_Strings.meta.json`));
     const plan = planRun(en, rows, meta);
-    assert.deepEqual([plan.draft, plan.human], [[], []], `${code}: every row the machine's and current`);
+    // L10N6 (the first batch): a language still drafting owes rows, a row whose English moved among them - none it holds
+    // is mistaken for a person's
+    if (catalogLocale(code)?.drafting) assert.deepEqual(plan.human, [], `${code}: every row it holds the machine's`);
+    else assert.deepEqual([plan.draft, plan.human], [[], []], `${code}: every row the machine's and current`);
     assert.ok(Object.values(meta).every((m) => m.by === 'claude-in-session'));
   }
 });

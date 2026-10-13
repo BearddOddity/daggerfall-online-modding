@@ -7,34 +7,38 @@
 // not by region, because the script is what a reader reads. The laws here are pure - the build's files are
 // scenes/localeData.js's.
 
-/** English first, then by English name. `hidden` keeps a locale out of the picker (the pseudo-locale is ?lang= only). */
+/** English first, then by English name. `hidden` keeps a locale out of the picker (the pseudo-locale is ?lang= only).
+ *  `drafting`: the port's own strings in it are not yet drafted whole (L10N6, the first batch of 2026-10-13: thirteen
+ *  languages shipped whole, these twelve part-drafted). Its own drafts then do not offer it - a half-English language
+ *  is not one - but a Daggerfall Unity pack the player installs for it does (scenes/localeData.js hasLocaleText), with
+ *  the drafts it has under the pack's text. */
 export const LOCALE_CATALOG = Object.freeze([
   { code: 'en', name: 'English', englishName: 'English', script: 'latin', source: 'base' },
   { code: 'bg', name: 'Български', englishName: 'Bulgarian', script: 'cyrillic' },
-  { code: 'zh-Hans', name: '简体中文', englishName: 'Chinese (Simplified)', script: 'han' },
-  { code: 'zh-Hant', name: '繁體中文', englishName: 'Chinese (Traditional)', script: 'han' },
+  { code: 'zh-Hans', name: '简体中文', englishName: 'Chinese (Simplified)', script: 'han', drafting: true },
+  { code: 'zh-Hant', name: '繁體中文', englishName: 'Chinese (Traditional)', script: 'han', drafting: true },
   { code: 'cs', name: 'Čeština', englishName: 'Czech', script: 'latin' },
   { code: 'da', name: 'Dansk', englishName: 'Danish', script: 'latin' },
-  { code: 'nl', name: 'Nederlands', englishName: 'Dutch', script: 'latin' },
-  { code: 'fi', name: 'Suomi', englishName: 'Finnish', script: 'latin' },
+  { code: 'nl', name: 'Nederlands', englishName: 'Dutch', script: 'latin', drafting: true },
+  { code: 'fi', name: 'Suomi', englishName: 'Finnish', script: 'latin', drafting: true },
   { code: 'fr', name: 'Français', englishName: 'French', script: 'latin' },
   { code: 'de', name: 'Deutsch', englishName: 'German', script: 'latin' },
-  { code: 'el', name: 'Ελληνικά', englishName: 'Greek', script: 'greek' },
-  { code: 'hu', name: 'Magyar', englishName: 'Hungarian', script: 'latin' },
+  { code: 'el', name: 'Ελληνικά', englishName: 'Greek', script: 'greek', drafting: true },
+  { code: 'hu', name: 'Magyar', englishName: 'Hungarian', script: 'latin', drafting: true },
   { code: 'id', name: 'Bahasa Indonesia', englishName: 'Indonesian', script: 'latin' },
   { code: 'it', name: 'Italiano', englishName: 'Italian', script: 'latin' },
-  { code: 'ja', name: '日本語', englishName: 'Japanese', script: 'han' },
+  { code: 'ja', name: '日本語', englishName: 'Japanese', script: 'han', drafting: true },
   { code: 'ko', name: '한국어', englishName: 'Korean', script: 'hangul' },
   { code: 'nb', name: 'Norsk bokmål', englishName: 'Norwegian', script: 'latin' },
-  { code: 'pl', name: 'Polski', englishName: 'Polish', script: 'latin' },
+  { code: 'pl', name: 'Polski', englishName: 'Polish', script: 'latin', drafting: true },
   { code: 'pt-BR', name: 'Português (Brasil)', englishName: 'Portuguese (Brazil)', script: 'latin' },
   { code: 'ro', name: 'Română', englishName: 'Romanian', script: 'latin' },
   { code: 'ru', name: 'Русский', englishName: 'Russian', script: 'cyrillic' },
   { code: 'es', name: 'Español', englishName: 'Spanish', script: 'latin' },
-  { code: 'sv', name: 'Svenska', englishName: 'Swedish', script: 'latin' },
-  { code: 'tr', name: 'Türkçe', englishName: 'Turkish', script: 'latin' },
-  { code: 'uk', name: 'Українська', englishName: 'Ukrainian', script: 'cyrillic' },
-  { code: 'vi', name: 'Tiếng Việt', englishName: 'Vietnamese', script: 'latin' },
+  { code: 'sv', name: 'Svenska', englishName: 'Swedish', script: 'latin', drafting: true },
+  { code: 'tr', name: 'Türkçe', englishName: 'Turkish', script: 'latin', drafting: true },
+  { code: 'uk', name: 'Українська', englishName: 'Ukrainian', script: 'cyrillic', drafting: true },
+  { code: 'vi', name: 'Tiếng Việt', englishName: 'Vietnamese', script: 'latin', drafting: true },
   { code: 'qps-ploc', name: 'Pseudo', englishName: 'Pseudo-locale (testing)', script: 'latin', source: 'pseudo', hidden: true },
 ].map((l) => Object.freeze({ dir: 'ltr', source: 'machine', ...l })));
 

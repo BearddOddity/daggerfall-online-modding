@@ -72,7 +72,7 @@ test('L10N6 the translators reach the language\'s record: `locales/<tag>/transla
   assert.equal(fr.title, 'Français');
   assert.equal(fr.link, 'https://example.org/fr');
   assert.match(fr.author, /^A\. Traducteur, B\. Relecteur, Chloé et Didier$/, 'listed as French lists names');
-  assert.equal(fr.terms, 'CC-BY-4.0: bundling allowed with credit (2026-10-01)');
+  assert.equal(fr.terms, 'CC-BY-4.0\u00a0: bundling allowed with credit (2026-10-01)', 'the pattern in French - its space before the colon (L10N6: the French drafts hold the row)');
 });
 
 test('L10N6 the tree: every `locales/<tag>/translators.json` is a list of names, in a language folder the catalog drafts', () => {

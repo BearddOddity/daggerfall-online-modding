@@ -93,13 +93,35 @@ test('L10N1b every language\'s file: DFU\'s format as the port writes it, the En
     const rows = tm.parseStringTableCsv(text);
     assert.equal(tm.formatStringTableCsv(rows), text, `${path} is in the port's own form (the writer's)`);
     const map = new Map(rows);
-    assert.deepEqual([...map.keys()].sort(), [...en.keys()].sort(), `${l.code} covers the catalog`);
+    // L10N6 (the first batch, 2026-10-13): a language still `drafting` holds part of the catalog and is not offered on
+    // it (test below); every other language holds the catalog exactly
+    if (l.drafting) assert.deepEqual([...map.keys()].filter((k) => !en.has(k)), [], `${l.code}'s part-drafts name only catalog keys`);
+    else assert.deepEqual([...map.keys()].sort(), [...en.keys()].sort(), `${l.code} covers the catalog`);
     for (const [k, v] of map) {
       assert.ok(v.trim(), `${l.code} ${k} is empty`);
       assert.doesNotThrow(() => tm.parseMessage(v), `${l.code} ${k} is not a readable pattern`);
       assert.deepEqual(argNames(v), argNames(en.get(k)), `${l.code} ${k} names other arguments than the English`);
     }
   }
+});
+
+test('L10N6 the first batch: a language still drafting is not offered on its part-drafts - not held, not in the picker\'s list, not offered to a browser that reads it - while a whole one is; a pack for it offers it', () => {
+  const drafting = LOCALE_CATALOG.filter((l) => l.drafting).map((l) => l.code);
+  const whole = LOCALE_CATALOG.filter((l) => l.source === 'machine' && !l.drafting).map((l) => l.code);
+  assert.deepEqual(whole, ['bg', 'cs', 'da', 'fr', 'de', 'id', 'it', 'ko', 'nb', 'pt-BR', 'ro', 'ru', 'es'], 'the thirteen drafted whole');
+  assert.equal(drafting.length + whole.length, 25, 'every language is whole or drafting');
+  assert.ok(drafting.includes('ja') && whole.includes('fr'));
+  data._useLocaleFilesForTests({
+    '../../locales/ja/Port_Strings.csv': async () => rd('locales/ja/Port_Strings.csv'),
+    '../../locales/fr/Port_Strings.csv': async () => rd('locales/fr/Port_Strings.csv'),
+  });
+  assert.deepEqual([data.hasLocaleText('ja'), data.hasLocaleText('fr')], [false, true], 'the part-drafts hold nothing a player is offered');
+  assert.equal(localeForBrowser(['ja-JP', 'en'], data.hasLocaleText), null, 'a Japanese browser is not offered Japanese yet');
+  assert.equal(localeForBrowser(['fr-FR', 'en'], data.hasLocaleText), 'fr');
+  data._useLocaleFilesForTests({ '../../locales/ja/Port_Strings.csv': async () => rd('locales/ja/Port_Strings.csv') },
+    { meta: { '../../locales/ja/pack/PACK.json': { name: 'A pack', authors: ['Someone'], licence: 'MIT', source: 'https://example.org' } } });
+  assert.equal(data.hasLocaleText('ja'), true, 'a pack for it offers it');
+  data._useLocaleFilesForTests({});
 });
 
 test('L10N1b executed: a language\'s file patched in speaks through t(); tIn asks in another language while English stands; the rail\'s English reads back as itself', () => {
@@ -127,16 +149,16 @@ test('L10N1b executed: a language\'s file patched in speaks through t(); tIn ask
 
 test('L10N1b the boot, run: the saved choice, ?lang= for one visit, only the chosen language\'s chain fetched and each file once, English never fetched, a language without text is English, the offer\'s language fetched while English stands and never once answered, and a failed load forgotten with English left standing', async () => {
   const calls = [];
-  let jaFails = false;
+  let koFails = false;
   const glob = {
     '../../locales/fr/Port_Strings.csv': async () => { calls.push('fr'); return rd('locales/fr/Port_Strings.csv'); },
-    '../../locales/ja/Port_Strings.csv': async () => { calls.push('ja'); if (jaFails) throw new Error('offline'); return rd('locales/ja/Port_Strings.csv'); },
+    '../../locales/ko/Port_Strings.csv': async () => { calls.push('ko'); if (koFails) throw new Error('offline'); return rd('locales/ko/Port_Strings.csv'); },
     '../../locales/pt-BR/Port_Strings.csv': async () => { calls.push('pt-BR'); return 'Key,Value\nmenu.rail.new,"Novo jogo"\n'; },
     '../../locales/pt/Port_Strings.csv': async () => { calls.push('pt'); return 'Key,Value\nmenu.rail.new,"Jogo novo"\nmenu.rail.load,"Carregar jogo"\n'; },
     '../../locales/en/Port_Strings.csv': async () => { calls.push('en'); throw new Error('English is the code\'s'); },
     '../../locales/fr/README.md': async () => { calls.push('readme'); return ''; },
   };
-  const fresh = () => { tm._resetTextManagerForTests(); resetPrefs(); data._useLocaleFilesForTests(glob); calls.length = 0; jaFails = false; };
+  const fresh = () => { tm._resetTextManagerForTests(); resetPrefs(); data._useLocaleFilesForTests(glob); calls.length = 0; koFails = false; };
   const q = (s) => new URLSearchParams(s);
 
   fresh();
@@ -150,7 +172,7 @@ test('L10N1b the boot, run: the saved choice, ?lang= for one visit, only the cho
   assert.ok(tm.availableLocales().some((l) => l.code === 'fr') && !tm.availableLocales().some((l) => l.code === 'de'), 'the languages the build holds, registered');
 
   fresh();
-  assert.equal(await data.initLocale(q('lang=fr'), { languages: ['ja'] }), 'fr', '?lang=');
+  assert.equal(await data.initLocale(q('lang=fr'), { languages: ['ko'] }), 'fr', '?lang=');
   assert.equal(getPref('language'), 'en', 'for one visit: the choice is not written');
   assert.deepEqual(calls, ['fr'], 'and nothing offered under ?lang=');
 
@@ -163,37 +185,37 @@ test('L10N1b the boot, run: the saved choice, ?lang= for one visit, only the cho
   assert.equal(tm.currentLocale(), 'en');
 
   fresh();
-  assert.equal(await data.initLocale(q(''), { languages: ['ja-JP', 'en'] }), 'en', 'English stands until the player answers');
-  assert.deepEqual(calls, ['ja'], 'the offer\'s language fetched, so the offer can ask in it');
-  assert.equal(tm.localeTable('ja', 'Port_Strings')?.get('lang.offer'), '日本語でプレイしますか？');
+  assert.equal(await data.initLocale(q(''), { languages: ['ko-KR', 'en'] }), 'en', 'English stands until the player answers');
+  assert.deepEqual(calls, ['ko'], 'the offer\'s language fetched, so the offer can ask in it');
+  assert.equal(tm.localeTable('ko', 'Port_Strings')?.get('lang.offer'), '한국어로 플레이하시겠습니까?');
   fresh();
   setPref('languageOffered', true);
-  assert.equal(await data.initLocale(q(''), { languages: ['ja-JP'] }), 'en');
+  assert.equal(await data.initLocale(q(''), { languages: ['ko-KR'] }), 'en');
   assert.deepEqual(calls, [], 'answered once, never fetched again');
   fresh();
-  assert.equal(await data.initLocale(q('lang=en'), { languages: ['ja-JP'] }), 'en');
-  assert.equal(await data.initLocale(q(''), { languages: ['en-GB', 'ja'] }), 'en');
+  assert.equal(await data.initLocale(q('lang=en'), { languages: ['ko-KR'] }), 'en');
+  assert.equal(await data.initLocale(q(''), { languages: ['en-GB', 'ko'] }), 'en');
   assert.deepEqual(calls, [], 'nothing offered under ?lang=, nor to a reader of English');
   fresh();
-  jaFails = true;
-  assert.equal(await data.initLocale(q(''), { languages: ['ja'] }), 'en', 'an offer that fails to load is only a warning');
+  koFails = true;
+  assert.equal(await data.initLocale(q(''), { languages: ['ko'] }), 'en', 'an offer that fails to load is only a warning');
 
   fresh();
   await data.switchLocale('fr');
-  jaFails = true;
-  setPref('language', 'ja');
+  koFails = true;
+  setPref('language', 'ko');
   assert.equal(await data.initLocale(q('')), 'en', 'a language that fails to load leaves English standing');
   assert.equal(tm.currentLocale(), 'en', 'English, not the language that stood before');
-  jaFails = false;
-  assert.equal(await data.switchLocale('ja'), 'ja', 'the failed load was forgotten');
-  assert.deepEqual(calls.filter((c) => c === 'ja').length, 2, 'and fetched again');
+  koFails = false;
+  assert.equal(await data.switchLocale('ko'), 'ko', 'the failed load was forgotten');
+  assert.deepEqual(calls.filter((c) => c === 'ko').length, 2, 'and fetched again');
   assert.ok(!calls.includes('en') && !calls.includes('readme'), 'English and a non-table file never fetched');
 
   const html = {};
   globalThis.document = { documentElement: html };
   try {
-    data.applyDocumentLanguage('ja');
-    assert.deepEqual(html, { lang: 'ja', dir: 'ltr' });
+    data.applyDocumentLanguage('ko');
+    assert.deepEqual(html, { lang: 'ko', dir: 'ltr' });
     data.applyDocumentLanguage('qps-ploc');
     assert.equal(html.lang, 'en', 'the pseudo-locale reads as English');
   } finally { delete globalThis.document; }

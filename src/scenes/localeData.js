@@ -83,8 +83,10 @@ let _translators = indexTranslators(TRANSLATORS);
 
 /** L10N3b: the installed packs, by tag - read from the store at boot and after every install or removal. */
 let _packs = new Map();
-/** Whether the game holds text for `code`: the build's (English and the pseudo-locale always), or an installed pack. */
-export const hasLocaleText = (code) => code === BASE_LOCALE || code === PSEUDO_LOCALE || byCode.has(code) || ((_packs.has(code) || _bundled.has(code)) && !!catalogLocale(code));
+/** Whether the game holds text for `code`: the build's (English and the pseudo-locale always), or an installed pack. A
+ *  language still `drafting` (systems/localeCatalog.js) is not held by its part-drafts alone - only a pack offers it. */
+export const hasLocaleText = (code) => code === BASE_LOCALE || code === PSEUDO_LOCALE || (byCode.has(code) && !catalogLocale(code)?.drafting)
+  || ((_packs.has(code) || _bundled.has(code)) && !!catalogLocale(code));
 
 /** What the text core is told of a language: the catalog's record, its installed pack's (`pack` - the language row
  *  shows it), its bundled pack's PACK.json (`bundled`, L10N6) and its translators (`translators`, L10N6) - the last

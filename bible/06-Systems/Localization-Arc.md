@@ -878,3 +878,25 @@ our code is an anchor now, never a line number (`bible/Home.md`, A CITE NAMES WH
   `Port-Ledger.md:NNN` row identifier below it was re-resolved by its row's content.
 - **Still owed, as at the branch's tip:** the 25 languages' drafts of the port's own strings. Each language holds 96
   rows, and the catalog 2,435. `test/l10n1b.test.js` and `test/l10n6b.test.js` fail until they land.
+
+## L10N6 (2026-10-13): the first batch - thirteen languages whole
+
+Mac, 2026-10-13: "I really want to get the first batch out as soon as possible". The catalog's 2,341 owed rows were
+drafted in-session, one language a session, through `tools/l10nInSession.mjs` (TRANSLATE-BRIEF's rules; each
+language's glossary grew with the terms it settled). The run was stopped for its cost with thirteen languages whole:
+Bulgarian, Czech, Danish, French, German, Indonesian, Italian, Korean, Norwegian, Brazilian Portuguese, Romanian,
+Russian and Spanish (2,435 rows each, every one the machine's).
+- **The other twelve are `drafting`** (`systems/localeCatalog.js`): Chinese (both), Dutch, Finnish, Greek, Hungarian,
+  Japanese, Polish, Swedish, Turkish, Ukrainian and Vietnamese hold part of the catalog (94 to 2,302 rows). A language
+  half in English is not one, so its part-drafts do not offer it (`scenes/localeData.js` hasLocaleText): it is not in
+  the picker, and a browser that reads it is not asked. A Daggerfall Unity pack the player installs for it still offers
+  it, as before, with the drafts it has beneath the pack. The part-drafts stay in the tree for the next run to finish.
+- **The laws moved with it:** `test/l10n1b.test.js` holds a whole language to the catalog exactly and a drafting one to
+  catalog keys; `test/l10n6b.test.js` holds every row a language has to the machine's (a drafting one may owe rows whose
+  English moved); a new test pins the thirteen and the drafting rule. The boot test's offered language is Korean now.
+- **What the drafters were unsure of** - the same few, in most languages: the a/an and possessive `select`s that only
+  English needs (kept, with empty branches), the online events' names ("Hours broken", "Breaches closed"), Iliac Bay
+  and Slaughterfish where no official form was known, and the mods' option labels (translated, and the descriptions
+  that name them follow). A speaker's review file (`tools/l10nReview.mjs`) is the way a fix comes in.
+- **Next:** the twelve, through the pipeline (`tools/translate.mjs`, Mac's key) or a cheaper run; then L10N4's routing of
+  main's 6,000 new literals (the ratchet's 13,602).
