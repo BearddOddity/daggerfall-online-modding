@@ -81,6 +81,24 @@
     ]
   },
   {
+    "name": "FB1013c-REMAINS-STAND-the-plaque-not-the-ring-s-name",
+    "file": "src/scenes/world.js",
+    "old": "    label: (r) => LEGACY_TEXT.remainsName(r.name),",
+    "new": "    label: (r) => r.name,",
+    "tests": [
+      "test/fb1013c_remains.test.js"
+    ]
+  },
+  {
+    "name": "FB1013c-REMAINS-STAND-the-ring-not-the-plaque-s-name",
+    "file": "src/scenes/legacyHost.js",
+    "old": "label: LEGACY_TEXT.remainsName(r.name), id:",
+    "new": "label: `Where ${r.name} fell`, id:",
+    "tests": [
+      "test/fb1013c_remains.test.js"
+    ]
+  },
+  {
     "name": "FB1013c-REMAINS-STAND-no-line",
     "file": "src/scenes/legacyRemainsStand.js",
     "old": "        pile.mark = REMAINS_MARK;",

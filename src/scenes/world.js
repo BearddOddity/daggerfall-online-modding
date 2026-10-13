@@ -27763,7 +27763,7 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     feetOf: legacyRemainsFeet,
     pixelKeyOf: (place) => (place?.mode === 'exterior' && place.pixel ? `${place.pixel.x},${place.pixel.y}` : null),   // dies with its pixel (collectPixel), stood again when it is built
     icon: REMAINS_FLAT,
-    label: (r) => `The remains of ${r.name}`,
+    label: (r) => LEGACY_TEXT.remainsName(r.name),   // their own name, the map ring's (legacyHost.js LEGACY_TEXT)
   });
   /** AUDIT LEGACY: what the one played keeps - the pack, the wagon and the Materials Bag. */
   const legacyCarried = () => [...(playerEntity.items ?? []), ...(playerEntity.wagonItems ?? []), ...(playerEntity.bagItems ?? [])];

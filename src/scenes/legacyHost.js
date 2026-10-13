@@ -85,6 +85,7 @@ export const LEGACY_TEXT = Object.freeze({
   // PERMADEATH-HOUSES: a house of the line's dead, taken up by whoever carries the line - or waiting on a bank's one deed a region
   deed: (loc, given) => `${given}'s house${loc ? ` in ${loc}` : ''} passes to you. Its deed is yours now.`,
   deedWaits: (loc, given) => `${given}'s house${loc ? ` in ${loc}` : ''} waits for you - you keep a house in that region already, and the bank deeds one a region. Sell yours there to take it up.`,
+  remainsName: (name) => `The remains of ${name}`,   // FB1013c: their own name - the map's ring and the body's plaque, one home
   remainsFound: (name) => `You have found the remains of ${name}.`,
   remainsTaken: (name) => `You carry the remains of ${name}. Lay them to rest at a temple, or at the family's seat.`,
   remainsReturned: (name) => `The remains of ${name} are no longer with you. They lie where ${name} fell.`,
@@ -703,7 +704,7 @@ export function createLegacyHost(deps) {
   }
   /** The remains still lying, ringed on the maps where the fallen fell - while the mod is on (AUDIT LEGACY B8). */
   const mapMarks = () => (family && deps.on() && !past ? openRemains() : []).filter((r) => r.state === 'lying' && r.place?.pixel).map((r) => ({
-    cx: r.place.pixel.x + 0.5, cy: r.place.pixel.y + 0.5, r: LEGACY_RING_R, label: `The remains of ${r.name}`, id: `${LEGACY_QUEST_PREFIX}${r.id}`, place: r.place.mode === 'dungeon', farmKey: null,
+    cx: r.place.pixel.x + 0.5, cy: r.place.pixel.y + 0.5, r: LEGACY_RING_R, label: LEGACY_TEXT.remainsName(r.name), id: `${LEGACY_QUEST_PREFIX}${r.id}`, place: r.place.mode === 'dungeon', farmKey: null,
   }));
   /** FB1013c REMAINS-STAND (FIELD BUGS 2026-10-13c, "remains did not appear"): THE REMAINS THE WORLD STANDS - every row
    *  of the line still lying where its fallen fell that the one played may seek (openRemains), its list made ready to be

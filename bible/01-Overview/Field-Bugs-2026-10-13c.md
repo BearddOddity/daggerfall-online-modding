@@ -52,23 +52,24 @@ heir landing through the birth's door - thirty metres from where she fell nothin
 FIXED. THE REMAINS STAND AS A BODY where they lie, in the ground pool of the host the one played stands in - the
 street's, or a dungeon's through worldModes' `droppedPool` - their own picture (`REMAINS_FLAT`) on the floor under the
 fallen's last position (the dungeon's `floorAt`) underground, and outdoors at the native spot where they fell, at the
-height they stood at (`legacyHere` keeps it now: a roof, a bridge; an older row stands on the ground) - a record's height,
-so in DFU's frame on the ground it was measured on, as the Recall anchor keeps its own (AUDIT LANDFORMS C1 and
+height they stood at (`legacyHere` keeps it now: a roof, a bridge; an older row stands on the ground) - a record's
+height, so in DFU's frame on the ground it was measured on, as the Recall anchor keeps its own (AUDIT LANDFORMS C1 and
 TERRAIN-SCALE1: `groundFrameHeight` in, `restandHeight` with its stamp out) - once its pixel is built and dying with its
 pixel. THE BODY'S LIST IS THE RECORD'S: the same array, so a take from it is a take from the record, as the list's own
-window always was - claimed by the member who changes it (AUDIT LEGACY II H5), the bones
-going back into it and into no other pile (H4: it wears its mark). It is `unsaved`: no save, no scene cache and no room's
-memory carries it, so nothing is laid twice (H1 stands) - stood afresh at each visit, and let go when its place is left,
-its pool goes (a door, a load, a pixel collected), its list is taken home, laid to rest or replaced (a load's merge: stood
-again over the new one), or the switch is off. The plaque names it ("The remains of Ysolde Hlaalu"), a line of light
-stands over it with the loot-rarity row on or off (`REMAINS_MARK`, the open zone's own remains' way, WILD1), and it holds
-no silver find (`noFind`: the line's list, stood afresh at every visit, would have paid for coming back). The host hands
-the world only the rows it may stand (`remainsToStand`: the slow tick's own guards - never for the past played back, a
-waiting Succession or a page not the one played's), each list made ready as its window makes it (`readyList`, one home:
-its mark, the load's repairs once, and nobody's list noted as it stands - a change from there is a claim). The world
-frames the stand once a second, after the tick (which lays the bones again and lets a claim lapse before a list is
-made ready). The lines' liveness is each kind's own word now (`setLootMarksLive(on, by)`): the open zone says its own
-every frame online, and one word for every kind would have put the house's line out.
+window always was - claimed by the member who changes it (AUDIT LEGACY II H5), the bones going back into it and into no
+other pile (H4: it wears its mark). It is `unsaved`: no save, no scene cache and no room's memory carries it, so nothing
+is laid twice (H1 stands) - stood afresh at each visit, and let go when its place is left, its pool goes (a door, a
+load, a pixel collected), its list is taken home, laid to rest or replaced (a load's merge: stood again over the new
+one), or the switch is off. The plaque names it ("The remains of Ysolde Hlaalu" - the map's ring's own words, one home:
+`LEGACY_TEXT.remainsName`, so no new English reaches the L10N4 ratchet), a line of light stands over it with the
+loot-rarity row on or off (`REMAINS_MARK`, the open zone's own remains' way, WILD1), and it holds no silver find
+(`noFind`: the line's list, stood afresh at every visit, would have paid for coming back). The host hands the world only
+the rows it may stand (`remainsToStand`: the slow tick's own guards - never for the past played back, a waiting
+Succession or a page not the one played's), each list made ready as its window makes it (`readyList`, one home: its
+mark, the load's repairs once, and nobody's list noted as it stands - a change from there is a claim). The world frames
+the stand once a second, after the tick (which lays the bones again and lets a claim lapse before a list is made ready).
+The lines' liveness is each kind's own word now (`setLootMarksLive(on, by)`): the open zone says its own every frame
+online, and one word for every kind would have put the house's line out.
 
 THE LIST'S OWN WINDOW STANDS (Legacy-Arc section 7: within six paces underground, sixty metres outdoors, anywhere on its
 town's pixel for a death in a building; once a visit, never in a fight). The body is a second door to the same list,
@@ -137,7 +138,7 @@ play online.
   the place (a latched street walker no fight underground, the list opening on the spot; the dungeon's and the
   building's own foes a fight); its line with the rarity row off under the house's own word, no silver find, and the
   hosts by source.
-- `tools/mutants/fb1013c_remains.json` (32, all dead). Re-aimed by content: `auditlegacy2.json`
+- `tools/mutants/fb1013c_remains.json` (34, all dead). Re-aimed by content: `auditlegacy2.json`
   AUDIT-LEGACY-II-H5-claimed-at-the-open and `itemwalk.json` ITEM-WALK-B-remains-unrepaired (a list's readiness has one
   home now, `readyList`); `loot11.json` LOOT11-pass-off and LOOT11-drop-pool-no-finds (the lines' word, each kind's own;
   a pile's own mark). Each list run whole: `auditlegacy2.json` and `itemwalk.json` 59 dead, `loot11.json` and

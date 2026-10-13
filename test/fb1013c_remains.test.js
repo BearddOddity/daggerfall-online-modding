@@ -16,7 +16,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createLegacyHost, REMAINS_FLAT } from '../src/scenes/legacyHost.js';
+import { createLegacyHost, REMAINS_FLAT, LEGACY_TEXT } from '../src/scenes/legacyHost.js';
 import { createRemainsStand, REMAINS_MARK, REMAINS_STAND_OWNER } from '../src/scenes/legacyRemainsStand.js';
 import { createDroppedLoot } from '../src/scenes/droppedLoot.js';
 import { createLootLines, setLootMarksLive } from '../src/scenes/lootLines.js';
@@ -85,10 +85,10 @@ function worldOf(w) {
   const exteriorFoePool = () => [...cityGuards.guards, ...exteriorFoes.foes];
   const names = ['playerTravelPixel', 'maps', 'locationIndex', 'modes', 'walkMode', 'playerSpawned', 'player', 'cam', 'REGION_NAMES', 'state',
     'heightAt', 'floorLanding', 'collider', 'LEGACY_REMAINS_NEAR_DUNGEON', 'LEGACY_REMAINS_NEAR', 'createRemainsStand', 'droppedLoot', 'REMAINS_FLAT',
-    'areEnemiesNearby', 'exteriorFoePool', 'exteriorFoes', 'cityGuards', 'groundFrameHeight', 'restandHeight', 'scaleOf', 'STREAMING_TERRAIN_SCALE'];
+    'areEnemiesNearby', 'exteriorFoePool', 'exteriorFoes', 'cityGuards', 'groundFrameHeight', 'restandHeight', 'scaleOf', 'STREAMING_TERRAIN_SCALE', 'LEGACY_TEXT'];
   const vals = [() => ({ x: 300, y: 200 }), maps, locationIndex, modes, true, true, player, { pos: [0, 0, 0] }, REGION_NAMES, state,
     heightAt, floorLanding, collider, 6, 2400, createRemainsStand, w.streetPool, REMAINS_FLAT,
-    areEnemiesNearby, exteriorFoePool, exteriorFoes, cityGuards, groundFrameHeight, restandHeight, scaleOf, SCALE];
+    areEnemiesNearby, exteriorFoePool, exteriorFoes, cityGuards, groundFrameHeight, restandHeight, scaleOf, SCALE, LEGACY_TEXT];
   const body = `${HERE}\n${IN_DUNGEON}\n${AT_PLACE}\n${FEET}\n${STAND}\nconst inFight = ${FIGHT};\nreturn { legacyHere, legacyAtPlace, legacyRemainsFeet, legacyRemainsStand, inFight };`;
   return new Function(...names, body)(...vals);
 }
@@ -165,6 +165,7 @@ test('REMAINS-STAND: the report - an Enduring elder whose span was spent collaps
   assert.equal(pile.owner, REMAINS_STAND_OWNER);
   const key = `droppedLoot:${pile.id}`;
   assert.equal(t.w.dungeonPool.labelFor(key), 'The remains of Ysolde Hlaalu', 'the plaque names her');
+  assert.equal(t.host.mapMarks()[0].label, t.w.dungeonPool.labelFor(key), 'the map\'s ring and the plaque: one name, one home (LEGACY_TEXT.remainsName)');
   assert.ok(t.w.dungeonPool.lootTargets().some((tg) => tg.key === key), 'the ray can take it - pressed, it opens as any pile');
   assert.equal(t.w.dungeonPool.pileFor(key), pile);
   assert.deepEqual(t.w.dungeonPool.lootFinds().find((f) => f.items === row.items)?.mark, REMAINS_MARK, 'its line of light');
