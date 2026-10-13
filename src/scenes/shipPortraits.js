@@ -11,9 +11,10 @@
 import { lookAt, perspective, mirrorProjectionX } from '../world/mat4.js';
 import { panelPicture, canvasBoxUnder } from './panelPicture.js';
 
-/** The picture's size, the canvas's own pixels (the card shows it at its width). */
-export const SHIP_PORTRAIT_W = 240;
-export const SHIP_PORTRAIT_H = 120;
+/** The picture's size, the canvas's own pixels (the card shows it at its width - AUDIT MENU-ORDER R7: up to some 330px on
+ *  a phone's one column, so twice the 240 it was drawn at; never more than the window's box holds). */
+export const SHIP_PORTRAIT_W = 480;
+export const SHIP_PORTRAIT_H = 240;
 export const SHIP_PORTRAITS_A_FRAME = 1;
 export const SHIP_PORTRAIT_WAIT_MS = 30_000;
 /** How she is seen: from a little above and off her beam, a quarter turned toward one end (a hull's length runs along
@@ -43,7 +44,7 @@ export function createShipPortraits(deps) {
   const now = () => deps.now?.() ?? Date.now();
   /** @type {Map<number, Promise<string|null>>} a hull's picture, asked or made - kept for the session */
   const made = new Map();
-  /** @type {Array<{ hull: number, where: () => any, asked: number, resolve: (url: string|null) => void }>} */
+  /** @type {Array<{ hull: number, where: () => any, asked: number, resolve: (url: string|null|PromiseLike<string|null>) => void }>} */
   const asks = [];
   /**
    * A hull's picture: a promise of its URL (null: none to be had - the card keeps her glyph). `where` is the box on the

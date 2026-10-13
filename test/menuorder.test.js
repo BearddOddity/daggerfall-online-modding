@@ -15,7 +15,11 @@ import { all, one, text, chipNamed, rows, panelRig } from './decorFakes.mjs';
 import { fakeDoc, fakeWin, settle, toolRig } from './decorFakes.mjs';
 import { createDecorPanel } from '../src/ui/decorPanel.js';
 import { createShipPortraits, shipPortraitCamera, SHIP_PORTRAIT_W, SHIP_PORTRAIT_H, SHIP_PORTRAITS_A_FRAME, SHIP_PORTRAIT_WAIT_MS } from '../src/scenes/shipPortraits.js';
-import { canvasBoxUnder, PANEL_PICTURE_CLEAR } from '../src/scenes/panelPicture.js';
+import { canvasBoxUnder, PANEL_PICTURE_CLEAR, panelPicture, panelPictureStudio } from '../src/scenes/panelPicture.js';
+import { Renderer } from '../src/render/renderer.js';
+import { markRemapLaw, remapLawOf } from '../src/world/texRemap.js';
+import { ENHANCED_CSS } from '../src/ui/enhancedStyle.js';
+import { DFICON_CSS as GLYPHS } from '../src/ui/menuGlyphs.js';
 import { createComeSailAwayPool } from '../src/scenes/comeSailAwayPool.js';
 import { Boat } from '../src/systems/comeSailAwayBoat.js';
 import { fileURLToPath } from 'node:url';
@@ -36,7 +40,7 @@ import { SHIPYARD_CSS, SHIPYARD_TAB_ICONS } from '../src/ui/shipyardWindow.js';
 import { SHIPYARD_HULLS } from '../src/systems/shipyards.js';
 import { mountNavalYardWindow } from '../src/ui/navalYardWindow.js';
 import { mountEnhancedMerchantPanel, MERCHANT_ICONS } from '../src/ui/enhancedMerchantPanel.js';
-import { REFORGE_CSS } from '../src/ui/enhancedPlusStyle.js';
+import { REFORGE_CSS, PLUS_CSS } from '../src/ui/enhancedPlusStyle.js';
 import { BROKER_CSS } from '../src/ui/enhancedPlusStyle.js';
 import { refusePress, brokerSkinCss } from '../src/ui/brokerWindow.js';
 
@@ -304,21 +308,37 @@ test('MENU-ORDER the rest: the Vendor page\'s pieces and the Market\'s crafted p
   assert.match(W, /const marketPiecePicture = \(piece, wake\) => \{[^]*?return itemPicture\(_pieceItems\.get\(piece\.provenance\), \{ onReady: wake \}\);/, 'a crafted piece, minted once');
 });
 
-test('MENU-ORDER a refused press says why when pressed (Plain-Words law 5, A FINGER HAS NO HOVER): never disabled - it reads refused and keeps its title for the pointer, and a press tells its whole reason and does nothing else; every refusal the Reforge draws is one, and the Broker\'s Buy; both skins grey it (mutants: disabled still; no title; the reason untold; the grey on one skin)', () => {
+test('MENU-ORDER a refused press says why when pressed (Plain-Words law 5, A FINGER HAS NO HOVER): never disabled - it reads refused and keeps its title for the pointer, its name starting with the word it shows, and a press tells its whole reason and does nothing else, the keys left on it; every refusal the Reforge draws is one, and the Broker\'s Buy; both skins grey it at rest, under the pointer, held and focused (mutants: disabled still; no title; the reason untold; the name the word left out of; the focus dropped; the grey on one skin; the grey a selector with nothing in it)', () => {
   const attrs = {};
   let acted = 0, told = null, stopped = 0;
-  const btn = { setAttribute: (k, v) => { attrs[k] = v; }, onclick: () => { acted++; } };
-  refusePress(btn, 'Not enough gold', (r) => { told = r; });
-  assert.deepEqual(attrs, { 'aria-disabled': 'true', title: 'Not enough gold' }, 'refused to the eye and a screen reader, never `disabled`');
+  const btn = { textContent: 'Need 5 more', setAttribute: (k, v) => { attrs[k] = v; }, getAttribute: (k) => attrs[k] ?? null, onclick: () => { acted++; } };
+  attrs['aria-label'] = 'Ruhn\'s Regalia: Not enough Deadlands Embers';
+  refusePress(btn, 'Not enough Deadlands Embers', (r) => { told = r; });
+  assert.deepEqual(attrs, { 'aria-disabled': 'true', title: 'Not enough Deadlands Embers', 'aria-label': 'Need 5 more - Ruhn\'s Regalia: Not enough Deadlands Embers' }, 'refused to the eye and a screen reader, never `disabled`; its name the word it shows, then whose and why (AUDIT MENU-ORDER U15)');
   btn.onclick({ stopPropagation: () => { stopped++; } });
-  assert.deepEqual([acted, told, stopped], [0, 'Not enough gold', 1], 'pressed: its reason told, its act never run, the row under it never picked');
+  assert.deepEqual([acted, told, stopped], [0, 'Not enough Deadlands Embers', 1], 'pressed: its reason told, its act never run, the row under it never picked');
+  // AUDIT MENU-ORDER U4: a window that draws itself again on the word - the keys find the press again by its name
+  const again = { getAttribute: (k) => (k === 'aria-label' ? attrs['aria-label'] : null), focus() { again.focused = true; }, focused: false };
+  const doc = { activeElement: null };
+  const win = { querySelectorAll: () => [again] };
+  const pressed = { textContent: 'Worn', ownerDocument: doc, isConnected: true, closest: () => win, setAttribute: (k, v) => { attrs[k] = v; }, getAttribute: (k) => attrs[k] ?? null };
+  attrs['aria-label'] = 'Worn - Ebony Mace: Take it off first';
+  refusePress(pressed, 'Take it off first', () => { pressed.isConnected = false; });
+  doc.activeElement = pressed;
+  pressed.onclick({ stopPropagation() {} });
+  assert.equal(again.focused, true, 'the keys on the press drawn in its place');
   const reforge = readFileSync('src/ui/reforgeWindow.js', 'utf8');
   assert.equal((reforge.match(/setAttribute\('disabled'/g) ?? []).length, 0, 'no press of the Reforge is disabled');
   assert.equal((reforge.match(/\) refusePress\(\w+, /g) ?? []).length, 9, 'its nine refusals: salvage, reforge, hone, imprint, extract, unset, set, scry, lift');
   const broker = readFileSync('src/ui/brokerWindow.js', 'utf8');
   assert.equal((broker.match(/\) refusePress\(\w+, /g) ?? []).length, 2, 'the Broker\'s Buy and an insignia\'s');
+  const sel = 'body .broker-shell .broker-win .act[aria-disabled="true"]';
   for (const css of [BROKER_CSS, brokerSkinCss()]) {
-    assert.ok(css.includes('.broker-shell .act[aria-disabled="true"], .broker-shell .act[aria-disabled="true"]:hover, .broker-shell .act[aria-disabled="true"]:active {'), 'grey at rest, under the pointer and held - on both skins');
+    const at = css.indexOf(`${sel}, ${sel}:hover,\n${sel}:active, ${sel}:focus-visible {`);
+    assert.ok(at >= 0, 'grey at rest, under the pointer, held and focused - on both skins, under the window\'s own frame so the kit\'s held and focused presses never outweigh it (AUDIT MENU-ORDER U2/U3)');
+    const body = css.slice(css.indexOf('{', at), css.indexOf('}', at));
+    for (const d of ['color: #9c937d', 'border-color: rgba(125,116,96,0.3)', 'background-color: rgba(12,14,18,0.6)', 'background-image: none', 'translate: none']) assert.ok(body.includes(d), `the grey's own ${d} (AUDIT MENU-ORDER U9)`);
+    assert.ok(css.includes(`${sel}:focus-visible { outline: 2px solid #9c937d; outline-offset: 2px; }`), 'focused, a ring of its own grey');
   }
 });
 
@@ -347,7 +367,7 @@ test('MENU-ORDER a model\'s own picture in its tile: the catalogue\'s, a placed 
   all(panel.root, 'dfdecor-chip').find((c) => String(c.textContent).startsWith('Built in')).fire('click');
   await settle();
   assert.equal(pic(rows(panel.root)[0]).getAttribute('src'), 'data:m41100', 'a built-in piece: its own');
-  assert.ok(DECOR_CSS.includes('.dfdecor-thumb img.dfdecor-modelpic { position: relative; z-index: 1;'), 'drawn over the glyph');
+  assert.ok(DECOR_CSS.includes('.dfdecor-thumb img.dfdecor-modelpic { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%;'), 'drawn over the glyph, over the whole tile (AUDIT MENU-ORDER U6: in its flow, the letters pushed it right and cut it)');
   assert.ok(DECOR_CSS.includes('.dfdecor-thumb img.dfdecor-modelpic:not([src]) { display: none; }'));
   // the camera: the box's middle at the middle, looked down on
   const cam = decorThumbCamera([-0.5, -0.1, -0.5, 0.5, 0.9, 0.5]);
@@ -380,8 +400,8 @@ test('MENU-ORDER a model\'s own picture in its tile: the catalogue\'s, a placed 
   await settle();
   const passes = rig.draws.filter((d) => d.panel && d.panel.rect.w === DECOR_THUMB_PX);
   assert.equal(passes.length, DECOR_THUMBS_A_FRAME, 'a few a frame');
-  assert.deepEqual(passes[0].panel.rect, { x: 736, y: 386, w: DECOR_THUMB_PX, h: DECOR_THUMB_PX }, 'a square of the canvas under the card\'s middle');
-  assert.deepEqual(copies[0].slice(1), [736, 386, DECOR_THUMB_PX, DECOR_THUMB_PX, 0, 0, DECOR_THUMB_PX, DECOR_THUMB_PX], 'copied out of that square');
+  assert.deepEqual(passes[0].panel.rect, { x: 724, y: 374, w: DECOR_THUMB_PX, h: DECOR_THUMB_PX }, 'a square of the canvas under the card\'s middle');
+  assert.deepEqual(copies[0].slice(1), [724, 374, DECOR_THUMB_PX, DECOR_THUMB_PX, 0, 0, DECOR_THUMB_PX, DECOR_THUMB_PX], 'copied out of that square');
   assert.equal(rig.draws.filter((d) => d.gpu != null && d.remap === 'remap').length >= DECOR_THUMBS_A_FRAME, true, 'in the room\'s textures');
   assert.equal(tiles.filter((r) => String(pic(r).getAttribute('src') ?? '').startsWith('data:model')).length, DECOR_THUMBS_A_FRAME);
   for (let i = 0; i < 40; i++) { rig.tool.drawPreview('remap'); await settle(); }
@@ -509,10 +529,10 @@ test('MENU-ORDER a ship\'s own picture on the shipmaster\'s card: her portrait b
   assert.equal(sp.draw(), SHIP_PORTRAITS_A_FRAME, 'one a frame');
   const panel = calls.find((c) => c.panel).panel;
   assert.deepEqual(panel.rect, canvasBoxUnder(canvas, box, SHIP_PORTRAIT_W, SHIP_PORTRAIT_H));
-  assert.deepEqual(panel.rect, { x: 680, y: 390, w: SHIP_PORTRAIT_W, h: SHIP_PORTRAIT_H }, 'under the window\'s middle, in the canvas\'s pixels');
+  assert.deepEqual(panel.rect, { x: 560, y: 330, w: SHIP_PORTRAIT_W, h: SHIP_PORTRAIT_H }, 'under the window\'s middle, in the canvas\'s pixels');
   assert.deepEqual(panel.clear, [...PANEL_PICTURE_CLEAR]);
   assert.deepEqual(calls.filter((c) => c.g).map((c) => c.g.id), ['hull', 'mast'], 'every part');
-  assert.deepEqual(copies[0].slice(1), [680, 390, SHIP_PORTRAIT_W, SHIP_PORTRAIT_H, 0, 0, SHIP_PORTRAIT_W, SHIP_PORTRAIT_H], 'copied out of that box');
+  assert.deepEqual(copies[0].slice(1), [560, 330, SHIP_PORTRAIT_W, SHIP_PORTRAIT_H, 0, 0, SHIP_PORTRAIT_W, SHIP_PORTRAIT_H], 'copied out of that box');
   assert.equal(await p0, 'data:ship1');
   sp.draw();
   assert.equal(await p2, 'data:ship2');
@@ -524,7 +544,7 @@ test('MENU-ORDER a ship\'s own picture on the shipmaster\'s card: her portrait b
   ready = true;
   calls.length = 0;
   sp.draw();
-  assert.deepEqual(calls.find((c) => c.panel).panel.rect, { x: 280, y: 240, w: SHIP_PORTRAIT_W, h: SHIP_PORTRAIT_H }, 'under the window that asked last');
+  assert.deepEqual(calls.find((c) => c.panel).panel.rect, { x: 160, y: 180, w: SHIP_PORTRAIT_W, h: SHIP_PORTRAIT_H }, 'under the window that asked last');
   assert.ok(await p3);
   // never answered: none, and asked again by the next window
   ready = false;
@@ -544,4 +564,173 @@ test('MENU-ORDER a ship\'s own picture on the shipmaster\'s card: her portrait b
   const widths = SHIPYARD_HULLS.map((h) => Number(new RegExp(`\\.dfyard-card\\[data-hull="${h}"\\] \\.dfyard-shipimg \\{ width: (\\d+)%`).exec(SHIPYARD_CSS)?.[1] ?? 100));
   assert.deepEqual(widths, [50, 62, 76, 88, 100], 'a rowboat\'s the card\'s half, a galley\'s its width');
   assert.ok(SHIPYARD_CSS.includes('.dfyard-pic:has(> .dfyard-shipimg[src])::before { display: none; }'), 'her glyph gives way to her');
+});
+
+/** The EV6 recording GL (test/roadc_panelframe.test.js's), for the panel bracket's own calls. */
+function recordingRenderer(log) {
+  const stub = new Proxy({}, {
+    get: (o, k) => {
+      if (k === 'getProgramParameter' || k === 'getShaderParameter') return () => true;
+      if (k === 'getUniformLocation' || k === 'getAttribLocation') return () => ({});
+      if (k === 'createTexture' || k === 'createBuffer' || k === 'createVertexArray' || k === 'createProgram' || k === 'createShader' || k === 'createFramebuffer') return () => ({});
+      if (k === 'getParameter') return () => new Float32Array([0, 0, 0, 0]);
+      if (k === 'drawingBufferWidth') return 640;
+      if (k === 'drawingBufferHeight') return 400;
+      if (typeof k === 'string' && k.toUpperCase() === k) return k;
+      return (...args) => { log.push([k, ...args]); };
+    },
+  });
+  const r = new Renderer({ getContext: () => stub, clientWidth: 640, clientHeight: 400, width: 640, height: 400 });
+  log.length = 0;
+  return r;
+}
+test('AUDIT MENU-ORDER the passes: a panel\'s ground is its whole rect (R1); the pictures drawn after the frame is shown and its shots taken (R2); encoded later by the browser (R3); a tile\'s model held by the panel alone and let go with it (R4); lit by their own studio, none of the world\'s lights (R6); an ask ages only while the panel stands (C1); a room entered again knows its pictures by its textures\' law (C3) (mutants: each undone)', async () => {
+  // R1: the clear quad drawn under the whole-canvas viewport (its rect is the canvas's pixels), the panel's set after it
+  const log = [];
+  const r = recordingRenderer(log);
+  r.beginPanelFrame(new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]), new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]), new Float32Array([0, 1, 0]), { x: 10, y: 20, w: 300, h: 160 }, [0.1, 0.1, 0.1, 1]);
+  const quad = log.findIndex((c) => c[0] === 'drawElements');
+  assert.ok(quad > 0, 'the clear drawn');
+  const vpBefore = log.slice(0, quad).filter((c) => c[0] === 'viewport').at(-1);
+  assert.deepEqual(vpBefore.slice(1), [0, 0, 640, 400], 'under the whole canvas - never squeezed into the rect');
+  assert.deepEqual(log.filter((c) => c[0] === 'viewport').at(-1).slice(1), [10, 400 - 180, 300, 160], 'the panel\'s viewport after it');
+  r.endPanelFrame();
+  // R2: the world's frame shows itself, takes its shots, then draws the panels
+  const w = readFileSync('src/scenes/world.js', 'utf8');
+  assert.match(w, /deliverOwedShots\(\);[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*yards\?\.drawPreview\(\);[^\n]*\n\s*shipPortraits\.draw\(\);/, 'after the frame and its shots');
+  assert.equal(w.split('yards?.drawPreview();').length, 2, 'and nowhere amid the world pass');
+  assert.equal(w.split('shipPortraits.draw();').length, 2);
+  // R3 + R6: the studio, and the browser's encoding
+  const calls = [];
+  const rec = new Proxy({}, { get: (o, k) => (k === 'panelFrame' ? (opts, body) => { opts.setup(); body(); } : (...a) => calls.push([k, ...a])) });
+  panelPictureStudio(rec);
+  const named = (k) => calls.find((c) => c[0] === k);
+  assert.deepEqual(named('setFog').slice(1), ['off']);
+  assert.equal(named('setMoonlight')[1], null);
+  assert.equal(named('setThirdLight')[1], null);
+  assert.equal(named('setPointLights')[1].length, 0, 'no lanterns');
+  assert.deepEqual([...named('setIndirectLight')[1]], [0, 0, 0]);
+  assert.deepEqual([...named('setWindowEmission')[1]], [0, 0, 0]);
+  assert.equal(named('setCloudShadow')[1], null);
+  let encodedNow = 0;
+  const doc = { createElement: () => ({ getContext: () => ({ drawImage() {} }), toDataURL: () => { encodedNow++; return 'data:x'; }, toBlob: (cb) => setTimeout(() => cb(new Blob(['png'])), 0) }) };
+  const url = await panelPicture({ renderer: rec, canvas: {}, doc, rect: { x: 0, y: 0, w: 16, h: 16 }, proj: null, view: null, body() {} });
+  assert.match(String(url), /^blob:/, 'a blob\'s URL, encoded by the browser later');
+  assert.equal(encodedNow, 0, 'never toDataURL, which waits on the GPU');
+  // R4 + C1: the panel's own hold; an ask that waits out a closed panel is drawn when it opens again
+  let t = 0;
+  const pinned = [], held = [];
+  let released = 0;
+  const rig = toolRig({ now: () => t, getGpuMesh: async (id) => { pinned.push(id); return { gpu: id }; }, thumbHold: () => ({ getGpuMesh: async (id) => { held.push(id); return { gpu: id }; }, release: () => { released++; } }) });
+  rig.frame();
+  rig.tool.drawPreview('remap');
+  rig.tool.openPanel();
+  for (let i = 0; i < 6; i++) { rig.frame({ overlayUp: true }); await settle(); }
+  const root = rig.doc.body.children.find((c) => c.className === 'dfdecor');
+  one(root, 'dfdecor-card').getBoundingClientRect = () => ({ left: 100, top: 50, width: 600, height: 350 });
+  const make = rig.doc.createElement;
+  rig.doc.createElement = (tag) => { const n = make(tag); if (tag === 'canvas') { n.getContext = () => ({ drawImage() {} }); n.toDataURL = () => 'data:model'; } return n; };
+  const pic = (row) => all(row, 'dfdecor-modelpic')[0];
+  const models = () => rows(root).filter((row) => pic(row));
+  rig.tool.close();   // the panel down at once, every ask pending
+  assert.equal(released, 0, 'nothing held yet');
+  t = DECOR_THUMB_WAIT_MS * 3;
+  for (let i = 0; i < 3; i++) { rig.tool.drawPreview('remap'); await settle(); }
+  rig.tool.openPanel();
+  for (let i = 0; i < 6; i++) { rig.frame({ overlayUp: true }); await settle(); }
+  one(root, 'dfdecor-card').getBoundingClientRect = () => ({ left: 100, top: 50, width: 600, height: 350 });
+  for (let i = 0; i < 12; i++) { rig.tool.drawPreview('remap'); await settle(); }
+  assert.ok(models().length > 0 && models().every((row) => pic(row).getAttribute('src') === 'data:model'), 'C1: every picture drawn - the closed panel aged none');
+  assert.ok(held.length > 0 && held.every((id) => !pinned.includes(id)), 'R4: the tiles\' models through the panel\'s hold, never the pinned door');
+  rig.tool.close();
+  rig.tool.drawPreview('remap');
+  assert.equal(released, 1, 'let go with the panel');
+  // C3: two tables built in one law are one: a house entered again knows its pictures
+  const a = markRemapLaw(new Map(), 'climate:1.0'), b = markRemapLaw(new Map(), 'climate:1.0');
+  assert.equal(remapLawOf(a), 'climate:1.0');
+  assert.equal(remapLawOf(new Map()), null);
+  const room = toolRig();
+  room.frame();
+  room.tool.drawPreview(a);
+  room.tool.openPanel();
+  for (let i = 0; i < 6; i++) { room.frame({ overlayUp: true }); await settle(); }
+  const rroot = room.doc.body.children.find((c) => c.className === 'dfdecor');
+  one(rroot, 'dfdecor-card').getBoundingClientRect = () => ({ left: 100, top: 50, width: 600, height: 350 });
+  const rmake = room.doc.createElement;
+  room.doc.createElement = (tag) => { const n = rmake(tag); if (tag === 'canvas') { n.getContext = () => ({ drawImage() {} }); n.toDataURL = () => 'data:roomA'; } return n; };
+  for (let i = 0; i < 12; i++) { room.tool.drawPreview(a); await settle(); }
+  room.tool.close();
+  room.tool.drawPreview(b);   // the same house, its table built anew
+  room.draws.length = 0;
+  room.tool.openPanel();
+  for (let i = 0; i < 6; i++) { room.frame({ overlayUp: true }); await settle(); }
+  const rpics = rows(rroot).filter((row) => pic(row));
+  assert.ok(rpics.length > 0 && rpics.every((row) => pic(row).getAttribute('src') === 'data:roomA'), 'its pictures known at once');
+  room.tool.drawPreview(b);
+  assert.equal(room.draws.filter((d) => d.panel && d.panel.rect.w === DECOR_THUMB_PX).length, 0, 'none drawn again');
+  assert.match(readFileSync('src/scenes/interiorContext.js', 'utf8'), /\n  markRemapLaw\(texRemap, `climate:\$\{climateBase\}\.\$\{season\}`\);/, 'a building\'s table named by its climate and season');
+  assert.match(w, /const texRemap = markRemapLaw\(new Map\(\), `climate:\$\{townClimateBase\}\.\$\{season\}`\);/, 'a town\'s (a yard\'s) the same');
+  assert.match(readFileSync('src/scenes/worldModes.js', 'utf8'), /thumbHold: \(\) => placeHoldOf\('decor-thumbs', 'interior'\),/, 'the room\'s decorator asks through a hold of its own');
+  assert.match(readFileSync('src/scenes/homeYards.js', 'utf8'), /\.\.\.\(deps\.meshes\.hold \? \{ thumbHold: \(\) => deps\.meshes\.hold\('decor-thumbs', 'yard'\) \} : \{\}\),/, 'and a yard\'s');
+});
+
+test('AUDIT MENU-ORDER the screens: a station the provider has here reads Here, its words alone or not (C2); one wake for every vendor row (C5); a short screen folds the decorator\'s filters (U1), a phone\'s views wrap (U11); the counter\'s title its own row on a phone (U7); a finger\'s press 44px (U14); the glyphs on every enhanced page (U8); the folds said (U15); the CSS the pins never held (U13) (mutants: each undone)', () => {
+  // C2 + U15: the temper at a forge with nothing to temper is worked here; an away tile says whether its words are open
+  withDom((dom) => {
+    const tracks = new Map([['smithing', { profession: 'smithing', xp: xpForRank(10), rank: 10, specs: { 50: null, 100: null } }]]);
+    const book = {
+      state: { open: true, day: 1, character: 'c', account: 'a', readAt: Date.now(), stores: new Map(), tracks, today: {}, caps: null }, stale: () => false, refresh: async () => ({ ok: true }),
+      held: () => 0, store: (k) => ({ material: k, own: 0, bought: 0 }),
+      track: (p) => tracks.get(trackOf(p)) ?? { profession: trackOf(p), xp: 0, rank: 0, specs: { 50: null, 100: null } }, materials: () => [], pendingWithdrawals: 0, pendingCrafts: 0,
+      choose: async () => ({ ok: true }),
+    };
+    setProfessionsPages({ book, name: (k) => k, withdraw: async () => ({ ok: true, text: '' }), forge: () => ({ kind: 'shop', fee: 50 }), workbench: () => null,
+      smelt: async () => ({ ok: true, text: '' }), craft: async () => ({ ok: true, text: '' }), stock: async () => ({ ok: true, text: '' }), heatBand: () => 1, planeBand: () => 1,
+      temperable: () => [], temper: async () => ({ ok: true, text: '' }) });
+    const el = (tag, cls, t) => { const n = document.createElement(tag); if (cls) n.className = cls; if (t != null) n.textContent = t; return n; };
+    const kit = { el, divider: (w) => el('h3', null, w), meter: () => el('div') };
+    let root = null;
+    const draw = () => { root = el('div'); drawStoresPage(root, draw, kit); };
+    draw();
+    const tile = (id) => root.querySelectorAll('.prof-stile').find((t) => t.attrs['data-station'] === id);
+    assert.ok(tile('temper-anvil').className.includes('here'), 'C2: at the forge, the temper is here - nothing to temper or not');
+    assert.equal(tile('temper-anvil').attrs['aria-expanded'], undefined, 'a tile worked here opens nothing');
+    assert.equal(tile('workbench').attrs['aria-expanded'], 'false', 'U15: an away tile says its words are folded');
+    tile('workbench').onclick();
+    assert.equal(tile('workbench').attrs['aria-expanded'], 'true');
+    setProfessionsPages(null);
+  });
+  // C5: the vendor board asks every row's picture with one wake
+  const vsrc = readFileSync('src/ui/vendorTab.js', 'utf8');
+  assert.match(vsrc, /const wake = \(\) => ui\.rerender\(\);/);
+  assert.match(vsrc, /v\.picture\?\.\(row\.item, wake\)/, 'one wake, never a closure a row');
+  // U1 + U11: the decorator on a short screen and a narrow one
+  assert.match(DECOR_CSS, /@media \(max-height: 500px\) \{\n  \.dfdecor-ftoggle \{ display: inline-block; flex: none; \}\n  \.dfdecor-filters:not\(\[data-open="1"\]\) \.dfdecor-fline-more \{ display: none; \}/, 'U1: a landscape phone folds the filters');
+  assert.ok(!/\.dfdecor-tabs, \.dfdecor-roomsbar \{ flex-wrap: nowrap/.test(DECOR_CSS) && DECOR_CSS.includes('.dfdecor-roomsbar { flex-wrap: nowrap; overflow-x: auto; }'), 'U11: the views wrap; the rooms scroll');
+  // U7 + U14: the counter's header on a phone, and a finger's presses
+  const E = ENHANCED_CSS;
+  assert.ok(E.includes('.trade-shell .sb-top { grid-template-columns: 1fr auto; grid-template-areas: "who who" "view close"; row-gap: 8px; }'), 'U7: the title its own row');
+  assert.ok(E.includes('@media (pointer: coarse) { .trade-shell .trade-view .act { min-height: 44px; } }'), 'U14: the switch a finger\'s press');
+  assert.ok(PLUS_CSS.includes('@media (pointer: coarse) { .market-views .market-view { min-height: 44px; } }'), 'U14: the Market\'s views too');
+  // U8: the glyphs on every page the enhanced sheet is laid on, the classic skin's windows among them
+  assert.ok(E.includes(GLYPHS), 'U8: the glyph sheet in the base enhanced sheet');
+  // U13: the CSS the pins never held
+  assert.ok(SHIPYARD_CSS.includes('.dfyard-shipimg:not([src]) { display: none; }'), 'a picture not yet come takes no room');
+  assert.ok(PLUS_CSS.includes('  .trade-shell .packtabs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }'), 'a phone\'s page tabs two by two');
+  assert.ok(E.includes('.trade-shell .trade-detail-empty .meta { margin: 0; font-size: 13px; color: var(--dim); letter-spacing: 0.04em; }'), 'the empty strip\'s hint in FONT3\'s dim, at 13px');
+  // U15: the decorator's filters say they are folded from the first
+  const rig = panelRig();
+  rig.panel.open(rig.view());
+  assert.equal(one(rig.panel.root, 'dfdecor-ftoggle').getAttribute('aria-expanded'), 'false');
+  return (async () => {
+    // C4: a picture there is none of is never asked again, nor waited on, however often the list is drawn
+    const asked = [];
+    const panel = createDecorPanel({ doc: fakeDoc(), win: fakeWin(), onPlace() {}, thumbOf: async (e) => { asked.push(e.key); return null; } });
+    const view = rig.view();
+    panel.open(view);
+    await settle();
+    for (let i = 0; i < 3; i++) { panel.update({ ...view, gold: view.gold + i + 1 }); panel.select(view.entries[i % view.entries.length].key); await settle(); }
+    const once = new Set(asked);
+    assert.equal(asked.length, once.size, 'each asked once - none to be had is known');
+  })();
 });

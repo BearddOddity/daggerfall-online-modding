@@ -151,7 +151,7 @@ test('SALVAGE-CLASSIC: the Salvage page lists the classic piece after every piec
       assert.equal(btn.textContent, 'Classic magic');
       assert.equal(btn.attrs['aria-disabled'], 'true', 'MENU-ORDER: refused, never disabled - pressed, it says why');
       assert.equal(btn.attrs.title, REFORGE_REFUSALS.classic);
-      assert.equal(btn.attrs['aria-label'], `Blazing Holy Dagger of Fireballs: ${REFORGE_REFUSALS.classic}`);
+      assert.equal(btn.attrs['aria-label'], `Classic magic - Blazing Holy Dagger of Fireballs: ${REFORGE_REFUSALS.classic}`, 'PIN MOVED (AUDIT MENU-ORDER U15): its name starts with the word it shows');
       one(rows[0], 'broker-buy').onclick({ stopPropagation() {} });   // a break asked of another piece first...
       assert.equal(one(kids(shell, 'broker-offer')[0], 'broker-buy').textContent, 'Break it');
       btn.onclick({ stopPropagation() {} });

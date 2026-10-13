@@ -31,6 +31,7 @@
    drift this file exists to prevent. scripts/landingHtml.mjs injects
    this block into that page at build; the rest of the skin stays a
    string the game pays for only when a screen is mounted. */
+import { DFICON_CSS } from './menuGlyphs.js';   // MENU-ORDER (AUDIT U8): the menus' pictures, laid with this sheet
 import { PIXELIFY_FIVE_FACE, PIXEL_STACK, PIXEL_FONT_CSS } from './pixelifyFive.js';   // FIX-D: Silkscreen's five ahead of Pixelify Sans
 import { badgeCss } from './playerBadge.js';   // ACC3c: one rule per title and per glyph, walked out of the vocabulary - the card writes a class and the skin carries the colour
 import { STONE_WORD, PLUS_CSS, PLUS_STYLE_ID, applyPlusTheme } from './enhancedPlusStyle.js';   // PLUS1: the Enhanced Plus sheet, laid over this one
@@ -128,6 +129,10 @@ export const ENHANCED_CSS = `
 ${PIXELIFY_FIVE_FACE}
 /* ── TOKENS ── see ENHANCED_TOKENS above */
 ${ENHANCED_TOKENS}
+/* ── MENU-ORDER: the menus' pictures (ui/menuGlyphs.js), on every page this sheet is laid on - AUDIT MENU-ORDER U8: they
+   rode the Plus sheet alone, and a window the classic skin dresses (the Reforge, the shipmaster's) lays this one and not
+   that: its tabs wore no picture */
+${DFICON_CSS}
 
 /* ── FONT3: THE GAME SPEAKS ONE FACE (2026-10-02, Mac: "we need to ensure everything recieves our enhanced font").
    The page's own face was --data, Barlow Semi Condensed - the LAUNCHER's - and --display, Cormorant, the menu's
@@ -3742,6 +3747,16 @@ ${paceControlsCss('tview')}
 .trade-shell .itemprice { flex: 0 0 auto; margin-left: 12px; font-size: 13px; color: rgb(243,239,44); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .trade-shell .trade-view { display: flex; gap: 4px; justify-self: start; }
 .trade-shell .trade-view .act { min-height: 32px; padding: 4px 10px; font-size: 12px; }
+/* AUDIT MENU-ORDER U7: on a phone the title has the header's first row whole, the switch and Close the second - beside
+   the switch it had 94px, the shop's name six lines tall, and the lists gave up 80px to it */
+@media (max-width: 560px) {
+  .trade-shell .sb-top { grid-template-columns: 1fr auto; grid-template-areas: "who who" "view close"; row-gap: 8px; }
+  .trade-shell .sb-top > .sb-who { grid-area: who; }
+  .trade-shell .sb-top > .trade-view { grid-area: view; }
+  .trade-shell .sb-top > .act { grid-area: close; }
+}
+/* AUDIT MENU-ORDER U14: a finger's press is 44px, as the touch layer's own */
+@media (pointer: coarse) { .trade-shell .trade-view .act { min-height: 44px; } }
 .trade-shell[data-view="grid"] .remotelist { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
   grid-auto-rows: max-content; gap: 6px; align-content: start; }
 .trade-shell[data-view="grid"] .itemrow { flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px;

@@ -252,8 +252,10 @@ export function mountReforgeWindow(host, deps) {
     return frame;
   };
   const say = (ok, text) => { note = { ok, text }; };
-  /** MENU-ORDER (refusePress): a refused press pressed - its reason in the note, and a pending ask let go with it */
-  const refused = (reason) => { asking = null; say(false, reason); render(); };
+  /** MENU-ORDER (refusePress): a refused press pressed - its reason in the note, and a pending ask let go with it. AUDIT
+   *  MENU-ORDER U4: the note alone drawn again unless an ask was let go (its press reads its own word again) - the whole
+   *  page drawn again took the keys' focus off the press; refusePress finds it again when it was */
+  const refused = (reason) => { const ask = asking; asking = null; say(false, reason); if (ask) render(); else drawNote(); };
   /** AUDIT LOOT II B4: a pending ask let go - another page, another piece - takes its question with it ("Break all 3 Magic
    *  pieces...?" stood over the next page); any other word stays. */
   const dropAsk = () => { if (asking) note = null; asking = null; };

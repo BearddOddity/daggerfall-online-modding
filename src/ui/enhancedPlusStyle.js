@@ -17,7 +17,6 @@ import { MOTION_CSS } from './windowMotion.js';
 import { CURSOR_CSS } from './plusCursor.js';   // PLUS7: the gauntlet pointer
 import { SIGIL_RUNE_TILE_URL } from './sigilRune.js';   // SIGIL-UI: the rune in a sigil weapon's tile corner (AUDIT MERGE-PLUS D5: a picture, its outline drawn in)
 import { PROF_ACT_CSS } from './profActStyle.js';   // PROF-RETICLE: the acts on the crosshair, dressed
-import { DFICON_CSS } from './menuGlyphs.js';   // MENU-ORDER: the stations' pictures
 import { PROF_STATION_CSS } from './profStationStyle.js';   // PROF-STATIONS: the stations' acts, dressed
 import { plusDress, GRIMOIRE_DRESS, mountGrimoireDress } from './grimoireDress.js';   // GRIM1: the DFO Grimoire dress over the kit
 import { mountTextFont } from './textFont.js';   // TEXT-FONT: the words' face and the names'
@@ -982,11 +981,15 @@ export const BROKER_CSS = `/* ── SET7: THE SIGIL BROKER'S WINDOW (ui/brokerW
 .broker-insignia-card .insignia-what { margin: 0 0 8px; font-size: 13px; line-height: 1.45; color: #e6dccb; }
 .broker-insignia-card .insignia-kept { margin: 0; font-size: 12px; line-height: 1.45; color: #b9ab93; }
 /* MENU-ORDER (Plain-Words law 5, A FINGER HAS NO HOVER): a refused press is never disabled - pressed, it says why in the
-   note (brokerWindow.js refusePress) - and it reads refused as the kit's disabled press does, under the pointer and held
-   too; its word in the dim bone, never faded by opacity (the reason it shortens has to be read) */
-.broker-shell .act[aria-disabled="true"], .broker-shell .act[aria-disabled="true"]:hover, .broker-shell .act[aria-disabled="true"]:active {
+   note (brokerWindow.js refusePress) - and it reads refused as the kit's disabled press does, under the pointer, held and
+   focused too; its word in the dim bone, never faded by opacity (the reason it shortens has to be read). AUDIT MENU-ORDER
+   U2/U3: under its window's own frame, so it outweighs the kit's held (body .broker-shell .act:active:not(:disabled))
+   and focused presses, which lit and sank it as a live one; focused, a ring of its own grey says where the keys are */
+body .broker-shell .broker-win .act[aria-disabled="true"], body .broker-shell .broker-win .act[aria-disabled="true"]:hover,
+body .broker-shell .broker-win .act[aria-disabled="true"]:active, body .broker-shell .broker-win .act[aria-disabled="true"]:focus-visible {
   color: #9c937d; text-shadow: none; border-color: rgba(125,116,96,0.3); background-color: rgba(12,14,18,0.6); background-image: none;
   box-shadow: 0 0 0 1px rgba(5,6,8,0.6); translate: none; cursor: help; }
+body .broker-shell .broker-win .act[aria-disabled="true"]:focus-visible { outline: 2px solid #9c937d; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .broker-shell .aura-ring { animation: none; } }
 @media (max-width: 720px) {
   .broker-shell { padding: 8px; }
@@ -1557,7 +1560,6 @@ body .aw-shell .aw-boutacts .act { min-width: 0; padding: 3px 12px; font-size: 1
  *  the day's chip under the compass and the rank's banner. The stone, the brass and the bone of the rest; the meters'
  *  still forms under the system's reduced motion. */
 export const PROF_CSS = `/* ── PROF1: THE PROFESSIONS ── */
-${DFICON_CSS}
 .notice-tab { cursor: pointer; }
 .notice-card.seal-court, .notice-read.seal-court { --seal: #6b3fa0; }
 .notice-writ { cursor: default; }
@@ -1788,6 +1790,7 @@ ${DFICON_CSS}
 .market-views .market-view { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; font-size: 13px; letter-spacing: 0.06em;
   border: 1px solid rgba(192,138,62,0.22); background: rgba(10,8,6,0.4); }
 .market-views .market-view[data-dficon]::before { width: 16px; height: 16px; margin: 0; }
+@media (pointer: coarse) { .market-views .market-view { min-height: 44px; } }   /* AUDIT MENU-ORDER U14: a finger's press */
 .market-views .market-view.on { color: #f3cf86; border-color: var(--brass, #c08a3e); background: rgba(192,138,62,0.16); box-shadow: none; }
 .market-viewgroup { gap: 4px; }
 .market-pic, .prof-matpic { flex: none; vertical-align: middle; margin-right: 8px; image-rendering: pixelated; }

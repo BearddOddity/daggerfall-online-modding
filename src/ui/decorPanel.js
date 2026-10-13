@@ -194,7 +194,8 @@ body .dfdecor-tabs .dfdecor-chip[aria-pressed="true"] { color: #f2c46b; box-shad
 .dfdecor-thumb[data-dficon] { color: transparent; }
 .dfdecor-thumb[data-dficon]::before { position: absolute; inset: 0; margin: auto; width: 62%; height: 62%; color: #c9bba1; }
 /* ...and the model's own picture over it once the host has turned it small (decorTool.js modelPicture) */
-.dfdecor-thumb img.dfdecor-modelpic { position: relative; z-index: 1; image-rendering: auto; }
+.dfdecor-thumb img.dfdecor-modelpic { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; max-width: none; max-height: none;
+  object-fit: contain; image-rendering: auto; }   /* AUDIT MENU-ORDER U6: over the whole tile - in its flow, the letters it keeps pushed it 7px right and cut it */
 .dfdecor-thumb img.dfdecor-modelpic:not([src]) { display: none; }
 .dfdecor-row-main { min-width: 0; }
 .dfdecor-badges { display: flex; gap: 6px; color: #c9bba1; }
@@ -241,9 +242,10 @@ body .dfdecor-tabs .dfdecor-chip[aria-pressed="true"] { color: #f2c46b; box-shad
   .dfdecor-preview, .dfdecor-card:not([data-mode="catalogue"]):not([data-mode="look"]):not([data-mode="own"]) .dfdecor-preview { flex: none; min-height: 0; height: 72px; }
   .dfdecor-fgroup > .dfdecor-chips { flex-wrap: nowrap; overflow-x: auto; min-width: 0; }
   .dfdecor-fgroup > .dfdecor-chips > .dfdecor-chip { flex: none; }
-  /* MENU-ORDER: a phone's rows of tabs scroll sideways, and its filters fold behind one press, so the list keeps the screen */
-  .dfdecor-tabs, .dfdecor-roomsbar { flex-wrap: nowrap; overflow-x: auto; }
-  .dfdecor-tabs > .dfdecor-chip, .dfdecor-roomsbar > .dfdecor-chip { flex: none; }
+  /* MENU-ORDER: a phone's rooms scroll sideways, and its filters fold behind one press, so the list keeps the screen. AUDIT
+     MENU-ORDER U11: its views' tabs wrap, as they always did - scrolled, "Your things" and "Built in" stood off the screen */
+  .dfdecor-roomsbar { flex-wrap: nowrap; overflow-x: auto; }
+  .dfdecor-roomsbar > .dfdecor-chip { flex: none; }
   .dfdecor-ftoggle { display: inline-block; flex: none; }
   .dfdecor-filters:not([data-open="1"]) .dfdecor-fline-more { display: none; }
   .dfdecor-bar-keys { grid-template-columns: minmax(0, 1fr); }
@@ -251,6 +253,14 @@ body .dfdecor-tabs .dfdecor-chip[aria-pressed="true"] { color: #f2c46b; box-shad
   .dfdecor-card[data-view="grid"] .dfdecor-row { min-height: 120px; }
   .dfdecor-card[data-view="grid"] .dfdecor-thumb, .dfdecor-card[data-view="grid"] .dfdecor-thumb img { width: 56px; height: 56px; }
   .dfdecor-layout { display: none; }
+}
+/* AUDIT MENU-ORDER U1: a short screen - a phone held landscape, as the touch layer asks - folds the filters as a narrow one
+   does: every line open left a 390px-high screen's catalogue 36px, and the side's Place below its edge */
+@media (max-height: 500px) {
+  .dfdecor-ftoggle { display: inline-block; flex: none; }
+  .dfdecor-filters:not([data-open="1"]) .dfdecor-fline-more { display: none; }
+  .dfdecor-fgroup > .dfdecor-chips { flex-wrap: nowrap; overflow-x: auto; min-width: 0; }
+  .dfdecor-fgroup > .dfdecor-chips > .dfdecor-chip { flex: none; }
 }
 `;
 
@@ -486,6 +496,7 @@ export function createDecorPanel({
   const group = (label, chips, cls) => { const g = el('div', `dfdecor-fgroup ${cls}`); g.append(el('span', 'dfdecor-flabel', label), chips); return g; };
   const filterToggle = el('button', 'dfdecor-chip dfdecor-ftoggle', DECOR_FILTERS_WORD);
   filterToggle.type = 'button';
+  filterToggle.setAttribute('aria-expanded', 'false');   // AUDIT MENU-ORDER U15: folded, said from the first
   filterToggle.addEventListener('click', () => { filters.dataset.open = filters.dataset.open === '1' ? '0' : '1'; filterToggle.setAttribute('aria-expanded', filters.dataset.open === '1' ? 'true' : 'false'); });
   const searchGroup = el('div', 'dfdecor-fgroup dfdecor-fg-search');
   searchGroup.append(search, filterToggle);
@@ -634,23 +645,32 @@ export function createDecorPanel({
   // at once, the moment an archive lands, is a hitch the panel must not cost. Without an observer (a headless pin), at
   // once.
   /** @type {Map<string, any[]>} */
-  const waiting = new Map();  // key -> the images waiting on its picture
-  /** Ask for a flat's picture once; every image waiting on it gets it, and the preview if it shows that piece. */
+  const waiting = new Map();  // key -> the images waiting on its picture (the rows drawn since it was asked)
+  /** @type {Set<string>} the pictures asked and not yet answered */
+  const inFlight = new Set();
+  /** Ask for a flat's picture once; every image waiting on it gets it, and the preview if it shows that piece. AUDIT
+   *  MENU-ORDER C4: an image waits only on a picture in flight - one known to be none to be had keeps its glyph and is
+   *  never listed (a list never emptied grew by every tile at every redraw), and a refusal empties the list as an
+   *  answer does. */
   function askThumb(e, img = null) {
     const k = thumbKeyOf(e);
     const known = thumbs.get(k);
     if (known) { img?.setAttribute('src', known); return; }
+    if (thumbs.has(k) && !inFlight.has(k)) return;   // none to be had
     if (img) waiting.set(k, [...(waiting.get(k) ?? []), img]);
-    if (thumbs.has(k)) return;   // in flight, or none to be had
+    if (inFlight.has(k)) return;
     thumbs.set(k, null);
-    Promise.resolve(thumbOf(e)).then((url) => {
+    inFlight.add(k);
+    const settle = (url) => {
+      inFlight.delete(k);
       thumbs.set(k, url ?? null);
       const imgs = waiting.get(k) ?? [];
       waiting.delete(k);
       if (!url || !alive) return;
       for (const i of imgs) i.setAttribute('src', url);
       if ((hoverKey ?? selectedKey) === e.key) paintSide();
-    }, () => {});
+    };
+    Promise.resolve(thumbOf(e)).then(settle, () => settle(null));
   }
   const Watch = win?.IntersectionObserver;
   const watcher = typeof Watch === 'function'

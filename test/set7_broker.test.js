@@ -371,7 +371,7 @@ test('SET7 the window: the purse (and its locked stones) and the turn of the day
       rows[1].onkeydown({ key: 'Enter', target: one(rows[1], 'broker-buy'), preventDefault() {} });
       assert.equal(one(shell, 'broker-card').children.find((c) => c.tagName === 'H3').textContent, stock[4].item.name, 'a key on the Buy inside is the Buy\'s, never the row\'s');
       // U14: the Buy says whose it is
-      assert.equal(one(kids(shell, 'broker-offer')[1], 'broker-buy').attrs['aria-label'], `${stock[1].item.name}: Bought today`);
+      assert.equal(one(kids(shell, 'broker-offer')[1], 'broker-buy').attrs['aria-label'], `Bought - ${stock[1].item.name}: Bought today`, 'PIN MOVED (AUDIT MENU-ORDER U15): a refused Buy\'s name starts with the word it shows');
     } finally { view.unmount(); }
     assert.equal(one(host, 'broker-shell'), null, 'unmounted: gone from the page');
     assert.equal(dom.win.count('keydown'), 0, 'and its key listener with it');

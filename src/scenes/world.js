@@ -958,7 +958,7 @@ import { PrecipitationRenderer } from '../render/precipitation.js';
 import { warmPrograms } from '../render/warmPrograms.js';
 import { ROTOR_HUB, rotorPhase, advanceRotor, mountRotor, MILL_SOUND, millSoundPosition } from '../world/windmills.js';   // WM2b: the sails; WM4c: the hum
 import { BODY } from '../world/windmillMesh.js';   // WM2d: the tower, for the collider
-import { remapSubMeshes } from '../world/texRemap.js';   // WM3: the one climate/dungeon remap seam
+import { remapSubMeshes, markRemapLaw } from '../world/texRemap.js';   // WM3: the one climate/dungeon remap seam; AUDIT MENU-ORDER C3: a table named by its law
 import { homeLookRemap, HOME_LOOK_BUILD_WAIT_MS } from '../world/homeLook.js';   // HOME-LOOK: a painted house's own table
 import { createStandingHorses, isStandingHorseFlat } from '../world/standingHorses.js';   // STAND-HORSE: the town's and the Stable's horses as the 3D horse
 import { isStandFlat, standFlatId, standFlatRecord } from '../world/standFlats.js';   // STAND-FLAT: a town horse and a person's flat no StaticNPC holds, a batch each
@@ -5814,7 +5814,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // Per-pixel climate swap table: pixels from the swapped archive, UVs
     // from the original (the SetDungeonTextures pattern; verbatim
     // MaterialReader.ChangeClimate semantics).
-    const texRemap = new Map();
+    const texRemap = markRemapLaw(new Map(), `climate:${townClimateBase}.${season}`);   // AUDIT MENU-ORDER C3: named by the law it is built in (townClimateArchive's)
     const models = []; // { gpu, local } - local precomposed pixel-local matrix
     // PERF4: the pixel's static models, merged as they arrive (the
     // transform rides the build's own awaits) into one mesh per pixel,
@@ -13502,7 +13502,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     eye: () => cam.pos,
     cull: (box) => yardCull(box),   // PERF-YARD: the pieces culled as the town's own models are
     range: () => getPref('yardRange'),   // YARD-RANGE: how far other players' yards are drawn (the Other players card)
-    collider: () => collider, meshes: { getGpuMesh, cpuModels }, renderer, getTexture, uploadRecord, uploadRecordFrame,
+    collider: () => collider, meshes: { getGpuMesh, cpuModels, hold: (kind, key) => pipeline.holdPlace?.(kind, key) ?? null }, renderer, getTexture, uploadRecord, uploadRecordFrame,   // AUDIT MENU-ORDER R4: a place's hold, for the decorator's tiles
     iconUrl: (a, r) => loadIcon(a, r, { scale: 1 }),
     scanDeps: () => decorScanDeps({ blocks, arch, getTexture }),   // DECOR-DUNGEON: the interior host's own constructor
     seasonal: () => (seasonsActive ? seasons : null),   // DECOR-OUTDOOR: a yard's trees in Seasons of the Iliac Bay's season, as the town's
@@ -35087,8 +35087,6 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     renderer.drawBillboards(allBatches, camRight, bbUp);
     if (magic.batches().length) renderer.drawBillboards(magic.batches(), camRight, bbUp);   // M2: spell missiles
     magic.drawFx?.();   // IMPACTFX: the spells' landings in light, over their flashes
-    yards?.drawPreview();   // HOME-YARD: the decorator's panel, its pointed model turning in the preview box
-    shipPortraits.draw();   // MENU-ORDER: the shipmaster's cards' pictures, under his window
     // T2 towns: every built populated pixel runs its own pool
     // (PopulationManager is per-location); the pool sees the player in
     // the pixel's LOCATION frame, and live persons draw through the
@@ -36082,6 +36080,12 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // (preserveDrawingBuffer false clears it after compositing).
     capturePendingScreenshot(canvas);
     deliverOwedShots();   // SHOT1: the PrintScreen shots owed to a drawn frame, read from this one (ui/screenshot.js)
+    // AUDIT MENU-ORDER R2: THE PANEL PASSES LAST - after the frame is shown and its shots are taken. A panel pass is its own
+    // beginFrame: drawn amid the world pass, it left its camera and light in the mesh program for every world draw after
+    // it (beginFrame alone uploads them) and resolved the lighting lane's image early, so the rest of the world drew with
+    // no depth; and a shot taken after it held the picture. Each pass copies its rect out at once, so here costs nothing.
+    yards?.drawPreview();   // HOME-YARD: the decorator's panel, its pointed model turning in the preview box (and its tiles' models)
+    shipPortraits.draw();   // MENU-ORDER: the shipmaster's cards' pictures, under his window
 
     if (shotMode) {
       window.__frame++;

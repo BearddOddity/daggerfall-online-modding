@@ -92,21 +92,26 @@ where a picture cannot say it (a price, a name).
     never `disabled` now: `refusePress` (`ui/brokerWindow.js`) marks one `aria-disabled`, keeps its title for the
     pointer, and a press of it says the whole reason in the window's note line and does nothing else - on the Reforge
     it lets a pending ask go with it (AUDIT LOOT II B4). It reads refused on both skins (`BROKER_CSS`, at rest, under
-    the pointer and held), its word in the dim bone rather than faded, since that word is the reason shortened. A press
-    in flight (an insignia being bought) stays `disabled`: it has nothing to say.
+    the pointer, held and focused - AUDIT MENU-ORDER U2/U3), its word in the dim bone rather than faded, since that word
+    is the reason shortened; its name starts with that word (U15); pressed, the note alone is drawn again and the keys
+    stay on it (U4). A press in flight (an insignia being bought) stays `disabled`: it has nothing to say.
   - **A model's own picture in its tile.** The panel asks for a model's picture as it asks for a flat's (when its tile
     comes into view; `modelPicture`, `ui/decorPanel.js` - the catalogue's, a placed piece's and a built-in one's), and
     shows it over its kind's glyph, which stands until it lands. The host (`scenes/decorTool.js` `drawThumbs`) draws a few
-    a frame (`DECOR_THUMBS_A_FRAME`) at the preview's own turn of the frame: the model loaded and drawn in the host's law
-    (AUDIT 05b A5), in the room's own textures (a picture is kept under its room's table - another room asks again),
-    with the preview's own second camera and copy (`scenes/panelPicture.js`, new - `panelPicture`, `canvasBoxUnder`)
-    into a square of the canvas under the panel's card, seen a quarter turned from a little above. An ask for a model
-    that never comes is let go after `DECOR_THUMB_WAIT_MS`; its tile keeps the glyph.
+    a frame (`DECOR_THUMBS_A_FRAME`) at the preview's own turn of the frame: the model loaded through a hold of the
+    panel's own and let go with it (AUDIT MENU-ORDER R4), drawn in the host's law (AUDIT 05b A5), in the room's own
+    textures (a picture is kept under the law its room's table was built in - its climate and season, `markRemapLaw`: a
+    house entered again knows its pictures, another climate asks again - C3), with the preview's own second camera and
+    copy (`scenes/panelPicture.js`, new - `panelPicture`, `canvasBoxUnder`, lit by its own studio alone - R6 - and
+    encoded by the browser later - R3) into a square of the canvas under the panel's card, at twice the tile's size (R7),
+    seen a quarter turned from a little above. An ask ages only while the panel stands (C1); one for a model that never
+    comes is let go after `DECOR_THUMB_WAIT_MS`, and its tile keeps the glyph.
   - **A ship's own picture.** The boat pool builds each hull once, standing at the origin and never on the water, its
     sails baked as they stand (`scenes/comeSailAwayPool.js` `portrait`): her parts - every mesh the pool's own draw
-    would draw for her, at its own matrix - and her box. `scenes/shipPortraits.js` (new) draws her one a frame after
-    the world's own pass (world.js, beside the decorator's preview), under the shipmaster's window, from off her beam
-    and a little above, and copies her out once a hull for the session; the card (`ui/shipyardWindow.js`) shows her at
+    would draw for her, at its own matrix - and her box. `scenes/shipPortraits.js` (new) draws her one a frame at the
+    world's frame's end (world.js, beside the yard decorator's preview, after the frame is shown and its shots are
+    taken - AUDIT MENU-ORDER R2), under the shipmaster's window, from off her beam and a little above, at 480x240 (R7),
+    and copies her out once a hull for the session; the card (`ui/shipyardWindow.js`) shows her at
     her size still (a Rowboat's picture the card's half, a Large Galley's its width) over her glyph. Ports are the
     streaming world's, so world.js is the one host that opens the window and the one that draws her.
   - **A portrait phone's placing bar** stands under the touch layer's two top-left presses (16px down, 48px tall,
@@ -140,6 +145,10 @@ door), so there is nothing there to wire.
   frames already: neither changed.
 - **The four left open by MENU-ORDER f** - a refused press's reason on a touch screen, a ship's own picture, a model's
   own picture in a tile and a portrait phone's placing bar - are MENU-ORDER g's (section 2), CLOSED.
+- **AUDIT MENU-ORDER** (`01-Overview/Audit-Menu-Order.md`): 28 findings (the lanes' two doubles counted once), 26 FIXED; KEPT R2's renderer half (the panel
+  bracket gives the mesh program's uniforms back to no one - a panel comes after the world's last draw, pinned for
+  world.js) and R8 (five portrait boats a session, never torn down); OPEN A2 (a yard's climate swaps through the pinned
+  upload door, its preview's since AUDIT 05b - its own slice).
 - **A ship's crew and lanterns' flames** are billboards and stand in no picture (`portrait` takes her meshes alone); a
   model's or a ship's picture is seen in no real ARENA2 in this repository's checks - its math, its hand-over and every
   pass and copy are pinned over fakes, and the pool's portrait of every hull is read off the vendored models (the pass
@@ -147,7 +156,7 @@ door), so there is nothing there to wire.
 
 ## 5. Proof
 
-- `test/menuorder.test.js` (10): the glyphs (twelve by twelve, a rect a lit pixel, a mask each, every kind and station
+- `test/menuorder.test.js` (12): the glyphs (twelve by twelve, a rect a lit pixel, a mask each, every kind and station
   pictured); the decorator's tiles, its kind glyphs and letters, its badges, the Pictures / List switch, the tabs' and
   chips' glyphs, the switch after the tabs; a placed piece's pictured presses, Remove warned, the bar's legend folded
   behind Keys, the legend's pairs, the fold's count; the counter's title, its named column, its two figures, a price on
@@ -171,7 +180,8 @@ door), so there is nothing there to wire.
   `loot17_hone`, `loot19_scry`, `fb1010_truecurse`, `fb1012d_salvageclassic` - which now also lets an ask go -
   `set7_broker`, `wb9g_insignia`); a model's row is watched as a flat's is (`decor1d`); the shipmaster's window asks her
   picture and wears it (`shipyards1_host`).
-- `tools/mutants/menuorder.json`: 96 mutants, 96 dead (MENU-ORDER g's 49 run on their own; MENU-ORDER a-f's 47 before).
+- `tools/mutants/menuorder.json`: 135 mutants, 135 dead (MENU-ORDER g's 49 run on their own; MENU-ORDER a-f's 47 before;
+  AUDIT MENU-ORDER's 39 and its 12 re-aimed - `01-Overview/Audit-Menu-Order.md` Pinned).
   MENU-ORDER g re-aimed by content and dead again: `set7.json`'s SET7-a-refused-offers-buy-pressable, `audit_wb9.json`'s
   AUDIT-WB9-the-wares-pressable-mid-sale, `loot16.json`'s LOOT16-a-refusal-pressable, `loot17.json`'s
   LOOT17-a-refused-press-pressable and `loot19.json`'s LOOT19-a-refusal-pressable (each now the `refusePress` call gone);

@@ -207,16 +207,18 @@ export function mountShipyardWindow(host, deps) {
     pic.append(img);
     const url = shipPics.get(hull);
     if (url) { img.setAttribute('src', url); return; }
+    if (!deps.picture) return;   // AUDIT MENU-ORDER C4: no host to ask, nothing to wait on - her glyph
     shipWaiting.set(hull, [...(shipWaiting.get(hull) ?? []), img]);
-    if (shipPics.has(hull) || !deps.picture) return;
+    if (shipPics.has(hull)) return;   // in flight
     shipPics.set(hull, null);
-    Promise.resolve(deps.picture(hull, () => (alive ? win.getBoundingClientRect?.() ?? null : null))).then((u) => {
+    const settle = (u) => {
       const imgs = shipWaiting.get(hull) ?? [];
       shipWaiting.delete(hull);
       if (!u || !alive) { shipPics.delete(hull); return; }
       shipPics.set(hull, u);
       for (const i of imgs) i.setAttribute('src', u);
-    }, () => { shipPics.delete(hull); });
+    };
+    Promise.resolve(deps.picture(hull, () => (alive ? win.getBoundingClientRect?.() ?? null : null))).then(settle, () => settle(null));
   };
   const said = (r) => { if (r && typeof r.text === 'string' && r.text) note = { text: r.text, warn: !r.ok }; };
   const press = (verb, a, b) => {

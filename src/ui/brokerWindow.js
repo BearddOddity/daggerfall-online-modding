@@ -93,7 +93,17 @@ export function buyLabel(s) {
 export function refusePress(btn, reason, tell) {
   btn.setAttribute('aria-disabled', 'true');
   btn.setAttribute('title', reason);
-  btn.onclick = (e) => { e?.stopPropagation?.(); tell(reason); };
+  // AUDIT MENU-ORDER U15: its name starts with the word it shows (WCAG's label in name - "Need 5 more", then whose and why)
+  const word = String(btn.textContent ?? '').trim();
+  const said = btn.getAttribute('aria-label') || reason;
+  if (word && !said.startsWith(word)) btn.setAttribute('aria-label', `${word} - ${said}`);
+  btn.onclick = (e) => {
+    e?.stopPropagation?.();
+    // AUDIT MENU-ORDER U4: the keys stay where the press was - a window that draws again on the word finds it by its name
+    const doc = btn.ownerDocument, held = !!doc && doc.activeElement === btn, name = btn.getAttribute('aria-label'), win = btn.closest?.('.broker-win');
+    tell(reason);
+    if (held && btn.isConnected === false && win && name) [...(win.querySelectorAll?.('[aria-disabled="true"]') ?? [])].find((b) => b.getAttribute('aria-label') === name)?.focus?.();
+  };
 }
 
 /** The kit's rules cut to a surface's own selectors - the kit's module holds it now (NAV-F: the naval readout lays its
@@ -170,8 +180,14 @@ export function mountBrokerWindow(host, deps) {
   let pickedInsig = null, pendingInsig = null;
   /** The last press's word, and whether it was a sale (a refusal is read in the refusal's colour). */
   let note = null;
-  /** MENU-ORDER: a refused press's reason, said in the note (refusePress) */
-  const refused = (reason) => { note = { ok: false, text: reason }; render(); };
+  /** MENU-ORDER: a refused press's reason, said in the note (refusePress) - the note alone drawn again (AUDIT MENU-ORDER
+   *  U4: the whole list drawn again took the keys' focus off the press) */
+  const refused = (reason) => {
+    note = { ok: false, text: reason };
+    noteLine.textContent = reason;
+    noteLine.className = 'broker-note';
+    noteLine.removeAttribute?.('hidden');
+  };
   const shell = el('div', 'broker-shell');
   shell.id = 'sigil-broker';
   shell.setAttribute('role', 'dialog');

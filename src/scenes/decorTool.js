@@ -106,6 +106,7 @@ import { localAabb, transformedAabb } from '../render/frustum.js';
 import { billboardSize, isNatureArchive } from '../world/rmbFlats.js';   // DECOR-TURN (AUDIT Y6): a yard's tree turns in earnest
 import { lookAt, perspective, mirrorProjectionX, trs, multiply } from '../world/mat4.js';
 import { panelPicture, canvasBoxUnder } from './panelPicture.js';   // MENU-ORDER: a model's own picture, drawn small
+import { remapLawOf } from '../world/texRemap.js';   // AUDIT MENU-ORDER C3: a picture kept by the law its textures were built in
 import { isTextEntryTarget } from '../ui/input.js';
 import { walletReserve } from '../net/realmGoldLaw.js';   // MARKET-AUDIT: a refusal gives back exactly what the payment took
 import { drawnFlat } from '../characters/nudeFlats.js';   // NUDE-DECOR: a nude figure shows its clothed stand-in while Show Nudity is off
@@ -123,7 +124,7 @@ export const DECOR_PREVIEW_SPIN = 30;
  *  one is drawn in (px, the canvas's own; the grid's tile shows it at 76), how many the frame draws, how long an ask waits
  *  on a model that never comes before its tile keeps the kind's glyph, the turn and the look down it is seen at (a
  *  quarter's view from a little above, as a piece is met in a room). */
-export const DECOR_THUMB_PX = 128;
+export const DECOR_THUMB_PX = 152;   // AUDIT MENU-ORDER R7: the grid's 76px tile at twice its size - a phone's screen is that
 export const DECOR_THUMBS_A_FRAME = 2;
 export const DECOR_THUMB_WAIT_MS = 20_000;
 export const DECOR_THUMB_TURN = -0.6;
@@ -1636,21 +1637,69 @@ export function createDecorTool(deps) {
    *  of the game canvas under the panel's card and copied out (scenes/panelPicture.js - the preview's own pass and copy).
    *  DECOR_THUMBS_A_FRAME a frame: a hundred tiles cost no hitch. An ask made under another room's textures, or for a
    *  model that never came, gives no picture: the tile keeps its kind's glyph. */
-  /** @type {Array<{ id: number, remap: any, asked: number, resolve: (url: string|null) => void }>} */
+  /** @type {Array<{ id: number, remap: any, asked: number, resolve: (url: string|null|PromiseLike<string|null>) => void }>} */
   const thumbAsks = [];
   let remapNow = null;   // the textures the frame draws the room's models in, as drawPreview was last handed them
   const remapTags = new WeakMap();
   let remapSeq = 0;
+  /** The name a picture is kept under for the room's textures: the law its table was built in (AUDIT MENU-ORDER C3 - a
+   *  house entered again builds its table anew, and its pictures stand), else the table itself. */
   const remapTag = () => {
     if (!remapNow) return '0';
     if (typeof remapNow !== 'object') return `=${remapNow}`;   // a table is an object; anything else stands for itself
+    const law = remapLawOf(remapNow);
+    if (law) return law;
     let t = remapTags.get(remapNow);
     if (!t) remapTags.set(remapNow, (t = ++remapSeq));
     return String(t);
   };
+  /** Whether two tables draw alike: the same one, or two built in the same law. */
+  const sameLaw = (a, b) => a === b || (!!remapLawOf(a) && remapLawOf(a) === remapLawOf(b));
+  /** AUDIT MENU-ORDER C1: while the panel is down nothing is drawn, so nothing ages - an ask waits out DECOR_THUMB_WAIT_MS
+   *  of frames the panel stood up to draw it in (a piece placed for half a minute let every pending tile go for good);
+   *  one asked under a room left since is let go now, and holds that room's table no longer. */
+  function holdThumbs(texRemap) {
+    letThumbsGo();   // R4: the panel down, its models go with it
+    const t = now();
+    for (let i = 0; i < thumbAsks.length;) {
+      const ask = thumbAsks[i];
+      if (!sameLaw(ask.remap, texRemap)) { thumbAsks.splice(i, 1); ask.resolve(null); continue; }
+      ask.asked = t;
+      i++;
+    }
+  }
   function modelPicture(id) {
     if (!renderer?.panelFrame || !deps.canvas || !deps.doc) return null;
     return new Promise((resolve) => { thumbAsks.push({ id, remap: remapNow, asked: now(), resolve }); });
+  }
+  /** AUDIT MENU-ORDER R4: A TILE'S MODEL IS THE PANEL'S WHILE IT STANDS. The models the pictures are drawn from are asked
+   *  through a hold of the panel's own (the host's `thumbHold` - a place's hold, scenes/dataPipeline.js holdPlace), let go
+   *  when the panel goes: the pinned door kept every model of a catalogue scrolled through on the GPU for the session,
+   *  past PLACE-LRU. A model the preview or a placing already holds is drawn as it stands. With no hold to ask through
+   *  (a host that hands none), the pinned door. */
+  let thumbHold = null;
+  /** @type {Map<number, {gpu: any, box: any}|null>} */
+  const thumbModels = new Map();
+  function thumbModel(id) {
+    if (!deps.thumbHold) return modelFor(id);
+    const kept = models.get(id);
+    if (kept) return kept;
+    if (thumbModels.has(id)) return thumbModels.get(id) ?? null;
+    thumbHold ??= deps.thumbHold() ?? null;
+    if (!thumbHold) return modelFor(id);   // a host whose pipeline holds nothing (a bare one's)
+    const hold = thumbHold;
+    thumbModels.set(id, null);   // asked once a hold: one that never comes waits out its ask
+    Promise.resolve(hold?.getGpuMesh?.(id)).then((gpu) => {
+      const cpu = deps.cpuModels?.get?.(id);
+      if (hold === thumbHold && gpu && cpu?.positions) thumbModels.set(id, { gpu, box: localAabb(cpu.positions) });
+    }, () => {});
+    return null;
+  }
+  function letThumbsGo() {
+    if (!thumbHold) return;
+    thumbHold.release?.();
+    thumbHold = null;
+    thumbModels.clear();
   }
   function drawThumbs(texRemap) {
     if (!thumbAsks.length) return 0;
@@ -1659,8 +1708,8 @@ export function createDecorTool(deps) {
     let drawn = 0;
     for (let i = 0; i < thumbAsks.length && drawn < DECOR_THUMBS_A_FRAME;) {
       const ask = thumbAsks[i];
-      if (ask.remap !== texRemap || now() - ask.asked > DECOR_THUMB_WAIT_MS) { thumbAsks.splice(i, 1); ask.resolve(null); continue; }
-      const m = modelFor(ask.id);
+      if (!sameLaw(ask.remap, texRemap) || now() - ask.asked > DECOR_THUMB_WAIT_MS) { thumbAsks.splice(i, 1); ask.resolve(null); continue; }
+      const m = thumbModel(ask.id);
       if (!m || !inLaw(m.gpu, texRemap)) { i++; continue; }
       thumbAsks.splice(i, 1);
       drawn++;
@@ -1678,7 +1727,7 @@ export function createDecorTool(deps) {
    *  canvas. A flat's preview is its picture, the panel's own. */
   function drawPreview(texRemap = null) {
     remapNow = texRemap;
-    if (!panel?.isOpen() || !renderer?.panelFrame) return false;
+    if (!panel?.isOpen() || !renderer?.panelFrame) { holdThumbs(texRemap); return false; }
     drawThumbs(texRemap);   // MENU-ORDER: the tiles' pictures first - the preview's pass is the frame's last word
     const e = panel.pointed();
     if (e?.model == null) return false;
@@ -1719,6 +1768,7 @@ export function createDecorTool(deps) {
     if (placing) endPlacing();
     if (panel?.isOpen()) panel.close();
     button?.render(false);
+    letThumbsGo();   // AUDIT MENU-ORDER R4: the room goes, and the tiles' models with it
   }
 
   return {

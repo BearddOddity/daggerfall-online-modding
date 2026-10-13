@@ -749,6 +749,13 @@ export const STATION_TILES = Object.freeze({
   loom: ['Loom', 'spool'], 'temper-loom': ['Temper (loom)', 'temper'], mason: ['Mason\'s bench', 'chisel'], fire: ['Fire', 'fire'],
   jeweller: ['Jeweller\'s bench', 'gem'], alchemy: ['Alchemy', 'flask'], enchant: ['Enchanting', 'rune'],
 });
+/** AUDIT MENU-ORDER C2: WHERE A STATION IS WORKED, by the provider's own word - its station here, or none. A section read
+ *  for a press said "Away" at a forge with nothing to temper (its words alone: none to temper), and hid the word a last
+ *  piece tempered or disenchanted left there. */
+export const STATION_AT = Object.freeze({
+  forge: 'forge', anvil: 'forge', 'temper-anvil': 'forge', workbench: 'workbench', loom: 'loom', 'temper-loom': 'loom',
+  mason: 'mason', fire: 'fire', jeweller: 'jeweller', alchemy: 'alchemy', enchant: 'enchanter',
+});
 /** MENU-ORDER: what a tile says under its name - worked here, or where it is worked (its words, under the tiles, on a press). */
 export const STATION_TILE_WORDS = Object.freeze({ here: 'Here', away: 'Away', hint: 'Press a station to see where it is worked.' });
 /** MENU-ORDER: whether a station's section can be worked from here - it draws a press (a button, a field, a choice); one
@@ -777,7 +784,8 @@ function drawStationTiles(detail, rerender, kit, list) {
     const box = el('div', 'prof-station');
     draw(box);
     if (!(box.children?.length)) continue;
-    const here = stationWorkable(box);
+    const at = /** @type {any} */ (_provider)?.[STATION_AT[id]];
+    const here = typeof at === 'function' ? !!at() : stationWorkable(box);   // C2: the provider's word; a press in it where it has none
     if (!here && focus && holdsHead(box, `prof-station-${focus}`)) _stores.awayPick = id;
     drawn.push({ id, box, here });
   }
@@ -789,6 +797,7 @@ function drawStationTiles(detail, rerender, kit, list) {
     t.type = 'button';
     t.setAttribute('data-dficon', icon);   // a fake document's node has no dataset
     t.setAttribute('data-station', id);
+    if (!here) t.setAttribute('aria-expanded', _stores.awayPick === id ? 'true' : 'false');   // AUDIT MENU-ORDER U15: an away tile opens its words
     t.append(el('span', 'prof-stile-name', name), el('span', 'prof-stile-state', here ? STATION_TILE_WORDS.here : STATION_TILE_WORDS.away));
     t.onclick = () => {
       if (here) { box.scrollIntoView?.({ block: 'start', behavior: 'smooth' }); return; }
