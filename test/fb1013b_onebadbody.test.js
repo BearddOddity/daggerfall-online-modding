@@ -111,10 +111,13 @@ const shown = (x, yaw = 0.5) => ({ x, y: 0, z: -6, yaw, pitch: 0, mv: 0 });
 const peerAt = (s) => ({ id: 'p1', name: 'p1', told: true, look: { race: 'Breton', gender: 'male', faceIndex: 0, items: [] }, shown: s });
 const V = { proj: perspective(1.1, 16 / 9, 0.1, 500), view: lookAt([0, 1.6, 4], [0, 1, -6], [0, 1, 0]), eye: [0, 1.6, 4] };
 
-test('ONE-BAD-BODY: a peer whose drawn pose goes non-finite keeps its body where it last stood and its yaw a number, moves on with the next good pose, and a body born on a bad yaw takes the first good one (mutants: the place taken as it came; the yaw taken as it came; the bad yaw kept)', async () => {
+test('ONE-BAD-BODY: a peer whose drawn pose goes non-finite keeps its body where it last stood and its yaw a number, moves on with the next good pose, and a body born on a bad yaw takes the first good one (mutants: the place taken as it came; the yaw taken as it came; the bad yaw kept)', async (t) => {
   const draws = [], said = [];
   let now = 1000;
-  const pb = new PeerBodies({ renderer: {}, createRig: stubRig(draws), buildOpts: () => ({}), now: () => now, warn: (m) => said.push(m) });
+  const warn = console.warn;
+  console.warn = (m) => said.push(String(m));   // the line is the console's own (L10N4: a console line is a call on `console`)
+  t.after(() => { console.warn = warn; });
+  const pb = new PeerBodies({ renderer: {}, createRig: stubRig(draws), buildOpts: () => ({}), now: () => now });
   const frame = (s, dt = 1 / 60) => { now += 16; pb.sync([peerAt(s)], toScene, dt, [0, 0, 0]); draws.length = 0; pb.draw({ clientWidth: 1280, clientHeight: 720 }, V); return draws.at(-1) ?? null; };
   frame(shown(1)); await settle(); frame(shown(1));
   const ok = frame(shown(1));
@@ -134,7 +137,7 @@ test('ONE-BAD-BODY: a peer whose drawn pose goes non-finite keeps its body where
   assert.match(said.find((m) => m.includes('drawn pose is not finite')), /x NaN/);
   // a body BORN on a pose with no yaw takes the first good one, never stays NaN
   const draws2 = [];
-  const pb2 = new PeerBodies({ renderer: {}, createRig: stubRig(draws2), buildOpts: () => ({}), now: () => now, warn: () => {} });
+  const pb2 = new PeerBodies({ renderer: {}, createRig: stubRig(draws2), buildOpts: () => ({}), now: () => now });
   const frame2 = (s) => { now += 16; pb2.sync([peerAt(s)], toScene, 1 / 60, [0, 0, 0]); draws2.length = 0; pb2.draw({ clientWidth: 1280, clientHeight: 720 }, V); return draws2.at(-1) ?? null; };
   frame2({ ...shown(1), yaw: NaN }); await settle(); frame2({ ...shown(1), yaw: NaN });
   const first = frame2(shown(1, 0.7));

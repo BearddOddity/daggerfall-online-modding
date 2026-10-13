@@ -824,11 +824,13 @@ export class PeerBodies {
   }
 
   /** ONE-BAD-BODY: a drawn pose this lane could not take - its place or its yaw not a finite number - said once a lane, the
-   *  pose's own numbers with it, so the next report names the field that went wrong and where it came from. */
+   *  pose's own numbers with it, so the next report names the field that went wrong and where it came from. On the
+   *  console itself, as the renderer's refusal is: it is a line for the one who reads the console, never a player's, and
+   *  L10N4's ratchet (tools/l10nHardcoded.mjs) knows a console line only as a call on `console`. */
   _notFinite(what, shown) {
     if (this._notFiniteSaid) return;
     this._notFiniteSaid = true;
-    try { this._warn(`[online] a body's drawn pose is not finite (${what}: x ${shown?.x} y ${shown?.y} z ${shown?.z} yaw ${shown?.yaw}${shown?.cl ? ` cw ${shown.cw}` : ''}) - it stands where it last stood`); } catch { /* a console is not the body's problem */ }
+    console.warn(`[online] a body's drawn pose is not finite (${what}: x ${shown?.x} y ${shown?.y} z ${shown?.z} yaw ${shown?.yaw}${shown?.cl ? ` cw ${shown.cw}` : ''}) - it stands where it last stood`);
   }
 
   /** A body that failed - refused, or threw - is released and its look waited out, the reason kept and said once. */
