@@ -901,10 +901,20 @@ Russian and Spanish (2,435 rows each, every one the machine's).
 - **Next:** the twelve, through the pipeline (`tools/translate.mjs`, Mac's key) or a cheaper run; then L10N4's routing of
   main's 6,000 new literals (the ratchet's 13,602).
 
+## The Eltheric chart, routed (2026-10-13, at PR #847's merge of main)
+
+The ratchet held PR #847 at its merge of main: its rewrite of the Eltheric chart (`ui/etherChartWindow.js`,
+ETHER-CHART2 and ETHER-OW) wrote 22 literals of prose where main's chart had 6. Its words are the text core's now
+(`sea.chart.*`, 33 keys - the catalog's 2,470), by ROUTE-BRIEF's laws, and drafted in-session into the thirteen whole
+languages; the twelve drafting owe them with the rest. The sea's own vocabulary (its name, bands, kinds and compass
+points) stays `world/ethericSea.js`'s, passed as arguments in English: that module is the account Worker's too, so its
+routing is its own. `01-Overview/Audit-Ether-OW.md` has the record; `test/audit_etherow.test.js` reads the chart in
+French and in English.
+
 ## CARDS-PLUS (2026-10-13): the card tables' new words, and the scan reads a selector
 
-The first change to land under L10N6's laws from outside the arc (`11-Multiplayer/Tavern-Cards.md` section 38: the card
-tables in the Enhanced Plus kit, Iliac Hand's table redrawn).
+A second change from outside the arc held to L10N6's laws, after the Eltheric chart above (`11-Multiplayer/Tavern-Cards.md`
+section 38: the card tables in the Enhanced Plus kit, Iliac Hand's table redrawn).
 - **Its new words go through the text core**, read where they are shown: Iliac Hand's verdict (`VERDICT_WORDS`, a frozen
   table of getters), the fold's two titles (`cards.table.fold.*` - the card tables' chrome, for Hold'em's fold to take
   when its panel is routed), the setup's heads and boxes, the track, the other player's line and state, the empty tray -

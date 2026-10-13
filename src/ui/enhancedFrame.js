@@ -187,6 +187,8 @@ export const FRAME_ROLES = {
   warn: ['body .dfsocial-btn.warn', 'body .dfprofile-duel',
     'body .dfnaval-scuttle',   // NAV-F: scuttling a prize - she and what is left in her go down
     '.pack-shell .fate-confirm .act.warn', '.px-sys .cmp-acts .act.warn',   // REVENANT-FATE: Execute; COMPANION-ROSTER: Release, confirmed
+    'body .dfdecor-btn.warn',   // MENU-ORDER: the decorator's Remove - its piece and half its price go
+    '.trade-shell .act.trade-steal',   // MENU-ORDER: the counter's Steal - a crime, if the keeper sees it
     'body .dfiliac button[data-kind="warn"]'],   // CARDS-PLUS: Iliac Hand's Concede and stand - the staked card or the ranked game given up
   tile: ['.port-host .port-tile', '.pack-shell .sf-chip', '.port-host .port-iconcell', '.pack-shell .itemrow', '.pack-shell .equipped .wornrow', '.pack-shell .wornsock', '.wizard .racegrid button',
     '.wizard .facegrid button', '.shell .ft-tile', '.shell .ft-seg', '.shell .ft-mchip', '.shell .ft-tile-more',   // FT18: a condensed tile's parts toggle
