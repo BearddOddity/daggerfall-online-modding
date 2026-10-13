@@ -189,7 +189,8 @@ the check (nothing writes the field but the choice and that witness, and both re
 no honest player a frozen trade. The masteries
 themselves are not judged here: a save from before SOFTCAP4 can hold a skill past 100 with no mastery listed, and the
 judge's verdict freezes trade - judging that is a call of its own (section 9). `arcanePaths.js` joins the account
-Worker's deploy filter; the service's version moves to `acct127`.
+Worker's deploy filter; the service's version moves to `acct130` (acct127 on the branch, renumbered past HOMES-SHED,
+BUSY-GATE and CRAFT-PROCS at the merge of main).
 
 ## 8. The seams, and the four hosts
 
@@ -264,7 +265,8 @@ equivalent as recorded) and `tools/mutants/audit_schools.json` (95 - the audit's
 recorded equivalent. PIN MOVED: `dropsaudit`'s damage-over-time round (it reads the school its rounds are cast in);
 by content `bal9.json`'s two and `dropsaudit.json`'s two records the same lines moved; `spellbookwindow`'s shelf
 (`offered:` reads `signatureOffers`) and `serpentset`'s `playerHeal.js` import (`manaMine` beside `healMine`); the
-account service's version pins to acct127 in the nineteen suites and their records. And the audit's
+account service's version pins to acct130 in the nineteen suites and their records (acct127 until the merge of
+main that brought acct128 and acct129). And the audit's
 (PIN MOVED (AUDIT SCHOOLS)): the cast's wrapper and token in `serpent4`, `wb11_gate_host`, `wb9c_gate_reckoning`,
 `wb4b_gate_blows` (four), `audit24_scenes` and `x3casting`; by content `wb4b.json`'s three, `fb1001_regen.json`'s three
 (the Regenerate entry's school and caster) and `stackcap.json`'s two (the ward arm's merge).
