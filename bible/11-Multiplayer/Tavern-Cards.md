@@ -1340,7 +1340,7 @@ Currently it doesnt"**.
   them (AUDIT CARDS-PLUS D1: without the class, "press [E] when ready" read as one).
 - **Pins:** `test/cardsplus.test.js` 9 (11 after AUDIT CARDS-PLUS, section 39). PIN MOVED: `auditcards6_b` B5 reads the regular's own tile (the name and
   temper on its first line, what the regular has paid under it); `plusdress1`'s warn rule carries Iliac Hand's concession.
-  `tools/mutants/cardsplus.json` 39, all dead (83 after the audit). Re-judging the touched files' older records - 132
+  `tools/mutants/cardsplus.json` 39, all dead (82 after the audit). Re-judging the touched files' older records - 132
   before the merge of main, 142 after it, every one dead at the head (AUDIT CARDS-PLUS E9) - found one survivor on
   the base as well - `cards8.json` C8-builder-past-held, its tests never the suite that holds its law (AUDIT CARDS-5
   lane D's second pass in `auditcards5_ui`); re-aimed, dead.
@@ -1394,6 +1394,7 @@ finding reproduced again on the live tree after the merge of main and fixed or r
   the routing batches', the scan's first test quadratic on a long run of letters (D7).
 - **Pins:** `test/cardsplus.test.js` 11 (lane A's and lanes B and C's new; the rest extended), the scan's own test in
   `test/l10n4_hardcoded.test.js`, `tools/cardPanelsProbe.mjs` (1,690 checks over 105 pages).
-  `tools/mutants/cardsplus.json` 83, all dead; records re-aimed by content: `auditcards6_b` AC6-B10-fallback-hand and
-  AC6-B10-tab-walk, `fb1011_cardskept` CP-fold-forgotten. The 127 older records on the files the audit changed (25 lists), run on
-  the live tree: 127 dead.
+  `tools/mutants/cardsplus.json` 82, all dead on the final tree (CP-watcher-end retired with the check it mutated,
+  which A6's guard had made unreachable); records re-aimed by content: `auditcards6_b` AC6-B10-fallback-hand and
+  AC6-B10-tab-walk, `fb1011_cardskept` CP-fold-forgotten. The 127 older records on the files the audit changed (25
+  lists), run on the final tree: 127 dead.

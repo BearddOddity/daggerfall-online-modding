@@ -17,7 +17,6 @@
   {"name":"CP-lead-tie-held","file":"src/ui/iliacTableHud.js","old":"  return p[me] > p[them] ? 'mine' : p[them] > p[me] ? 'theirs' : null;","new":"  return p[me] >= p[them] ? 'mine' : p[them] > p[me] ? 'theirs' : null;","tests":["test/cardsplus.test.js"]},
   {"name":"CP-lead-result-unread","file":"src/ui/iliacTableHud.js","old":"  if (held === me) return 'mine';","new":"  if (held === me && !held) return 'mine';","tests":["test/cardsplus.test.js"]},
   {"name":"CP-spell-takes-place","file":"src/ui/iliacTableHud.js","old":"cardById(c.id)?.kind !== 'spell').length","new":"cardById(c.id)?.kind !== 'nothing').length","tests":["test/cardsplus.test.js"]},
-  {"name":"CP-watcher-end","file":"src/ui/iliacTableHud.js","old":"  if (!r || !(view.viewer >= 0)) return null;","new":"  if (!r) return null;","tests":["test/cardsplus.test.js"]},
   {"name":"CP-committed-tone","file":"src/ui/iliacTableHud.js","old":"online?.watching || view?.revealing || committed ? 'wait' : 'turn';","new":"online?.watching || view?.revealing ? 'wait' : 'turn';","tests":["test/cardsplus.test.js"]},
   {"name":"CP-concede-quiet","file":"src/ui/iliacTableHud.js","old":"kind: concede ? 'warn' : 'quiet' });","new":"kind: 'quiet' });","tests":["test/cardsplus.test.js"]},
   {"name":"CP-hand-twice","file":"src/ui/iliacTableHud.js","old":"  const face = (id, h) => (canPaint ? cardCanvasCopy(doc, id ? cardById(id) ?? null : null, h) : null);","new":"  const face = (id, h) => (canPaint ? cardCanvasCopy(doc, id ? cardById(id) ?? null : null, h * 2) : null);","tests":["test/cardsplus.test.js"]},

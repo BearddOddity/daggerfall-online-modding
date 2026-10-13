@@ -132,7 +132,7 @@ export function iliacOutcome(view, end) {
   if (end === 'won-left') return 'won';
   if (end === 'void') return 'void';
   const r = view?.result;
-  if (!r || !(view.viewer >= 0)) return null;
+  if (!r) return null;   // a watcher is turned away above (A6); asked again here, it was a check no pin could fail
   return r.winner === null ? 'drawn' : r.winner === view.viewer ? 'won' : 'lost';
 }
 /** CARDS-PLUS: the end's banner word - read when it is shown (L10N4: a frozen table's words are getters, never read at
