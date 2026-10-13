@@ -694,7 +694,7 @@ seeded there, life by life), the chase word; `test/nav_r_raiders.test.js` (+1) -
 corsair, drawn the band's levels over the captain's. Mutants `tools/mutants/ether_ow.json` (24). PIN MOVED (each to its
 new law): `test/ows3_raiders.test.js` (the raiders' open sea, the host's ground, the word's place past the world's edge),
 `test/tv7_bands.test.js` (the bands' land, the word's place), `test/tv5_far_places.test.js` (the settlements),
-`test/tv6_dungeons.test.js` and `test/ow5_audit.test.js` (the lists' rows lifted beside them), `test/tv2_click_to_move.test.js`
+`test/tv6_dungeons.test.js`, `test/ow5_audit.test.js` and `test/owdungeons.test.js` (the lists' rows lifted beside them), `test/tv2_click_to_move.test.js`
 and `test/tv_wasd.test.js` (the governor's ground), `test/audit_etherchart2.test.js` (the door a press of the row);
 re-aimed by content: `tools/mutants/ether_nodes.json` (EN-bay-alone, EN-law-margin), `ow3d.json` (OW3D3-rows-off-the-index),
 `ow4t.json` (OW4-B2-live-index), `ow5s.json` (the two S5 records), `tv7.json` (TV7b-off-the-map).
