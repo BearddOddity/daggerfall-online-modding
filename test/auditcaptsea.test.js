@@ -871,7 +871,8 @@ test('AUDIT CAPTAIN\'S SEA X6/X7/X8/X12/X13/X14/X18: the chart under a finger an
   assert.match(src, /canvas\.addEventListener\('contextmenu', \(e\) => e\.preventDefault\(\)\);/);
   assert.match(src, /const step = d \/ pinch\.d >= CHART_PINCH_STEP \? 1 : pinch\.d \/ d >= CHART_PINCH_STEP \? -1 : 0;/, 'the pinch');
   assert.match(src, /canvas\.addEventListener\('pointerup', \(e\) => \{ if \(drag && !drag\.moved && downs\.size === 1\) note\(\.\.\.local\(e\)\); endDrag\(e\); \}\);/, 'the tap');
-  assert.match(src, /tool\('-', \(\) => zoomMid\(-1\)\); tool\('\+', \(\) => zoomMid\(1\)\); tool\('Ship', toShip\);/, 'its own presses');
+  // PIN MOVED (L10N4, at the merge of main): the Ship press's word through the text core, its English as it was
+  assert.match(src, /tool\('-', \(\) => zoomMid\(-1\)\); tool\('\+', \(\) => zoomMid\(1\)\); tool\(t\('sea\.chart\.ship', 'Ship'\), toShip\);/, 'its own presses');
   assert.match(src, /const acts = actionsForCode\(bindings\(\), e\.code\);\n\s+if \(overlayAction\(e\) === 'back' \|\| acts\.includes\('TravelMap'\) \|\| acts\.includes\('AutoMap'\)\)/, 'the key that opened it');
   assert.ok(!/e\.code === 'KeyM'/.test(src), 'no key of its own hard-coded');
   assert.match(src, /if \(Math\.abs\(wheelAcc\) < CHART_WHEEL_STEP\) return;/, 'the wheel gathered');

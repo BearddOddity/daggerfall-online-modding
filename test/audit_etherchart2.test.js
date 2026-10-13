@@ -360,7 +360,8 @@ test('AUDIT ETHER-CHART2 T7/T10: the card\'s title a name opening a line, its fi
   // PIN MOVED (ETHER-OW, test/ether_ow.test.js): the Overworld's door is a press of the row, a finger's 44px too
   assert.match(src, /for \(const b of \[zoomOut, zoomIn, shipBtn, overBtn\]\) \{ b\.style\.flex = '0 0 auto'; b\.style\.minWidth = '44px'; \}/);
   // PIN MOVED (ELTHERIC, test/eltheric.test.js): the sea's name is its one home's (world/ethericSea.js ETHER_SEA_NAME)
-  assert.match(src, /canvas\.setAttribute\('role', 'img'\);\n\s+canvas\.setAttribute\('aria-label', `A chart of \$\{ETHER_SEA_NAME\}: your ship, the isles you have charted, the depths, the Veil and the legends' haunts`\);/);
+  // PIN MOVED (L10N4, at the merge of main): the canvas's name through the text core, the sea's name its one home's
+  assert.match(src, /canvas\.setAttribute\('role', 'img'\);\n\s+canvas\.setAttribute\('aria-label', t\('sea\.chart\.canvas', 'A chart of \{sea\}: your ship, the isles you have charted, the depths, the Veil and the legends\\' haunts', \{ sea: ETHER_SEA_NAME \}\)\);/);
   assert.match(src, /c\.width = c\.height = Math\.round\(18 \* dpr0\);/);
 });
 

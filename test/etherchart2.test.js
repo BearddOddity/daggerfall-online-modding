@@ -250,6 +250,7 @@ test('ETHER-CHART2 the isle named: ringed, its card its name and its kind and wa
   assert.match(src, /const named = isle\?\.key \?\? null;\n\s+if \(named !== pick\) \{ pick = named; draw\(\); \}/);
   assert.match(src, /canvas\.addEventListener\('pointerleave', \(e\) => \{ if \(e\.pointerType === 'mouse' && !downs\.size && pick\) \{ pick = null; noteLine\.textContent = ''; draw\(\); \} \}\);/);
   assert.match(src, /zoomOut\.disabled = view\.zoom === 0;\n\s+zoomIn\.disabled = view\.zoom === CHART_ZOOMS\.length - 1;/);
-  assert.match(src, /zoomOut\.setAttribute\('aria-label', 'Zoom out'\); zoomIn\.setAttribute\('aria-label', 'Zoom in'\); shipBtn\.setAttribute\('aria-label', 'Find your ship'\);/);
+  // PIN MOVED (L10N4, at the merge of main): the presses' names through the text core, their English as it was
+  assert.match(src, /zoomOut\.setAttribute\('aria-label', t\('sea\.chart\.zoomOut', 'Zoom out'\)\); zoomIn\.setAttribute\('aria-label', t\('sea\.chart\.zoomIn', 'Zoom in'\)\); shipBtn\.setAttribute\('aria-label', t\('sea\.chart\.findShip', 'Find your ship'\)\);/);
   assert.match(src, /close\.style\.flex = '0 0 auto';/);
 });

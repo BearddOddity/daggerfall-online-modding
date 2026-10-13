@@ -156,3 +156,35 @@ test('AUDIT ETHER-OW C2-3: "Your Ship" is boarded from the Bay alone - past the 
   assert.deepEqual((await mk({ ether: false, pixel: { x: 300, y: 200 } })())?.go, { x: 2, y: 2 });
   assert.equal(said.length, 1, 'said once, for the one refusal');
 });
+
+// ─── THE MERGE WITH L10N: THE CHART IN THE PLAYER'S LANGUAGE ───────────────────────────────────────────────────────
+
+test('AUDIT ETHER-OW, the merge with main\'s L10N: the Eltheric chart\'s own words are the text core\'s (L10N4) - in French its title, its line, the ruler\'s Veil, its key, a way and an isle\'s line, its scale and a haunt read French, read when they are drawn (never at load); in English byte for byte as before; the sea\'s name and its bands\', kinds\' and compass words stay `world/ethericSea.js`\'s (mutants: a word left English, a table read at load)', async () => {
+  const tm = await import('../src/systems/textManager.js');
+  const M = await import('../src/ui/etherChartWindow.js');
+  const word = { px: H.px, py: H.py, yaw: 0, charted: [H.key], legends: [], stats: { charted: 2, deepest: 3, crossings: 1 } };
+  const english = M.chartModel(word, { cx: H.px, cy: H.py, zoom: 2 }, 400, 300);
+  assert.deepEqual([english.title, english.sub], [`A chart of ${ES.ETHER_SEA_NAME}`, '2 isles charted - deepest 3 leagues past the Veil - 1 crossing']);
+  assert.deepEqual([M.wayWords({ px: 0, py: 0 }, { px: 0, py: 0 }), M.scaleBar(4).words, M.RULER_WORDS.veil[1], M.CHART_KEY[2][1]], ['here', '1 league', 'THE VEIL', 'Wild isle']);
+  const rows = tm.loadStringTableCsv(src('locales/fr/Port_Strings.csv'));
+  tm.patchLocaleTable('fr', 'Port_Strings', rows);
+  const fr = new Map(rows);
+  try {
+    tm.setLocale('fr');
+    const m = M.chartModel(word, { cx: H.px, cy: H.py, zoom: 2 }, 400, 300);
+    assert.equal(m.title, fr.get('sea.chart.title').replace('{sea}', ES.ETHER_SEA_NAME));
+    assert.match(m.sub, /^2 îles cartographiées - .* 1 traversée$/);
+    assert.deepEqual([M.wayWords({ px: 0, py: 0 }, { px: 0, py: 0 }), M.scaleBar(4).words, M.scaleBar(0).words, M.RULER_WORDS.veil[1], [...M.CHART_KEY[2]]],
+      [fr.get('sea.chart.here'), '1 lieue', '20 lieues', fr.get('sea.chart.ruler.veil'), ['wild', fr.get('sea.chart.key.wild')]]);
+    assert.notEqual(M.CHART_KEY[2][1], 'Wild isle', 'the key read when it is drawn - never frozen at load');
+    const ruin = ES.islesNear(H.px, H.py, 40).find((i) => i.kind === 'ruin');
+    assert.match(M.isleWords(ruin, { px: ruin.px, py: ruin.py }), new RegExp(`^${M.capFirst(ruin.name)} - ${ES.KIND_WORDS.ruin} - ${fr.get('sea.chart.here')}$`), 'the line\'s words French, the kind ethericSea.js\'s');
+    const { hauntOf, legendById } = await import('../src/systems/naval/etherShips.js');
+    const lair = hauntOf(legendById('starless'));
+    const haunted = M.chartModel({ ...word, legends: [{ id: 'starless', name: 'The Starless', sails: true, trait: 'night' }, { id: 'starless', name: 'The Starless', sails: false }] }, { cx: lair.px, cy: lair.py, zoom: 2 }, 800, 600);
+    assert.deepEqual(haunted.haunts.map((h) => h.sub), [fr.get('sea.chart.hauntNight'), fr.get('sea.chart.hauntSunk')], 'her haunt by night, and sunk');
+  } finally {
+    tm.setLocale('en');
+  }
+  assert.deepEqual(M.chartModel(word, { cx: H.px, cy: H.py, zoom: 2 }, 400, 300).sub, english.sub, 'English again, byte for byte');
+});

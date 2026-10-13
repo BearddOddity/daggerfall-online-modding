@@ -11,7 +11,7 @@
   {
     "name": "EL-chart-literal",
     "file": "src/ui/etherChartWindow.js",
-    "old": "    title: `A chart of ${ETHER_SEA_NAME}`,",
+    "old": "    title: chartTitle(),",
     "new": "    title: 'A chart of the Eltheric Ocean',",
     "tests": [
       "test/eltheric.test.js"

@@ -47,6 +47,7 @@ import { injectNavalKit } from './navalHud.js';
 import { injectNavalWindowStyle } from './navalPlunderWindow.js';
 import { PIXEL_STACK } from './pixelifyFive.js';
 import { TRAVEL_VIEW_BUTTON } from '../scenes/travelView.js';   // ETHER-OW: the Overworld door's words, the held map's own
+import { t } from '../systems/textManager.js';   // L10N4 (at the merge of main): the chart's words in the player's language, read when they are drawn
 import { isleByKey, BANDS, VEIL_X, LEAGUE_PX, KIND_WORDS, ETHER_BOX, compassPoint, veilhaven, ETHER_SEA_NAME } from '../world/ethericSea.js';
 import { hauntOf, legendById, HAUNT_PX } from '../systems/naval/etherShips.js';
 
@@ -80,8 +81,8 @@ export const SCALE_MAX_PX = 120;
 export const RULER_H = 22;
 export const RULER_WORDS = Object.freeze({
   ...Object.fromEntries(BANDS.map((b) => [b.id, Object.freeze([b.name.toUpperCase(), b.name.replace(/^the /, '').toUpperCase()])])),
-  veil: Object.freeze(['THE VEIL - TO THE ILIAC BAY', 'THE VEIL', 'VEIL']),
-  edge: Object.freeze(['THE WORLD\'S EDGE', 'EDGE']),
+  get veil() { return Object.freeze([t('sea.chart.ruler.veilHome', 'THE VEIL - TO THE ILIAC BAY'), t('sea.chart.ruler.veil', 'THE VEIL'), t('sea.chart.ruler.veilShort', 'VEIL')]); },
+  get edge() { return Object.freeze([t('sea.chart.ruler.edge', 'THE WORLD\'S EDGE'), t('sea.chart.ruler.edgeShort', 'EDGE')]); },
 });
 /** ETHER-CHART2: the ship's pointer stands this far in from the canvas's edge. */
 export const EDGE_INSET = 26;
@@ -91,7 +92,14 @@ export const VOID_TONE = '#030508';
 /** AUDIT ETHER-CHART2 U3: the world's edge's line, where the sea's box meets the void. */
 export const EDGE_LINE = 'rgba(170,195,230,0.55)';
 /** ETHER-CHART2: the key under the chart - each mark, and what it is. */
-export const CHART_KEY = Object.freeze([['port', 'Port'], ['ruin', 'Ruin'], ['wild', 'Wild isle'], ['rock', 'Bare rock'], ['ship', 'Your ship'], ['haunt', 'A legend\'s haunt'], ['sunk', 'A legend sunk']]);
+/** L10N4: a row of the key - `[what, words]`, its words read in the player's language each time the row is. */
+const keyRow = (what, words) => Object.freeze(Object.defineProperty([what], 1, { enumerable: true, get: words }));
+export const CHART_KEY = Object.freeze([
+  keyRow('port', () => t('sea.chart.key.port', 'Port')), keyRow('ruin', () => t('sea.chart.key.ruin', 'Ruin')),
+  keyRow('wild', () => t('sea.chart.key.wild', 'Wild isle')), keyRow('rock', () => t('sea.chart.key.rock', 'Bare rock')),
+  keyRow('ship', () => t('sea.chart.key.ship', 'Your ship')), keyRow('haunt', () => t('sea.chart.key.haunt', 'A legend\'s haunt')),
+  keyRow('sunk', () => t('sea.chart.key.sunk', 'A legend sunk')),
+]);
 /** AUDIT CAPTAIN'S SEA X18: the wheel's travel a zoom step takes (a trackpad's light brush was a step an event). */
 export const CHART_WHEEL_STEP = 100;
 /** AUDIT CAPTAIN'S SEA X6: a press that moves less than this (px) is a tap; two fingers' spread by this share a step. */
@@ -99,6 +107,9 @@ export const CHART_TAP_PX = 8;
 export const CHART_PINCH_STEP = 1.6;
 /** A name opening a line, its first letter raised ("the Sepulchre of Aelorrel" leads a sentence as "The Sepulchre..."). */
 export const capFirst = (t) => String(t ?? '').replace(/^./, (c) => c.toUpperCase());
+/** The chart's title, and its dialog's name - the sea's name its one home's (ELTHERIC; L10N4: the words about it the
+ *  player's language's, the name itself as `world/ethericSea.js` says it). */
+export const chartTitle = () => t('sea.chart.title', 'A chart of {sea}', { sea: ETHER_SEA_NAME });
 
 /** @typedef {{ cx: number, cy: number, zoom: number }} ChartView */
 /** A chart point (map pixels) on the canvas (`w` x `h`): the view's centre the canvas's. */
@@ -120,12 +131,11 @@ export const clampChartView = (v) => ({ zoom: v.zoom, cx: Math.max(ETHER_BOX.x0,
 export function wayWords(from, to) {
   const dx = to.px - from.px, dy = to.py - from.py;
   const leagues = Math.hypot(dx, dy) / LEAGUE_PX;
-  if (leagues < 0.5) return 'here';
-  const n = Math.max(1, Math.round(leagues));
-  return `${n} ${n === 1 ? 'league' : 'leagues'} ${compassPoint(dx, dy)}`;
+  if (leagues < 0.5) return t('sea.chart.here', 'here');
+  return t('sea.chart.way', '{n, plural, one {# league} other {# leagues}} {point}', { n: Math.max(1, Math.round(leagues)), point: compassPoint(dx, dy) });
 }
 /** An isle in a line: "Port Pelleveth - a port - 12 leagues west-north-west" - its name's first letter raised (X17). */
-export const isleWords = (isle, ship) => `${capFirst(isle.name)} - ${KIND_WORDS[isle.kind] ?? 'an isle'} - ${wayWords(ship, isle)}`;
+export const isleWords = (isle, ship) => t('sea.chart.isleLine', '{name} - {kind} - {way}', { name: capFirst(isle.name), kind: KIND_WORDS[isle.kind] ?? t('sea.chart.anIsle', 'an isle'), way: wayWords(ship, isle) });
 
 /** ETHER-CHART2: THE SCALE at a zoom - the longest of SCALE_LEAGUES whose bar is no longer than SCALE_MAX_PX - and its
  *  words; the grid's squares are its length. */
@@ -133,7 +143,7 @@ export function scaleBar(zoom) {
   const per = LEAGUE_PX * CHART_ZOOMS[zoom];
   let leagues = SCALE_LEAGUES[0];
   for (const n of SCALE_LEAGUES) if (n * per <= SCALE_MAX_PX) leagues = n;
-  return { leagues, px: leagues * per, words: `${leagues} ${leagues === 1 ? 'league' : 'leagues'}` };
+  return { leagues, px: leagues * per, words: t('sea.chart.scale', '{n, plural, one {# league} other {# leagues}}', { n: leagues }) };
 }
 /** ETHER-CHART2: A NAME'S TWO SIDES - its isle's east, then its west - for a name `tw` wide (the model's boxes are
  *  `[x0, y0, x1, y1]`, the name centred on its isle's row). */
@@ -232,7 +242,7 @@ export function chartModel(word, v, w, h, { measure = null, pick = null } = {}) 
     const lair = hauntOf(legend);
     const [x, y] = toScreen(v, lair.px + 0.5, lair.py + 0.5, w, h);
     const r = HAUNT_PX * k;
-    if (on(x, y, r)) haunts.push({ x, y, r, name: l.name, sails: !!l.sails, sub: l.sails ? `Her haunt${l.trait === 'night' ? ' - by night' : ''}` : 'Sunk - she will rise again', inside: false, at: /** @type {number[]|null} */ (null), box: /** @type {number[]|null} */ (null) });
+    if (on(x, y, r)) haunts.push({ x, y, r, name: l.name, sails: !!l.sails, sub: l.sails ? (l.trait === 'night' ? t('sea.chart.hauntNight', 'Her haunt - by night') : t('sea.chart.haunt', 'Her haunt')) : t('sea.chart.hauntSunk', 'Sunk - she will rise again'), inside: false, at: /** @type {number[]|null} */ (null), box: /** @type {number[]|null} */ (null) });
   }
   // AUDIT CAPTAIN'S SEA X14: the names placed greedily - ports first, then by the chart's own order - and one that would
   // stand over a name already lettered on both its sides left unlettered (a pointer or a tap still names it).
@@ -292,7 +302,7 @@ export function chartModel(word, v, w, h, { measure = null, pick = null } = {}) 
   // before the lesser isles' (AUDIT ETHER-CHART2 C4: its plate, painted after them, covered one in six of the views where
   // she was off the chart)
   if (ship.edge) {
-    const e = ship.edge, words = `Your ship - ${ship.way}`, tw = width(words, CHART_FONT.small);
+    const e = ship.edge, words = t('sea.chart.shipWay', 'Your ship - {way}', { way: ship.way }), tw = width(words, CHART_FONT.small);
     const at = (lx, ly) => { const x = Math.max(CHART_MARGIN, Math.min(w - tw - CHART_MARGIN, lx)), y = Math.max(CHART_MARGIN + 9, Math.min(h - CHART_MARGIN - 9, ly)); return { x, y, words, box: [x - 6, y - 9, x + tw + 6, y + 9] }; };
     const ix = e.x - Math.cos(e.a) * 28 - tw / 2, iy = e.y - Math.sin(e.a) * 28;
     const ox = -Math.cos(e.a) * 40, oy = -Math.sin(e.a) * 40;
@@ -308,7 +318,7 @@ export function chartModel(word, v, w, h, { measure = null, pick = null } = {}) 
   const isle = named ? isleByKey(named.key) : null;
   let card = null;
   if (named && isle) {
-    const title = capFirst(named.name), words = `${capFirst(KIND_WORDS[named.kind] ?? 'an isle')} - ${wayWords(shipAt, isle)}`;
+    const title = capFirst(named.name), words = t('sea.chart.cardLine', '{kind} - {way}', { kind: capFirst(KIND_WORDS[named.kind] ?? t('sea.chart.anIsle', 'an isle')), way: wayWords(shipAt, isle) });
     const cw = Math.max(width(title), width(words, CHART_FONT.small)) + 16, ch = 36;
     const box = (x, y) => { const x0 = Math.max(4, Math.min(w - cw - 4, x)), y0 = Math.max(4, Math.min(h - ch - 4, y)); return [x0, y0, x0 + cw, y0 + ch]; };
     const o = named.r + 10;
@@ -321,8 +331,10 @@ export function chartModel(word, v, w, h, { measure = null, pick = null } = {}) 
   return {
     isles, bands, veil: veil <= w ? veil : null, ruler, ship, haunts, depths, edge: [bx0, by0, bx1, by1], grid, scale,
     pick: card,
-    title: `A chart of ${ETHER_SEA_NAME}`,   // the haunts' `r` the square's half side (X13)
-    sub: `${st.charted ?? 0} ${st.charted === 1 ? 'isle' : 'isles'} charted - deepest ${st.deepest ?? 0} leagues past the Veil - ${st.crossings ?? 0} ${st.crossings === 1 ? 'crossing' : 'crossings'}${st.legends ? ` - ${st.legends} ${st.legends === 1 ? 'legend' : 'legends'} ended` : ''}`,
+    title: chartTitle(),   // the haunts' `r` the square's half side (X13)
+    sub: st.legends
+      ? t('sea.chart.statsLegends', '{charted, plural, one {# isle} other {# isles}} charted - deepest {deepest} leagues past the Veil - {crossings, plural, one {# crossing} other {# crossings}} - {legends, plural, one {# legend} other {# legends}} ended', { charted: st.charted ?? 0, deepest: st.deepest ?? 0, crossings: st.crossings ?? 0, legends: st.legends })
+      : t('sea.chart.stats', '{charted, plural, one {# isle} other {# isles}} charted - deepest {deepest} leagues past the Veil - {crossings, plural, one {# crossing} other {# crossings}}', { charted: st.charted ?? 0, deepest: st.deepest ?? 0, crossings: st.crossings ?? 0 }),
   };
 }
 
@@ -591,7 +603,7 @@ export function mountEtherChartWindow(host, deps) {
   const exit = (reason = 'close') => deps.onExit?.(reason);
   const shell = el('div', 'dfnaval-shell');
   shell.setAttribute('role', 'dialog');
-  shell.setAttribute('aria-label', `A chart of ${ETHER_SEA_NAME}`);
+  shell.setAttribute('aria-label', chartTitle());
   const win = el('div', 'dfnaval-win dfchart-win');
   shell.append(win);
   const head = el('header', 'dfnaval-winhead');
@@ -601,7 +613,7 @@ export function mountEtherChartWindow(host, deps) {
   const noteLine = el('p', 'dfnaval-note dfchart-note');   // ETHER-CHART2: its line kept - a name said grew the head and slid the chart under the pointer
   noteLine.setAttribute('aria-live', 'polite');
   title.append(h2, sub, noteLine);
-  const close = /** @type {HTMLButtonElement} */ (el('button', 'dfnaval-btn dfnaval-close', 'Close'));
+  const close = /** @type {HTMLButtonElement} */ (el('button', 'dfnaval-btn dfnaval-close', t('sea.chart.close', 'Close')));
   close.type = 'button';
   close.style.minWidth = '0';
   close.style.flex = '0 0 auto';   // ETHER-CHART2: the sheet's narrow rule grows every button to a row; the title keeps its room
@@ -612,12 +624,12 @@ export function mountEtherChartWindow(host, deps) {
   ruler.setAttribute('aria-hidden', 'true');
   const canvas = /** @type {HTMLCanvasElement} */ (el('canvas', 'dfchart-map'));
   canvas.setAttribute('role', 'img');
-  canvas.setAttribute('aria-label', `A chart of ${ETHER_SEA_NAME}: your ship, the isles you have charted, the depths, the Veil and the legends' haunts`);
+  canvas.setAttribute('aria-label', t('sea.chart.canvas', 'A chart of {sea}: your ship, the isles you have charted, the depths, the Veil and the legends\' haunts', { sea: ETHER_SEA_NAME }));
   const stage = el('div', 'dfchart-stage');
   stage.append(canvas);
   const chart = el('div', 'dfchart-chart');
   chart.append(ruler, stage);
-  const hint = el('p', 'dfnaval-lede dfchart-hint', 'Drag or the arrows to pan - the wheel, a pinch or + and - to zoom - C finds your ship - point at or tap an isle to name it.');
+  const hint = el('p', 'dfnaval-lede dfchart-hint', t('sea.chart.hint', 'Drag or the arrows to pan - the wheel, a pinch or + and - to zoom - C finds your ship - point at or tap an isle to name it.'));
   // AUDIT CAPTAIN'S SEA X6: the window's own presses - a finger and a pad's cursor zoom and find the ship by them
   const tools = el('div', 'dfnaval-chart-tools dfchart-tools');
   const tool = (label, fn) => { const b = /** @type {HTMLButtonElement} */ (el('button', 'dfnaval-btn', label)); b.type = 'button'; b.style.minWidth = '0'; b.addEventListener('click', () => { fn(); draw(); }); tools.append(b); return b; };
@@ -672,15 +684,15 @@ export function mountEtherChartWindow(host, deps) {
   const size = () => { const r = canvas.getBoundingClientRect(); return [Math.max(1, r.width), Math.max(1, r.height)]; };
   const zoomMid = (dir) => { const [w, h] = size(); view = chartZoomAt(view, dir, w / 2, h / 2, w, h); };
   const toShip = () => { view = clampChartView({ ...view, cx: word.px + 0.5, cy: word.py + 0.5 }); };
-  tool('-', () => zoomMid(-1)); tool('+', () => zoomMid(1)); tool('Ship', toShip);
+  tool('-', () => zoomMid(-1)); tool('+', () => zoomMid(1)); tool(t('sea.chart.ship', 'Ship'), toShip);
   const [zoomOut, zoomIn, shipBtn] = /** @type {HTMLButtonElement[]} */ ([...tools.children]);
-  zoomOut.setAttribute('aria-label', 'Zoom out'); zoomIn.setAttribute('aria-label', 'Zoom in'); shipBtn.setAttribute('aria-label', 'Find your ship');
+  zoomOut.setAttribute('aria-label', t('sea.chart.zoomOut', 'Zoom out')); zoomIn.setAttribute('aria-label', t('sea.chart.zoomIn', 'Zoom in')); shipBtn.setAttribute('aria-label', t('sea.chart.findShip', 'Find your ship'));
   // ETHER-OW: THE DOOR UP - the held map's own (TV1), standing only where the host can lift the camera, asked again at
   // every paint (the open air, the enhanced lane, a body that lives - scenes/world.js travelViewAllowed)
   const overworldShown = () => typeof deps.overworld === 'function' && !!deps.overworld();
   const overBtn = /** @type {HTMLButtonElement} */ (el('button', 'dfnaval-btn dfchart-over', TRAVEL_VIEW_BUTTON));
   overBtn.type = 'button';
-  overBtn.setAttribute('aria-label', 'Rise to the Overworld');
+  overBtn.setAttribute('aria-label', t('sea.chart.rise', 'Rise to the Overworld'));
   overBtn.addEventListener('click', () => { if (overworldShown()) exit('overworld'); });
   tools.append(overBtn);
   for (const b of [zoomOut, zoomIn, shipBtn, overBtn]) { b.style.flex = '0 0 auto'; b.style.minWidth = '44px'; }

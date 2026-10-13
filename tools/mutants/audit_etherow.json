@@ -443,7 +443,7 @@
   {
     "name": "AEOW-T-chart-shell-label",
     "file": "src/ui/etherChartWindow.js",
-    "old": "  shell.setAttribute('aria-label', `A chart of ${ETHER_SEA_NAME}`);",
+    "old": "  shell.setAttribute('aria-label', chartTitle());",
     "new": "  shell.setAttribute('aria-label', 'A chart');",
     "tests": [
       "test/ether_ow.test.js"
@@ -469,5 +469,35 @@
       "test/ether_ow.test.js"
     ],
     "note": "A band born on the continent's land past the map's edge or the box's."
+  },
+  {
+    "name": "AEOW-L10N-key-at-load",
+    "file": "src/ui/etherChartWindow.js",
+    "old": "const keyRow = (what, words) => Object.freeze(Object.defineProperty([what], 1, { enumerable: true, get: words }));",
+    "new": "const keyRow = (what, words) => Object.freeze([what, words()]);",
+    "tests": [
+      "test/audit_etherow.test.js"
+    ],
+    "note": "The chart's key read once at load, in English whatever language the player chose."
+  },
+  {
+    "name": "AEOW-L10N-scale-english",
+    "file": "src/ui/etherChartWindow.js",
+    "old": "  return { leagues, px: leagues * per, words: t('sea.chart.scale', '{n, plural, one {# league} other {# leagues}}', { n: leagues }) };",
+    "new": "  return { leagues, px: leagues * per, words: `${leagues} ${leagues === 1 ? 'league' : 'leagues'}` };",
+    "tests": [
+      "test/audit_etherow.test.js"
+    ],
+    "note": "The scale's words left English in every language."
+  },
+  {
+    "name": "AEOW-L10N-title-english",
+    "file": "src/ui/etherChartWindow.js",
+    "old": "export const chartTitle = () => t('sea.chart.title', 'A chart of {sea}', { sea: ETHER_SEA_NAME });",
+    "new": "export const chartTitle = () => `A chart of ${ETHER_SEA_NAME}`;",
+    "tests": [
+      "test/audit_etherow.test.js"
+    ],
+    "note": "The chart's title and its dialog's name left English in every language."
   }
 ]

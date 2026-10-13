@@ -2798,8 +2798,8 @@
   {
     "name": "ACS-X17-isle-words",
     "file": "src/ui/etherChartWindow.js",
-    "old": "export const isleWords = (isle, ship) => `${capFirst(isle.name)} -",
-    "new": "export const isleWords = (isle, ship) => `${isle.name} -",
+    "old": "t('sea.chart.isleLine', '{name} - {kind} - {way}', { name: capFirst(isle.name),",
+    "new": "t('sea.chart.isleLine', '{name} - {kind} - {way}', { name: isle.name,",
     "tests": [
       "test/auditcaptsea.test.js"
     ]
@@ -2915,7 +2915,7 @@
   {
     "name": "ACS-X6-tools",
     "file": "src/ui/etherChartWindow.js",
-    "old": "tool('-', () => zoomMid(-1)); tool('+', () => zoomMid(1)); tool('Ship', toShip);",
+    "old": "tool('-', () => zoomMid(-1)); tool('+', () => zoomMid(1)); tool(t('sea.chart.ship', 'Ship'), toShip);",
     "new": "void tool;",
     "tests": [
       "test/auditcaptsea.test.js"

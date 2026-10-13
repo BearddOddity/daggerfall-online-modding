@@ -308,8 +308,8 @@
   {
     "name": "AE-T2-key-word",
     "file": "src/ui/etherChartWindow.js",
-    "old": "['wild', 'Wild isle']",
-    "new": "['wild', 'Ruin']",
+    "old": "keyRow('wild', () => t('sea.chart.key.wild', 'Wild isle'))",
+    "new": "keyRow('wild', () => t('sea.chart.key.wild', 'Ruin'))",
     "tests": [
       "test/audit_etherchart2.test.js"
     ]

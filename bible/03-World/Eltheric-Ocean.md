@@ -433,6 +433,10 @@ the sheet's narrow rule no longer stretches the Close button over half the heade
 (D6), so the title keeps its room. No host is touched: the chart is `scenes/world.js`'s, its door as ETHER-CHART left
 it (THE FOUR HOSTS above).
 
+**Its words** are the text core's since the merge of main's localization arc (L10N4; `sea.chart.*`, read when they are
+drawn, drafted in the thirteen whole languages - `01-Overview/Audit-Ether-OW.md`); the sea's name and its bands',
+kinds' and compass words are `world/ethericSea.js`'s, passed in English until that module's routing.
+
 ## ETHER-LIGHT - the light past the Veil
 
 Both of the frame's lights lean, past the Veil, to a cold violet (`etherLight`: the ambient to ETHER_LIGHT_TINT 0.88,
