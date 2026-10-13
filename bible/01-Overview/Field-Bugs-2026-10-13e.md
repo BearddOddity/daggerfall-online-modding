@@ -224,8 +224,8 @@ the piece moves but its worth, by the line's. The Loot Rarity switch is not aske
 on every client; the line's reader asks the switch). THE RECORD SAYS ITS LAW: the market and a temper mint a piece again
 from its record, so a craft's product record now carries its mint version (`v` 1, stamped by the service at the craft,
 kept by a temper's re-sign, carried by the market's piece), and a record made before has none and mints byte for byte
-as it did - no piece already made changes, here or on another client. The account service's acct128 (no migration;
-acct126, then acct127, on the branch - renumbered past MINE-PERKS and HOMES-SHED at the merges).
+as it did - no piece already made changes, here or on another client. The account service's acct129 (no migration;
+acct126, acct127, then acct128, on the branch - renumbered past MINE-PERKS, HOMES-SHED and BUSY-GATE at the merges).
 
 NOT SEEN. Pieces made before keep no line, by the version's design. A client not yet updated mints a `v` 1 record
 without its line until it updates. Crafts still take no technique, curse or socket pass (not reported). A record grows
@@ -233,7 +233,7 @@ eight characters (the worst case 457 of 512).
 
 `test/fb1013e_craftprocs.test.js` (5); `tools/mutants/fb1013e_craftprocs.json` (26, all dead). Re-aimed by content, dead:
 loot2, loot4 x3, prof3, prof10, prof7 x2, prof9 x2, audit30, and the account version's line in ten records. PIN MOVED:
-the account version's pin in 19 suites (acct128).
+the account version's pin in 19 suites (acct129).
 
 ## SPENT-ASHORE: the collapse among foes costs a tenth, never a death (10)
 
