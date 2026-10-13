@@ -223,7 +223,7 @@ export const RMBRP_HILLS = Object.freeze({
   52683: 'rock', 52703: 'rock', 52713: 'rock', 52725: 'grass', 52758: 'grass', 52816: 'rock', 52973: 'rock',
 });
 /** The hills' texture coordinates: a plan view in the hill's own frame, a picture every 4 m (hillMesh's - and FIELD BUGS
- *  2026-10-13c HILL-SEAT's pads', in the frame of the hill under them). */
+ *  2026-10-13d HILL-SEAT's pads', in the frame of the hill under them). */
 const hillPlanUv = (x, z) => [x / 4, -z / 4];
 /** HILL-SHAPES: one hill at its measured polar profile - its centre at `top`, SHAPE_RINGS rings out along
  *  SHAPE_BEARINGS bearings to the rim at the mesh's base (under the block's plane, so no edge stands out of the ground);
@@ -292,7 +292,7 @@ export function blockHillSeat(models, drawn = drawnHillStandIn) {
         Math.min(w[a], w[b], w[c]), Math.max(w[a], w[b], w[c]), Math.min(w[a + 2], w[b + 2], w[c + 2]), Math.max(w[a + 2], w[b + 2], w[c + 2]));
     }
   }
-  // FIELD BUGS 2026-10-13c HILL-SEAT: the triangles by the 2 m square their box touches, filed on the first ask after a
+  // FIELD BUGS 2026-10-13d HILL-SEAT: the triangles by the 2 m square their box touches, filed on the first ask after a
   // change - a pad asks the top a few thousand times, and each ask reads the few triangles under it, not the block's all
   const CELL = 2, NONE = [];
   let cells = null, gx = 0, gz = 0, nz = 0;
@@ -327,7 +327,7 @@ export function blockHillSeat(models, drawn = drawnHillStandIn) {
       }
       return top;
     },
-    /** FIELD BUGS 2026-10-13c HILL-SEAT: lay a mesh drawn in the block's own frame (blockHillPatch's pads) under the
+    /** FIELD BUGS 2026-10-13d HILL-SEAT: lay a mesh drawn in the block's own frame (blockHillPatch's pads) under the
      *  same top, so whatever reads the seat - TREES-SEATED's flats - stands on it as on the hills. */
     lay(mesh) {
       const p = mesh.positions, ix = mesh.indices;
@@ -359,7 +359,7 @@ export function seatNatureFlat(seat, x, z, groundY) {
 }
 
 // ---- HILL-SEAT: a hill holds what the author stood on it -----------------------------------------------------------
-// FIELD BUGS 2026-10-13c HILL-SEAT (SylviaBun on the Discord: "Some locations have floating houses - Temple of Kynareth
+// FIELD BUGS 2026-10-13d HILL-SEAT (SylviaBun on the Discord: "Some locations have floating houses - Temple of Kynareth
 // has floating houses due to terrain modifications", a night screenshot of a house on a grass mound whose crest falls
 // away under its front wall, a lit gap under the wall). Beautiful Villages stands about a fifth of Kynareth's temples as
 // TEMPASH3 (Ipsham's block), whose houses 127, 129 and 201 and temple 402 the author stood on hill 52758's plateau,

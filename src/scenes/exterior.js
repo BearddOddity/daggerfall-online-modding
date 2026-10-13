@@ -93,7 +93,7 @@ import { frustumPlanes, aabbOutside, localAabb, transformedAabb, flatBatchAabb, 
 import { decorCullVerdict, DECOR_DRAW } from './decorRoom.js';   // PERF-WAGON: the street's verdict on a cart's, a wagon's and a tent's box
 import { withMoonAmbient } from '../render/enhancedSky.js';   // EV5: secunda rides the ambient
 import { drawCharacterSprite } from '../render/characterSprite.js';
-import { collectBlockFlats, billboardSize, mobileBillboardSize, centredBase, isNatureArchive, NATURE_FLATS_Y } from '../world/rmbFlats.js'; import { blockHillSeat, seatNatureFlat, blockHillPatch } from '../world/townStandIns.js';   // TREES-SEATED: a block's trees on the hills drawn under them; FIELD BUGS 2026-10-13c HILL-SEAT: and the pads under what its author stood on them
+import { collectBlockFlats, billboardSize, mobileBillboardSize, centredBase, isNatureArchive, NATURE_FLATS_Y } from '../world/rmbFlats.js'; import { blockHillSeat, seatNatureFlat, blockHillPatch } from '../world/townStandIns.js';   // TREES-SEATED: a block's trees on the hills drawn under them; FIELD BUGS 2026-10-13d HILL-SEAT: and the pads under what its author stood on them
 import { blockSolids } from '../world/flatFields.js';   // FIELD BUGS 2026-10-04d CROPS: a crop field keeps a metre off the block's solids
 import { modSetting, modSettingsOf } from '../systems/modSettings.js';
 import { timeScale as hccTimeScale } from '../systems/timeScale.js';   // AUDIT HCC: the runtime's Time.deltaTime rides Time.timeScale, as the motor's does   // SIB1: the mod's own switch; HCC: Horse Cart and Cargo's eight
@@ -833,7 +833,7 @@ export async function bootExterior(canvas, renderer, params, status) {
     // solids - the models this host drew and collided just above (IsOverlapping)
     const fieldSolids = blockSolids(b.layout.models, (m) => (m.enhancedOnly && !isEnhanced()) || !gpuMeshes.get(m.modelIdNum) ? null : cpuModels.get(m.modelIdNum));
     const blockFlats = collectBlockFlats(b.dfBlock, natureArchive, { climateIndex: locClimateIndex, solid: fieldSolids }), hillSeat = blockHillSeat(b.layout.models);   // TREES-SEATED: the block's hills as the port draws them, null for none of ours
-    // FIELD BUGS 2026-10-13c HILL-SEAT: the pads under what the author stood on those hills (laid into the seat, so the trees below stand on them too) - drawn and solid for the scene's life, as every model of this host's one location is (it never unloads it; the pipeline pins the fixed city for good)
+    // FIELD BUGS 2026-10-13d HILL-SEAT: the pads under what the author stood on those hills (laid into the seat, so the trees below stand on them too) - drawn and solid for the scene's life, as every model of this host's one location is (it never unloads it; the pipeline pins the fixed city for good)
     const hillPatch = blockHillPatch(hillSeat, b.layout.models, (m) => ((m.enhancedOnly && !isEnhanced()) || !gpuMeshes.get(m.modelIdNum) ? null : cpuModels.get(m.modelIdNum)));
     if (hillPatch) { drawList.push({ mesh: renderer.createMesh(hillPatch), matrix: originMatrix, order: -2, box: transformedAabb(localAabb(hillPatch.positions), originMatrix) }); collider.addMesh('world', hillPatch.positions, hillPatch.indices, originMatrix); colliderTris += hillPatch.indices.length / 3; }
     const _people = new Set(collectExteriorNpcs(blockFlats));   // AUDIT TACT B3: the street's people are no cover (the streamed world's never are)

@@ -354,7 +354,7 @@ const NO_SHELF = Object.freeze({ shelvedAt: null, shelvedSites: null });
 // are the RECEIVER's own roll (questShare takeLocalItems, relinked to this quest): self-contained as the three above.
 // Without it The Courier, shared after the sharer took the package, left the receiver with no package - and its
 // `toting _X_` finish could never be true on their side.
-// SHARE-REVEAL (FIELD BUGS 2026-10-13c, "Shared Guild quest doesn't give me map location after friend talked to the quest
+// SHARE-REVEAL (FIELD BUGS 2026-10-13d, "Shared Guild quest doesn't give me map location after friend talked to the quest
 // npc"): and RevealLocation - `reveal _place_` marks THE HOLDER'S OWN MAP (PlayerGPS.DiscoverLocation, RevealLocation.cs
 // :59; discoverLocation is idempotent) with this quest's own Place, and the receiver's copy holds the same Places. The
 // envelope carried the reveal complete and never ran it: the partner who clicked the scholar had The Nest of Aneloth on

@@ -1,4 +1,4 @@
-// SPELL-LOCK (FIELD BUGS 2026-10-13c, Nes: "The current situation where doors lock at shops and inns in Daggerfall
+// SPELL-LOCK (FIELD BUGS 2026-10-13d, Nes: "The current situation where doors lock at shops and inns in Daggerfall
 // Capital" - "that's the only entrance. Once you get stuck, there's no way out."; two screenshots from inside, a door
 // reading "Lock Level 41" and one "Lock Level 40", the player level 21 and 19).
 //

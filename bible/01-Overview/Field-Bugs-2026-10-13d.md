@@ -1,4 +1,7 @@
-# FIELD BUGS 2026-10-13c - ten threads from the bug-reports channel
+# FIELD BUGS 2026-10-13d - ten threads from the bug-reports channel
+
+(Named 2026-10-13c until main's #876 took that name for PORT-TOWNS, `01-Overview/Field-Bugs-2026-10-13c.md`; its pages,
+pins and records renamed with it, as FIELD BUGS 2026-10-13b was.)
 
 Ten Discord threads from 2026-10-12 and 2026-10-13, handed over as screenshots, read on the code as it stands at main's
 `3f66ff06`. Each was traced on the real modules first, most with a reproduction; the fixes are built and pinned one to a
@@ -52,7 +55,7 @@ FIXED:
   this: their restore drops a lock past both the door's ceiling and the player's level - no Lock of theirs could have
   cast it (a level never drops). Their own Lock, at or under their level, stays theirs.
 
-`test/fb1013c_spelllock.test.js` (4); `tools/mutants/fb1013c_spelllock.json` (14, all dead).
+`test/fb1013d_spelllock.test.js` (4); `tools/mutants/fb1013d_spelllock.json` (14, all dead).
 
 ## DOOR-NAME: a door's plaque names its own building (9)
 
@@ -75,7 +78,7 @@ mod's box test (Ledger A). The press keeps the box for ActivateBuilding's discov
 NOT SEEN. Issaqumbaa's own blocks (no ARENA2 here): which house's box covers the tavern's step. Asked of the reporter:
 whether "Buy it" walks into the tavern - if it does, this was it.
 
-`test/fb1013c_doorname.test.js` (1); `tools/mutants/fb1013c_doorname.json` (2, both dead).
+`test/fb1013d_doorname.test.js` (1); `tools/mutants/fb1013d_doorname.json` (2, both dead).
 
 ## SHARE-REVEAL: a shared quest's `reveal` marks the receiver's map too (3)
 
@@ -97,7 +100,7 @@ each new one, once. A `readmap` reveal files its note once on the receiver.
 FOR THE REPORTER, NOW: a copy that took the reveal complete before this keeps it complete; Settings, Repair active
 quests (QREPAIR) files every reveal that has run again, and marks the dungeon.
 
-`test/fb1013c_sharereveal.test.js` (2); `tools/mutants/fb1013c_sharereveal.json` (1, dead); `disc28.json`'s
+`test/fb1013d_sharereveal.test.js` (2); `tools/mutants/fb1013d_sharereveal.json` (1, dead); `disc28.json`'s
 DISC28-I-getitem-not-replayed re-aimed by content (the set's text grew), dead.
 
 ## HILL-SEAT: a hill holds what the author stood on it (5)
@@ -129,7 +132,7 @@ across both packs take a pad (the gated sweep is written and has not run); wheth
 HILL-HOUSE placement or a quest marker; how the seam between bank and hill looks, at distance and under the climates'
 textures and the shadows; walking the bank; a real pixel's build cost (15-40 ms a block here, on a loaded machine).
 
-`test/fb1013c_hillseat.test.js` (8, one on ARENA2_PATH); `tools/mutants/fb1013c_hillseat.json` (18, all dead). No pin
+`test/fb1013d_hillseat.test.js` (8, one on ARENA2_PATH); `tools/mutants/fb1013d_hillseat.json` (18, all dead). No pin
 moved.
 
 ## THE FOUR HOSTS
@@ -148,9 +151,9 @@ moved.
 
 ## Pins
 
-`test/fb1013c_spelllock.test.js` (4), `test/fb1013c_doorname.test.js` (1), `test/fb1013c_sharereveal.test.js` (2).
-`tools/mutants/fb1013c_spelllock.json` 14, `fb1013c_doorname.json` 2, `fb1013c_sharereveal.json` 1: all dead. Re-aimed
+`test/fb1013d_spelllock.test.js` (4), `test/fb1013d_doorname.test.js` (1), `test/fb1013d_sharereveal.test.js` (2).
+`tools/mutants/fb1013d_spelllock.json` 14, `fb1013d_doorname.json` 2, `fb1013d_sharereveal.json` 1: all dead. Re-aimed
 by content, dead: `disc28.json`'s DISC28-I-getitem-not-replayed (the re-armed set grew) and `housing.json`'s
 HOME-DOORS-the-early-record-dropped (the early record now drops a peer's lock). `test/citedrift.test.js`'s vendor table
 carries the mod's `.cs:701-702` that DOOR-NAME's comment cites.
-`test/fb1013c_hillseat.test.js` (8, one on ARENA2_PATH); `tools/mutants/fb1013c_hillseat.json` 18, all dead.
+`test/fb1013d_hillseat.test.js` (8, one on ARENA2_PATH); `tools/mutants/fb1013d_hillseat.json` 18, all dead.

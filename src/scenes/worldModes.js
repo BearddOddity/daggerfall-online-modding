@@ -7124,7 +7124,7 @@ export function createWorldModes(host) {
    * swallow every entry click (AUDIT 64 F11, pinned).
    *
    * The press ran this inline, and the plaque asked it too until
-   * DOOR-NAME (FIELD BUGS 2026-10-13c): a DOOR'S plaque names the door's
+   * DOOR-NAME (FIELD BUGS 2026-10-13d): a DOOR'S plaque names the door's
    * own building (`doorBuilding`), the record its click enters - the box
    * answered a neighbour's over a tavern's doorstep. The press keeps
    * this for ActivateBuilding's discovery, as DFU's does.
@@ -7330,7 +7330,7 @@ export function createWorldModes(host) {
       // same door's last good word or it is null - it can never be a
       // different door's.
       //
-      // DOOR-NAME (FIELD BUGS 2026-10-13c, "Tavern in Issaqumbaa marked
+      // DOOR-NAME (FIELD BUGS 2026-10-13d, "Tavern in Issaqumbaa marked
       // as a player house": its door read "To Residence ... Buy it:
       // 227,900 gold"). The building is the DOOR'S OWN record - the one
       // the click enters, prices and buys (activateStaticDoor's

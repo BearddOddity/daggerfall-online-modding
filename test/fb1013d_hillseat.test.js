@@ -1,4 +1,4 @@
-// FIELD BUGS 2026-10-13c HILL-SEAT (SylviaBun on the Discord: "Some locations have floating houses - Temple of Kynareth
+// FIELD BUGS 2026-10-13d HILL-SEAT (SylviaBun on the Discord: "Some locations have floating houses - Temple of Kynareth
 // has floating houses due to terrain modifications, may be others" - a night screenshot of a house on a grass mound, the
 // mound's crest falling away under its front wall and a lit gap under the wall; the travel map's mark on a southern
 // peninsula).

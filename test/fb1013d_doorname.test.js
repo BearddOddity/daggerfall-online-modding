@@ -1,4 +1,4 @@
-// DOOR-NAME (FIELD BUGS 2026-10-13c, SylviaBun: "Tavern in Issaqumbaa marked as a player house" - the town's map with
+// DOOR-NAME (FIELD BUGS 2026-10-13d, SylviaBun: "Tavern in Issaqumbaa marked as a player house" - the town's map with
 // the tavern on it, and the tavern's front door reading "To Residence / Lock Level: 6 / Go in / Buy it: 227,900 gold").
 //
 // A door's plaque named the building the ray's POINT fell in - the first StaticBuilding box of every loaded block that

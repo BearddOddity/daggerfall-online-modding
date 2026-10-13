@@ -294,7 +294,7 @@ export const DOOR_OPEN_DURATION = 1.5;
 export const ACTION_LOCK_VALUE = 16;
 export const MAGIC_LOCK_THRESHOLD = 20;
 
-/** SPELL-LOCK (FIELD BUGS 2026-10-13c): THE HARDEST LOCK A DOOR'S OWN DATA CAN GIVE IT - its starting lock (RDBLayout's
+/** SPELL-LOCK (FIELD BUGS 2026-10-13d): THE HARDEST LOCK A DOOR'S OWN DATA CAN GIVE IT - its starting lock (RDBLayout's
  *  LOCK_VALUES; an interior's doors start at 0, DaggerfallInterior.AddActionDoors sets none), or LockDoor's 16 when the
  *  door's own action can lock it (`_doorVerb`). Every other lock a door can carry is a Lock spell's, minted at its
  *  caster's level (mysticism.js triggerLock, Lock.cs:116) - and Daggerfall has one player, who can always Open what
@@ -1422,7 +1422,7 @@ constructor(collider, { damagePlayer = null, drainMagicka = null, castSpell = nu
    *  snapshots written before a field existed leave the live value, the
    *  additive shape this save layer uses everywhere.
    *
-   *  SPELL-LOCK (FIELD BUGS 2026-10-13c): `remote` is a PEER'S word - an act (applyRemote) or a room's memory (a
+   *  SPELL-LOCK (FIELD BUGS 2026-10-13d): `remote` is a PEER'S word - an act (applyRemote) or a room's memory (a
    *  building's, a dungeon's) - and its lock lands only up to the door's own `lockCeiling`. A lock past it is a Lock
    *  spell's, its caster's alone: this door keeps the lock it has. The player's own save keeps its locks, but for one
    *  past both the ceiling and `level` (the player's own): `lockLands`. */
