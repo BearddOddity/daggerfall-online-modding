@@ -1,0 +1,110 @@
+[
+  {
+    "name": "PLEA-LOOP-the-press-ignores-the-stack",
+    "file": "src/ui/enhancedDialog.js",
+    "old": "          if (windowCovered(owner)) return;   // PLEA-LOOP: asked at the press - a covered window answers nothing\n",
+    "new": "",
+    "tests": [
+      "test/fb1013_plealoop.test.js"
+    ]
+  },
+  {
+    "name": "PLEA-LOOP-the-dialog-never-wears-the-cover",
+    "file": "src/ui/enhancedDialog.js",
+    "old": "  const covered = windowCovered(owner);",
+    "new": "  const covered = false;",
+    "tests": [
+      "test/fb1013_plealoop.test.js"
+    ]
+  },
+  {
+    "name": "PLEA-LOOP-the-cover-takes-the-pointer",
+    "file": "src/ui/enhancedDialogStyle.js",
+    "old": ".dlg-shell.dlg-covered { pointer-events: none; }",
+    "new": ".dlg-shell.dlg-covered { }",
+    "tests": [
+      "test/fb1013_plealoop.test.js"
+    ]
+  },
+  {
+    "name": "PLEA-LOOP-a-push-holds-nothing",
+    "file": "src/ui/windowStack.js",
+    "old": "    windows.splice(at, 0, win);\n    hold(win);",
+    "new": "    windows.splice(at, 0, win);",
+    "tests": [
+      "test/fb1013_plealoop.test.js"
+    ]
+  },
+  {
+    "name": "PLEA-LOOP-a-pop-keeps-its-window",
+    "file": "src/ui/windowStack.js",
+    "old": "      windows.pop();\n      unhold(oldWindow);",
+    "new": "      windows.pop();",
+    "tests": [
+      "test/fb1013_plealoop.test.js"
+    ]
+  },
+  {
+    "name": "PLEA-LOOP-keepOnly-keeps-its-drained",
+    "file": "src/ui/windowStack.js",
+    "old": "        windows.splice(i, 1);\n        unhold(w);",
+    "new": "        windows.splice(i, 1);",
+    "tests": [
+      "test/fb1013_plealoop.test.js"
+    ]
+  },
+  {
+    "name": "PLEA-LOOP-a-replacement-keeps-the-outgoing",
+    "file": "src/ui/windowStack.js",
+    "old": "      unhold(t);\n      hold(live);",
+    "new": "      hold(live);",
+    "tests": [
+      "test/fb1013_plealoop.test.js"
+    ]
+  },
+  {
+    "name": "PLEA-LOOP-a-replacement-holds-nothing",
+    "file": "src/ui/windowStack.js",
+    "old": "      unhold(t);\n      hold(live);",
+    "new": "      unhold(t);",
+    "tests": [
+      "test/fb1013_plealoop.test.js"
+    ]
+  },
+  {
+    "name": "PLEA-LOOP-covered-reads-the-wrong-way",
+    "file": "src/ui/windowStack.js",
+    "old": "  return !!stack && stack.topWindow() !== win;",
+    "new": "  return !!stack && stack.topWindow() === win;",
+    "tests": [
+      "test/fb1013_plealoop.test.js"
+    ]
+  },
+  {
+    "name": "PLEA-LOOP-the-box-answers-twice",
+    "file": "src/ui/talkWindow.js",
+    "old": "    if (this.done) return;\n    if (!this.options.length && (code === 'back'",
+    "new": "    if (!this.options.length && (code === 'back'",
+    "tests": [
+      "test/fb1013_plealoop.test.js"
+    ]
+  },
+  {
+    "name": "PLEA-LOOP-the-release-leaves-the-trial-standing",
+    "file": "src/scenes/arrestFlow.js",
+    "old": "    if (trial) trial.released = true;   // PLEA-LOOP: the court's last act - no step of this trial acts after it\n",
+    "new": "",
+    "tests": [
+      "test/fb1013_plealoop.test.js"
+    ]
+  },
+  {
+    "name": "PLEA-LOOP-the-step-ignores-the-release",
+    "file": "src/scenes/arrestFlow.js",
+    "old": "(t && trial === t && !t.released ? fn(...args) : undefined)",
+    "new": "(t && trial === t ? fn(...args) : undefined)",
+    "tests": [
+      "test/fb1013_plealoop.test.js"
+    ]
+  }
+]
