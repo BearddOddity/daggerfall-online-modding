@@ -914,19 +914,27 @@ French and in English.
 ## CARDS-PLUS (2026-10-13): the card tables' new words, and the scan reads a selector
 
 A second change from outside the arc held to L10N6's laws, after the Eltheric chart above (`11-Multiplayer/Tavern-Cards.md`
-section 38: the card tables in the Enhanced Plus kit, Iliac Hand's table redrawn).
+section 38: the card tables in the Enhanced Plus kit, Iliac Hand's table redrawn; section 39 its audit).
 - **Its new words go through the text core**, read where they are shown: Iliac Hand's verdict (`VERDICT_WORDS`, a frozen
-  table of getters), the fold's two titles (`cards.table.fold.*` - the card tables' chrome, for Hold'em's fold to take
-  when its panel is routed), the setup's heads and boxes, the track, the other player's line and state, the empty tray -
-  17 port keys under `cards.iliac.` - and the magicka by DFU's own key (`localizedText('magicka', 'Magicka')`, as the
-  vitals' meter reads it). Drafted in the thirteen through `tools/l10nInSession.mjs`; the twelve drafting languages owe
-  them with the rest. The panel's older words - 63 literals, the base's 69 less the six fragments its new labels
-  replaced - are the routing batches' still; the ratchet holds the file there.
-- **The scan reads a selector** (`tools/l10nHardcoded.mjs` isProse): a string that is a selector list naming an id, an
-  attribute or a pseudo-class, with no English stopword in it, is CSS. The identifier runs read only words and dots, so
-  a kit role such as `body .dfiliac button[data-kind="warn"]` counted as a sentence. Over the whole tree it takes out
-  five literals, every one a selector - CARDS-PLUS's three roles, `ui/enhancedFrame.js`'s `#wp-menu input.wpm-name`,
-  `ui/grimoireDress.js`'s `:scope > .px-tabs button` - and no prose: the map's `enhancedFrame.js` 3 to 2,
-  `grimoireDress.js` 14 to 13. Pinned in `test/l10n4_hardcoded.test.js`'s scan test (an attribute, an id, a pseudo-class
-  and a combinator not counted; a lowercase sentence with a number sign, and a colon with no selector in it, still are);
-  mutants in `tools/mutants/cardsplus.json` (the rule off, its stopword guard gone, any token taken as a selector).
+  table of getters), the setup's heads and boxes, the track, the other player's line and state, the empty tray - 15
+  port keys under `cards.iliac.` - and the fold's two (`cards.table.fold.*`, `ui/cardPanelKit.js` foldWords - both
+  card tables' fold, its tooltip and its name to a screen reader: "Collapse the panel" and "Expand the panel"; AUDIT
+  CARDS-PLUS D5 moved them off "Hide the table", which said the reverse of what the player sees), and the magicka by
+  DFU's own key (`localizedText('magicka', 'Magicka')`, as the vitals' meter reads it). Drafted in the thirteen
+  through `tools/l10nInSession.mjs`, and each one's glossary given the terms they settled (the deck, the hand, a
+  card game's turn, a turn committed, a ranked game, the panel - AUDIT CARDS-PLUS D6); the twelve drafting languages
+  owe them with the rest. The Iliac panel's older words - 63 literals, the base's 69 less the six fragments its new
+  labels replaced - are the routing batches' still; the ratchet holds the file there, and the Hold'em panel's at 80
+  (its fold's four words routed).
+- **The scan reads a selector** (`tools/l10nHardcoded.mjs` isProse): a selector list whose every part is a compound of
+  CSS identifiers - never a digit first, so `#1` is no id - with a class among them and no English stopword in it, is
+  CSS. The identifier runs read only words and dots, so a kit role such as `body .dfiliac button[data-kind="warn"]`
+  counted as a sentence. Over the whole tree it takes out five literals, every one a selector - CARDS-PLUS's three
+  roles, `ui/enhancedFrame.js`'s `#wp-menu input.wpm-name`, `ui/grimoireDress.js`'s `:scope > .px-tabs button` - and
+  no prose: the map's `enhancedFrame.js` 3 to 2, `grimoireDress.js` 14 to 13. AUDIT CARDS-PLUS D1: its first form
+  asked for no class and let a digit open a name, so it read "press [E] when ready", "[locked] needs more gold",
+  "rank #1 player wins" and "item:sword equipped" as selectors and let them past the ratchet; none stood in the tree.
+  Pinned in `test/l10n4_hardcoded.test.js`'s scan test (an attribute, an id, a pseudo-class and a combinator not
+  counted; English with a number sign, brackets or a colon, with a stopword or without, still is); mutants in
+  `tools/mutants/cardsplus.json` (the rule off, its stopword guard gone, any token taken as a selector, no class
+  asked for, a digit opening a name).

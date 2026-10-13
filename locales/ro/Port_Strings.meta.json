@@ -2906,7 +2906,7 @@
  },
  "cards.iliac.setup.against": {
   "en": "2b8e4144e6c8",
-  "tr": "40abb74256f8",
+  "tr": "e6b799afc1b6",
   "by": "claude-in-session"
  },
  "cards.iliac.setup.deck": {
@@ -2965,13 +2965,13 @@
   "by": "claude-in-session"
  },
  "cards.table.fold.hide": {
-  "en": "41af4f0f22fc",
-  "tr": "833382ae55c3",
+  "en": "c9cbe37a6f28",
+  "tr": "86a779268b71",
   "by": "claude-in-session"
  },
  "cards.table.fold.show": {
-  "en": "f9d816a951cf",
-  "tr": "7922c317ac40",
+  "en": "be636809558b",
+  "tr": "a65452921caf",
   "by": "claude-in-session"
  },
  "credits.ambientText.terms": {

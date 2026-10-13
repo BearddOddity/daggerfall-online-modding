@@ -531,7 +531,7 @@ const HARDCODED = {
   'src/ui/brokerWindow.js': 20,
   'src/ui/captainPage.js': 13,
   'src/ui/cardBinderPage.js': 25,
-  'src/ui/cardTableHud.js': 84,
+  'src/ui/cardTableHud.js': 80,
   'src/ui/chapterRoll.js': 1,
   'src/ui/charSheetDoor.js': 2,
   'src/ui/chargen.js': 24,
@@ -767,10 +767,16 @@ test('L10N4 the scan itself: prose counted; the text core\'s arguments, console 
   assert.equal(isProse('rgba(0, 0, 0, 0.5) solid'), false);
   assert.equal(isProse('1px solid black'), false, 'a CSS value with two words in it');
   // CARDS-PLUS (bible/11-Multiplayer/Tavern-Cards.md section 38): a selector naming an id, an attribute or a pseudo-class
-  // is CSS; a sentence with a number sign or a colon in it is still a sentence
+  // is CSS - every part a compound of CSS identifiers, a class among them; English that only looks like one is English
   assert.equal(isProse('body .dfiliac button[data-kind="warn"]'), false, 'a kit role naming an attribute');
   assert.equal(isProse('#wp-menu input.wpm-name'), false, 'an id');
   assert.equal(isProse(':scope > .px-tabs button'), false, 'a pseudo-class and a child combinator');
   assert.equal(isProse('press #1 to win'), true, 'every word could be a selector\'s - but it reads as English');
   assert.equal(isProse('Warning: gate shut'), true, 'a colon, and no selector in it');
+  assert.equal(isProse('click #menu .open to see the map'), true, 'a class and an id among English words');
+  // AUDIT CARDS-PLUS D1: no stopword to give them away, and still English - no class in them, or a digit where a name
+  // starts (`#1`, `#2` are no ids)
+  for (const s of ['rank #1 player wins', 'press [E] when ready', '[locked] needs more gold', 'item:sword equipped', '#general chat only', 'pay #2 .gold-coins now']) {
+    assert.equal(isProse(s), true, `${s} is English`);
+  }
 });

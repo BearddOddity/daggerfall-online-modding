@@ -151,5 +151,11 @@
  "Thieves Guild": "Gilda dei Ladri",
  "Dark Brotherhood": "Confraternita Oscura",
  "Breach": "Breccia",
- "Ascend": "Ascendi"
+ "Ascend": "Ascendi",
+ "deck (cards)": "mazzo",
+ "hand (cards held)": "mano",
+ "turn (a card game's)": "turno",
+ "committed (a turn locked in)": "confermato",
+ "ranked (game)": "classificata",
+ "panel (interface)": "pannello"
 }

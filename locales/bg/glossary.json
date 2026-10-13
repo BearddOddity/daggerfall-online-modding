@@ -148,5 +148,11 @@
  "Miscellaneous skills": "Разни умения",
  "Luck": "Късмет",
  "Master Skills": "Майсторски умения",
- "lycanthrope": "ликантроп"
+ "lycanthrope": "ликантроп",
+ "deck (cards)": "тесте",
+ "hand (cards held)": "ръка",
+ "turn (a card game's)": "ход",
+ "committed (a turn locked in)": "потвърдено",
+ "ranked (game)": "класирана",
+ "panel (interface)": "панел"
 }

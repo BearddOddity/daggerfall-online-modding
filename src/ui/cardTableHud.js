@@ -15,7 +15,7 @@ import { rankOf, suitOf, isCard } from '../net/cardLaw.js';
 import { SUIT_CROWNS, rankLabel, cardTitle, paintFace, paintBack } from '../render/cardFaces.js';   // CARDS-BAY: the suits' one home
 import { BUY_IN_MIN_BB, BUY_IN_START_BB } from '../systems/cardTableSession.js';   // the buy-in's one home (AUDIT CARDS-2 L10)
 import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
-import { cardPanelChromeCss, dressCardPanel } from './cardPanelKit.js';   // CARDS-PLUS: the kit and the face, both panels' one home
+import { cardPanelChromeCss, dressCardPanel, foldWords } from './cardPanelKit.js';   // CARDS-PLUS: the kit and the face, both panels' one home
 import { PIXELIFY_FIVE_FACE } from './pixelifyFive.js';   // FIX-D: the face's five, carried by every sheet that sets it
 
 /** A card as the panel shows it (CARDS-BAY): its own painted face (`card`), the words a page without a canvas writes
@@ -200,7 +200,11 @@ const SLIDER_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 
  *  header band, the line, the presses, the log) is ui/cardPanelKit.js's, and every surface's paint is the kit's by role
  *  (ui/enhancedFrame.js FRAME_ROLES: the window, a seat a panel, the board a well, the pot a chip, the presses). A state
  *  the kit does not know - your seat, the one to act, the winner's - is said here with a leading body, to outweigh the
- *  role it stands in. */
+ *  role it stands in. AUDIT CARDS-PLUS C3/C4: an edge here is a width and a style, never a colour (the pot's
+ *  `border:2px solid` outweighed the kit's chip and painted it brass); the board wraps its pot under the river's five
+ *  cards on a phone; the panel scrolls inside the screen's height - the chrome's, both panels' (six seats and a log, or a
+ *  landscape phone's touch-sized presses, stood its title and its fold off the top - B2). A theme or the DFO Grimoire
+ *  dress that repaints a seat's role re-says its states in its own colours (B1, B7). */
 export const CARD_TABLE_CSS = `
 ${PIXELIFY_FIVE_FACE}
 ${cardPanelChromeCss('.dfcards')}
@@ -208,7 +212,7 @@ ${cardPanelChromeCss('.dfcards')}
 @media (min-width:1000px){.dfcards{left:auto;right:16px;transform:none;min-width:0;width:430px}}
 .dfcards.collapsed .seats,.dfcards.collapsed .board{display:none}
 .dfcards .seats{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}
-.dfcards .seat{flex:1 1 90px;min-width:0;padding:4px 6px 5px;border:2px solid}
+.dfcards .seat{flex:1 1 90px;min-width:0;padding:4px 6px 5px;border-width:2px;border-style:solid}
 body .dfcards .seat.you{border-color:#f3cf86 #7a5424 #5c3f1a #c08a3e}
 body .dfcards .seat.to-act{box-shadow:0 0 0 1px #050608,inset 0 0 0 1px rgba(243,207,134,.85),0 0 10px rgba(243,207,134,.35)}
 body .dfcards .seat.won{border-color:#f3cf86 #7a5424 #5c3f1a #c08a3e;background-color:rgba(84,62,22,.85)}
@@ -221,9 +225,9 @@ body .dfcards .seat.won{border-color:#f3cf86 #7a5424 #5c3f1a #c08a3e;background-
 .dfcards .card-face.painted{padding:0;min-width:0;width:32px;height:45px;background:none;line-height:0;box-shadow:0 0 0 1px #050608,2px 2px 0 rgba(0,0,0,.45)}
 .dfcards .card-face.painted canvas{display:block;width:32px;height:45px}
 .dfcards .card-face.back{background:repeating-linear-gradient(45deg,#5a1e1e,#5a1e1e 4px,#7a2a2a 4px,#7a2a2a 8px)}
-.dfcards .board{display:flex;gap:8px;align-items:center;margin:0 0 6px;padding:5px 6px;border:2px solid;background:rgba(4,5,7,.55)}
+.dfcards .board{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;margin:0 0 6px;padding:5px 6px;border-width:2px;border-style:solid}
 .dfcards .board .cards{margin:0}
-.dfcards .board .pot{margin-left:auto;padding:2px 8px;border:2px solid;font-size:13px;color:#f3cf86;white-space:nowrap;text-shadow:1px 1px 0 #050608}
+.dfcards .board .pot{margin-left:auto;padding:2px 8px;border-width:2px;border-style:solid;font-size:13px;color:#f3cf86;white-space:nowrap;text-shadow:1px 1px 0 #050608}
 .dfcards .slide{display:flex;flex-wrap:wrap;gap:6px;align-items:center;flex:1 1 100%}
 .dfcards .slide .amt{min-width:72px;color:#f3cf86;font-variant-numeric:tabular-nums;text-shadow:1px 1px 0 #050608}
 .dfcards button.pick{padding:1px 8px;font-size:12px}
@@ -293,14 +297,18 @@ export function createCardTableHud({ onPress, doc = document }) {
   /** CARDS-PANEL: the header's fold - the seats, the board, the note and the log put away so the cloth shows; the line
    *  and the buttons stay. The panel's own choice, kept across its repaints. */
   const foldToggle = () => {
-    const t = el('span', 'fold', collapsed ? '+' : '−');
-    t.setAttribute?.('role', 'button'); t.setAttribute?.('tabindex', '0');
-    t.setAttribute?.('aria-expanded', String(!collapsed));
-    t.title = collapsed ? 'Show the table' : 'Hide the table';
-    const flip = () => { collapsed = !collapsed; root.className = `dfcards${collapsed ? ' collapsed' : ''}`; t.textContent = collapsed ? '+' : '−'; t.title = collapsed ? 'Show the table' : 'Hide the table'; t.setAttribute?.('aria-expanded', String(!collapsed)); };
-    t.addEventListener('click', flip);
-    t.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault?.(); e.stopPropagation?.(); flip(); } });
-    return t;
+    const fold = el('span', 'fold', collapsed ? '+' : '−');
+    fold.setAttribute?.('role', 'button'); fold.setAttribute?.('tabindex', '0');
+    const say = () => {
+      fold.textContent = collapsed ? '+' : '−';
+      foldWords(fold, collapsed);
+      fold.setAttribute?.('aria-expanded', String(!collapsed));
+    };
+    say();
+    const flip = () => { collapsed = !collapsed; root.className = `dfcards${collapsed ? ' collapsed' : ''}`; say(); };
+    fold.addEventListener('click', flip);
+    fold.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault?.(); e.stopPropagation?.(); flip(); } });
+    return fold;
   };
   return {
     root,

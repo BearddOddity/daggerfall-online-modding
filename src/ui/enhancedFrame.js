@@ -667,6 +667,9 @@ export function themeCss(id, th, r = FRAME_ROLES) {
 ${at(r.window)}, ${at(r.windowGround)} { background: ${tex}${GRAIN}, ${th.ground}; }
 ${at(r.panel)} { background-color: ${th.panel}; }
 ${textured(r.panel)}
+/* AUDIT CARDS-PLUS B7: a card table's winning seat keeps its brass ground - the theme's panel ground just above
+   outweighed the panel's own state, and only Slate (which writes no theme sheet) showed who won */
+:root[data-plus-theme="${id}"] body .dfcards .seat.won { background-color: rgba(84,62,22,0.85); }
 /* PLUS4: a skill-up is WORDS, not a box (SKILL2, frameCss above) - Slate never paints a theme sheet
    at all, so that rule stood unchallenged and skill-ups there stayed backgroundless; every OTHER
    theme's panel rule (just above) outweighs it by specificity and put the box back. Repeat the "no

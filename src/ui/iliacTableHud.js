@@ -23,10 +23,10 @@
 //
 // Not a DFU member: Daggerfall Unity has no card games. Ledger A row (TAVERN CARDS).
 import { cardById } from '../net/iliacCards.js';
-import { ILIAC_HAND_MAX, ILIAC_HOLDINGS, ILIAC_MAGICKA_MAX } from '../net/iliacHand.js';
+import { ILIAC_HAND_MAX, ILIAC_HOLDINGS, ILIAC_MAGICKA_MAX, ILIAC_ROOM, ILIAC_TURNS } from '../net/iliacHand.js';
 import { ILIAC_CARD_ASPECT } from '../render/iliacCardFaces.js';
 import { cardCanvasCopy } from './cardBinderPage.js';   // CARDS-PLUS: the binder's own painting of a face, at its CSS size
-import { cardPanelChromeCss, dressCardPanel } from './cardPanelKit.js';   // CARDS-PLUS: the kit and the face, both panels' one home
+import { cardPanelChromeCss, dressCardPanel, foldWords } from './cardPanelKit.js';   // CARDS-PLUS: the kit and the face, both panels' one home
 import { PIXELIFY_FIVE_FACE } from './pixelifyFive.js';   // FIX-D: the face's five, carried by every sheet that sets it
 import { t, localizedText } from '../systems/textManager.js';   // CARDS-PLUS (L10N4): the words this panel's look added, in the player's language
 
@@ -127,6 +127,7 @@ export function holdingLead(view, h) {
 /** CARDS-PLUS: a game's end as its player's - 'won', 'lost', 'drawn', or 'void' for no contest; null while it is played,
  *  and for a watcher (the end is the players', said in the line). `end` is the session's or the relay's word. */
 export function iliacOutcome(view, end) {
+  if (view && !(view.viewer >= 0)) return null;   // AUDIT CARDS-PLUS A6: a watcher's 'void' too - the end is the players'
   if (end === 'left') return 'lost';
   if (end === 'won-left') return 'won';
   if (end === 'void') return 'void';
@@ -240,6 +241,9 @@ export function iliacHudModel({ phase, view = null, staged = [], pick = null, se
       : online?.seating || online?.waiting || (online && !view) || online?.watching || view?.revealing || committed ? 'wait' : 'turn';
   return {
     phase, title, note, holdings, hand, tone, outcome,
+    // AUDIT CARDS-PLUS A3: a game on the cloth - online, the chairs fill and the relay deals before there is one, and the
+    // panel draws no turn, no other player and no board until it does (AUDIT CARDS-6 E19: never "Turn 1 of 6")
+    dealt: !!view,
     spectator: !(view?.viewer >= 0),   // CARDS-PLUS: a watcher holds no hand and no magicka of their own
     them: { name: other, hand: view?.players?.[them]?.handCount ?? 0, deck: view?.players?.[them]?.deckCount ?? 0, committed: !!view?.players?.[them]?.committed },
     me: { deck: mine?.deckCount ?? 0, magicka: mine?.magicka ?? 0, spend },
@@ -287,40 +291,50 @@ const cardW = (/** @type {number} */ h) => Math.round(h * ILIAC_CARD_ASPECT);
  *  ceilings (a hand's most, the magicka's), so a number past them is said in the count and never grows the row. */
 const BACKS_MAX = ILIAC_HAND_MAX;
 const GEMS_MAX = ILIAC_MAGICKA_MAX;
+/** AUDIT CARDS-PLUS A1: and the track's pips and a lane's empty places the same way - a game's turns and a side's room
+ *  (a relay's garbled 2,000,000 grew them without end: 38 s to paint one board). */
+const TRACK_MAX = ILIAC_TURNS;
+const SLOTS_MAX = ILIAC_ROOM;
 const LANE_W = cardW(ILIAC_LANE_CARD_H), HAND_W = cardW(ILIAC_HAND_CARD_H), PLACE_W = cardW(ILIAC_PLACE_CARD_H);
 /** CARDS-PLUS: the panel's own sheet - geometry and words. The chrome (the window's box, the header band and its fold,
  *  the note, the line, the presses, the log) is ui/cardPanelKit.js's; every surface's paint is the kit's by role
  *  (ui/enhancedFrame.js FRAME_ROLES: the window, a holding a panel, the tray and the season's board wells, a choice a
  *  tile, a power a chip, the deal and the commit primary, a concession warn). A state the kit does not know - a holding
- *  held, one a picked card can go to - is said with a leading body, to outweigh the role it stands in. A lane and the
- *  tray overlap their cards when the room is narrower than the cards (a phone): the margin is the room's own share. */
+ *  held, one a picked card can go to - is said with a leading body, to outweigh the role it stands in; a theme or the
+ *  DFO Grimoire dress that repaints the role re-says it in its own colours (ui/enhancedFrame.js themeCss,
+ *  ui/grimoireDress.js kitCss - AUDIT CARDS-PLUS B1). A target is a ring outside the plate, so the plate's top edge
+ *  still says who holds it (B5); a word in red is --cp-red, lifted on Stone (B3). Nothing overlaps
+ *  (AUDIT CARDS-PLUS A2: overlapped on a phone, each card covered the power of the one before it): a lane is a grid as
+ *  wide as its plate allows - two by two on a phone - and the tray wraps. An edge is a width and a style, never a
+ *  colour (the kit paints it - AUDIT CARDS-PLUS C3). */
 export const ILIAC_TABLE_CSS = `
 ${PIXELIFY_FIVE_FACE}
 ${cardPanelChromeCss('.dfiliac')}
-.dfiliac{left:50%;bottom:18px;transform:translateX(-50%);width:min(760px,calc(100vw - 32px));max-height:calc(100vh - 36px);overflow:auto;overscroll-behavior:contain}
+.dfiliac{left:50%;bottom:18px;transform:translateX(-50%);width:min(760px,calc(100vw - 32px))}
 @media (min-width:1100px){.dfiliac{left:auto;right:16px;transform:none;width:540px}}
 .dfiliac:focus{outline:none}
 .dfiliac [tabindex="0"]:focus-visible,.dfiliac button:focus-visible{outline:2px solid #f3cf86;outline-offset:1px}
+.dfiliac .hold:focus-visible{outline-offset:5px}
 .dfiliac.collapsed .ilbody{display:none}
 .dfiliac .ilsec{margin:0 0 8px}
 .dfiliac .ilsec-head{margin:0 0 4px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--cp-dim)}
 .dfiliac .opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
-.dfiliac .opt{display:flex;flex-direction:column;justify-content:center;gap:1px;min-width:0;padding:4px 8px 5px;border:2px solid;cursor:pointer}
+.dfiliac .opt{display:flex;flex-direction:column;justify-content:center;gap:1px;min-width:0;padding:4px 8px 5px;border-width:2px;border-style:solid;cursor:pointer}
 .dfiliac .opt .optname{color:#efe8d6;overflow-wrap:anywhere;text-shadow:1px 1px 0 #050608}
 .dfiliac .opt[aria-pressed="true"] .optname{color:#f3cf86}
 .dfiliac .opt .opttemper{color:var(--cp-dim)}
 .dfiliac .opt .optword{font-size:11px;color:var(--cp-dim)}
 .dfiliac .opt .optword.bad{color:#ffb4a6}
 .dfiliac .opt .optword.paid{letter-spacing:.08em;text-transform:uppercase;color:#ffb4a6}
-.dfiliac .opt.off{opacity:.55;cursor:default}
+.dfiliac .opt.off{opacity:.55;cursor:default;pointer-events:none}
 .dfiliac .opt.box{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:8px;align-items:center}
 .dfiliac .opt.box::before{content:'';grid-row:1/span 2;width:12px;height:12px;border:2px solid #7a7260;background:rgba(4,5,7,.7);box-shadow:0 0 0 1px #050608}
 .dfiliac .opt.box[aria-pressed="true"]::before{border-color:#f3cf86 #7a5424 #5c3f1a #c08a3e;background:linear-gradient(180deg,#fff0b8 0 2px,#c08a3e 2px)}
 .dfiliac .opt.box .optword{white-space:normal}
-.dfiliac .season{margin:0 0 8px;padding:6px 8px;border:2px solid;background:rgba(4,5,7,.55);font-size:12px;color:var(--cp-word)}
+.dfiliac .season{margin:0 0 8px;padding:6px 8px;border-width:2px;border-style:solid;font-size:12px;color:var(--cp-word)}
 .dfiliac .verdict{margin:0 0 8px;padding:4px 8px;text-align:center;font-size:18px;letter-spacing:.24em;text-transform:uppercase;color:#efe8d6;text-shadow:2px 2px 0 #050608}
 .dfiliac .verdict.won{color:#f3cf86;background:linear-gradient(90deg,transparent,rgba(243,207,134,.2),transparent)}
-.dfiliac .verdict.lost{color:#ff9a8a;background:linear-gradient(90deg,transparent,rgba(184,58,46,.26),transparent)}
+.dfiliac .verdict.lost{color:var(--cp-red);background:linear-gradient(90deg,transparent,rgba(184,58,46,.26),transparent)}
 .dfiliac .ilbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 14px;margin:0 0 6px}
 .dfiliac .track{display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--cp-dim)}
 .dfiliac .track b{font-weight:inherit;letter-spacing:0;color:#efe8d6;font-variant-numeric:tabular-nums;text-shadow:1px 1px 0 #050608}
@@ -338,23 +352,23 @@ ${cardPanelChromeCss('.dfiliac')}
 .dfiliac .mb+.mb{margin-left:-2px}
 .dfiliac .foestate{padding:0 6px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#f3cf86;background:rgba(84,62,22,.65);box-shadow:0 0 0 1px #050608,inset 0 0 0 1px #7a5424}
 .dfiliac .holds{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 6px}
-.dfiliac .hold{display:flex;flex-direction:column;gap:4px;min-width:0;padding:4px 5px 5px;border:2px solid;cursor:default}
+.dfiliac .hold{display:flex;flex-direction:column;gap:4px;min-width:0;padding:4px 5px 5px;border-width:2px;border-style:solid;cursor:default}
 body .dfiliac .hold.lead-mine{border-top-color:#f3cf86}
 body .dfiliac .hold.lead-theirs{border-top-color:#e0584a}
-body .dfiliac .hold.target{border-color:#f3cf86 #7a5424 #5c3f1a #c08a3e;box-shadow:0 0 0 1px #050608,0 0 10px rgba(243,207,134,.5);cursor:pointer}
+body .dfiliac .hold.target{box-shadow:0 0 0 1px #050608,0 0 0 3px #f3cf86,0 0 12px rgba(243,207,134,.5);cursor:pointer}
 .dfiliac .holdhead{display:flex;align-items:flex-start;gap:5px;min-height:${ILIAC_PLACE_CARD_H}px}
 .dfiliac .holdart{flex:none;line-height:0;box-shadow:0 0 0 1px #050608}
 .dfiliac .holdart canvas{display:block;width:${PLACE_W}px;height:${ILIAC_PLACE_CARD_H}px}
 .dfiliac .holdwords{flex:1 1 auto;min-width:0}
 .dfiliac .holdname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:#efe0b8;text-shadow:1px 1px 0 #050608}
 .dfiliac .hold.lead-mine .holdname{color:#f3cf86}
-.dfiliac .hold.lead-theirs .holdname{color:#ff9a8a}
+.dfiliac .hold.lead-theirs .holdname{color:var(--cp-red)}
 .dfiliac .holdrule{font-size:11px;line-height:1.25;color:var(--cp-dim);overflow-wrap:anywhere}
-.dfiliac .lane{display:flex;align-items:flex-start;min-height:${ILIAC_LANE_CARD_H}px}
-.dfiliac .lane>*+*{margin-left:max(-20px,min(3px,calc((100% - var(--n,4) * ${LANE_W}px) / max(1,var(--n,4) - 1))))}
+.dfiliac .lane{display:grid;grid-template-columns:repeat(auto-fill,${LANE_W}px);gap:3px;align-content:start;min-height:${ILIAC_LANE_CARD_H}px}
 .dfiliac .duel{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--cp-dim)}
+.dfiliac .duelpart{display:inline-flex;align-items:center;gap:5px;min-width:0}
 .dfiliac .duel .duelside{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dfiliac .pw{flex:none;min-width:24px;padding:0 4px;border:2px solid;text-align:center;font-size:13px;letter-spacing:0;color:#efe8d6;font-variant-numeric:tabular-nums}
+.dfiliac .pw{flex:none;min-width:24px;padding:0 4px;border-width:2px;border-style:solid;text-align:center;font-size:13px;letter-spacing:0;color:#efe8d6;font-variant-numeric:tabular-nums}
 body .dfiliac .pw.ahead{border-color:#f3cf86 #7a5424 #5c3f1a #c08a3e;color:#f3cf86}
 .dfiliac .ic{position:relative;flex:none;display:inline-block;line-height:0;box-shadow:0 0 0 1px #050608,2px 2px 0 rgba(0,0,0,.4)}
 .dfiliac .lane .ic canvas{display:block;width:${LANE_W}px;height:${ILIAC_LANE_CARD_H}px}
@@ -364,9 +378,11 @@ body .dfiliac .pw.ahead{border-color:#f3cf86 #7a5424 #5c3f1a #c08a3e;color:#f3cf
 .dfiliac .ic .p.up{background:#2f7a43}
 .dfiliac .ic .p.down{background:#4a1a12;color:#ffb4a6}
 .dfiliac .ic.staged{outline:2px dashed #f3cf86;outline-offset:1px;opacity:.85;cursor:pointer}
+.dfiliac .ic.staged:focus-visible{outline-style:solid;outline-offset:3px}
+.dfiliac .ic.down::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(135deg,rgba(8,10,16,.62) 0 3px,rgba(8,10,16,.28) 3px 6px);box-shadow:inset 0 0 0 1px #c9a24a}
+.dfiliac .ic .p{z-index:1}
 .dfiliac .slot{flex:none;width:${LANE_W}px;height:${ILIAC_LANE_CARD_H}px;background:rgba(4,5,7,.35);box-shadow:inset 0 0 0 1px rgba(163,152,128,.22)}
-.dfiliac .tray{display:flex;align-items:flex-end;min-height:${ILIAC_HAND_CARD_H + 18}px;margin:0 0 2px;padding:10px 8px 6px;border:2px solid;background:rgba(4,5,7,.55)}
-.dfiliac .tray>*+*{margin-left:max(-36px,min(6px,calc((100% - var(--n,7) * ${HAND_W}px) / max(1,var(--n,7) - 1))))}
+.dfiliac .tray{display:flex;flex-wrap:wrap;gap:10px 6px;align-items:flex-end;min-height:${ILIAC_HAND_CARD_H + 18}px;margin:0 0 2px;padding:10px 8px 6px;border-width:2px;border-style:solid}
 .dfiliac .tray .ic{cursor:pointer}
 .dfiliac .tray .ic:hover{z-index:1;transform:translateY(-4px)}
 .dfiliac .tray .ic.picked{z-index:2;transform:translateY(-8px);box-shadow:0 0 0 1px #050608,0 0 0 3px #f3cf86,0 0 12px rgba(243,207,134,.55)}
@@ -376,7 +392,7 @@ body .dfiliac .pw.ahead{border-color:#f3cf86 #7a5424 #5c3f1a #c08a3e;color:#f3cf
 .dfiliac .trayempty{align-self:center;font-size:12px;color:var(--cp-dim)}
 .dfiliac .msg.won{color:#f3cf86;border-left-color:#f3cf86;background:linear-gradient(90deg,rgba(243,207,134,.13),transparent 85%)}
 .dfiliac .msg.lost{color:#ffc4bb;border-left-color:#b83a2e}
-@media (max-width:540px){.dfiliac .holdart{display:none}.dfiliac .holdhead{min-height:0}.dfiliac .duel .duelside{display:none}}
+@media (max-width:540px){.dfiliac .holdart{display:none}.dfiliac .holdhead{min-height:0}.dfiliac .duel{flex-direction:column-reverse;gap:2px}.dfiliac .duelto{display:none}}
 @media (pointer:coarse){.dfiliac .opt{min-height:44px}}
 @media (prefers-reduced-motion:reduce){.dfiliac .tray .ic,.dfiliac .tray .ic:hover,.dfiliac .tray .ic.picked{transform:none}}
 `;
@@ -406,7 +422,9 @@ export function createIliacTableHud({ onPress, doc = document }) {
   swallowPresses(root);
   // AUDIT CARDS-6 B10: Tab in the panel walks its controls - the browser's walk, never the game's dial (QuickDial took
   // it, and nothing past the buttons was ever reached)
-  root.addEventListener('keydown', (e) => { if (e.key === 'Tab') e.stopPropagation?.(); });
+  // AUDIT CARDS-PLUS A4: and Space and Enter on the panel itself are the panel's - Space is the game's jump, and a jump
+  // stands the player up and concedes (the root holds the keyboard when its control is gone)
+  root.addEventListener('keydown', (e) => { if (e.key === 'Tab' || e.key === ' ' || e.key === 'Enter') e.stopPropagation?.(); });
   doc.body?.append(root);
   try { root.focus?.({ preventScroll: true }); } catch { /* a page that cannot focus */ }   // AUDIT CARDS-6 B10: the keyboard starts in the panel
   const el = (tag, cls, text) => { const n = doc.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
@@ -435,17 +453,22 @@ export function createIliacTableHud({ onPress, doc = document }) {
     const walk = (n) => { for (const c of n.children ?? []) { if (c.getAttribute?.('data-focus') && !c.disabled) keyed.push(c); walk(c); } };
     walk(root);
     const at = (k) => keyed.find((n) => n.getAttribute('data-focus') === k) ?? null;
-    const n = at(key) ?? keyed.find((x) => x.getAttribute('data-focus').startsWith('pick-')) ?? root;
-    try { n.focus({ preventScroll: true }); } catch { n.focus?.(); }
+    // AUDIT CARDS-PLUS A4: the keyboard goes to a control that TOOK it - one inside the folded body is not drawn, and its
+    // focus() left the keyboard on the page's body, where Space is the game's; so each is asked in turn, the panel last
+    const took = (n) => { try { n.focus({ preventScroll: true }); } catch { n.focus?.(); } return doc.activeElement === n; };
+    for (const n of [at(key), keyed.find((x) => x.getAttribute('data-focus').startsWith('pick-'))]) if (n && took(n)) return;
+    took(root);
   };
   // CARDS-PLUS: a card's face is the binder's own painting (ui/cardBinderPage.js cardCanvas - at its CSS size and the
-  // screen's pixel ratio, so a little card is the painter's tile face; CARDS10 painted twice its size, past the tile's
-  // bound, and the hand wore the full face's rules box at 4px), a fresh copy for each place it stands; a page with no
-  // canvas writes the card's name
+  // screen's pixel ratio, 2 at most as the binder paints, so a little card is the painter's tile face; CARDS10 painted
+  // twice its size, past the tile's bound, and the hand wore the full face's rules box at 4px), a fresh copy for each
+  // place it stands; a page with no canvas writes the card's name
   const canPaint = !!doc.createElement('canvas')?.getContext?.('2d');
   const face = (id, h) => (canPaint ? cardCanvasCopy(doc, id ? cardById(id) ?? null : null, h) : null);
   const card = (c, { h = ILIAC_LANE_CARD_H, cls = '', press = null, value = undefined, power = true } = {}) => {
-    const n = el('span', `ic${cls ? ` ${cls}` : ''}`);
+    // AUDIT CARDS-PLUS (lane A): your own card played face down keeps its face for you under a veil - the other player
+    // sees its back, and its text never runs (net/iliacHand.js: a face-down card is its power alone, unveiled at the end)
+    const n = el('span', `ic${cls ? ` ${cls}` : ''}${c.down && c.id ? ' down' : ''}`);
     const cv = face(c.id, h);
     if (cv) n.append(cv); else n.append(el('span', 'icname', c.name));
     // the power it stands at now, beside its printed one - raised green, lowered dark
@@ -458,12 +481,13 @@ export function createIliacTableHud({ onPress, doc = document }) {
     if (press) pressable(n, `${press}-${value}`, () => onPress(press, value));   // AUDIT CARDS-6 B10
     return n;
   };
-  /** A holding's lane: its cards from the duel outward, then the places that side has left, `--n` the lane's own count. */
+  /** A holding's lane: its cards from the duel outward, then the places that side has left - a grid as wide as the plate
+   *  allows (AUDIT CARDS-PLUS A2: overlapped on a phone, each card covered the next one's power). */
   const lane = (cls, nodes, open) => {
     const n = el('div', `lane ${cls}`);
     n.append(...nodes);
-    for (let k = 0; k < open; k++) n.append(el('i', 'slot'));
-    n.style?.setProperty?.('--n', String(Math.max(1, nodes.length + open)));
+    const places = Math.min(open, SLOTS_MAX);
+    for (let k = 0; k < places; k++) n.append(el('i', 'slot'));
     return n;
   };
   /** A choice of the setup: its name, what it is, and whether it is the one chosen (the kit's tile, brass when pressed). */
@@ -482,7 +506,7 @@ export function createIliacTableHud({ onPress, doc = document }) {
     const fold = el('span', 'fold', collapsed ? '+' : '−');
     const say = () => {
       fold.textContent = collapsed ? '+' : '−';
-      fold.title = collapsed ? t('cards.table.fold.show', 'Show the table') : t('cards.table.fold.hide', 'Hide the table');
+      foldWords(fold, collapsed);
       fold.setAttribute('aria-expanded', String(!collapsed));
     };
     say();
@@ -530,12 +554,18 @@ export function createIliacTableHud({ onPress, doc = document }) {
         if (m.ranked || m.keeps) body.append(boxes);
       } else {
         if (m.outcome) body.append(el('div', `verdict ${m.outcome}`, VERDICT_WORDS[m.outcome]));
+      }
+      if (m.phase !== 'setup' && m.dealt) {
         const bar = el('div', 'ilbar');
         const turn = el('div', 'track');
         const pips = el('span', 'pips');
-        const now = m.phase === 'over' ? m.turns + 1 : m.turn;
-        for (let t = 1; t <= m.turns; t++) pips.append(el('i', `pip${t < now ? ' past' : t === now ? ' now' : ''}`));
-        turn.append(el('span', '', t('cards.iliac.track.turn', 'Turn')), pips, el('b', '', `${Math.min(m.turn, m.turns)}/${m.turns}`));
+        // AUDIT CARDS-PLUS A5: an ended game lights the turns it reached - a concession on turn 2 is two of six, as its
+        // label says, never the whole track
+        const reached = Math.min(m.turn, m.turns);
+        for (let n = 1; n <= Math.min(m.turns, TRACK_MAX); n++) {
+          pips.append(el('i', `pip${m.phase === 'over' ? (n <= reached ? ' past' : '') : n < m.turn ? ' past' : n === m.turn ? ' now' : ''}`));
+        }
+        turn.append(el('span', '', t('cards.iliac.track.turn', 'Turn')), pips, el('b', '', `${reached}/${m.turns}`));
         bar.append(turn);
         if (!m.spectator) {
           const mana = el('div', 'track');
@@ -554,7 +584,9 @@ export function createIliacTableHud({ onPress, doc = document }) {
         body.append(foe);
         const holds = el('div', 'holds');
         for (const hd of m.holdings) {
-          const box = el('div', `hold${hd.target ? ' target' : ''}${hd.lead ? ` lead-${hd.lead}` : ''}`);
+          // AUDIT CARDS-PLUS A7: the plate's edge says who holds it as yours or theirs - a watcher has neither (the duel's
+          // lit number says which side leads)
+          const box = el('div', `hold${hd.target ? ' target' : ''}${hd.lead && !m.spectator ? ` lead-${hd.lead}` : ''}`);
           box.title = `${hd.name} - ${hd.text}`;
           const top = el('div', 'holdhead');
           const art = face(hd.id, ILIAC_PLACE_CARD_H);
@@ -562,9 +594,17 @@ export function createIliacTableHud({ onPress, doc = document }) {
           const words = el('div', 'holdwords');
           words.append(el('div', 'holdname', hd.name), el('div', 'holdrule', hd.text));
           top.append(words);
+          // the power each way, each number with its side's word (AUDIT CARDS-PLUS A2: on a phone the words fell away and
+          // "21 - 22" said nobody's) - one line, "21 YOU - THEM 22"; on a phone two, theirs over their lane, yours over yours
           const duel = el('div', 'duel');
-          duel.append(el('b', `pw${hd.lead === 'mine' ? ' ahead' : ''}`, String(hd.power[0])), el('span', 'duelside', m.sides?.[0] ?? 'you'),
-            el('span', '', '-'), el('span', 'duelside', m.sides?.[1] ?? 'them'), el('b', `pw${hd.lead === 'theirs' ? ' ahead' : ''}`, String(hd.power[1])));
+          const part = (k) => {
+            const g = el('span', 'duelpart');
+            const pw = el('b', `pw${hd.lead === (k ? 'theirs' : 'mine') ? ' ahead' : ''}`, String(hd.power[k]));
+            const word = el('span', 'duelside', m.sides?.[k] ?? (k ? 'them' : 'you'));
+            if (k) g.append(word, pw); else g.append(pw, word);
+            return g;
+          };
+          duel.append(part(0), el('span', 'duelto', '-'), part(1));
           box.append(top, lane('theirs', hd.theirs.map((c) => card(c)), hd.open?.[1] ?? 0), duel,
             lane('mine', [...hd.mine.map((c) => card(c)), ...hd.staged.map((c) => card(c, { cls: 'staged', press: 'unstage', value: c.staged, power: false }))], hd.open?.[0] ?? 0));
           if (hd.target) pressable(box, `hold-${hd.h}`, () => onPress('hold', hd.h));
@@ -573,7 +613,6 @@ export function createIliacTableHud({ onPress, doc = document }) {
         body.append(holds);
         if (!m.spectator) {
           const tray = el('div', 'tray');
-          tray.style?.setProperty?.('--n', String(Math.max(1, m.hand.length)));
           for (const c of m.hand) tray.append(card(c, { h: ILIAC_HAND_CARD_H, cls: c.picked ? 'picked' : c.staged ? 'used' : c.playable ? '' : 'off', press: c.playable || c.picked ? 'pick' : null, value: c.i, power: false }));
           if (!m.hand.length) tray.append(el('span', 'trayempty', t('cards.iliac.hand.empty', 'No cards in hand.')));
           body.append(tray);

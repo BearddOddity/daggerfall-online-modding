@@ -19,5 +19,11 @@
  "swing": "Schlag",
  "level": "Stufe",
  "hit": "Treffer",
- "dmg": "Schaden"
+ "dmg": "Schaden",
+ "deck (cards)": "Deck",
+ "hand (cards held)": "Hand",
+ "turn (a card game's)": "Zug",
+ "committed (a turn locked in)": "bestätigt",
+ "ranked (game)": "gewertet",
+ "panel (interface)": "Panel"
 }

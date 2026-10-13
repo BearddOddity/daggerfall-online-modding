@@ -19,5 +19,11 @@
  "swing": "slag",
  "level": "nivå",
  "hit": "treff",
- "dmg": "skade"
+ "dmg": "skade",
+ "deck (cards)": "kortstokk",
+ "hand (cards held)": "hånd",
+ "turn (a card game's)": "tur",
+ "committed (a turn locked in)": "bekreftet",
+ "ranked (game)": "rangert",
+ "panel (interface)": "panel"
 }

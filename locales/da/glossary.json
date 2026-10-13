@@ -147,5 +147,11 @@
  "glyph": "glyf",
  "home": "hjem",
  "rent": "husleje",
- "letterbox": "postkasse"
+ "letterbox": "postkasse",
+ "deck (cards)": "kortspil",
+ "hand (cards held)": "hånd",
+ "turn (a card game's)": "tur",
+ "committed (a turn locked in)": "bekræftet",
+ "ranked (game)": "rangeret",
+ "panel (interface)": "panel"
 }

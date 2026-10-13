@@ -2936,7 +2936,7 @@
  },
  "cards.iliac.setup.rankedWhy": {
   "en": "6c15d7a3e807",
-  "tr": "1bdae9e88ecb",
+  "tr": "4fb1004ddc46",
   "by": "claude-in-session"
  },
  "cards.iliac.track.turn": {
@@ -2965,13 +2965,13 @@
   "by": "claude-in-session"
  },
  "cards.table.fold.hide": {
-  "en": "41af4f0f22fc",
-  "tr": "9f62aa44d540",
+  "en": "c9cbe37a6f28",
+  "tr": "ecfc4ff9e396",
   "by": "claude-in-session"
  },
  "cards.table.fold.show": {
-  "en": "f9d816a951cf",
-  "tr": "a7f9967c8cf2",
+  "en": "be636809558b",
+  "tr": "bd2bc130763b",
   "by": "claude-in-session"
  },
  "credits.ambientText.terms": {

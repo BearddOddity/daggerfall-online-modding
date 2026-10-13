@@ -29,9 +29,10 @@
 // Not a DFU member: Daggerfall Unity has no card games. Ledger A row (TAVERN CARDS).
 import { frameCss, scopeRules, FRAME_TONES } from './enhancedFrame.js';
 import { injectEnhancedFonts } from './enhancedStyle.js';
-import { STONE_DIM, STONE_WORD } from './enhancedPlusStyle.js';   // AUDIT MERGE-PLUS D3: the words lifted on Stone's light ground
+import { STONE_DIM, STONE_WORD, STONE_RED } from './enhancedPlusStyle.js';   // AUDIT MERGE-PLUS D3: the words lifted on Stone's light ground
 import { PIXEL_FONT_CSS } from './pixelifyFive.js';
 import { isEnhancedPlus } from '../systems/uiSkin.js';
+import { t } from '../systems/textManager.js';
 
 /** The classic skin's copy of the kit, cut to the two panels. */
 export const CARD_KIT_STYLE_ID = 'dfcards-kit-style';
@@ -70,13 +71,14 @@ const CHROME_ROOT = '.card-panel-root';
  */
 const CHROME_CSS = `
 .card-panel-root, .card-panel-root * { box-sizing: border-box; }
-.card-panel-root { position: fixed; z-index: 13; margin: 0; padding: 0 12px 10px; border: 2px solid; ${PIXEL_FONT_CSS} font-size: 14px; line-height: 1.35;
-  color: #e9e4d9; --cp-dim: #b9ab93; --cp-word: #d8cfae; }
-.card-panel-root .tablehead { display: flex; align-items: center; gap: 8px; margin: 0 -12px 8px; padding: 7px 12px 6px; border-bottom: 2px solid;
+.card-panel-root { position: fixed; z-index: 13; margin: 0; padding: 0 12px 10px; border-width: 2px; border-style: solid; ${PIXEL_FONT_CSS} font-size: 14px; line-height: 1.35;
+  color: #e9e4d9; --cp-dim: #b9ab93; --cp-word: #d8cfae; --cp-red: #ff9a8a;
+  max-height: calc(100vh - 36px); overflow: auto; overscroll-behavior: contain; }
+.card-panel-root .tablehead { display: flex; align-items: center; gap: 8px; margin: 0 -12px 8px; padding: 7px 12px 6px; border-bottom-width: 2px; border-bottom-style: solid;
   font: inherit; font-size: 14px; }
 .card-panel-root .tabletitle { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: 0.12em;
   text-transform: uppercase; color: #efe0b8; text-shadow: 2px 2px 0 #050608; }
-.card-panel-root .fold { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 2px solid;
+.card-panel-root .fold { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-width: 2px; border-style: solid;
   color: #efe8d6; line-height: 1; cursor: pointer; user-select: none; -webkit-user-select: none; }
 .card-panel-root .tablenote { margin: 0 0 6px; font-size: 12px; color: var(--cp-dim); }
 .card-panel-root .msg { margin: 6px 0 0; padding: 3px 0 3px 8px; border-left: 3px solid transparent; color: #efe8d6; text-shadow: 1px 1px 0 #050608; }
@@ -84,19 +86,32 @@ const CHROME_CSS = `
 .card-panel-root .msg.wait { color: var(--cp-word); border-left-color: ${FRAME_TONES.brassLo}; }
 .card-panel-root .msg.turn { color: ${FRAME_TONES.brassHi}; border-left-color: ${FRAME_TONES.brassHi}; background: linear-gradient(90deg, rgba(243,207,134,0.13), transparent 85%); }
 .card-panel-root .tableacts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
-.card-panel-root button { margin: 0; padding: 3px 10px; border: 2px solid; font: inherit; font-size: 13px; color: #efe8d6; text-align: center; cursor: pointer; }
+.card-panel-root button { margin: 0; padding: 3px 10px; border-width: 2px; border-style: solid; font: inherit; font-size: 13px; color: #efe8d6; text-align: center; cursor: pointer; }
 .card-panel-root button[data-kind="primary"] { color: #fff2cc; }
 .card-panel-root button[data-kind="quiet"], .card-panel-root button[data-kind="warn"] { margin-left: auto; }
 .card-panel-root button:disabled { color: rgba(239,232,214,0.45); cursor: default; }
+.card-panel-root input { font: inherit; }
 .card-panel-root input[type=range] { accent-color: ${FRAME_TONES.brass}; }
 /* the log: room for four lines of 16px under its rule, the first 4px down - so scrolled to the newest, the top of its
    window stands on a whole line (a line a fixed box: the five's own face would grow one that holds a 5) */
-.card-panel-root .log { margin-top: 8px; padding: 0 0 4px; border-top: 2px solid; max-height: 70px; overflow-y: auto; font-size: 12px; color: var(--cp-dim); }
+.card-panel-root .log { margin-top: 8px; padding: 0 0 4px; border-top-width: 2px; border-top-style: solid; max-height: 70px; overflow-y: auto; font-size: 12px; color: var(--cp-dim); }
 .card-panel-root .log > div { height: 16px; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-panel-root .log > div:first-child { margin-top: 4px; }
 .card-panel-root.collapsed .tablenote, .card-panel-root.collapsed .log { display: none; }
-:root[data-plus-theme="stone"] .card-panel-root { --cp-dim: ${STONE_DIM}; --cp-word: ${STONE_WORD}; }
-@media (pointer: coarse) { .card-panel-root button, .card-panel-root .fold { min-height: 40px; } .card-panel-root .fold { width: 40px; } }
+:root[data-plus-theme="stone"] .card-panel-root { --cp-dim: ${STONE_DIM}; --cp-word: ${STONE_WORD}; --cp-red: ${STONE_RED}; }
+@media (pointer: coarse) { .card-panel-root button, .card-panel-root .fold { min-height: 44px; } .card-panel-root .fold { width: 44px; } }
 `;
 /** The chrome for one panel's root selector. */
 export const cardPanelChromeCss = (/** @type {string} */ root) => CHROME_CSS.replaceAll(CHROME_ROOT, root);
+
+/**
+ * AUDIT CARDS-PLUS D5: THE FOLD'S WORDS, both panels' - what it does to the PANEL (its words put away so the cloth
+ * shows; "Hide the table" said the reverse of what the player sees), in the player's language, as its tooltip and as
+ * its name to a screen reader (whose name was the glyph, "−").
+ * @param {any} fold @param {boolean} collapsed
+ */
+export function foldWords(fold, collapsed) {
+  const words = collapsed ? t('cards.table.fold.show', 'Expand the panel') : t('cards.table.fold.hide', 'Collapse the panel');
+  fold.title = words;
+  fold.setAttribute?.('aria-label', words);
+}

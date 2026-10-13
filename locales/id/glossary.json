@@ -19,5 +19,11 @@
  "swing": "ayunan",
  "level": "tingkat",
  "hit": "kena",
- "dmg": "kerusakan"
+ "dmg": "kerusakan",
+ "deck (cards)": "dek",
+ "hand (cards held)": "tangan",
+ "turn (a card game's)": "giliran",
+ "committed (a turn locked in)": "terkunci",
+ "ranked (game)": "peringkat",
+ "panel (interface)": "panel"
 }

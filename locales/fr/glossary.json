@@ -178,5 +178,11 @@
  "party": "groupe",
  "raid": "raid",
  "raiders": "pillards",
- "mute": "réduire au silence"
+ "mute": "réduire au silence",
+ "deck (cards)": "paquet",
+ "hand (cards held)": "main",
+ "turn (a card game's)": "tour",
+ "committed (a turn locked in)": "validé",
+ "ranked (game)": "classée",
+ "panel (interface)": "panneau"
 }

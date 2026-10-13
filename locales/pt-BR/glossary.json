@@ -144,5 +144,11 @@
  "Bob": "Balanço",
  "Inertia": "Inércia",
  "Recoil": "Recuo",
- "Step": "Passo"
+ "Step": "Passo",
+ "deck (cards)": "baralho",
+ "hand (cards held)": "mão",
+ "turn (a card game's)": "turno",
+ "committed (a turn locked in)": "confirmado",
+ "ranked (game)": "ranqueada",
+ "panel (interface)": "painel"
 }

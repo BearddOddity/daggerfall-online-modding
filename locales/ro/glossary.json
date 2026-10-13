@@ -167,5 +167,10 @@
  "Master Skills": "Abilități de maestru",
  "The game may need updating.": "Poate fi nevoie să actualizezi jocul.",
  "Try again later.": "Încearcă din nou mai târziu.",
- "Look again.": "Privește din nou."
+ "Look again.": "Privește din nou.",
+ "hand (cards held)": "mână",
+ "turn (a card game's)": "tură",
+ "committed (a turn locked in)": "confirmat",
+ "ranked (game)": "clasat",
+ "panel (interface)": "panou"
 }

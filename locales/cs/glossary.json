@@ -148,5 +148,11 @@
  "use key": "klávesa použití",
  "monster": "nestvůra",
  "raid": "nájezd",
- "Hours (Brass Remnant)": "Hodiny"
+ "Hours (Brass Remnant)": "Hodiny",
+ "deck (cards)": "balíček",
+ "hand (cards held)": "ruka",
+ "turn (a card game's)": "tah",
+ "committed (a turn locked in)": "potvrzeno",
+ "ranked (game)": "hodnocená",
+ "panel (interface)": "panel"
 }

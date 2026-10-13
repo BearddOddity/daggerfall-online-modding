@@ -13,16 +13,17 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { FRAME_ROLES, FRAME_CSS, frameCss } from '../src/ui/enhancedFrame.js';
-import { PLUS_CSS, STONE_DIM, STONE_WORD } from '../src/ui/enhancedPlusStyle.js';
+import { PLUS_CSS, STONE_DIM, STONE_WORD, STONE_RED } from '../src/ui/enhancedPlusStyle.js';
 import { PIXEL_FONT_CSS, PIXELIFY_FIVE_FACE } from '../src/ui/pixelifyFive.js';
 import { cardPanelChromeCss, cardKitCss, dressCardPanel, isCardPanelSelector, CARD_KIT_STYLE_ID } from '../src/ui/cardPanelKit.js';
+import { kitCss, G, SMALL_WINDOWS } from '../src/ui/grimoireDress.js';
 import { createCardTableHud, cardHudModel, CARD_TABLE_CSS } from '../src/ui/cardTableHud.js';
 import { createIliacTableHud, iliacHudModel, holdingLead, iliacOutcome, VERDICT_WORDS, stagedRefusal, ILIAC_TABLE_CSS, ILIAC_HAND_CARD_H, ILIAC_LANE_CARD_H, ILIAC_PLACE_CARD_H } from '../src/ui/iliacTableHud.js';
 import { cardCanvas, cardCanvasCopy, _clearCardFacesForTests, CARD_BINDER_CSS } from '../src/ui/cardBinderPage.js';
 import { COLLECTION_PAGE_CSS } from '../src/ui/collectionsPage.js';
 import { ILIAC_TILE_MAX_H } from '../src/render/iliacCardFaces.js';
 import { STARTER_DECK, cardById } from '../src/net/iliacCards.js';
-import { newGame, commit, reveal, iliacView, legalPlays, ILIAC_HAND_MAX, ILIAC_MAGICKA_MAX } from '../src/net/iliacHand.js';
+import { newGame, commit, reveal, iliacView, legalPlays, ILIAC_HAND_MAX, ILIAC_MAGICKA_MAX, ILIAC_ROOM, ILIAC_TURNS } from '../src/net/iliacHand.js';
 import { IliacTableSession } from '../src/systems/iliacTableSession.js';
 import { patronDeck, patronPlays, seededUnit } from '../src/systems/iliacPatrons.js';
 import { CardTableSession } from '../src/systems/cardTableSession.js';
@@ -44,14 +45,16 @@ function paintingDoc() {
   const make = doc.createElement;
   doc.createElement = (tag) => {
     const n = make(tag);
+    // AUDIT CARDS-PLUS E4: a box's scroll height as a page lays it - a line a child, 16px each (the log's own law)
+    Object.defineProperty(n, 'scrollHeight', { get: () => (n.children?.length ?? 0) * 16, configurable: true });
     if (tag === 'canvas') {
       n.ownerDocument = doc;   // the binder's cache keys its faces by their page
-      n.log = { scale: [], drawn: [] };
+      n.log = { scale: [], drawn: [], at: [] };
       n.getContext = () => new Proxy({}, {
         get(_, k) {
           if (k === 'measureText') return (t) => ({ width: String(t).length * 5 });
           if (k === 'scale') return (x, y) => n.log.scale.push([x, y]);
-          if (k === 'drawImage') return (src) => n.log.drawn.push(src);
+          if (k === 'drawImage') return (src, ...where) => { n.log.drawn.push(src); n.log.at.push(where); };   // E7: and where
           return () => {};
         },
         set() { return true; },
@@ -81,7 +84,7 @@ function played(turns, seed = 7) {
   return st;
 }
 
-test('CARDS-PLUS the kit names the card UI: both table panels a carved window, a seat and a holding its panels, their presses the kit\'s buttons (the deal, the check and the call, the commit and the next game in brass; Iliac Hand\'s concession edged in blood), the setup\'s choices tiles, the board, the hand and the season\'s board wells, the pot and a holding\'s power chips, their header bands, their logs under a rule - each with a leading body (their sheets land after the kit) - and the Collections page\'s switch, filters, chips, codex rows, decks and deck name; the Plus sheet and the classic cut carry each (mutants: a role dropped)', () => {
+test('CARDS-PLUS the kit names the card UI: both table panels a carved window, a seat and a holding its panels, their presses the kit\'s buttons (the deal, the check and the call, the commit and the next game in brass; Iliac Hand\'s concession edged in blood), the setup\'s choices tiles, the board, the hand and the season\'s board wells, the pot and a holding\'s power chips, their header bands, their logs under a rule - each with a leading body (their sheets land after the kit) - and the Collections page\'s switch, filters, chips, codex rows, decks and deck name; the Plus sheet carries each, the classic cut every panel\'s (the Collections page is the enhanced menu\'s alone), and every Plus colour re-says the winner\'s ground its panel ground outweighs (mutants: a role dropped; the cut short of a role; the winner\'s ground left to Slate)', () => {
   const want = {
     window: ['body .dfcards', 'body .dfiliac'],
     panel: ['body .dfcards .seat', 'body .dfiliac .hold', '.px-sys .binder-deck'],
@@ -107,9 +110,19 @@ test('CARDS-PLUS the kit names the card UI: both table panels a carved window, a
   assert.ok(ruleOf('body .dfiliac .opt[aria-pressed="true"]', 'border-color: #f3cf86'), 'a chosen tile in brass');
   assert.ok(ruleOf('.px-sys .codex-line.on', 'box-shadow'), 'an opened codex row marked as the list marks one');
   assert.ok(kit.some((r) => r.sels.includes(':root[data-plus-theme="stone"] body .dfiliac .hold') && /background-color/.test(r.body)), 'each Plus colour grounds them too');
+  // AUDIT CARDS-PLUS E10: the classic skin's cut carries every panel selector the kit names (it is the panels' dress there)
+  const cutSels = new Set(rules(cardKitCss()).flatMap((r) => r.sels));
+  for (const sel of panelSels) assert.ok(cutSels.has(sel), `the classic cut carries ${sel}`);
+  // AUDIT CARDS-PLUS B7: a theme's panel ground outweighs the seat's own state, so each re-says the winner's after it
+  const plus = rules(PLUS_CSS);
+  for (const theme of ['stone', 'iron', 'ember', 'forest', 'night']) {
+    const ground = plus.findIndex((r) => r.sels.includes(`:root[data-plus-theme="${theme}"] body .dfcards .seat`) && /background-color/.test(r.body));
+    const won = plus.findIndex((r) => r.sels.includes(`:root[data-plus-theme="${theme}"] body .dfcards .seat.won`) && /background-color: rgba\(84,62,22,0\.85\)/.test(r.body));
+    assert.ok(ground >= 0 && won > ground, `${theme}: the winner's ground said after the seat's`);
+  }
 });
 
-test('CARDS-PLUS the face: both panels\' sheets set the game\'s pixel face - the trio, its five - on their roots, and every press, slider and field takes it; no serif of their own anywhere in either module; the chrome is one home, its dim words lifted on Stone\'s light ground (mutants: Georgia back on the root; a press left in the browser\'s face; the Stone words unset)', () => {
+test('CARDS-PLUS the face: both panels\' sheets set the game\'s pixel face - the trio, its five - on their roots, and every press, slider and field takes it; no serif of their own anywhere in either module; the chrome is one home - a fixed panel bounded by the screen\'s height and scrolling inside it, its touch presses 44px, its dim words and its reds lifted on Stone\'s light ground (mutants: Georgia back on the root; a press left in the browser\'s face; the Stone words unset; a field in the browser\'s face; the height unbounded; the touch press short; the Stone red unset)', () => {
   for (const [name, css, root] of [['Hold\'em', CARD_TABLE_CSS, '.dfcards'], ['Iliac Hand', ILIAC_TABLE_CSS, '.dfiliac']]) {
     assert.ok(css.startsWith(`\n${PIXELIFY_FIVE_FACE}`), `${name}: the five first`);
     const chrome = cardPanelChromeCss(root);
@@ -119,38 +132,57 @@ test('CARDS-PLUS the face: both panels\' sheets set the game\'s pixel face - the
     assert.ok(rootRule && rootRule.body.includes(PIXEL_FONT_CSS), `${name}: the face's trio on the root`);
     assert.ok(r.some((x) => x.sels.includes(`${root} button`) && /(^|;)\s*font: inherit;/.test(x.body)), `${name}: a press takes the face (a control keeps the browser's own unless told)`);
     assert.ok(r.some((x) => x.sels.includes(`:root[data-plus-theme="stone"] ${root}`) && x.body.includes(`--cp-dim: ${STONE_DIM};`) && x.body.includes(`--cp-word: ${STONE_WORD};`)), `${name}: Stone's dim words`);
+    // AUDIT CARDS-PLUS B11: a field and a slider take the face as a press does
+    assert.ok(r.some((x) => x.sels.includes(`${root} input`) && /(^|;)\s*font: inherit;/.test(x.body)), `${name}: a field takes the face`);
+    // AUDIT CARDS-PLUS B2/C4: fixed over the world, bounded by the screen's height, scrolling inside it (the title and
+    // the fold stood off a landscape phone's top)
+    assert.ok(rootRule.body.includes('position: fixed;') && rootRule.body.includes('max-height: calc(100vh - 36px);') && rootRule.body.includes('overflow: auto;'), `${name}: on the screen whatever it holds`);
+    assert.doesNotMatch(css.replace(chrome, ''), /max-height:calc\(100vh/, `${name}: one home for the bound`);
+    // AUDIT CARDS-PLUS E5: the coarse-pointer law's 44px
+    assert.match(chrome, new RegExp(`@media \\(pointer: coarse\\) \\{ ${root.replace('.', '\\.')} button, ${root.replace('.', '\\.')} \\.fold \\{ min-height: 44px; \\} ${root.replace('.', '\\.')} \\.fold \\{ width: 44px; \\} \\}`), `${name}: a touch press 44px`);
+    // AUDIT CARDS-PLUS B3: and its reds - Stone's light ground took the blood words under AA
+    assert.ok(rootRule.body.includes('--cp-red: #ff9a8a;') && r.some((x) => x.sels.includes(`:root[data-plus-theme="stone"] ${root}`) && x.body.includes(`--cp-red: ${STONE_RED};`)), `${name}: Stone's reds`);
     assert.doesNotMatch(css, /Georgia|serif/, `${name}: no serif of its own`);
   }
   for (const f of ['src/ui/cardTableHud.js', 'src/ui/iliacTableHud.js', 'src/ui/cardPanelKit.js']) assert.doesNotMatch(read(f).replace(/^\s*\/\/.*$/gm, ''), /Georgia/, f);
 });
 
-test('CARDS-PLUS the classic skin: a panel lays the kit cut to the two panels (once, whichever panel comes first) and asks for the game\'s face; on Enhanced Plus it lays no cut - the Plus sheet carries the kit (mutants: the cut never laid; the cut laid whole; the face never asked for)', () => {
+test('CARDS-PLUS the classic skin: a panel lays the kit cut to the two panels (once, whichever panel comes first - each alone on its own page, and both in either order) and asks for the game\'s face; on Enhanced Plus it lays no cut - the Plus sheet carries the kit - and asks for the face itself (mutants: the cut never laid; the cut laid whole; the face never asked for; Iliac Hand never dressing; Hold\'em never dressing)', () => {
   const cut = cardKitCss();
   const sels = rules(cut).flatMap((r) => r.sels).filter((s) => s && !/^(from|to|\d+%)$/.test(s));
   assert.ok(cut.length < frameCss().length && rules(cut).length * 3 < rules(frameCss()).length, 'a cut, not the kit');
   assert.ok(sels.length > 40 && sels.every(isCardPanelSelector), 'only the panels\' rules');
   assert.match(cut, /body \.dfcards,\nbody \.dfiliac \{\n {2}border-image:/, 'the carved frame');
   assert.match(cut, /body \.dfiliac button\[data-kind="warn"\] \{ border-color: #e0584a/, 'the blood edge');
+  const holdem = (doc) => createCardTableHud({ onPress: () => {}, doc });
+  const iliac = (doc) => createIliacTableHud({ onPress: () => {}, doc });
+  const kitsOf = (doc) => doc.head.children.filter((c) => c.id === CARD_KIT_STYLE_ID);
+  const facesOf = (doc) => doc.head.children.filter((c) => c.id === 'dagger-enhanced-fonts' && c.tag === 'link');
   resetPrefs();
   try {
     setPref('skin', 'classic');
-    const doc = fakeDoc();
-    createCardTableHud({ onPress: () => {}, doc });
-    createIliacTableHud({ onPress: () => {}, doc });
-    const kits = doc.head.children.filter((c) => c.id === CARD_KIT_STYLE_ID);
-    assert.equal(kits.length, 1, 'the cut, once');
-    assert.equal(kits[0].textContent, cut);
-    assert.equal(doc.head.children.filter((c) => c.id === 'dagger-enhanced-fonts' && c.tag === 'link').length, 1, 'the face asked for');
+    // AUDIT CARDS-PLUS E1: each panel ALONE on its own page dresses itself - Hold'em laid both before, so Iliac Hand's own
+    // call was never read; then both, in either order
+    for (const open of [[holdem], [iliac], [holdem, iliac], [iliac, holdem]]) {
+      const doc = fakeDoc();
+      for (const make of open) make(doc);
+      const kits = kitsOf(doc);
+      assert.equal(kits.length, 1, `the cut, once (${open.map((f) => f.name).join(', ')})`);
+      assert.equal(kits[0].textContent, cut);
+      assert.equal(facesOf(doc).length, 1, `the face asked for, once (${open.map((f) => f.name).join(', ')})`);
+    }
     setPref('skin', 'enhanced');
-    const plus = fakeDoc();
-    assert.equal(dressCardPanel(plus), false);
-    createIliacTableHud({ onPress: () => {}, doc: plus });
-    assert.equal(plus.head.children.filter((c) => c.id === CARD_KIT_STYLE_ID).length, 0, 'Plus: the kit is the Plus sheet\'s');
-    assert.equal(plus.head.children.filter((c) => c.id === 'dagger-enhanced-fonts').length, 1, 'the face on every skin');
+    for (const make of [holdem, iliac]) {
+      const plus = fakeDoc();
+      make(plus);
+      assert.equal(kitsOf(plus).length, 0, `Plus: the kit is the Plus sheet's (${make.name})`);
+      assert.equal(facesOf(plus).length, 1, `the face on every skin, by the panel's own call (${make.name})`);
+    }
+    assert.equal(dressCardPanel(fakeDoc()), false, 'Plus lays no cut');
   } finally { resetPrefs(); }
 });
 
-test('CARDS-PLUS the words are their own: every class either panel paints - read off the real painters over every phase (Iliac Hand\'s setup with every choice and box, a turn with a card staged and one picked, its end; Hold\'em\'s buy-in, a hand under way, the fold) - is styled by no rule from outside the panels in any sheet the game injects; given the enhanced sheet\'s bare .card, .row, .note and .side back, the law finds them (mutants: the little card .card again; the duel\'s .side; a lane .row)', async () => {
+test('CARDS-PLUS the words are their own: every class either panel paints - read off the real painters over every phase (Iliac Hand\'s setup with every choice and box, a turn with a card staged and one picked, its end; Hold\'em\'s buy-in, a hand under way, the fold) - is styled by no rule from outside the panels in any sheet the game injects - every state too: the other player committed, your own face-down card, a drawn end, and Hold\'em\'s seats yours, to act, folded, all in, gone, out of the hand and the winner\'s; given the enhanced sheet\'s bare .card, .row, .note and .side back, the law finds them (mutants: the little card .card again; the duel\'s .side; a lane .row)', async () => {
   const words = new Set();
   const take = (root) => { for (const w of classesIn(root)) words.add(w); };
   for (const doc of [fakeDoc(), paintingDoc()]) {
@@ -176,8 +208,35 @@ test('CARDS-PLUS the words are their own: every class either panel paints - read
     ch.render(cardHudModel({ phase: 'playing', view: s.view(), legal: s.legal(), stakes: { sb: 5, bb: 10 }, log: ['You sit down.'] }));
     take(ch.root);
     all(ch.root, 'fold')[0].fire('click'); take(ch.root);
+    // AUDIT CARDS-PLUS E10: the states the sweep never reached - the other player committed, a face-down card of your own,
+    // a drawn end; Hold'em's seats gone, out of the hand, folded, all in, to act, and the winner's at a showdown
+    const vc = structuredClone(iliacTurn().v);
+    vc.players[1].committed = true;
+    const unit = STARTER_DECK.find((id) => cardById(id)?.kind === 'unit');
+    vc.holdings[0].sides[0] = [{ uid: 9001, id: unit, power: 1, mod: 0, down: true }];
+    ih.render(iliacHudModel({ phase: 'playing', view: vc })); take(ih.root);
+    const drawn = iliacView(played(6), 0);
+    drawn.result = { ...drawn.result, winner: null };
+    ih.render(iliacHudModel({ phase: 'over', view: drawn })); take(ih.root);
+    const hs = new CardTableSession({ player: { id: 'you', name: 'You', stack: 500 }, patrons: ['Ana', 'Bors', 'Cael', 'Dun'].map((n, i) => ({ id: `p${i}`, name: n, temper: ['loose', 'tight', 'bluffer'][i % 3], stack: 400 })), stakes: { sb: 5, bb: 10 }, rand32: src32(9), now: 0 });
+    let mid = null, shown = false;
+    for (let now = 0; now <= 600000 && !(shown && !hs.view().hand); now += 50) {
+      hs.tick(now);
+      const l = hs.legal();
+      if (!mid && hs.view().hand) mid = structuredClone(hs.view());
+      if (l) hs.playerAct(l.check ? { type: 'check' } : { type: 'call' }, now);
+      for (const e of hs.drain()) if (e.t === 'showdown') shown = true;
+    }
+    ch.render(cardHudModel({ phase: 'playing', view: hs.view(), legal: null, stakes: { sb: 5, bb: 10 } })); take(ch.root);
+    mid.seats[1].gone = true;
+    mid.seats.push({ ...mid.seats[2], name: 'Late' });   // a chair filled after the deal: out of this hand
+    mid.hand.seats[2].folded = true;
+    mid.hand.seats[3].allIn = true;
+    mid.hand.toAct = 4;
+    ch.render(cardHudModel({ phase: 'playing', view: mid, legal: null, stakes: { sb: 5, bb: 10 } })); take(ch.root);
   }
-  for (const w of ['dfcards', 'dfiliac', 'tablehead', 'tabletitle', 'tableacts', 'msg', 'log', 'fold', 'card-face', 'painted', 'seat', 'board', 'pot', 'opt', 'optname', 'opttemper', 'optword', 'season', 'box', 'ilbar', 'track', 'pip', 'gem', 'foe', 'mb', 'hold', 'holdhead', 'holdart', 'holdname', 'holdrule', 'lane', 'slot', 'duel', 'duelside', 'pw', 'tray', 'ic', 'p', 'verdict', 'collapsed']) assert.ok(words.has(w), `the painters wrote ${w} (the sweep reads what they paint)`);
+  for (const w of ['dfcards', 'dfiliac', 'tablehead', 'tabletitle', 'tableacts', 'msg', 'log', 'fold', 'card-face', 'painted', 'seat', 'board', 'pot', 'opt', 'optname', 'opttemper', 'optword', 'season', 'box', 'ilbar', 'track', 'pip', 'gem', 'foe', 'mb', 'hold', 'holdhead', 'holdart', 'holdname', 'holdrule', 'lane', 'slot', 'duel', 'duelside', 'pw', 'tray', 'ic', 'p', 'verdict', 'collapsed',
+    'foestate', 'down', 'drawn', 'duelpart', 'duelto', 'you', 'gone', 'out', 'folded', 'all-in', 'to-act', 'won']) assert.ok(words.has(w), `the painters wrote ${w} (the sweep reads what they paint)`);
   for (const w of ['card', 'row', 'note', 'head', 'side', 'acts']) assert.equal(words.has(w), false, `the bare '${w}' - the enhanced sheet's component`);
   const { rules: all_ } = await uiSheetRules();
   const own = new Set(['dfcards', 'dfiliac']);
@@ -239,7 +298,7 @@ test('CARDS-PLUS Iliac Hand\'s model: who holds each holding as the board stands
   assert.equal(m.spectator, false);
 });
 
-test('CARDS-PLUS Iliac Hand\'s painted panel: the turn a track of six and the magicka its gems (the staged spend dimmed), the other\'s backs - neither past the rules\' own ceilings, a garbled count said and never drawn - each holding under its own painted location card with its lanes\' empty places and the duel\'s holder lit, the hand in its tray painted by the binder\'s own canvas at its CSS size - the painter\'s tile face, never twice it - a fresh copy for each place, the verdict at the end, the fold kept across repaints, the log a line a sentence (mutants: the hand painted twice its size; the empty places gone; the log one run; the fold forgotten; the verdict unsaid; the copy left blank; the gems past the magicka\'s ceiling; the gems or the backs uncapped)', () => {
+test('CARDS-PLUS Iliac Hand\'s painted panel: the turn a track of six and the magicka its gems (the staged spend dimmed), the other\'s backs - neither past the rules\' own ceilings, a garbled count said and never drawn - each holding under its own painted location card with its lanes\' empty places and the duel\'s holder lit, the hand in its tray painted by the binder\'s own canvas at its CSS size - the painter\'s tile face, never twice it - a fresh copy for each place, the verdict at the end, the fold kept across repaints (the table\'s words away, the line and the presses kept), the log a line a sentence scrolled to its newest, each press wearing its kind - the brass, the quiet, the concession\'s blood (mutants: the hand painted twice its size; the empty places gone; the log one run; the fold forgotten; the verdict unsaid; the copy left blank; the gems past the magicka\'s ceiling; the gems or the backs uncapped; the number ahead never lit; the wrong side lit; the plate\'s lead dropped; the leads\' colours swapped; the presses\' kinds unpainted; the log left at its top; the fold putting away the presses or keeping the log)', () => {
   _clearCardFacesForTests();
   const doc = paintingDoc();
   const hud = createIliacTableHud({ onPress: () => {}, doc });
@@ -283,6 +342,14 @@ test('CARDS-PLUS Iliac Hand\'s painted panel: the turn a track of six and the ma
   assert.equal(all(tray, 'picked').length, pick == null ? 0 : 1);
   const log = all(hud.root, 'log')[0];
   assert.deepEqual(log.children.map((n) => n.textContent), ['The holdings: a, b, c.', 'Turn 1.', 'Ana commits.'], 'a line a sentence, the newest last');
+  assert.ok(log.scrollHeight > 0 && log.scrollTop === log.scrollHeight, 'AUDIT CARDS-PLUS E4: scrolled to the newest');
+  // AUDIT CARDS-PLUS E3: each press wears its kind - the brass the commit is, the quiet stand at the row's end; a game for
+  // keeps makes the stand a concession, in blood
+  const press = (root, id) => every(root).find((n) => n.getAttribute?.('data-focus') === `act-${id}`);
+  assert.deepEqual([press(hud.root, 'commit').dataset.kind, press(hud.root, 'clear').dataset.kind, press(hud.root, 'stand').dataset.kind], ['primary', undefined, 'quiet']);
+  hud.render(iliacHudModel({ phase: 'playing', view: { ...v, forKeeps: true }, staged, pick }));
+  assert.equal(press(hud.root, 'stand').dataset.kind, 'warn', 'the concession in blood');
+  hud.render(m);
   // a count past the rules' ceilings (a garbled relay's) is said in the count and never grows the row
   hud.render({ ...m, me: { ...m.me, magicka: 99, spend: 0 }, them: { ...m.them, hand: 99 } });
   assert.equal(all(hud.root, 'gem').length, ILIAC_MAGICKA_MAX, 'the gems the magicka\'s ceiling at most');
@@ -298,7 +365,24 @@ test('CARDS-PLUS Iliac Hand\'s painted panel: the turn a track of six and the ma
   assert.equal(hud.root.className, 'dfiliac collapsed', 'kept across a repaint');
   assert.equal(all(hud.root, 'fold')[0].getAttribute('aria-expanded'), 'false');
   assert.equal(all(hud.root, 'fold')[0].getAttribute('data-focus'), 'fold', 'the keyboard\'s, as every control of the panel');
+  // AUDIT CARDS-PLUS D5: the fold says what it does to the panel - its tooltip and its name to a screen reader, both
+  // panels' alike (its name was the glyph)
+  assert.equal(all(hud.root, 'fold')[0].getAttribute('aria-label'), 'Expand the panel');
+  assert.equal(all(hud.root, 'fold')[0].title, 'Expand the panel');
+  const holdem = createCardTableHud({ onPress: () => {}, doc: paintingDoc() });
+  holdem.render(cardHudModel({ phase: 'buyin', buyIn: { min: 100, max: 500 }, stakes: { sb: 5, bb: 10 } }));
+  const hf = all(holdem.root, 'fold')[0];
+  assert.deepEqual([hf.title, hf.getAttribute('aria-label'), hf.getAttribute('aria-expanded')], ['Collapse the panel', 'Collapse the panel', 'true']);
+  hf.fire('click');
+  assert.deepEqual([hf.title, hf.getAttribute('aria-label'), hf.getAttribute('aria-expanded')], ['Expand the panel', 'Expand the panel', 'false']);
+  holdem.destroy();
   assert.match(ILIAC_TABLE_CSS, /\.dfiliac\.collapsed \.ilbody\{display:none\}/);
+  // AUDIT CARDS-PLUS E6: the fold puts away the table's words and keeps the line and the presses - each panel's rules
+  for (const [css, root, away] of [[ILIAC_TABLE_CSS, '.dfiliac', ['.ilbody', '.tablenote', '.log']], [CARD_TABLE_CSS, '.dfcards', ['.seats', '.board', '.tablenote', '.log']]]) {
+    const folded = rules(css).filter((r) => r.sels.some((x) => x.startsWith(`${root}.collapsed `)));
+    for (const w of away) assert.ok(folded.some((r) => r.sels.includes(`${root}.collapsed ${w}`) && /display: ?none/.test(r.body)), `${root}: the fold puts ${w} away`);
+    for (const w of ['.msg', '.tableacts', 'button']) assert.ok(!folded.some((r) => r.sels.some((x) => x.includes(w))), `${root}: the fold keeps ${w}`);
+  }
   all(hud.root, 'fold')[0].fire('keydown', { key: 'Enter' });
   assert.equal(hud.root.className, 'dfiliac');
   // the end: its verdict, the line's tone
@@ -311,7 +395,25 @@ test('CARDS-PLUS Iliac Hand\'s painted panel: the turn a track of six and the ma
   assert.equal(verdict.className, `verdict ${over.outcome}`);
   assert.equal(all(hud.root, 'msg')[0].className, over.tone ? `msg ${over.tone}` : 'msg');
   assert.deepEqual(all(hud.root, 'pip').map((p) => p.className), Array(6).fill('pip past'), 'every turn played');
+  // AUDIT CARDS-PLUS E2: the holder lit, on a board where each side holds something (turn one's empty board lit nothing,
+  // so the checks above could not bite)
+  const leads = over.holdings.map((x) => x.lead);
+  assert.ok(leads.includes('mine') && leads.includes('theirs'), 'each side holds a holding here');
+  all(hud.root, 'hold').forEach((box, h) => {
+    const lead = over.holdings[h].lead;
+    assert.deepEqual(all(box, 'pw').map((p) => p.className.includes('ahead')), [lead === 'mine', lead === 'theirs'], `holding ${h}: the holder's number lit`);
+    assert.equal(box.className.includes(`lead-${lead}`), !!lead, `holding ${h}: its plate says who holds it`);
+  });
+  assert.match(ILIAC_TABLE_CSS, /body \.dfiliac \.hold\.lead-mine\{border-top-color:#f3cf86\}/, 'yours in brass');
+  assert.match(ILIAC_TABLE_CSS, /body \.dfiliac \.hold\.lead-theirs\{border-top-color:#e0584a\}/, 'theirs in blood');
+  assert.match(ILIAC_TABLE_CSS, /body \.dfiliac \.pw\.ahead\{border-color:#f3cf86 /, 'the number ahead in brass');
   hud.destroy();
+  // E3: Hold'em's presses wear theirs - the deal in brass, the stand quiet
+  const ch = createCardTableHud({ onPress: () => {}, doc: paintingDoc() });
+  ch.render(cardHudModel({ phase: 'buyin', buyIn: { min: 100, max: 500 }, stakes: { sb: 5, bb: 10 } }));
+  const kinds = all(ch.root, 'tableacts')[0].children.map((b) => b.dataset.kind ?? null);
+  assert.ok(kinds.includes('primary') && kinds[kinds.length - 1] === 'quiet', `the deal in brass, the stand quiet at the end (${kinds})`);
+  ch.destroy();
 });
 
 test('CARDS-PLUS the words the panel\'s look added are the player\'s language\'s (L10N4, bible/06-Systems/Localization-Arc.md): routed through the text core and read when they are shown - the verdict, the fold, the setup\'s heads and boxes, the track (the magicka by DFU\'s own key), the other player\'s line and state, the empty tray - from the real French table; English byte for byte until French is chosen, and again after (mutants: the verdict\'s words read once, at load; a head left in English; the magicka a port key)', () => {
@@ -337,7 +439,7 @@ test('CARDS-PLUS the words the panel\'s look added are the player\'s language\'s
     for (const w of ['Your deck', 'Play against', 'has paid a card tonight', 'Play for a card', 'The loser pays one from their deck', 'Ranked', 'The season\'s board - your realm character\'s own cards', 'Turn', 'Magicka', 'Committed', 'No cards in hand.']) {
       assert.ok(en.some((x) => x.words.includes(w)), `the English: ${w}`);
     }
-    assert.equal(en[0].fold, 'Hide the table');
+    assert.equal(en[0].fold, 'Collapse the panel', 'AUDIT CARDS-PLUS D5: what the fold does to the panel');
     assert.equal(en[3].verdict, { won: 'Victory', lost: 'Defeat', drawn: 'A draw', void: 'No contest' }[models[3].outcome]);
     const fr = Object.fromEntries(tm.parseStringTableCsv(read('locales/fr/Port_Strings.csv')));
     tm.patchLocaleTable('fr', 'Port_Strings', Object.entries(fr));
@@ -353,14 +455,154 @@ test('CARDS-PLUS the words the panel\'s look added are the player\'s language\'s
     assert.ok(said[2].words.includes('Magie') && !said[2].words.includes('Magicka'), 'the magicka by DFU\'s own key');
     assert.ok(said[2].words.includes(fr['cards.iliac.foe.counts'].replace('{hand}', String(play.them.hand)).replace('{deck}', String(play.them.deck))), 'the other player\'s line, its counts in the French pattern');
     assert.equal(said[3].verdict, fr[`cards.iliac.verdict.${models[3].outcome}`], 'the verdict in French');
+    // AUDIT CARDS-PLUS E8: every verdict, not the one the seed's game ends on
+    for (const k of ['won', 'lost', 'drawn', 'void']) assert.equal(VERDICT_WORDS[k], fr[`cards.iliac.verdict.${k}`], `${k} in French`);
     assert.equal(said[0].fold, fr['cards.table.fold.hide']);
     for (const w of ['Your deck', 'Play against', 'No cards in hand.', 'Committed']) assert.ok(!said.some((x) => x.words.includes(w)), `no English left: ${w}`);
     tm.setLocale('en');
     assert.deepEqual(shown(), en, 'English again, byte for byte');
+    assert.deepEqual(['won', 'lost', 'drawn', 'void'].map((k) => VERDICT_WORDS[k]), ['Victory', 'Defeat', 'A draw', 'No contest']);
   } finally { tm._resetTextManagerForTests(); }
 });
 
-test('CARDS-PLUS the binder\'s face, copied: a fresh canvas holding the cached painting, at the same device size - one card in two places, two nodes (mutants: the copy left blank)', () => {
+/** A page that keeps the keyboard as a browser does: a node takes focus unless it stands in a folded panel's body
+ *  (display:none there - its focus() a no-op). */
+function focusingDoc() {
+  const doc = paintingDoc();
+  doc.activeElement = doc.body;
+  const make = doc.createElement;
+  doc.createElement = (tag) => {
+    const n = make(tag);
+    n.contains = (x) => every(n).includes(x);
+    n.focus = () => {
+      const panel = doc.body.children.find((c) => String(c.className).split(' ').includes('dfiliac'));
+      const folded = panel && String(panel.className).split(' ').includes('collapsed');
+      const inBody = folded && all(panel, 'ilbody').some((b) => b === n || every(b).includes(n));
+      if (!inBody) doc.activeElement = n;
+    };
+    return n;
+  };
+  return doc;
+}
+
+test('AUDIT CARDS-PLUS lane A: a relay\'s garbled turns and room grow no row past the rules\' ceilings; no turn, other player or board before a game is dealt; an ended game lights the turns it reached; a watcher has no verdict and no yours-or-theirs plate; your own face-down card veiled; the keyboard lands only where it can stay, and Space on the panel never reaches the game (mutants: the pips uncapped; the places uncapped; the undealt drawn; the refocus blind; the root passing Space; the whole track lit; the watcher\'s verdict; the watcher\'s plates; the face-down card unveiled)', () => {
+  _clearCardFacesForTests();
+  const paint = (m, doc = paintingDoc()) => { const hud = createIliacTableHud({ onPress: () => {}, doc }); hud.render(m); return hud; };
+  // A1: a relay's garbled numbers
+  const { v } = iliacTurn();
+  const garbled = { ...v, turns: 5000, holdings: v.holdings.map((h) => ({ ...h, room: 5000 })) };
+  const g = paint(iliacHudModel({ phase: 'playing', view: garbled }));
+  assert.equal(all(g.root, 'pip').length, ILIAC_TURNS, 'the track the game\'s turns at most');
+  for (const lane of all(g.root, 'lane')) assert.ok(all(lane, 'slot').length <= ILIAC_ROOM, 'a lane\'s empty places its room at most');
+  assert.equal(all(g.root, 'slot').length, garbled.holdings.length * 2 * ILIAC_ROOM, 'every side at its cap (5,000 places open on each)');
+  // A3: online, no game on the cloth yet - the wait said, nothing drawn as if a game stood
+  for (const online of [{ waiting: true }, { seating: true }, {}]) {
+    const m = iliacHudModel({ phase: 'playing', view: null, online });
+    assert.equal(m.dealt, false);
+    const r = paint(m).root;
+    for (const cls of ['track', 'foe', 'hold', 'tray']) assert.equal(all(r, cls).length, 0, `no ${cls} before the deal (${JSON.stringify(online)})`);
+    assert.ok(all(r, 'msg')[0].textContent.length > 0, 'the wait said');
+  }
+  assert.equal(iliacHudModel({ phase: 'playing', view: v }).dealt, true);
+  // A5: a game conceded on turn 2 - two of six
+  const early = iliacView(played(1), 0);
+  assert.equal(early.turn, 2);
+  const e = paint(iliacHudModel({ phase: 'over', view: early, end: 'won-left' })).root;
+  assert.deepEqual(all(e, 'pip').map((p) => p.className), ['pip past', 'pip past', 'pip', 'pip', 'pip', 'pip']);
+  assert.equal(all(e, 'track')[0].children[2].textContent, '2/6');
+  // A6, A7: a watcher
+  const w = iliacView(played(6), -1);
+  assert.equal(iliacOutcome(w, 'void'), null, 'a watcher\'s end is the players\'');
+  assert.equal(iliacOutcome(iliacView(played(6), 0), 'void'), 'void', 'a player\'s no contest');
+  const wr = paint(iliacHudModel({ phase: 'over', view: w, end: 'void', online: { watching: true } })).root;
+  assert.equal(all(wr, 'verdict').length, 0);
+  assert.ok([0, 1, 2].some((h) => holdingLead(w, h)), 'someone leads somewhere (the plates have a lead to drop)');
+  assert.ok(all(wr, 'hold').every((b) => !/lead-/.test(b.className)), 'no yours-or-theirs edge for a watcher');
+  assert.ok(all(wr, 'pw').some((p) => p.className.includes('ahead')), 'the duel still lights the leading number');
+  // the owner's face-down card: its face for them, under a veil (its text never runs; the other sees its back); the
+  // other player's face-down card: a back, no veil (nothing of it is the viewer's to know)
+  const unit = STARTER_DECK.find((id) => cardById(id)?.kind === 'unit');
+  const fd = structuredClone(v);
+  fd.holdings[0].sides[0] = [{ uid: 9001, id: unit, power: cardById(unit).power, mod: 0, down: true }];
+  fd.holdings[0].sides[1] = [{ uid: 9002, down: true }];
+  const fr = paint(iliacHudModel({ phase: 'playing', view: fd })).root;
+  const [theirLane, myLane] = all(all(fr, 'hold')[0], 'lane');
+  assert.deepEqual([all(myLane, 'down').length, all(theirLane, 'down').length], [1, 0], 'the owner\'s veiled, the other\'s a back');
+  assert.match(ILIAC_TABLE_CSS, /\.dfiliac \.ic\.down::after\{content:''/);
+  // A4: Clear pressed from the keyboard in a folded panel - the control gone, the first card hidden: the panel holds the
+  // keyboard, never the page; and Space on the panel stops there
+  const doc = focusingDoc();
+  const { staged } = iliacTurn();
+  const hud = createIliacTableHud({ onPress: () => {}, doc });
+  hud.render(iliacHudModel({ phase: 'playing', view: v, staged }));
+  all(hud.root, 'fold')[0].fire('click');
+  const clear = every(hud.root).find((n) => n.getAttribute?.('data-focus') === 'act-clear');
+  clear.focus();
+  assert.equal(doc.activeElement, clear);
+  hud.render(iliacHudModel({ phase: 'playing', view: v, staged: [] }));
+  assert.equal(doc.activeElement, hud.root, 'the keyboard on the panel, never the page\'s body');
+  for (const key of [' ', 'Enter', 'Tab']) {
+    let stopped = false;
+    hud.root.fire('keydown', { key, stopPropagation() { stopped = true; } });
+    assert.ok(stopped, `${JSON.stringify(key)} on the panel is the panel's`);
+  }
+  let passed = true;
+  hud.root.fire('keydown', { key: 'w', stopPropagation() { passed = false; } });
+  assert.ok(passed, 'a walking key still reaches the game');
+  hud.destroy();
+});
+
+test('AUDIT CARDS-PLUS lanes B and C: every look keeps the panels\' marks - the DFO Grimoire dress re-says each in its own colours (yours and for you its chosen green, theirs the pack\'s red, a lead a bar inside the plate, the power ahead gold leaf on its wood, a card\'s power badge as printed, an empty place a hollow, the keyboard a red ring, a short card red) and draws a tile\'s marks above its box; a warn press answers the pointer; the panels are small windows; a target is a ring outside its plate, so the lead\'s edge stands; a disabled choice takes no pointer; the keyboard on a staged card shows; the board wraps its pot; no edge carries a colour of the panels\' own; a watcher has no tray, a drawn end no tone (mutants: a twin dropped; the tile\'s mark beneath the fill; the warn deaf; the frame off the screen; the target over the lead; the disabled choice pressable; the staged focus hidden; the pot unwrapped; a shorthand edge back)', () => {
+  const dress = rules(kitCss());
+  const twin = (sel, re) => dress.some((r) => r.sels.includes(`${G} ${sel}`) && re.test(r.body));
+  // B1 (C1, B7's dress half): the card tables' marks, re-said by the dress
+  assert.ok(twin('body .dfcards .seat.you', /border-color: #1d5530 !important/), 'your seat');
+  assert.ok(twin('body .dfcards .seat.to-act', /box-shadow: inset 0 0 0 2px #8e1a10/), 'the one to act');
+  assert.ok(twin('body .dfcards .seat.won', /border-color: #1d5530 !important; box-shadow: inset 0 0 0 100vmax/), 'the winner');
+  assert.ok(twin('body .dfiliac .hold.lead-mine', /box-shadow: inset 0 3px 0 #1d5530/) && twin('body .dfiliac .hold.lead-theirs', /box-shadow: inset 0 3px 0 #8e1a10/), 'who holds it, a bar inside');
+  assert.ok(twin('body .dfiliac .hold.target', /outline: 3px solid #1d5530 !important/), 'a target, a ring outside');
+  assert.ok(twin('body .dfiliac .pw.ahead', /border-color: #d8b04a !important; color: #f4e04c !important/), 'the power ahead');
+  assert.ok(twin('body .dfiliac .ic .p.up', /background: #2f7a43 !important/) && twin('body .dfiliac .ic .p.down', /background: #4a1a12 !important/), 'a power raised and lowered, as printed');
+  assert.ok(twin('body .dfiliac .slot', /box-shadow: inset 0 0 0 1px/), 'an empty place');
+  assert.ok(twin('body .dfcards [tabindex="0"]:focus-visible', /outline: 2px solid #8e1a10 !important/) && twin('body .dfiliac [tabindex="0"]:focus-visible', /outline: 2px solid #8e1a10 !important/), 'the keyboard');
+  assert.ok(twin('.px-sys .binder-chip.short', /outline: 2px solid #ff8a6a/), 'a short card (C2)');
+  assert.ok(twin('body .dfiliac .holdname', /color: #2b1a0c !important/), 'a holding\'s name in the ink');
+  // C2: a tile's marks above the cubby's fill - an outline, never an inset shadow the fill paints over
+  const tileOn = dress.find((r) => r.sels.includes(`${G} .px-sys .binder-filter.on`));
+  assert.ok(tileOn && /outline: 2px solid #d8b04a/.test(tileOn.body) && !/inset/.test(tileOn.body), `a chosen tile's mark above its box: ${tileOn?.body}`);
+  // the warn press answers the pointer and the keyboard (its own red outweighed the hover's)
+  assert.ok(dress.some((r) => r.sels.includes(`${G} body .dfiliac button[data-kind="warn"]:hover:not(:disabled)`) && /color: #b52418 !important/.test(r.body)), 'a concession under the pointer');
+  // B4: small windows - the torn page's frame stays on the screen
+  assert.ok(SMALL_WINDOWS.includes('body .dfcards') && SMALL_WINDOWS.includes('body .dfiliac'));
+  // B5: a target is a ring outside the plate, so the plate's top edge still says who holds it
+  const il = rules(ILIAC_TABLE_CSS);
+  const target = il.find((r) => r.sels.includes('body .dfiliac .hold.target'));
+  assert.ok(target && /box-shadow:[^;]*0 0 0 3px #f3cf86/.test(target.body) && !/border/.test(target.body), `the target a ring: ${target?.body}`);
+  // B8, B9
+  assert.match(ILIAC_TABLE_CSS, /\.dfiliac \.opt\.off\{[^}]*pointer-events:none/, 'a choice that cannot be made takes no pointer');
+  assert.match(ILIAC_TABLE_CSS, /\.dfiliac \.ic\.staged:focus-visible\{outline-style:solid/, 'the keyboard on a staged card');
+  // C3: the board wraps its pot; no edge in either panel's sheet or the chrome carries a colour of its own (the shorthand
+  // painted the pot's brass over the kit's chip)
+  assert.match(CARD_TABLE_CSS, /\.dfcards \.board\{display:flex;flex-wrap:wrap;/);
+  const roleSurfaces = Object.values(FRAME_ROLES).flat().filter(isCardPanelSelector).map((x) => x.replace(/^body /, ''));
+  for (const [name, css] of [['Hold\'em', CARD_TABLE_CSS], ['Iliac Hand', ILIAC_TABLE_CSS]]) {
+    for (const r of rules(css.replace(/\/\*[\s\S]*?\*\//g, ''))) {
+      if (!r.sels.some((x) => roleSurfaces.includes(x) || /^\.card-panel-root|^\.(dfcards|dfiliac)( (button|\.fold|\.tablehead|\.log))?$/.test(x))) continue;
+      assert.doesNotMatch(r.body, /border(-(top|right|bottom|left))?: ?\d+px solid/, `${name}: ${r.sels.join(', ')} - an edge of a kit surface is a width and a style`);
+    }
+  }
+  // E12: a watcher holds no tray; a drawn end has no tone (it is neither yours nor theirs)
+  const w = iliacView(played(6), -1);
+  const wr = createIliacTableHud({ onPress: () => {}, doc: paintingDoc() });
+  wr.render(iliacHudModel({ phase: 'over', view: w, online: { watching: true } }));
+  assert.equal(all(wr.root, 'tray').length, 0, 'no tray for a watcher');
+  const drawn = iliacView(played(6), 0);
+  drawn.result = { ...drawn.result, winner: null };
+  const dm = iliacHudModel({ phase: 'over', view: drawn });
+  assert.deepEqual([dm.outcome, dm.tone], ['drawn', null]);
+});
+
+test('CARDS-PLUS the binder\'s face, copied: a fresh canvas holding the cached painting, at the same device size, laid whole at its corner - at a pixel ratio of 1 and of 2 - one card in two places, two nodes (mutants: the copy left blank; the copy drawn askew)', () => {
   _clearCardFacesForTests();
   const doc = paintingDoc();
   const rat = cardById('rat');
@@ -373,6 +615,20 @@ test('CARDS-PLUS the binder\'s face, copied: a fresh canvas holding the cached p
   }
   assert.deepEqual(src.log.scale[0], [1, 1], 'painted at the screen\'s ratio (1 here)');
   for (const c of [a, b]) assert.equal(c.log.drawn[0], src, 'from the one cached painting');
+  for (const c of [a, b]) assert.deepEqual(c.log.at[0], [0, 0], 'AUDIT CARDS-PLUS E7: laid whole, at its corner');
+  // E7: and on a screen of twice the pixels - painted at twice its size in device pixels, the copy the same
+  const had = Object.getOwnPropertyDescriptor(globalThis, 'devicePixelRatio');
+  try {
+    Object.defineProperty(globalThis, 'devicePixelRatio', { value: 2, configurable: true, writable: true });
+    _clearCardFacesForTests();
+    const src2 = cardCanvas(doc, rat, 46), c2 = cardCanvasCopy(doc, rat, 46);
+    assert.deepEqual(src2.log.scale[0], [2, 2], 'painted at the screen\'s ratio');
+    assert.deepEqual([src2.height, c2.width, c2.height], [92, src2.width, src2.height], 'twice the pixels, the copy the same');
+    assert.deepEqual(c2.log.at[0], [0, 0]);
+  } finally {
+    if (had) Object.defineProperty(globalThis, 'devicePixelRatio', had); else delete globalThis.devicePixelRatio;
+    _clearCardFacesForTests();
+  }
 });
 
 test('CARDS-PLUS the Collections page leaves the paint to the kit: its switch, the binder\'s filters, chips, decks and the deck\'s name give the roles a 2px edge and no colour or ground of their own over it, the codex row a line - the sentence "dressed by the kit\'s roles" true at last (mutants: the switch\'s own ground back; a chip\'s own border colour; a filter on a 1px line)', () => {
@@ -387,4 +643,6 @@ test('CARDS-PLUS the Collections page leaves the paint to the kit: its switch, t
   assert.doesNotMatch(body('.px-sys .codex-line'), /background/);
   assert.match(body('.px-sys .binder-edit input'), /border-width: 2px; border-style: solid;/);
   assert.match(body('.px-sys .binder-chip.short'), /border-color: #d0604f/, 'a card the binder is short of keeps its red edge over the kit');
+  // AUDIT CARDS-PLUS E12: a chosen filter says it in its word; its edge and ground are the kit's tile .on
+  assert.doesNotMatch(body('.px-sys .binder-filter.on'), /background|border/, 'a chosen filter\'s paint is the kit\'s');
 });
