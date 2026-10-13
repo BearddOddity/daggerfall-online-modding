@@ -1,6 +1,6 @@
 # TAVERN CARDS - a card table in every tavern (CARDS0, the design record)
 
-**Status: DESIGN RECORD, being built - CARDS1 SHIPPED (2026-10-07, section 10; Mac: "Do it"), CARDS2 SHIPPED (the same day, section 11; Mac: "Continue"), CARDS2b SHIPPED (section 12; Mac: "Continue") - the seated Morrowind body, the others' to see, on relay world178; AUDIT CARDS over all of it the same day (section 13, `01-Overview/Audit-Cards.md`); CARDS4 SHIPPED (section 14) and CARDS3 SHIPPED (section 15) together (Mac: "Do 3 and 4") - offline Hold'em against the tavern's regulars for gold, the cards and chips on the cloth; AUDIT CARDS-2 over all of it (section 16, `01-Overview/Audit-Cards-2.md`; Mac: "Perfection"); then (Mac: "Do 3 4 and 5") CARDS5 SHIPPED (section 17, the relay deals - online Hold'em between players, friendly), CARDS4b (section 18, the regulars seated in their chairs) and CARDS3b (section 19, the held hand, the peek, the chips dragged, the riffle); then (Mac: "I wanna do a deep comprehensive of everything and give the cards daggerfall especially themes") AUDIT CARDS-3 over all of it (section 20, `01-Overview/Audit-Cards-3.md`) and CARDS-BAY SHIPPED (section 21, the deck of the Iliac Bay); then (Mac: "#2 and cleanup") CARDS-TIDY (section 22) and CARDS6 SHIPPED (section 23, gold tables online - the stakes escrowed by the realm service); then (Mac: "2 and 3") AUDIT CARDS-4 over them (section 25, `01-Overview/Audit-Cards-4.md`) and CARDS6b SHIPPED (section 24, the top-up and gold owed elsewhere); then (Mac: "So what about card collections?") the Holdings rail's COLLECTIONS page, CARDS7 SHIPPED (Iliac Hand's rules) and CARDS8 SHIPPED (the first set, its painted faces, the Card Binder and the starter deck) - section 26. Then (Mac: "one last comprehensive audit") AUDIT CARDS-5 - section 27. Then (the owner: "Lets instead place a specific table in each inn. A new property specifficaly used for the card table") TAVERN-TABLE - section 28, every tavern's own card table, a prop of its own; then (the owner: "Audit this") AUDIT TAVERN-TABLE - section 29; then (Discord, live: "Card tables just aren't working at all right now" - "it doesnt let him use gold tables"; the owner: "Two tables per tavern") TAVERN-TABLES - section 30, the chips table and the gold table; then (AUDIT CARDS-6's lane E, found live on main) CARDS-TOUCH - section 31, a phone's finger at the table the table's, and (a live report: "Shes clicking deal me in but nothing happens") CARDS-SAID, a refused stake said on the panel. Then (Mac: "Lets build every inch of this. Dont forget about a card needing to come from the abyss dungeon also") CARDS9 SHIPPED (section 32, where cards come from - the Abyss Dungeon's Brass Remnant's card among the bosses'), CARDS10 SHIPPED (section 33, Iliac Hand at the table offline and online, the season board and its title) and CARDS2c and CARDS3c (section 34, the sprite lane seated, the squeeze, the click and the push, the frame cost measured) - relay world182 and account acct99 (world179 and acct97 on their branch, renumbered at the merges), NOT YET DEPLOYED. Then (Mac: "Lets do a deep and comprehensive audit. This must be perfection") AUDIT CARDS-6 - section 35. Mac answered
+**Status: DESIGN RECORD, being built - CARDS1 SHIPPED (2026-10-07, section 10; Mac: "Do it"), CARDS2 SHIPPED (the same day, section 11; Mac: "Continue"), CARDS2b SHIPPED (section 12; Mac: "Continue") - the seated Morrowind body, the others' to see, on relay world178; AUDIT CARDS over all of it the same day (section 13, `01-Overview/Audit-Cards.md`); CARDS4 SHIPPED (section 14) and CARDS3 SHIPPED (section 15) together (Mac: "Do 3 and 4") - offline Hold'em against the tavern's regulars for gold, the cards and chips on the cloth; AUDIT CARDS-2 over all of it (section 16, `01-Overview/Audit-Cards-2.md`; Mac: "Perfection"); then (Mac: "Do 3 4 and 5") CARDS5 SHIPPED (section 17, the relay deals - online Hold'em between players, friendly), CARDS4b (section 18, the regulars seated in their chairs) and CARDS3b (section 19, the held hand, the peek, the chips dragged, the riffle); then (Mac: "I wanna do a deep comprehensive of everything and give the cards daggerfall especially themes") AUDIT CARDS-3 over all of it (section 20, `01-Overview/Audit-Cards-3.md`) and CARDS-BAY SHIPPED (section 21, the deck of the Iliac Bay); then (Mac: "#2 and cleanup") CARDS-TIDY (section 22) and CARDS6 SHIPPED (section 23, gold tables online - the stakes escrowed by the realm service); then (Mac: "2 and 3") AUDIT CARDS-4 over them (section 25, `01-Overview/Audit-Cards-4.md`) and CARDS6b SHIPPED (section 24, the top-up and gold owed elsewhere); then (Mac: "So what about card collections?") the Holdings rail's COLLECTIONS page, CARDS7 SHIPPED (Iliac Hand's rules) and CARDS8 SHIPPED (the first set, its painted faces, the Card Binder and the starter deck) - section 26. Then (Mac: "one last comprehensive audit") AUDIT CARDS-5 - section 27. Then (the owner: "Lets instead place a specific table in each inn. A new property specifficaly used for the card table") TAVERN-TABLE - section 28, every tavern's own card table, a prop of its own; then (the owner: "Audit this") AUDIT TAVERN-TABLE - section 29; then (Discord, live: "Card tables just aren't working at all right now" - "it doesnt let him use gold tables"; the owner: "Two tables per tavern") TAVERN-TABLES - section 30, the chips table and the gold table; then (AUDIT CARDS-6's lane E, found live on main) CARDS-TOUCH - section 31, a phone's finger at the table the table's, and (a live report: "Shes clicking deal me in but nothing happens") CARDS-SAID, a refused stake said on the panel. Then (Mac: "Lets build every inch of this. Dont forget about a card needing to come from the abyss dungeon also") CARDS9 SHIPPED (section 32, where cards come from - the Abyss Dungeon's Brass Remnant's card among the bosses'), CARDS10 SHIPPED (section 33, Iliac Hand at the table offline and online, the season board and its title) and CARDS2c and CARDS3c (section 34, the sprite lane seated, the squeeze, the click and the push, the frame cost measured) - relay world182 and account acct99 (world179 and acct97 on their branch, renumbered at the merges), NOT YET DEPLOYED. Then (Mac: "Lets do a deep and comprehensive audit. This must be perfection") AUDIT CARDS-6 - section 35. Then (the owner, 2026-10-13: "Lets improve the illiac bay minigame visuals and ensure the general card UI uses enhanced plus and our fonts. Currently it doesnt") CARDS-PLUS - section 38: the card UI in the Enhanced Plus kit and the game's face on every skin, and Iliac Hand's table made to read as a game. Mac answered
 four of section 9's five questions the same day, and the house deck's art (Q5) on 2026-10-08; the collectible cards' art is still open. Every DECIDED below binds the build
 slices, and a slice that ships one records any change here first.**
 
@@ -207,6 +207,7 @@ Each ships alone and is verifiable without the next.
 | **CARDS8** | The catalog and the art pipeline: the first set of cards, the Card Binder, the starter deck, the deckbuilder window. SHIPPED 2026-10-08 (section 26): the deck builder is the Holdings rail's Collections page. |
 | **CARDS9** SHIPPED | Collecting: foe drops, tavern packs, quest and boss cards (the Abyss Dungeon's among them), cards in the trade and the market; their worth and customs (section 30). |
 | **CARDS10** SHIPPED | Iliac Hand at the table, offline against patrons and online through the relay; the season ladder and its title (section 31). |
+| **CARDS-PLUS** SHIPPED | The card UI - both table panels and the Collections page's Cards - in the Enhanced Plus kit and the game's face on every skin; Iliac Hand's table made to read as a game (section 38). |
 
 ## 9. Questions for Mac (four answered 2026-10-07)
 
@@ -1254,3 +1255,68 @@ the same frame's draw read `(g.remote ?? g.session).view()` - null online. The d
 (CardScene.poses takes one). "stood" and AUDIT CARDS-6 E8's "other game" took the same branch.
 - **Pins:** `test/auditcards6_e.test.js` 11 (the eleventh). `tools/mutants/fb1011g_allin.json` 1, dead. The record:
   `01-Overview/Field-Bugs-2026-10-11g.md` ALL-IN.
+
+## 38. CARDS-PLUS (2026-10-13): the card UI in the Enhanced Plus kit and the game's face; Iliac Hand's table made to read as a game
+
+The owner: **"Lets improve the illiac bay minigame visuals and ensure the general card UI uses enhanced plus and our fonts.
+Currently it doesnt"**.
+
+- **WHAT WAS WRONG, MEASURED.** CARDS4 and CARDS10 each laid a sheet of its own - "the enhanced skin's dark plate and
+  gold" - in Georgia, serif, set on the panel's root and again on every button: under the Plus sheet, in Chromium, both
+  roots and their buttons computed `Georgia, serif`, so FONT3's face on the body reached no word of either. The kit
+  (`ui/enhancedFrame.js` FRAME_ROLES) named none of their surfaces, where PLUS-ONLY's law is that a new enhanced surface
+  is dressed by it. Their generic words were the enhanced sheet's own bare components and took them: an Iliac holding's
+  row (`.row`) a menu row's 11px 18px padding and its underline, Hold'em's little card (`.card`) a settings card's
+  border and its 16px foot, the note (`.note`) a 10px top margin. The Collections page said it was "dressed by the
+  stone-and-brass kit's roles", and no role named its switch, its codex rows or the binder's filters, chips and decks -
+  its own `background` and border colours painted over any that might. Iliac Hand's panel painted its cards at twice
+  their CSS size, past the painter's tile bound (`ILIAC_TILE_MAX_H`), so the hand wore the full face's rules box at 4px
+  (AUDIT CARDS-5 made the tile face for exactly that size), beside a face cache of its own; and its log ran its sentences
+  together under a hidden overflow, the newest cut off - the defect CARDS-PANEL fixed on the Hold'em panel alone.
+- **THE DRESS** (`ui/cardPanelKit.js`, the naval readout's way - a panel over the world, outside the window stack):
+  each panel's own sheet (`CARD_TABLE_CSS`, `ILIAC_TABLE_CSS`, exported so the sheets' reader evaluates them) writes
+  geometry and words - the face's trio and its five on the root, every press, slider and field taking it - and the
+  chrome both wear (the window's box, the header band and its fold, the note, the line and its tones, the presses' row
+  and its kinds, the log) is one home, written over a placeholder root so it reads as rules wherever it is read. The
+  kit paints by role: both panels carved windows with brass fittings; a seat and a holding panels; the presses buttons,
+  the deal, the check and the call, the commit and the next game primary, Iliac Hand's Concede and stand a warn in
+  blood; the setup's choices tiles; the board, the hand and the season's board wells; the pot and a holding's power
+  chips; the header bands; the logs under a rule - every selector with a leading `body` (the panels' sheets land after
+  the skin's). On Enhanced Plus the kit is on the page with every colour (the game's enhanced HUD lays the Plus sheet
+  before a table is sat at); on the classic skin the panel lays the kit cut to the two panels (`cardKitCss`,
+  `dressCardPanel` - AUDIT SET U1's answer) and asks for the face, so a table reads the same on every UI Overhaul; under
+  the DFO Grimoire dress the roles are what the dress repaints, and its face is re-said in Alagard. Every class either
+  panel writes is a word of its own (the duel's `side` became `duelside` before it shipped - the windows' `.side` is
+  HUD-CLASS's own example). The card lab (`cards.html`) lays the Plus sheet as the game's HUD does, and with
+  `&game=iliac` shows Iliac Hand's own panel over its cloth.
+- **ILIAC HAND'S TABLE** (`ui/iliacTableHud.js`). The turn a track of six and the magicka its gems, the staged spend
+  dimmed; the other player's hand as its backs beside their deck and their commit (the gems and the backs never past the
+  rules' own ceilings, `ILIAC_MAGICKA_MAX` and `ILIAC_HAND_MAX` - a count past them, a garbled relay's, is said in the
+  count and never grows the row); each holding a plate under its own
+  painted location card - their lane above, yours below, every place a side has left an empty slot, the power each way in
+  a duel whose holder is lit, and the plate's top edge brass where you hold it and blood where they do; the hand a tray
+  sunk into the stone, a lane and the tray overlapping their cards where a phone is narrower than them, the card picked
+  lifted in brass; the end a verdict (Victory, Defeat, A draw, No contest); a fold that puts the game's words away so the
+  cloth shows, kept across repaints; the log a line a sentence, four whole lines, the newest in view. The model says
+  what the painter draws (`holdingLead` - the rules' own law over the power the view shows, a tie nobody's, the
+  result's word once decided; `iliacOutcome`; each holding's `open` places - a staged unit takes one, a staged spell
+  none; the line's `tone`; `spectator`; the presses' `kind`). Every card is the binder's own painting at its CSS
+  size and the screen's ratio (`ui/cardBinderPage.js` cardCanvas), a fresh copy for each place it stands
+  (`cardCanvasCopy`) - the tile face, one cache.
+- **THE COLLECTIONS PAGE**: the Codex | Cards switch, the binder's kind filters and a deck's chips are the kit's tiles,
+  a codex row its list line, a deck its panel, a deck's name its field; the page's sheets give them the 2px edge the
+  roles paint and nothing over it (a card the binder is short of keeps its red edge).
+- **Seen** (`tools/cardPanelsProbe.mjs`, Chromium): both panels through their real painters - Iliac Hand's setup, a
+  turn with a card staged and one picked, its end; Hold'em's buy-in and a hand at the flop - on Enhanced Plus, the
+  classic skin and the DFO Grimoire dress at 1280 and a 390 phone: the face, the kit's frame, the panel on the screen
+  with nothing wider than it, no borrowed component, the hand at its 80px tile face, the log at its newest on a whole
+  line, the fold. 314 checks, 314 passed.
+- **Recorded, not built:** under the DFO Grimoire dress the track's pips and the gems are inked as the dress inks every
+  mark (outlined, the numbers beside them saying the counts); the cards' own lettering, painted on their canvases, keeps
+  the painters' serif - it is the cards' print, not the panel's words (`ui/textFont.js`: canvas text keeps its own
+  font); the cloth is as section 33 laid it.
+- **Pins:** `test/cardsplus.test.js` 8. PIN MOVED: `auditcards6_b` B5 reads the regular's own tile (the name and
+  temper on its first line, what the regular has paid under it); `plusdress1`'s warn rule carries Iliac Hand's concession.
+  `tools/mutants/cardsplus.json` 33, all dead. Re-judging the touched files' 132 older records found one survivor on
+  the base as well - `cards8.json` C8-builder-past-held, its tests never the suite that holds its law (AUDIT CARDS-5
+  lane D's second pass in `auditcards5_ui`); re-aimed, dead.
