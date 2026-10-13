@@ -12,7 +12,7 @@ is a Ledger A row.
 | | Report | What it was | Done |
 |---|---|---|---|
 | 1 | "New affixes on crafted items" - "Added potency and cast speed, cast cost affixes are not rolling on crafted jewelry" (Boar) | the crafting mint takes the loot ladder's rarity roll and never its last pass, the one door the proc lines (focus, cast speed, potency, wellspring) come through | in progress (CRAFT-PROCS) |
-| 2 | "Cant turn in writs" - "Have the materials literally on hand. They don't accept them" (Uncon...) | law 3: a writ spends only what the service counted (gathered, or bought with silver); looted, shop-bought, traded and gold-bought Iron is held and never counted - and the card said "0 held" and "Not enough" with 100 in the pack | in progress (WRIT-WALL) |
+| 2 | "Cant turn in writs" - "Have the materials literally on hand. They don't accept them" (Uncon...) | law 3: a writ spends only what the service counted (gathered, or bought with silver); looted, shop-bought, traded and gold-bought Iron is held and never counted - and the card said "0 held" and "Not enough" with 100 in the pack | fixed (WRIT-WALL); the law kept |
 | 3 | "Shared Guild quest doesn't give me map location after friend talked to the quest npc" (Starempire42) | a `reveal` marks the clicker's own map, and a shared quest's copy carried it complete without running it | fixed (SHARE-REVEAL) |
 | 4 | "The current situation where doors lock at shops and inns in Daggerfall Capital" - "Once you get stuck, there's no way out" (Nes) | one player's Lock spell, at the caster's level, reached every visitor through the building's act and its thirty-day memory | fixed (SPELL-LOCK) |
 | 5 | "Some locations have floating houses" - "Temple of Kynareth has floating houses due to terrain modifications" (SylviaBun) | the pack hills' stand-ins seat a plateau's houses at their origin and fall away under their edges | fixed (HILL-SEAT) |
@@ -135,6 +135,37 @@ textures and the shadows; walking the bank; a real pixel's build cost (15-40 ms 
 `test/fb1013d_hillseat.test.js` (8, one on ARENA2_PATH); `tools/mutants/fb1013d_hillseat.json` (18, all dead). No pin
 moved.
 
+## WRIT-WALL: a writ's card names what it will not take (2)
+
+`src/net/profBook.js` walled; `src/ui/noticeWindow.js` writNode; `src/ui/workTab.js` writWalledText, the guild writ's
+card; `src/net/accountClient.js` (`stores-gold`).
+
+FOUND. The item and the count are right: an Alchemist's Iron is `metal:iron` (DFU's MetalIngredients #71, 0.5 kg - the
+screenshot's 100 weigh 50), and heldOf reads 100 across the pack, the bag and the wagon. A writ spends only what law 3
+and GOLD-MARKET's wall allow (`06-Systems/Materials-Bag.md` section 5): the Stores' own and bought units, and the units
+the service handed out and still counts as carried - never gold's (the service's spendableSql). So looted, shop-bought,
+traded or gold-bought Iron reads 0, in the bag, in the Stores or withdrawn: a unit keeps its origin. That is the law,
+and it is kept. THE DEFECT WAS THE CARD: "0 held" with Take shut, and its only word a hover - "Not enough - your Stores,
+Materials Bag and pack together" - false beside a pack of 100, and no hover at all on a phone. UNCOUNTED (FIELD BUGS
+2026-10-09c) had ended this silence on the Stores page alone. The guild writ's card said "You have none", and the gold
+refusal told the reader to withdraw what never fills a writ out of the Stores either. Reproduced over the real Worker:
+Iron off an Alchemist's shelf, and Iron bought with gold, each read "0 held" with nothing said.
+
+FIXED. The book reads `held`'s other side: `walled` - the Stores' gold and loose units, and every unit carried past what
+`held` counts (held + walled is every unit held). Where walled units are why a writ cannot be filled, the card says so
+under Take and on Take's title - "100 Iron you hold cannot fill a writ: only what you gathered, or bought with silver,
+counts - not what was looted, bought at a shop or with gold, or given by another player." - and the guild writ's card
+says the same, never "You have none" beside it. The gold refusal: "What you bought with gold is not used there, in your
+Stores or out of them: it goes to your pack or back on the market for gold." Through `t()`, drafted in the thirteen whole
+languages.
+
+FOR THE OWNER. Counting looted, shop-bought or traded units toward a writ changes law 3 (and would let shop gold become
+writ silver): not done, the owner's call, as FIELD BUGS 2026-10-09f left it.
+
+NOT SEEN. Where the reporter's Iron came from; the card names it whichever way it came.
+
+`test/fb1013d_writwall.test.js` (3); `tools/mutants/fb1013d_writwall.json` (13, all dead). No pin moved.
+
 ## THE FOUR HOSTS
 
 - SPELL-LOCK: the law is the ActionSystem's, every host's door graph. worldModes.js (a building: its act through
@@ -148,6 +179,7 @@ moved.
   block's pads into the pixel's static batch and its collider bucket (freed with the pixel, and on a failed build);
   exterior.js draws and collides them for the fixed city's life, as it does every model of its one location.
   worldModes.js's rooms and dungeonContext.js stand no hill.
+- WRIT-WALL: the board is every host's (an overlay); no host seam.
 
 ## Pins
 
@@ -157,3 +189,4 @@ by content, dead: `disc28.json`'s DISC28-I-getitem-not-replayed (the re-armed se
 HOME-DOORS-the-early-record-dropped (the early record now drops a peer's lock). `test/citedrift.test.js`'s vendor table
 carries the mod's `.cs:701-702` that DOOR-NAME's comment cites.
 `test/fb1013d_hillseat.test.js` (8, one on ARENA2_PATH); `tools/mutants/fb1013d_hillseat.json` 18, all dead.
+`test/fb1013d_writwall.test.js` (3); `tools/mutants/fb1013d_writwall.json` 13, all dead.

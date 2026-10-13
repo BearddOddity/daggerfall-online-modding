@@ -2675,8 +2675,8 @@
   "by": "claude-in-session"
  },
  "account.refusal.storesGold": {
-  "en": "e281032484c3",
-  "tr": "f72033eb0e71",
+  "en": "89ca7b1f088a",
+  "tr": "264e42eca1d9",
   "by": "claude-in-session"
  },
  "account.refusal.storesShort": {
@@ -11927,6 +11927,11 @@
  "prof.work.writ.unitsLabel": {
   "en": "471b790264e5",
   "tr": "43c7e5ed5de7",
+  "by": "claude-in-session"
+ },
+ "prof.work.writ.walled": {
+  "en": "516dc720cae9",
+  "tr": "45d67f0ef3f8",
   "by": "claude-in-session"
  },
  "prof.work.yours": {
