@@ -587,7 +587,7 @@ test('WW1: the rig runs the clone beside the machine - the late update after the
   assert.match(rig, /const look = takeFrameLook\(\);/, 'the look read once a frame'); assert.match(rig, /look: lookAxes, swingHeld: _held, cursorActive: cursorActive\(\), camera: camThunk,/, 'WIDGET-LOOK: as DFU\'s look axes (test/fb1003_widgetlook.test.js)');
   // SW1: the shield's coroutines resume on the same edge, in the same finally
   assert.match(rig, /try \{ return onUiScreen\(renderer, cv\(\), \(\) => drawInner\(\{ paralyzed \}\)\); \} finally \{ widget\.endOfFrame\(\); shield\.endOfFrame\(\); \}/, 'WaitForEndOfFrame resumes after the draw (RETRO-UI: drawn on the UI screen)');
-  assert.match(rig, /fpArm\.setScreenTransform\(widgetOn\(\) \? \(base\) => widget\.armsTransform\(base\) : null\);/);
+  assert.match(rig, /fpArm\.setScreenTransform\(widgetOn\(\) && !armsClimb \? \(base\) => widget\.armsTransform\(base\) : null\);/);   // PIN MOVED (CLIMB-HANDS II): not on arms whose hands are on the stone
   // MAC-I: every sprite in this seam takes the frame's TINT now (FPSWeapon.Tint, off the room's light);
   // the ORDER and the returns are what this pin holds, and neither moved.
   // SW1b: the shield's verdict moved ABOVE the gate (its poses live in the frames `shown()` calls hidden), so the
@@ -633,7 +633,7 @@ test('WW1: the rig runs the clone beside the machine - the late update after the
   // PIN MOVED (AUDIT VE R2): one registration of the store - the boot seam reaches it, it no longer copies it
   assert.match(rd('src/scenes/shared.js'), /const textures = registerTextureStore\(\)/);
   assert.match(rd('src/scenes/dataSource.js'), /setWeaponWidgetSources\(names, loadTextureFile\);/);
-  assert.match(rd('src/systems/features.js'), /modFeature\('weapon-widget', 'Takes effect at once\.', '\w+'\)/);
+  assert.match(rd('src/systems/features.js'), /modFeature\('weapon-widget', \(\) => t\('features\.effect\.atOnce', 'Takes effect at once\.'\), '\w+'\)/);
 });
 
 test('WW1: the bundle door - TryImportCifRci\'s spelling with the w_ prefix and the metal\'s name (none for bare hands), the pick\'s names filtered to the mod\'s bundle and its loose PNGs, nothing attached answering null without throwing, the DFMOD prefix with one home', async () => {
