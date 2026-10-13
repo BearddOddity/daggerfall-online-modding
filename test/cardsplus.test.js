@@ -27,6 +27,7 @@ import { IliacTableSession } from '../src/systems/iliacTableSession.js';
 import { patronDeck, patronPlays, seededUnit } from '../src/systems/iliacPatrons.js';
 import { CardTableSession } from '../src/systems/cardTableSession.js';
 import { setPref, _resetForTests as resetPrefs } from '../src/systems/uiPrefs.js';
+import * as tm from '../src/systems/textManager.js';
 import { uiSheetRules, collisions } from './sheetRules.mjs';
 import { fakeDoc, all, text } from './decorFakes.mjs';
 
@@ -311,6 +312,52 @@ test('CARDS-PLUS Iliac Hand\'s painted panel: the turn a track of six and the ma
   assert.equal(all(hud.root, 'msg')[0].className, over.tone ? `msg ${over.tone}` : 'msg');
   assert.deepEqual(all(hud.root, 'pip').map((p) => p.className), Array(6).fill('pip past'), 'every turn played');
   hud.destroy();
+});
+
+test('CARDS-PLUS the words the panel\'s look added are the player\'s language\'s (L10N4, bible/06-Systems/Localization-Arc.md): routed through the text core and read when they are shown - the verdict, the fold, the setup\'s heads and boxes, the track (the magicka by DFU\'s own key), the other player\'s line and state, the empty tray - from the real French table; English byte for byte until French is chosen, and again after (mutants: the verdict\'s words read once, at load; a head left in English; the magicka a port key)', () => {
+  tm._resetTextManagerForTests();
+  try {
+    const { v } = iliacTurn();
+    const play = iliacHudModel({ phase: 'playing', view: v });
+    const models = [
+      iliacHudModel({ phase: 'setup', setup: { decks: [{ name: 'Starter' }], foes: [{ name: 'Ana', temper: 'tight', paid: true }], deck: 0, foe: 0, forKeeps: false, keepsOk: true } }),
+      iliacHudModel({ phase: 'setup', online: { rankedOk: true }, setup: { decks: [{ name: 'Starter' }], foes: [], deck: 0 } }),
+      { ...play, them: { ...play.them, committed: true }, hand: [] },
+      iliacHudModel({ phase: 'over', view: iliacView(played(6), 0) }),
+    ];
+    // a panel drawn anew for each (a language changes only at the front door, never under an open table)
+    const shown = () => models.map((m) => {
+      const hud = createIliacTableHud({ onPress: () => {}, doc: paintingDoc() });
+      hud.render(m);
+      const out = { words: text(hud.root), fold: all(hud.root, 'fold')[0].title, verdict: all(hud.root, 'verdict')[0]?.textContent ?? null };
+      hud.destroy();
+      return out;
+    });
+    const en = shown();
+    for (const w of ['Your deck', 'Play against', 'has paid a card tonight', 'Play for a card', 'The loser pays one from their deck', 'Ranked', 'The season\'s board - your realm character\'s own cards', 'Turn', 'Magicka', 'Committed', 'No cards in hand.']) {
+      assert.ok(en.some((x) => x.words.includes(w)), `the English: ${w}`);
+    }
+    assert.equal(en[0].fold, 'Hide the table');
+    assert.equal(en[3].verdict, { won: 'Victory', lost: 'Defeat', drawn: 'A draw', void: 'No contest' }[models[3].outcome]);
+    const fr = Object.fromEntries(tm.parseStringTableCsv(read('locales/fr/Port_Strings.csv')));
+    tm.patchLocaleTable('fr', 'Port_Strings', Object.entries(fr));
+    tm.patchLocaleTable('fr', 'Internal_Strings', [['magicka', 'Magie']]);   // a pack's DFU row (none is committed)
+    assert.deepEqual(shown(), en, 'English stands until French is chosen');
+    tm.setLocale('fr');
+    const said = shown();
+    const keys = ['cards.iliac.setup.deck', 'cards.iliac.setup.against', 'cards.iliac.setup.paid', 'cards.iliac.setup.keeps', 'cards.iliac.setup.keepsWhy', 'cards.iliac.setup.ranked', 'cards.iliac.setup.rankedWhy', 'cards.iliac.track.turn', 'cards.iliac.foe.committed', 'cards.iliac.hand.empty'];
+    for (const k of keys) {
+      assert.ok(fr[k], `the French table has ${k}`);
+      assert.ok(said.some((x) => x.words.includes(fr[k])), `${k} said in French: ${fr[k]}`);
+    }
+    assert.ok(said[2].words.includes('Magie') && !said[2].words.includes('Magicka'), 'the magicka by DFU\'s own key');
+    assert.ok(said[2].words.includes(fr['cards.iliac.foe.counts'].replace('{hand}', String(play.them.hand)).replace('{deck}', String(play.them.deck))), 'the other player\'s line, its counts in the French pattern');
+    assert.equal(said[3].verdict, fr[`cards.iliac.verdict.${models[3].outcome}`], 'the verdict in French');
+    assert.equal(said[0].fold, fr['cards.table.fold.hide']);
+    for (const w of ['Your deck', 'Play against', 'No cards in hand.', 'Committed']) assert.ok(!said.some((x) => x.words.includes(w)), `no English left: ${w}`);
+    tm.setLocale('en');
+    assert.deepEqual(shown(), en, 'English again, byte for byte');
+  } finally { tm._resetTextManagerForTests(); }
 });
 
 test('CARDS-PLUS the binder\'s face, copied: a fresh canvas holding the cached painting, at the same device size - one card in two places, two nodes (mutants: the copy left blank)', () => {

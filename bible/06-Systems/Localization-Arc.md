@@ -900,3 +900,23 @@ Russian and Spanish (2,435 rows each, every one the machine's).
   that name them follow). A speaker's review file (`tools/l10nReview.mjs`) is the way a fix comes in.
 - **Next:** the twelve, through the pipeline (`tools/translate.mjs`, Mac's key) or a cheaper run; then L10N4's routing of
   main's 6,000 new literals (the ratchet's 13,602).
+
+## CARDS-PLUS (2026-10-13): the card tables' new words, and the scan reads a selector
+
+The first change to land under L10N6's laws from outside the arc (`11-Multiplayer/Tavern-Cards.md` section 38: the card
+tables in the Enhanced Plus kit, Iliac Hand's table redrawn).
+- **Its new words go through the text core**, read where they are shown: Iliac Hand's verdict (`VERDICT_WORDS`, a frozen
+  table of getters), the fold's two titles (`cards.table.fold.*` - the card tables' chrome, for Hold'em's fold to take
+  when its panel is routed), the setup's heads and boxes, the track, the other player's line and state, the empty tray -
+  17 port keys under `cards.iliac.` - and the magicka by DFU's own key (`localizedText('magicka', 'Magicka')`, as the
+  vitals' meter reads it). Drafted in the thirteen through `tools/l10nInSession.mjs`; the twelve drafting languages owe
+  them with the rest. The panel's older words - 63 literals, the base's 69 less the six fragments its new labels
+  replaced - are the routing batches' still; the ratchet holds the file there.
+- **The scan reads a selector** (`tools/l10nHardcoded.mjs` isProse): a string that is a selector list naming an id, an
+  attribute or a pseudo-class, with no English stopword in it, is CSS. The identifier runs read only words and dots, so
+  a kit role such as `body .dfiliac button[data-kind="warn"]` counted as a sentence. Over the whole tree it takes out
+  five literals, every one a selector - CARDS-PLUS's three roles, `ui/enhancedFrame.js`'s `#wp-menu input.wpm-name`,
+  `ui/grimoireDress.js`'s `:scope > .px-tabs button` - and no prose: the map's `enhancedFrame.js` 3 to 2,
+  `grimoireDress.js` 14 to 13. Pinned in `test/l10n4_hardcoded.test.js`'s scan test (an attribute, an id, a pseudo-class
+  and a combinator not counted; a lowercase sentence with a number sign, and a colon with no selector in it, still are);
+  mutants in `tools/mutants/cardsplus.json` (the rule off, its stopword guard gone, any token taken as a selector).

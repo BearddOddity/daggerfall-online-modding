@@ -1315,8 +1315,15 @@ Currently it doesnt"**.
   mark (outlined, the numbers beside them saying the counts); the cards' own lettering, painted on their canvases, keeps
   the painters' serif - it is the cards' print, not the panel's words (`ui/textFont.js`: canvas text keeps its own
   font); the cloth is as section 33 laid it.
-- **Pins:** `test/cardsplus.test.js` 8. PIN MOVED: `auditcards6_b` B5 reads the regular's own tile (the name and
+- **In the player's language** (`06-Systems/Localization-Arc.md` CARDS-PLUS; main's L10N6 landed under this change):
+  every word the new look added goes through the text core, read when it is shown - the verdict, the fold, the setup's
+  heads and boxes, the track (the magicka by DFU's own key), the other player's line and state, the empty tray: 17 port
+  keys (`cards.iliac.`, `cards.table.fold.`), drafted in the thirteen whole languages. The panel's older words are the
+  routing batches' (L10N4's ratchet holds `iliacTableHud.js` at 63, six under its 69). The ratchet's scan read the
+  kit's three new roles - `body .dfcards button[data-kind="primary"]` and its kin - as sentences: it reads a selector
+  naming an id, an attribute or a pseudo-class as CSS now.
+- **Pins:** `test/cardsplus.test.js` 9. PIN MOVED: `auditcards6_b` B5 reads the regular's own tile (the name and
   temper on its first line, what the regular has paid under it); `plusdress1`'s warn rule carries Iliac Hand's concession.
-  `tools/mutants/cardsplus.json` 33, all dead. Re-judging the touched files' 132 older records found one survivor on
+  `tools/mutants/cardsplus.json` 39, all dead. Re-judging the touched files' 132 older records found one survivor on
   the base as well - `cards8.json` C8-builder-past-held, its tests never the suite that holds its law (AUDIT CARDS-5
   lane D's second pass in `auditcards5_ui`); re-aimed, dead.

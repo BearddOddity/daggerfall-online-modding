@@ -28,6 +28,7 @@ import { ILIAC_CARD_ASPECT } from '../render/iliacCardFaces.js';
 import { cardCanvasCopy } from './cardBinderPage.js';   // CARDS-PLUS: the binder's own painting of a face, at its CSS size
 import { cardPanelChromeCss, dressCardPanel } from './cardPanelKit.js';   // CARDS-PLUS: the kit and the face, both panels' one home
 import { PIXELIFY_FIVE_FACE } from './pixelifyFive.js';   // FIX-D: the face's five, carried by every sheet that sets it
+import { t, localizedText } from '../systems/textManager.js';   // CARDS-PLUS (L10N4): the words this panel's look added, in the player's language
 
 /** A temper as the panel names it. */
 export const TEMPER_WORDS = Object.freeze({ tight: 'careful', loose: 'reckless', bluffer: 'sly' });
@@ -133,8 +134,14 @@ export function iliacOutcome(view, end) {
   if (!r || !(view.viewer >= 0)) return null;
   return r.winner === null ? 'drawn' : r.winner === view.viewer ? 'won' : 'lost';
 }
-/** CARDS-PLUS: the end's banner word. */
-export const VERDICT_WORDS = Object.freeze({ won: 'Victory', lost: 'Defeat', drawn: 'A draw', void: 'No contest' });
+/** CARDS-PLUS: the end's banner word - read when it is shown (L10N4: a frozen table's words are getters, never read at
+ *  module load, which comes before the boot chooses the language). */
+export const VERDICT_WORDS = Object.freeze({
+  get won() { return t('cards.iliac.verdict.won', 'Victory'); },
+  get lost() { return t('cards.iliac.verdict.lost', 'Defeat'); },
+  get drawn() { return t('cards.iliac.verdict.drawn', 'A draw'); },
+  get void() { return t('cards.iliac.verdict.void', 'No contest'); },
+});
 
 /**
  * The panel's model.
@@ -472,11 +479,15 @@ export function createIliacTableHud({ onPress, doc = document }) {
   /** The header's fold - the table's words put away so the cloth shows; the line and the presses stay. Kept across
    *  repaints, as the Hold'em panel's is. */
   const foldToggle = () => {
-    const t = el('span', 'fold', collapsed ? '+' : '−');
-    const say = () => { t.textContent = collapsed ? '+' : '−'; t.title = collapsed ? 'Show the table' : 'Hide the table'; t.setAttribute('aria-expanded', String(!collapsed)); };
+    const fold = el('span', 'fold', collapsed ? '+' : '−');
+    const say = () => {
+      fold.textContent = collapsed ? '+' : '−';
+      fold.title = collapsed ? t('cards.table.fold.show', 'Show the table') : t('cards.table.fold.hide', 'Hide the table');
+      fold.setAttribute('aria-expanded', String(!collapsed));
+    };
     say();
-    pressable(t, 'fold', () => { collapsed = !collapsed; root.className = `dfiliac${collapsed ? ' collapsed' : ''}`; say(); });
-    return t;
+    pressable(fold, 'fold', () => { collapsed = !collapsed; root.className = `dfiliac${collapsed ? ' collapsed' : ''}`; say(); });
+    return fold;
   };
   return {
     root,
@@ -497,15 +508,15 @@ export function createIliacTableHud({ onPress, doc = document }) {
         for (const d of m.decks) {
           decks.append(opt(`deck-${d.i}`, d.chosen, true, () => onPress('deck', d.i), [el('span', 'optname', d.name), ...(d.word ? [el('span', 'optword bad', d.word)] : [])]));
         }
-        body.append(section('Your deck', decks));
+        body.append(section(t('cards.iliac.setup.deck', 'Your deck'), decks));
         if (m.foes.length) {
           const foes = el('div', 'opts');
           for (const f of m.foes) {
             const name = el('span', 'optname', f.name);
             name.append(el('span', 'opttemper', ` (${f.temper})`));
-            foes.append(opt(`foe-${f.i}`, f.chosen, true, () => onPress('foe', f.i), [name, ...(f.paid ? [el('span', 'optword paid', 'has paid a card tonight')] : [])]));
+            foes.append(opt(`foe-${f.i}`, f.chosen, true, () => onPress('foe', f.i), [name, ...(f.paid ? [el('span', 'optword paid', t('cards.iliac.setup.paid', 'has paid a card tonight'))] : [])]));
           }
-          body.append(section('Play against', foes));
+          body.append(section(t('cards.iliac.setup.against', 'Play against'), foes));
         }
         if (m.board) {
           const box = el('div', 'season');
@@ -514,8 +525,8 @@ export function createIliacTableHud({ onPress, doc = document }) {
         }
         const boxes = el('div', 'opts');
         // the boxes a game is dealt with - ticked brass (the kit's tile pressed); one that cannot be ticked says why
-        if (m.ranked) boxes.append(opt('ranked', m.ranked.on, m.ranked.enabled, () => onPress('ranked'), [el('span', 'optname', 'Ranked'), el('span', 'optword', m.ranked.why ?? 'The season\'s board - your realm character\'s own cards')], ' box'));
-        if (m.keeps) boxes.append(opt('keeps', m.keeps.on, m.keeps.enabled, () => onPress('keeps'), [el('span', 'optname', 'Play for a card'), el('span', 'optword', m.keeps.why ?? 'The loser pays one from their deck')], ' box'));
+        if (m.ranked) boxes.append(opt('ranked', m.ranked.on, m.ranked.enabled, () => onPress('ranked'), [el('span', 'optname', t('cards.iliac.setup.ranked', 'Ranked')), el('span', 'optword', m.ranked.why ?? t('cards.iliac.setup.rankedWhy', 'The season\'s board - your realm character\'s own cards'))], ' box'));
+        if (m.keeps) boxes.append(opt('keeps', m.keeps.on, m.keeps.enabled, () => onPress('keeps'), [el('span', 'optname', t('cards.iliac.setup.keeps', 'Play for a card')), el('span', 'optword', m.keeps.why ?? t('cards.iliac.setup.keepsWhy', 'The loser pays one from their deck'))], ' box'));
         if (m.ranked || m.keeps) body.append(boxes);
       } else {
         if (m.outcome) body.append(el('div', `verdict ${m.outcome}`, VERDICT_WORDS[m.outcome]));
@@ -524,22 +535,22 @@ export function createIliacTableHud({ onPress, doc = document }) {
         const pips = el('span', 'pips');
         const now = m.phase === 'over' ? m.turns + 1 : m.turn;
         for (let t = 1; t <= m.turns; t++) pips.append(el('i', `pip${t < now ? ' past' : t === now ? ' now' : ''}`));
-        turn.append(el('span', '', 'Turn'), pips, el('b', '', `${Math.min(m.turn, m.turns)}/${m.turns}`));
+        turn.append(el('span', '', t('cards.iliac.track.turn', 'Turn')), pips, el('b', '', `${Math.min(m.turn, m.turns)}/${m.turns}`));
         bar.append(turn);
         if (!m.spectator) {
           const mana = el('div', 'track');
           const gems = el('span', 'gems');
           const left = Math.max(0, m.me.magicka - m.me.spend);
           for (let k = 0; k < Math.min(m.me.magicka, GEMS_MAX); k++) gems.append(el('i', `gem${k < left ? ' lit' : ' spent'}`));
-          mana.append(el('span', '', 'Magicka'), gems, el('b', '', `${left}/${m.me.magicka}`));
+          mana.append(el('span', '', localizedText('magicka', 'Magicka')), gems, el('b', '', `${left}/${m.me.magicka}`));
           bar.append(mana);
         }
         body.append(bar);
         const foe = el('div', 'foe');
         const backs = el('span', 'backs');
         for (let k = 0; k < Math.min(m.them.hand, BACKS_MAX); k++) backs.append(el('i', 'mb'));
-        foe.append(el('span', 'foename', m.them.name), backs, el('span', '', `${m.them.hand} in hand · ${m.them.deck} in deck`));
-        if (m.them.committed) foe.append(el('span', 'foestate', 'Committed'));
+        foe.append(el('span', 'foename', m.them.name), backs, el('span', '', t('cards.iliac.foe.counts', '{hand} in hand · {deck} in deck', { hand: m.them.hand, deck: m.them.deck })));
+        if (m.them.committed) foe.append(el('span', 'foestate', t('cards.iliac.foe.committed', 'Committed')));
         body.append(foe);
         const holds = el('div', 'holds');
         for (const hd of m.holdings) {
@@ -564,7 +575,7 @@ export function createIliacTableHud({ onPress, doc = document }) {
           const tray = el('div', 'tray');
           tray.style?.setProperty?.('--n', String(Math.max(1, m.hand.length)));
           for (const c of m.hand) tray.append(card(c, { h: ILIAC_HAND_CARD_H, cls: c.picked ? 'picked' : c.staged ? 'used' : c.playable ? '' : 'off', press: c.playable || c.picked ? 'pick' : null, value: c.i, power: false }));
-          if (!m.hand.length) tray.append(el('span', 'trayempty', 'No cards in hand.'));
+          if (!m.hand.length) tray.append(el('span', 'trayempty', t('cards.iliac.hand.empty', 'No cards in hand.')));
           body.append(tray);
         }
       }
