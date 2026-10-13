@@ -17,7 +17,7 @@ is a Ledger A row.
 | 4 | "The current situation where doors lock at shops and inns in Daggerfall Capital" - "Once you get stuck, there's no way out" (Nes) | one player's Lock spell, at the caster's level, reached every visitor through the building's act and its thirty-day memory | fixed (SPELL-LOCK) |
 | 5 | "Some locations have floating houses" - "Temple of Kynareth has floating houses due to terrain modifications" (SylviaBun) | the pack hills' stand-ins seat a plateau's houses at their origin and fall away under their edges | fixed (HILL-SEAT) |
 | 6 | "Cant complete quest 'the lost child'" - "accidentally said 'no' ... now i cant interact with it at all" (Ant1-Chr1st) | DFU's own soft-lock: K0C00Y05's No leads nowhere and its clicked-npc task never listens again | fixed (NO-ASKS-AGAIN), a departure |
-| 7 | "Performance issues with boss AoE attacks circles and player sprites" (HellRay) | being measured | the telegraphs' overdraw cut (AOE-PERF); the crowd measured, nothing drawn for nothing |
+| 7 | "Performance issues with boss AoE attacks circles and player sprites" (HellRay) | his mark and his host's paths laid their quads 4 m past the ground they draw: an AoE frame shaded 3.4 screens of telegraph fragments; the crowd's cost is the bodies it draws | the telegraphs' overdraw cut (AOE-PERF); the crowd measured, nothing drawn for nothing |
 | 8 | "Molag bal mace do nothing" - "It's effect is not working and it's extremely fragile" (Boar) | the strength arm raises a stat the port caps at 100 - DFU raises the cap with it | fixed (MACE-MAX) |
 | 9 | "Tavern in Issaqumbaa marked as a player house" (SylviaBun) | the door's plaque named the first building box holding the ray's point - a neighbour house's - while the click entered the tavern | fixed (DOOR-NAME) |
 | 10 | "Delayed death after combat despite full health" (sxxlxxr, Knightshead) | DFU's exhaustion collapse: fatigue spent with a foe in the spawn band is death whatever the health, and the box saying so was replaced by the death screen before it drew | fixed (SPENT-ASHORE), a departure |
@@ -335,6 +335,27 @@ draws neither). The reporter's machine and settings.
 
 `test/fb1013d_aoeperf.test.js` (4); `tools/mutants/fb1013d_aoeperf.json` (11, all dead; wb4's and wb13a's campaigns re-run,
 62 of 62 dead). No pin moved. `07-Rendering/Performance-Rig.md` AOE-PERF, `11-Multiplayer/World-Bosses.md` WB13a.
+
+## For Mac
+
+1. **Writs and the count (2).** A writ spends only what law 3 counts; looted, shop-bought, traded and gold-bought units
+   are named on the card now and still never fill one. Counting them is a change to law 3 (and would let shop gold become
+   writ silver) - left as FIELD BUGS 2026-10-09f left it.
+2. **The Mace's bill (8).** DFU's own: wear, plus the blow's damage whenever the target fails its save - 26-74 kills from
+   1500 uses. The port's target-side multipliers (a stagger, an overreach, a revenant) ride the damage into the bill, as
+   they ride the drain.
+3. **C0C00Y10's healer (6).** Its No (`_no_ task: clear _S.10_`) was meant to ask again, and DFU's allowRearm blocks it,
+   so the talisman can never be bought after a No. That No does something, so NO-ASKS-AGAIN leaves it DFU's.
+4. **A spent fighter's swings (10).** SPENT-ASHORE charges a tenth for every drain to nothing, as SWIM-SPENT does in the
+   water - a swing at an empty bar is a drain, so ten swings there are a death. A latch of one charge a game minute is
+   one line, if the swings should not count.
+5. **The pads' look (5).** HILL-SEAT is measured on the real layout and the real stand-in with stand-in house boxes; the
+   real footprints, the packs' whole sweep (gated on ARENA2_PATH) and the look on a GPU are unseen here.
+6. **The inspect card (8).** It shows 100 while the Mace's bonus lasts: the bound is the relay's `CARD_STAT_MAX`, a relay
+   deploy to move.
+7. **Not this batch's.** `audit_wb9.json`'s AUDIT-WB9-flown-over-the-collider-alone (`src/scenes/spoilsPool.js`,
+   untouched here) survives - found in AOE-PERF's campaign run, and re-judged on main's `ab8d3640` alone: it survives
+   there too, so the law it names is checked by nothing on main today.
 
 ## THE FOUR HOSTS
 
