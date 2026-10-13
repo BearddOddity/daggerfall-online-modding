@@ -1,5 +1,5 @@
 // GATHER-FEEL II - BLOW-SHAKE (2026-10-13, Mac: "Do the not done" - GATHER-FEEL's open "a blow shakes no camera";
-// bible/06-Systems/Professions-Arc.md section 44): A LANDED BLOW MOVES THE VIEW. The table (systems/gatherBlow.js
+// bible/06-Systems/Professions-Arc.md section 45): A LANDED BLOW MOVES THE VIEW. The table (systems/gatherBlow.js
 // GATHER_BLOW_FEEL) under every technique's hit; its gates (the enhanced skin, the player's technique motion, the
 // system's reduced motion); the springs' one door (combat/techniqueFx.js kickFx) - the peaks the table names, the
 // technique's own moments through it still; the clean blow off the real machines (landedBlow); and the host over the real

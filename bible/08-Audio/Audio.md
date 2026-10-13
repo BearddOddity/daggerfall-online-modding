@@ -818,7 +818,7 @@ Port-Ledger A: THE MUSIC ON A MIDI DEVICE. Pins: `test/midiout1.test.js`, 15 tes
 ## GATHER-FEEL (2026-10-13): the gathering heard - the port's own clips, a blow as it lands
 
 Mac: "I want to improve gathering, add gathering sounds and overall make the experience more palatable." The record is
-`06-Systems/Professions-Arc.md` section 43; what it is to this page:
+`06-Systems/Professions-Arc.md` section 44; what it is to this page:
 
 - **Thirty-six clips the port makes**, the climb's way (CLIMB4): `tools/gatherSfx.mjs` synthesises them from noise and
   sine on the shared kit, `tools/sfxSynth.mjs` (which now holds the climb's pieces - its eleven clips byte for byte), and
@@ -842,7 +842,7 @@ Mac: "I want to improve gathering, add gathering sounds and overall make the exp
 
 ## GATHER-FEEL II (2026-10-13): another player's gathering, heard at their act
 
-Mac: "Do the not done." The record is `06-Systems/Professions-Arc.md` section 44 (PEER-ACTS); what it is to this page:
+Mac: "Do the not done." The record is `06-Systems/Professions-Arc.md` section 45 (PEER-ACTS); what it is to this page:
 
 - **The same clips, the same beats.** A peer's act rides their pose (RELAY_VERSION world200: the act, its beats, the
   net's throw), and the beats the pose counts are the gatherer's own ear's law (`actBeats`) - so the others hear what

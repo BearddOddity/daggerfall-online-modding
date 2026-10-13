@@ -24,7 +24,7 @@ has no hand on stone.
 The `gather-*.wav` files are ours outright as well: the gathering professions' axe in a trunk, the tree's groan and its
 fall, a pick on stone and on ore, a vein's rubble, hands among leaves, a herb pulled, the knife through hide, the net
 thrown, landing, tugged and hauled, and the chimes of a clean finish and a rank (bible/06-Systems/Professions-Arc.md
-section 43, GATHER-FEEL), built by `tools/gatherSfx.mjs` from the same kit and the same bake. DAGGER.SND has hits, a
+section 44, GATHER-FEEL), built by `tools/gatherSfx.mjs` from the same kit and the same bake. DAGGER.SND has hits, a
 parry, a splash and a lock's click, which the acts borrowed; it has no axe in wood, no pick on stone, no leaves and no
 tree coming down.
 

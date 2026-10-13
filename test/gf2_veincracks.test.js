@@ -1,5 +1,5 @@
 // GATHER-FEEL II - VEIN-CRACKS (2026-10-13, Mac: "Do the not done" - GATHER-FEEL's open "the vein's crack decals and shed
-// chunks (5.2) are still unbuilt"; bible/06-Systems/Professions-Arc.md 5.2's Mining row and section 44): A WORKED VEIN
+// chunks (5.2) are still unbuilt"; bible/06-Systems/Professions-Arc.md 5.2's Mining row and section 45): A WORKED VEIN
 // CRACKS AND SHEDS ITS CHUNKS. The batch's field and the crack's law on the shader's own code (test/glsl.mjs - whole at
 // nought, only ever opening, the heart first, a seam's shade); both billboard programs composing it and the renderer
 // sending it a batch at a time; the chunks' law (the struck face, the arc, the floor, the lie and the sink, the box); and
@@ -19,7 +19,7 @@ import { VEIN_CHUNKS, chunksFor, shedChunks, stepChunk, chunkSink, chunkBox } fr
 import { Renderer, WORLD_FRAME } from '../src/render/renderer.js';
 import { EL_LANE, EL_BB_FS } from '../src/render/enhancedLighting.js';
 import { perspective, lookAt, mirrorProjectionX } from '../src/world/mat4.js';
-import { mineFlats, mineRecord, mineWash, ORE_DYE, ORE_FLAT_ARCHIVE, DVEIN_UP_M, standDungeonVeins } from '../src/scenes/mineHost.js';
+import { mineFlats, mineRecord, mineWash, ORE_DYE, ORE_FLAT_ARCHIVE, standDungeonVeins } from '../src/scenes/mineHost.js';
 import { MINE_ACT } from '../src/net/professionLaw.js';
 import { utcDayOfMs } from '../src/net/nodeLaw.js';
 import { setForagingHost } from '../src/systems/foragingInstall.js';
@@ -397,13 +397,13 @@ test('GF2-VEINCRACKS V7: a harvest refused before the breaking blow lands - the 
   } finally { setForagingHost(null); }
 });
 
-test('GF2-VEINCRACKS V8: a dungeon\'s vein - already its own batch, cracked as its blows land; its chunks stood through the dungeon\'s own door as a moving batch, to the floor under the wall it stands on, and dropped through it; the dungeon left takes them; DVEIN_UP_M is the dungeon\'s own height (mutants: the dungeon\'s crack unheld, its chunks static, the floor the vein\'s foot)', async () => {
+test('GF2-VEINCRACKS V8: a dungeon\'s vein - already its own batch, cracked as its blows land; its chunks stood through the dungeon\'s own door as a moving batch, to the floor it stands on at its wall\'s foot, and dropped through it; the dungeon left takes them; the dungeon stands it on that floor (MINE-PERKS, PROF_VEIN_UP_M 0 - lifted, its chunks would fall to its foot in the air) (mutants: the dungeon\'s crack unheld, its chunks static, the vein lifted off its floor)', async () => {
   try {
     const r = keepingRenderer();
     let under = false;
     const t = await rig({ renderer: r, ranks: { mining: 25 }, extra: { rand: dice(0.1, 0.9, 0.5, 0.3, 0.7), activeDungeon: () => under } });   // Mining 25: a deep vein is tier 3
     const stood = [], dropped = [];
-    const wall = (m, b) => [6 + m * 9, DVEIN_UP_M, 4 + b];
+    const wall = (m, b) => [6 + m * 9, 0, 4 + b];
     t.host.enterDungeon({
       id: 1234, climate: WOODS, region: GLENUMBRA, wall,
       stand: async (a, rec, s, c, o) => { const b = r.createBillboardBatch(a, rec, { w: 0.3 * s, h: 0.3 * s }, c, o); stood.push(b); return b; },
@@ -428,7 +428,7 @@ test('GF2-VEINCRACKS V8: a dungeon\'s vein - already its own batch, cracked as i
     const burst = stood.find((b) => b.dynamic);
     assert.ok(burst, 'its chunks through the dungeon\'s door, a moving batch');
     for (let i = 0; i < 20; i++) t.host.tick(0.05);
-    assert.ok(burst.at.every((c) => near(c[1], v.local[1] - DVEIN_UP_M, 1e-9)), 'down to the floor under the wall, not the vein\'s foot');
+    assert.ok(burst.at.every((c) => near(c[1], v.local[1], 1e-9)), 'down to the floor it stands on');
     t.host.tick(0.05);
     for (let i = 0; i < 4; i++) await tick();
     // the dungeon left mid-flight: its chunks dropped through its door
@@ -440,7 +440,7 @@ test('GF2-VEINCRACKS V8: a dungeon\'s vein - already its own batch, cracked as i
     assert.ok(flying.every((b) => dropped.includes(b)), 'dropped with the dungeon');
     t.host.dispose();
     const dc = src('src/scenes/dungeonContext.js');
-    assert.equal(Number(dc.match(/PROF_VEIN_UP_M = ([0-9.]+);/)?.[1]), DVEIN_UP_M, 'the dungeon\'s own height');
+    assert.equal(Number(dc.match(/PROF_VEIN_UP_M = ([0-9.]+);/)?.[1]), 0, 'the dungeon stands its vein on its floor - its foot is the floor its chunks fall to');
     assert.match(dc, /async standProfFlats\(archive, record, scale, centers, \{ dynamic = false \} = \{\}\) \{/);
     assert.match(dc, /renderer\.createBillboardBatch\(archive, record, \{ w: base\.w \* scale, h: base\.h \* scale \}, centers, \{ dynamic \}\);/);
     assert.match(src('src/scenes/world.js'), /stand: \(a, r, s, c, o\) => ctx\.standProfFlats\(a, r, s, c, o\)/, 'the world hands the door its options');

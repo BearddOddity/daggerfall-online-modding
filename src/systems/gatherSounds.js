@@ -2,7 +2,7 @@
 // ═══════════════════════════════════════════════════════════════════
 // GATHER-FEEL (2026-10-13, Mac: "I want to improve gathering, add
 // gathering sounds and overall make the experience more palatable") -
-// THE GATHERING'S EAR (bible/06-Systems/Professions-Arc.md section 43).
+// THE GATHERING'S EAR (bible/06-Systems/Professions-Arc.md section 44).
 //
 // The acts' sounds were DAGGER.SND's combat and window clips (systems/
 // profSounds.js: a blow's Hit1-5 for a chop, the parry's ring for an

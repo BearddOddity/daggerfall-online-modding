@@ -1,5 +1,5 @@
 // GATHER-FEEL II - PEER-ACTS (2026-10-13, Mac: "Do the not done" - GATHER-FEEL's open "a peer neither sees an act ...
-// nor hears one"; bible/06-Systems/Professions-Arc.md 5.1 "Others see it" and section 44): ANOTHER PLAYER'S GATHERING,
+// nor hears one"; bible/06-Systems/Professions-Arc.md 5.1 "Others see it" and section 45): ANOTHER PLAYER'S GATHERING,
 // SEEN AND HEARD. The wire (net/wire.js validPose's `ga`, `gb`, `gm` - world200) through the door, the relay and the
 // lerp, and end to end between two sessions over the real Room; the sender (net/peerGather.js createGatherPose) off the
 // real act machines and through the gathering host over the real kinds (scenes/gatherHost.js poseAct - the last blow and

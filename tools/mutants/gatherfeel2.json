@@ -495,22 +495,14 @@
   ]
  },
  {
-  "name": "GF2-VEINCRACKS-the-floor-the-veins-foot",
-  "file": "src/scenes/mineHost.js",
-  "old": "floor: n.what === 'dvein' ? n.local[1] - DVEIN_UP_M : n.local[1],",
-  "new": "floor: n.local[1],",
+  "name": "GF2-VEINCRACKS-the-deep-vein-lifted-off-its-floor",
+  "file": "src/scenes/dungeonContext.js",
+  "old": "PROF_VEIN_CHEST_M = 0.9, PROF_VEIN_UP_M = 0;",
+  "new": "PROF_VEIN_CHEST_M = 0.9, PROF_VEIN_UP_M = 0.5;",
   "tests": [
    "test/gf2_veincracks.test.js"
-  ]
- },
- {
-  "name": "GF2-VEINCRACKS-the-deep-height-moved",
-  "file": "src/scenes/mineHost.js",
-  "old": "export const DVEIN_UP_M = 0.5;",
-  "new": "export const DVEIN_UP_M = 0.4;",
-  "tests": [
-   "test/gf2_veincracks.test.js"
-  ]
+  ],
+  "note": "the merge of MINE-PERKS stood a dungeon vein on its floor and retired DVEIN_UP_M (the 0.5 m it stood up its wall, its chunks falling that far below its foot): lifted again, V8 fails"
  },
  {
   "name": "GF2-VEINCRACKS-the-world-drops-the-options",

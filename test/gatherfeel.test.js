@@ -1,5 +1,5 @@
 // GATHER-FEEL (2026-10-13, Mac: "I want to improve gathering, add gathering sounds and overall make the experience more
-// palatable"): THE GATHERING'S SOUNDS AND ITS LAST BLOW (bible/06-Systems/Professions-Arc.md section 43). The thirty-six
+// palatable"): THE GATHERING'S SOUNDS AND ITS LAST BLOW (bible/06-Systems/Professions-Arc.md section 44). The thirty-six
 // clips of our own (tools/gatherSfx.mjs -> public/sfx/gather-*.wav); the ear (systems/gatherSounds.js) over the real act
 // machines - every beat, a blow heard as it lands (systems/chopAct.js and mineAct.js `landsIn`, characters/weaponStates.js
 // MELEE_HIT_SHARE), the node's place and the net's, the water's own beats, the variety, the classic skin's DFU cues; and

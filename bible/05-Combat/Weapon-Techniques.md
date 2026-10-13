@@ -368,7 +368,7 @@ Off; Full by default) scales the camera's springs, the shake and the hands' dip;
 the screen - its burst (the sparks, rings, glow and light) and its sound stay. Better Ambience's switch and `maxShake`
 still bound the shake. The pitch, roll and eye are first person only (the climb's own rule); the field-of-view kick
 reaches every view, as the climb's does; in third person the hands' dip has no hands to move. GATHER-FEEL II
-(BLOW-SHAKE, `06-Systems/Professions-Arc.md` section 44): a gathering tool's landed blow goes into the same springs
+(BLOW-SHAKE, `06-Systems/Professions-Arc.md` section 45): a gathering tool's landed blow goes into the same springs
 through their one door (`combat/techniqueFx.js` kickFx), so the same setting scales it - a dip of the look, the eye and
 the hands, each under the least any technique's hit dips it (AUDIT GATHER-FEEL F5/R1: the look's stood at and past
 cleave's), on the enhanced skin alone and never under reduced motion; the setting's note names it.

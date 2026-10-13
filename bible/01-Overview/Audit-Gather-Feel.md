@@ -1,6 +1,6 @@
 # AUDIT GATHER-FEEL (2026-10-13) - the gathering heard, felt, cracked and shared, audited
 
-Mac, of GATHER-FEEL and GATHER-FEEL II (`06-Systems/Professions-Arc.md` sections 43 and 44, PR #868): **"audit
+Mac, of GATHER-FEEL and GATHER-FEEL II (`06-Systems/Professions-Arc.md` sections 44 and 45, PR #868): **"audit
 everything"**. This page is the audit of both - the ear and the last blow, BLOW-SHAKE, VEIN-CRACKS and PEER-ACTS - and
 its record. What the audit changed is written into the record's sections as they now stand, each marked `AUDIT
 GATHER-FEEL <id>`; this page is the findings, each with its verdict.
@@ -48,14 +48,14 @@ gatherer had taken back, chunks lying off the ground, and laws no pin could fail
 | F7 | LOW | A refused harvest (or a lapsed one) took the tree's fall back, but its 2.63 s clip played on, its ground struck under the tree stood again | FIXED: the bus's `play3dVoice`, a positional shot whose stop fades; the ear keeps a node's going under its key and `hush`es it where the kinds are told of the refusal, and of a lapse |
 | R12 | LOW | A harvest another took (node-taken) answered before the last blow landed: the vein stood again as another's, and the blow landed on the empty place - a clack and three chunks out of the air | FIXED: that blow lands on nothing (`whiff`) |
 | RC | LOW | The gatherer's own ear had no recentre: a net's water was heard 819 m off for the rest of a cast that crossed a pixel's edge, a blow in the air likewise (lane F's suspicion, true by construction) | FIXED: the ear's `rebase`, the host's door, world.js's recentre block |
-| F4 | LOW | `DVEIN_UP_M` stood between `standDungeonVeins`' doc and the function, and its parameters went untyped | FIXED |
+| F4 | LOW | `DVEIN_UP_M` stood between `standDungeonVeins`' doc and the function, and its parameters went untyped | FIXED (the merge of MINE-PERKS, which stands a dungeon's vein on its floor, then retired the constant) |
 | F8 | LOW | The setting's note said a tool's blow shakes and tilts the view: it dips it, on the Enhanced skin alone | FIXED: the note says so |
 | R7 | LOW | "100 ms, the climb's floor": the climb's cue floor is 150 ms (100 is its rhythm's), and nothing pinned them equal | FIXED: the floor is one pose at the pose's top rate (`POSE_HZ`), pinned equal; the record and `08-Audio/Audio.md` say so |
 | R8 | LOW | PROF8's "no splash is played at the tug (no splash clip is wired for an act)" stood under the tug's splash (RETIRING A FLAG DELETES THE SENTENCE) | FIXED: deleted |
-| R9 | LOW | 5.1 and the patch notes said a peer is seen to swing, kneel, throw and haul on every lane: no lane draws the haul, the Morrowind body no throw, the walker no kneel | FIXED: the record says what each lane draws; section 44's open list names the body's throw |
+| R9 | LOW | 5.1 and the patch notes said a peer is seen to swing, kneel, throw and haul on every lane: no lane draws the haul, the Morrowind body no throw, the walker no kneel | FIXED: the record says what each lane draws; section 45's open list names the body's throw |
 | R10 | LOW | "A vein, boulder or Motherlode cracks": a boulder's crack is its loose stone's - its rock is the terrain's | FIXED: the record and the patch notes |
 | R13 | LOW | The PR's "a peer gathering nothing costs one compare a frame" | FIXED: the description says a few |
-| R14 | LOW | Section 43's "every record on a file the slice touched - 398" (world.js was touched and not judged whole); section 44's 1,381 was 1,276 of other lists and 105 of its own; "forty relay pins (and disc7's list)" counted one twice | FIXED: each says what was judged |
+| R14 | LOW | Section 44's "every record on a file the slice touched - 398" (world.js was touched and not judged whole); section 45's 1,381 was 1,276 of other lists and 105 of its own; "forty relay pins (and disc7's list)" counted one twice | FIXED: each says what was judged |
 | R15 | LOW | Three records count as laws what the game cannot see: the blow's answer at Off (the host never reads it), `[0, seed]` for none (the shader draws it whole either way), the shader's early-out (a cost, not a picture) | KEPT: each is the unit's own contract - the answer its doors are pinned by, the renderer's send skipped for a whole batch, the early-out's cost; the record says so |
 | R16 | LOW | B7's "never the look the glint is aimed with" was a `doesNotMatch` over one file; B6 guarded its patch and its press with `if` | FIXED: the climb feel's fold drives the view and leaves the camera's yaw and pitch, which the gathering host aims with; B6 asserts |
 | R17 | LOW | The Finnish draft of the attack sounds' note lacked its possessive; the Romanian's "cand culeg" reads as "when I gather" | FIXED: redrafted through `tools/l10nInSession.mjs` |
@@ -68,7 +68,7 @@ gatherer had taken back, chunks lying off the ground, and laws no pin could fail
   hand presses that fast; a hello built before the gathering's frame shows a tool for one round trip after a room
   changed mid-act by other than a door. Both kept.
 - **Lane V's suspicions.** The crack's `fract(sin)` hash on a GPU with a coarse highp `sin`; an HD texture pack shrinks
-  the cells (seven of the replacement's texels). Recorded in section 44. Its M17 (the frame block's flag reset) is
+  the cells (seven of the replacement's texels). Recorded in section 45. Its M17 (the frame block's flag reset) is
   equivalent - one upload more.
 - **Lane R's.** A shut on the frame after the finishing press puts the last blow away unheard - the shut's law (nothing
   of the act is left to land), pinned; the float paths of the three clocks - F3.
@@ -91,15 +91,16 @@ gatherer had taken back, chunks lying off the ground, and laws no pin could fail
   `test/gf2_veincracks.test.js` V3 (the lane's shade line) and V4 (a chunk's ground handed to `shedChunks`);
   `test/blood1_decals.test.js` (the lane's albedo line); `test/prof4_client.test.js` (the stand's two lines);
   `test/profreticle.test.js` (the clean finish rides its blow).
-- `tools/mutants/auditgatherfeel.json` - 79, all dead: every fix reverted, and every lane's survivor re-aimed onto the
-  code as it stands.
+- `tools/mutants/auditgatherfeel.json` - 81, all dead: every fix reverted (the two on V3's own half in the mine kind -
+  its ground handed, a dungeon's vein handed none - written at the merge of main, where they were found missing), and
+  every lane's survivor re-aimed onto the code as it stands.
 - Records re-aimed by content, each judged dead: sixteen in `gatherfeel.json`, twenty-three in `gatherfeel2.json`, two
   each in `fb1002_herbcursor.json` and `prof4.json`, one each in `audit29.json`, `gatherspeed.json` and
   `profreticle.json` - forty-six in all.
 - Every existing record on the files whose logic the audit moved - `scenes/gatherHost.js`, `systems/gatherSounds.js`,
   `systems/chopAct.js`, `systems/mineAct.js`, `systems/gatherBlow.js`, `systems/audio.js`, `net/peerGather.js`,
   `net/peerBodies.js`, `net/remotePlayers.js`, `scenes/mineHost.js`, `scenes/treeHost.js`,
-  `render/enhancedLighting.js` - was judged again: see section 44's last paragraph for the count.
+  `render/enhancedLighting.js` - was judged again: see section 45's last paragraph for the count.
 
 NOT SEEN OR HEARD IN PLAY HERE: the chunks on a hillside were measured against the heightmap they fall on, the lane's
 seam against its codec, and every program compiled in Chromium's WebGL2; the fall taken back, the peers' stop and the

@@ -560,6 +560,26 @@
     "note": "Every chunk lies on the node's foot's height: over a downhill, inside an uphill."
   },
   {
+    "name": "AUDITGF-V3-the-kind-hands-no-ground",
+    "file": "src/scenes/mineHost.js",
+    "old": "ground: n.what !== 'dvein' && entry?.samples ? (x, z) => groundAt(entry.samples, x, z) : null,",
+    "new": "ground: null,",
+    "tests": [
+      "test/audit_gatherfeel.test.js"
+    ],
+    "note": "The mine kind hands no ground: every street chunk lies on its vein's foot's height again."
+  },
+  {
+    "name": "AUDITGF-V3-a-dungeon-vein-on-a-pixels-ground",
+    "file": "src/scenes/mineHost.js",
+    "old": "ground: n.what !== 'dvein' && entry?.samples ?",
+    "new": "ground: entry?.samples ?",
+    "tests": [
+      "test/audit_gatherfeel.test.js"
+    ],
+    "note": "A dungeon vein handed an entry falls to a pixel's heightmap, not its one floor."
+  },
+  {
     "name": "AUDITGF-V3-the-landing-the-flat-floor",
     "file": "src/systems/gatherBlow.js",
     "old": "  const over = (t) => arcY(p, v, t) - ground(p[0] + v[0] * t, p[2] + v[2] * t);",

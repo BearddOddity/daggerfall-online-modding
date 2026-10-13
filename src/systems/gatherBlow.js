@@ -1,7 +1,7 @@
 // @ts-check
 // ═══════════════════════════════════════════════════════════════════
 // GATHER-FEEL II (2026-10-13, Mac: "Do the not done" - the open items GATHER-FEEL recorded; bible/06-Systems/
-// Professions-Arc.md section 44) - WHAT A LANDED BLOW DOES BESIDES ITS SOUND.
+// Professions-Arc.md section 45) - WHAT A LANDED BLOW DOES BESIDES ITS SOUND.
 //
 // A tool's blow lands on DFU's melee hit frame (the acts' `landsIn`, GATHER-FEEL); the gathering host knows the frame
 // it does (scenes/gatherHost.js stepAct) and hands it here:

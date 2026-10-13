@@ -36,7 +36,7 @@ import { PeerBodies, peerBuildOpts, BODY_RANGE } from '../src/net/peerBodies.js'
 import { POSE_HZ } from '../src/net/online.js';
 import { EQUIP_SLOTS } from '../src/systems/equip.js';
 import { AudioEngine, VOICE_FADE_S } from '../src/systems/audio.js';
-import { mineFlats, DVEIN_UP_M, standDungeonVeins, standMineNodes, mineKind } from '../src/scenes/mineHost.js';
+import { mineFlats, standDungeonVeins, standMineNodes, mineKind } from '../src/scenes/mineHost.js';
 import { utcDayOfMs, veins } from '../src/net/nodeLaw.js';
 import { shedChunks, stepChunk, chunkBox } from '../src/systems/gatherBlow.js';
 import { setBatchCrack } from '../src/systems/veinCrack.js';
@@ -88,7 +88,7 @@ async function feltRig(o = {}) {
 /** A dungeon entered beside the rig's pixel, its one door's batches kept - and its first vein. */
 async function underground(t, r) {
   const state = { under: false };
-  const wall = (m, b) => [6 + m * 9, DVEIN_UP_M, 4 + b];
+  const wall = (m, b) => [6 + m * 9, 0, 4 + b];
   const stood = [];
   t.host.enterDungeon({
     id: 1234, climate: WOODS, region: GLENUMBRA, wall,
@@ -720,7 +720,7 @@ test('AUDIT GATHER-FEEL V3: chunks come down on the ground where their arc meets
   assert.equal(dl.ground, null);
   const [c] = shedChunks([5, 2.3, 5], [5, 2, 9], 1, dice(0.5), dl.floor, dl.ground);
   for (let i = 0; i < 400 && c.rest < 0; i++) stepChunk(c, 1 / 60);
-  assert.equal(c.p[1], 2 - DVEIN_UP_M, 'on the dungeon\'s floor under the wall');
+  assert.equal(c.p[1], 2, 'on the dungeon\'s floor, at the vein\'s foot');
 });
 
 test('AUDIT GATHER-FEEL V4: a seam on the Enhanced Lighting lane is as dark as on the classic one - its shade taken on the texel\'s display colour, then decoded into the lane\'s light with it (mutant: the shade multiplying the linear albedo)', () => {
@@ -853,7 +853,7 @@ test('AUDIT GATHER-FEEL V6/V7: the host lets every crack go with its node, its a
       const t = await rig({ renderer: r, ranks: { mining: 25 }, extra: { rand: dice(0.1, 0.9, 0.5, 0.3, 0.7), activeDungeon: () => under } });
       let under = false;
       const stood = [];
-      const wall = (m, b) => [6 + m * 9, DVEIN_UP_M, 4 + b];
+      const wall = (m, b) => [6 + m * 9, 0, 4 + b];
       t.host.enterDungeon({
         id: 1234, climate: WOODS, region: GLENUMBRA, wall,
         stand: async (a, rec, sc, c, o) => {
@@ -910,7 +910,7 @@ test('AUDIT GATHER-FEEL V6/V7: the host lets every crack go with its node, its a
       let release = null;
       const t = await rig({ renderer: r, ranks: { mining: 25 }, extra: { rand: dice(0.1, 0.9, 0.5, 0.3, 0.7), activeDungeon: () => true } });
       const stood = [];
-      const wall = (m, b) => [6 + m * 9, DVEIN_UP_M, 4 + b];
+      const wall = (m, b) => [6 + m * 9, 0, 4 + b];
       t.host.enterDungeon({
         id: 1234, climate: WOODS, region: GLENUMBRA, wall,
         stand: async (a, rec, sc, c, o) => {
