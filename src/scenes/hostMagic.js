@@ -46,7 +46,8 @@ import {
 } from '../systems/spellcast.js';
 import { toBoxLocal } from '../systems/naval/navalBallistics.js';   // SERPENT4: a missile inside a box mark
 import { silenceBlocksCast, silencedText, pressButtonToFireSpellText, DOOR_SPELL_TEXT, SOUL_TRAP_TEXT } from '../systems/mysticism.js';
-import { calculateCastCost, effectSchool, EFFECT_COST_TABLE } from '../systems/spellcost.js';
+import { calculateCastCost, castSchool, EFFECT_COST_TABLE } from '../systems/spellcost.js';   // SCHOOLS3: castSchool - the school a signature spell teaches
+import { tellSpellLanded } from '../systems/spellPower.js';   // SCHOOLS3: my spell landed - the paths' riders answer it
 import { applySpell, spellReflectedText, hasActiveEffect, isSoulTrapEffect, spellSways } from '../systems/effects.js';   // WBX7: a soul trap meets the court's boss too
 import { localizedText } from '../systems/textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language
 import { potionBundle } from '../systems/potions.js';   // U44: DrinkPotion's bundle
@@ -700,7 +701,9 @@ export function createPlayerMagic({
       return sinks.hurt(d, { ...(o ?? {}), element: spell?.element ?? null });   // RVN3: the element rides to the door (its weakness's weight)
     } } : sinks;
     const r = applySpell(spell, casterLevel, foe.entity, landing, rolls, caster, ctx);
-    // MW-SPELLFX1: the hit, on the foe it landed on (playEffects) - not one it saved against or turned back
+    // SCHOOLS3 (bible/06-Systems/Arcane-Specialisations.md section 5): MY OWN cast landed on a foe - the paths' riders
+    // answer it (systems/arcanePowers.js). Never a peer's strike spell landed here (its caster is a stand-in), nor a foe's
+    if (caster?.entity === playerEntity && foe?.entity && r) tellSpellLanded({ caster: playerEntity, target: foe.entity, foe, spell, r, self: false });
     if (foe?.ai?.feet && !(r?.saved || r?.chanceFailed || r?.reflected)) mwFx.hit(spell, foe.ai.feet, { body: { height: foe.ai.height ?? CAPSULE_HEIGHT, radius: foe.ai.radius ?? PLAYER_BODY_RADIUS } });
     // STRIKE-SHARED (2026-09-29): ANOTHER PLAYER'S strike spell, landed here on the foe I own (`ctx.peerCaster` its id).
     // The trap's line is its caster's and not mine to speak, and a new trap is marked with whose it is - its soul goes
@@ -745,6 +748,9 @@ export function createPlayerMagic({
     if (caster?.entity && caster.entity !== playerEntity && !caster.entity.isPlayer) noteSkillChallenge(playerEntity, caster.entity);   // BAL9: a foe's spell on me is the fight's, as its blow is (formulas.js's both directions)
     if (caster?.entity && caster.entity !== playerEntity && !caster.entity.isPlayer) markPlayerHarm(caster.entity);   // REVENANT-HARM: before it lands - its burn may be the death
     const r = applySpell(spell, casterLevel, playerEntity, playerSinks, rolls, caster, ctx);
+    // SCHOOLS3: MY OWN cast landed on me (a self-cast, my area of gifts) - the paths' riders answer it; my spell a foe
+    // turned back at me is no self-cast (`reflected`), and a potion's bundle has no caster
+    if (caster?.entity === playerEntity && r) tellSpellLanded({ caster: playerEntity, target: playerEntity, spell, r, self: true, reflected: !!extraCtx?.reflectedCount });
     if (_doorFeet && !(r.saved || r.chanceFailed || r.reflected)) mwFx.hit(spell, _doorFeet);   // MW-SPELLFX1: the hit, about me
     if (r.paralyzed) say(localizedText('youAreParalyzed', 'You are paralyzed.'));   // Paralyze.cs:93
     // S19c: AssignBundle's failure messages, player hosts only -
@@ -886,7 +892,7 @@ export function createPlayerMagic({
     for (const e of sp.effects) {
       if (e.type < 0) continue;
       if (!EFFECT_COST_TABLE[`${e.type},${e.subType & 0xff}`]) continue;
-      tallySkill(playerEntity, effectSchool(e), 1);
+      tallySkill(playerEntity, castSchool(playerEntity, sp, e), 1);   // SCHOOLS3: a signature spell teaches its path's schools
     }
     // AUDIT 58: the ID door - PlayCastSound's `(uint)castSoundID`
     // (EntityEffectManager.cs:1958 -> DaggerfallAudioSource.cs:232-238)

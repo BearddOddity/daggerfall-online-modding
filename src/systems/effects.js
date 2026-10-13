@@ -32,7 +32,8 @@
 
 import { savingThrow, rollMagnitude, EFFECT_FLAGS, careerTolerance, isDamageHealthEffect } from './spellcast.js';   // BAL9: the damage-health pair a pierce reads
 import { mentorDamageTakenMult } from './mentorMode.js';   // SOFTCAP2: a leaf
-import { spellPowerMult, spellPierce } from './spellPower.js';   // BAL9: my damage spell's power and pierce (a leaf)
+import { spellPowerMult, spellPierce, schoolMult } from './spellPower.js';   // BAL9: my damage spell's power and pierce (a leaf); SCHOOLS2: every school past 100
+import { castSchool } from './spellcost.js';   // SCHOOLS3: the school an effect is cast in (a signature spell's path's)
 import { noteFeudHarm, elementFeudClass } from './feudLedger.js';   // RVN1: my spell's round, in its fight's ledger (a leaf)
 import { raceById, raceByKey } from './races.js';   // L2-slice (magic-10): the racial immunity arm
 import { STAT_KEYS_ORDER, FATIGUE_MULTIPLIER, maxFatigue, increaseDrainMagnitude, liveStat } from './statMods.js';
@@ -291,6 +292,9 @@ export const CONCEALMENT_START_TEXT = BUFF_START_TEXT;
  *  certifies what it pins", again). */
 export const classicSub = (e) => e.subType & 0xff;
 export const buffKind = (e) => BUFF_KINDS[`${e.type},${classicSub(e)}`] ?? null;
+/** SCHOOLS2: the concealment kinds - Illusion's Invisibility, Chameleon and Shadow, Normal and True - whose rounds the
+ *  school past 100 lengthens on myself. */
+const CONCEALMENT_KINDS = new Set(['invisNormal', 'invisTrue', 'chameleonNormal', 'chameleonTrue', 'shadeNormal', 'shadeTrue']);
 /** X5: Soul Trap (12,255). Its own arm rather than a BUFF_KINDS row -
  *  the cast-time chance is forced true and the landing gates on the
  *  target's kind. */
@@ -693,7 +697,7 @@ const casterScaledOnly = (n, ent) => (n > 0 && ent && !ent.isPlayer && Number.is
   ? Math.max(1, Math.round(n * ent.damageScale)) : n);
 /** SOFTCAP2: and a MENTORED player takes a foe's spell as it takes a foe's blow - at the mentored health pool
  *  (mentorMode.js damageTakenMult, formulas.js's own tail for blows). `target` optional: without it, as before. */
-export const casterDamageScaled = (n, ent, target = null) => {
+export const casterDamageScaled = (n, ent, target = null, school = null) => {
   let v = casterScaledOnly(n, ent);
   if (v > 0 && target?.isPlayer && !target.peer && !ent?.isPlayer) {
     const m = mentorDamageTakenMult(target);
@@ -701,9 +705,10 @@ export const casterDamageScaled = (n, ent, target = null) => {
   }
   // BAL9 (bible/05-Combat/Balance-Arc.md section 15): MY spell's power - the school past 100 and the loot's potency
   // (systems/spellPower.js spellPowerMult); 1 for a foe's, a peer's stand-in's and at any player. The same rounding and
-  // floor of one; a spell the throw turned whole stays nothing.
+  // floor of one; a spell the throw turned whole stays nothing. SCHOOLS3: `school` the school the effect is cast in
+  // (spellcost.js castSchool - a signature spell's path's), Destruction's when none is said.
   if (v > 0) {
-    const p = spellPowerMult(ent, target);
+    const p = spellPowerMult(ent, target, school == null ? {} : { school });
     if (p !== 1) v = Math.max(1, Math.round(v * p));
   }
   return v;
@@ -715,7 +720,7 @@ export const casterDamageScaled = (n, ent, target = null) => {
  *  applies via liveStat / hasActiveEffect). */
 function runEffectRound(a, target, sinks, rolls) {
   if (a.kind === 'continuousDamage') {
-    const n = casterDamageScaled(effectMagnitude(a.effect, a.casterLevel, a.saveScaled ?? true, a.element, a.flag, target, rolls, a.caster), a.caster, target);   // DROPS-AUDIT ELITE-SPELLS; SOFTCAP2: the target, for mentor mode; BAL9: its caster's pierce
+    const n = casterDamageScaled(effectMagnitude(a.effect, a.casterLevel, a.saveScaled ?? true, a.element, a.flag, target, rolls, a.caster), a.caster, target, a.school);   // DROPS-AUDIT ELITE-SPELLS; SOFTCAP2: the target, for mentor mode; BAL9: its caster's pierce; SCHOOLS3: the school it was cast in
     // AUDIT 68 S19-round-ticks-player-provenance: the tick is DamageHealthFromSource(caster) - the player's blow only
     // when the player cast it (no caster is the player, hostMagic's `!caster` law). A round sink bills nobody else.
     // DUEL1: and the entry's duel tag rides along - a duel's damage over time (bundleDuel) stops at the duel's floor
@@ -736,7 +741,8 @@ function runEffectRound(a, target, sinks, rolls) {
     handleAttackFromSource(a.caster);
   } else if (a.kind === 'regenerate') {
     // Regenerate.MagicRound: IncreaseHealth(GetMagnitude) every round
-    const n = effectMagnitude(a.effect, a.casterLevel, a.saveScaled ?? false, a.element, a.flag, target, rolls);
+    let n = effectMagnitude(a.effect, a.casterLevel, a.saveScaled ?? false, a.element, a.flag, target, rolls);
+    if (n > 0 && a.potency > 1) n = Math.max(1, Math.round(n * a.potency));   // SCHOOLS2: Restoration past 100, fixed at the cast
     if (n > 0 && sinks.heal && !regenBarred()) sinks.heal(n);   // WBX6: the Burning Court keeps no regeneration (systems/courtRules.js)
   }
 }
@@ -874,6 +880,17 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
   // BiographyResistMagicMod where DFU folds in Career.Fire.
   const saveFlag = () => flag;
   const magnitude = (e) => effectMagnitude(e, casterLevel, saveScaled, saveElement(e), saveFlag(e), target, rolls, caster?.entity ?? null);   // BAL9: the caster, for a damage spell's pierce
+  // SCHOOLS2 (bible/06-Systems/Arcane-Specialisations.md section 4): A SCHOOL PAST 100 PAYS IN ITS OWN DIMENSION - the
+  // effect's school (the one it is cast in: spellcost.js castSchool, a signature spell's path's) multiplies where the
+  // target is mine to strengthen (systems/spellPower.js schoolMult): on MYSELF (`self`) a heal, a Shield, a concealment's
+  // rounds, a ward's chance; at a FOE a chance. 1 for every cast but my own, offline, while mentoring, in a refereed fight.
+  const schoolOf = (e) => castSchool(caster?.entity ?? null, spell, e);
+  const potencyOf = (e, self) => schoolMult(caster?.entity ?? null, target, schoolOf(e), { self });
+  const chanceOf = (e, self) => {
+    const ch = chanceValue(e, casterLevel);
+    const k = potencyOf(e, self);
+    return k !== 1 ? Math.min(100, Math.round(ch * k)) : ch;
+  };
   const out = { damage: 0, healed: 0, continuous: 0, skipped: 0 };
   // E2: ctx.heldItem is CastWhenHeld's InstantiateSpellBundle - the
   // whole apply is a HeldMagicItem bundle pinned to the worn item
@@ -1025,14 +1042,16 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
       continue;
     }
     if (isHealHealth(e)) {
-      const n = magnitude(e);
+      let n = magnitude(e);
+      const k = n > 0 ? potencyOf(e, true) : 1;   // SCHOOLS2: Restoration past 100, on myself
+      if (k !== 1) n = Math.max(1, Math.round(n * k));
       out.healed += n;
       if (n > 0 && sinks.heal) sinks.heal(n);
       pushInstantMarker(target, 'healHealth', e);
       continue;
     }
     if (isDamageHealth(e)) {
-      const n = casterDamageScaled(magnitude(e), caster?.entity, target);   // DROPS-AUDIT ELITE-SPELLS; SOFTCAP2: the target, for mentor mode
+      const n = casterDamageScaled(magnitude(e), caster?.entity, target, schoolOf(e));   // DROPS-AUDIT ELITE-SPELLS; SOFTCAP2: the target, for mentor mode; SCHOOLS3: the school it is cast in
       out.damage += n;
       if (n > 0 && sinks.hurt) sinks.hurt(n);
       // DamageHealthFromSource runs HandleAttackFromSource whatever the
@@ -1050,7 +1069,7 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
       if (rounds > 0) {
         const inc = findInc((a) => a.kind === 'continuousDamage');
         if (inc) renewActing(inc, rounds, target, sinks, rolls);
-        else pushActive(target, { kind: 'continuousDamage', effect: e, casterLevel, caster: caster?.entity ?? null, element: spell.element, flag, saveScaled, roundsRemaining: rounds }, sinks, rolls);
+        else pushActive(target, { kind: 'continuousDamage', effect: e, casterLevel, caster: caster?.entity ?? null, element: spell.element, flag, saveScaled, school: schoolOf(e), roundsRemaining: rounds }, sinks, rolls);   // SCHOOLS3: the school its rounds are cast in
         out.continuous++;
       }
       continue;
@@ -1267,7 +1286,7 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
         const sKey = settingsKeyOf(e);
         const inc = findInc((a) => a.kind === 'regenerate' && a.settingsKey === sKey);
         if (inc) renewActing(inc, rounds, target, sinks, rolls);
-        else pushActive(target, { kind: 'regenerate', effect: e, casterLevel, element: saveElement(e), flag: saveFlag(e), saveScaled, settingsKey: sKey, roundsRemaining: rounds }, sinks, rolls);   // magic-11
+        else pushActive(target, { kind: 'regenerate', effect: e, casterLevel, element: saveElement(e), flag: saveFlag(e), saveScaled, settingsKey: sKey, potency: potencyOf(e, true), roundsRemaining: rounds }, sinks, rolls);   // magic-11; SCHOOLS2: Restoration past 100, on myself, fixed at the cast
         // F078: Start's HUD line. base.Start precedes the incumbency
         // resolution, so it prints on EVERY cast that takes - the
         // merge into an incumbent does not silence it.
@@ -1347,7 +1366,9 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
       // throw (EntityEffect.cs:804-806 ModifyEffectAmount). The raw
       // roll this used to take made a ranged Shield unsaveable, which
       // the comment above already claimed it was not.
-      const pool = magnitude(e);
+      let pool = magnitude(e);
+      const k = pool > 0 ? potencyOf(e, true) : 1;   // SCHOOLS2: Alteration past 100, on myself
+      if (k !== 1) pool = Math.max(1, Math.round(pool * k));
       if (rounds > 0 && pool > 0) {
         // REVIEW FIX: a BUSTED pool is no longer an incumbent - that
         // is exactly what DamageShield's ResignAsIncumbent does on
@@ -1416,7 +1437,7 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
           // rightly fixed at cast.
           const entry = k === 'spellAbsorption'
             ? { kind: k, chanceBase: e.chanceBase, chanceMod: e.chanceMod, chancePerLevel: e.chancePerLevel, roundsRemaining: rounds }
-            : { kind: k, chance: chanceValue(e, casterLevel), roundsRemaining: rounds };
+            : { kind: k, chance: k === 'comprehendLanguages' ? chanceValue(e, casterLevel) : chanceOf(e, true), roundsRemaining: rounds };   // SCHOOLS2: Thaumaturgy past 100, a ward on myself
           pushActive(target, entry, sinks, rolls);
         }
         out.buffs = (out.buffs ?? 0) + 1;
@@ -1524,7 +1545,7 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
     if (isDispelCreature(e)) {
       out.dispel = {
         group: DISPEL_GROUP[classicSub(e)],
-        chance: chanceValue(e, casterLevel),
+        chance: chanceOf(e, true),   // SCHOOLS2: Mysticism past 100 - the sweep lands on me, and is mine
       };
       continue;
     }
@@ -1694,7 +1715,7 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
             out.saved = (out.saved ?? 0) + 1;
             continue;
           }
-          pushActive(target, { kind: 'soulTrap', chance: chanceValue(e, casterLevel), roundsRemaining: rounds }, sinks, rolls);
+          pushActive(target, { kind: 'soulTrap', chance: chanceOf(e, false), roundsRemaining: rounds }, sinks, rolls);   // SCHOOLS2: Mysticism past 100, at a foe
           out.trapAlert = 'trapActive';   // BecomeIncumbent speaks only for a NEW incumbent
         }
         out.buffs = (out.buffs ?? 0) + 1;
@@ -1713,7 +1734,8 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
       // CasterOnly (:560-579). Among these kinds only SILENCE
       // supports chance (Silence.cs:32 - every other buff class sets
       // duration alone), on the OnCast default.
-      const rounds = rollDuration(e, casterLevel);
+      // SCHOOLS2: Illusion past 100 - a concealment on myself lasts longer
+      const rounds = CONCEALMENT_KINDS.has(kind) ? Math.round(rollDuration(e, casterLevel) * potencyOf(e, true)) : rollDuration(e, casterLevel);
       // AUDIT 26 F075: Silence.Start opens with PlayerAggro()
       // (Silence.cs:48) - Start runs at AssignBundle:531, BEFORE the
       // chance and save gates, so an invisible player silencing a foe
@@ -1723,7 +1745,7 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
       if (rounds > 0) {
         const inc = findInc((a) => a.kind === kind);
         if (inc) renewRounds(inc, rounds - 1);             // incumbent RENEWED (STACK-CAP; ConcealmentEffect.AddState stacks, F12)
-        const chanceOk = kind !== 'silenced' || ctx.bypassChance === true || dice100(chanceValue(e, casterLevel), rolls());   // E2: BypassChance
+        const chanceOk = kind !== 'silenced' || ctx.bypassChance === true || dice100(chanceOf(e, false), rolls());   // E2: BypassChance; SCHOOLS2: Mysticism past 100, at a foe
         if (!chanceOk) { out.chanceFailed = (out.chanceFailed ?? 0) + 1; continue; }
         if (!inc) {
           if (assignSave && savingThrow(saveElement(e), saveFlag(e), target, 0, rolls) === 0) {   // magic-11: concealments save as MAGIC

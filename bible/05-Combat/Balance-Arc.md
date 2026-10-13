@@ -861,8 +861,9 @@ RECORDED, NOT CHANGED:
   (`enemyEntity.js` skillsLevel: 5L + 30) and land the foes' spells at the player a third harder; a pierce for the
   player's alone is a departure from BAL2's one rule. Magnus's Gaze is the loot's, the player's alone. The owner's call.
 - **The school below 100** is DFU's: the price is the skill's reward, and a steep one.
-- **The other schools past 100** buy their price alone, as before - a heal's potency would reach the referee's heal
-  ceiling (INT10's 40) and the measured guards; a call of its own.
+- **The other schools past 100** were made their own call, and the owner made it (SCHOOLS2, 2026-10-13,
+  `06-Systems/Arcane-Specialisations.md` section 4): each pays in its own dimension by this section's law - on the
+  caster's own body or at a foe, never in a refereed fight, so the referee's heal ceiling (INT10's 40) is not reached.
 - **A Cast When Strikes spell** a weapon of mine casts on a foe is my spell: the school's potency and the loot's reach
   it as any of mine. A peer's strike spell on my foe lands at its stand-in (STRIKE-SHARED) and takes none.
 - **The pool between rests** stays DFU's but for the loot: wellspring and Soul Siphon on a kill, the Ring's round, the
