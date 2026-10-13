@@ -667,8 +667,15 @@ select, input, textarea { font: inherit; }
    lives - was left a few pixels. The title and the rail drew; the pane each rail press opened could not be seen, and
    the sliver of it was the "tiny space" that scrolled. Where height is the constraint and width is not, the desk's
    two columns come back - the rail down the side, the pane the whole height - with the thumb's 44 px rows. Not the
-   wizard: its rail is a readout and its phone strip is its own (below). */
-@media (pointer: coarse) and (orientation: landscape) and (max-height: 560px) and (min-width: 600px) {
+   wizard: its rail is a readout and its phone strip is its own (below).
+   TALL-TOUCH (2026-10-13, Discord #bug-reports, on an ASUS ROG Xbox Ally X: "it's impossible to configure the game
+   settings because of a huge game logo that won't minimize or go away"). NOT ONLY A SHORT ONE: ANY LANDSCAPE SCREEN.
+   The stack sizes the logo by the screen's WIDTH (59.5% of it, at the mark's 1.63:1), so held sideways it stands at
+   least half the height at any size - 1280x720 (a 1080p handheld at Windows' 150%) drew it ~470 px of 720 and left
+   the Settings pane a strip. The 560 px ceiling caught the AYN Thor and missed the Ally. So every landscape screen
+   600 px wide or more that the stack would take - a touch screen of any height, or a window narrowed under 860 px -
+   keeps the two columns. */
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 600px), (orientation: landscape) and (min-width: 600px) and (max-width: 860px) {
   .shell:not(.wizard) { grid-template-columns: min(var(--side), 34vw) 1fr; grid-template-rows: none; }
   .shell:not(.wizard) > .side { display: flex; flex-direction: column; min-height: 0; }
   .shell:not(.wizard) .brand { padding: 10px 14px 6px; }
