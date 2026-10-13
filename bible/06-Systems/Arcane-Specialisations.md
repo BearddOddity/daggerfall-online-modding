@@ -268,7 +268,8 @@ by content `bal9.json`'s two and `dropsaudit.json`'s two records the same lines 
 account service's version pins to acct130 in the nineteen suites and their records (acct127 until the merge of
 main that brought acct128 and acct129). And the audit's
 (PIN MOVED (AUDIT SCHOOLS)): the cast's wrapper and token in `serpent4`, `wb11_gate_host`, `wb9c_gate_reckoning`,
-`wb4b_gate_blows` (four), `audit24_scenes` and `x3casting`; by content `wb4b.json`'s three, `fb1001_regen.json`'s three
+`wb4b_gate_blows` (four), `auditwbx`, `audit24_scenes` and `x3casting`; the door's `castOnPlayer` and its `power` word in
+`set2_seams`; by content `wb4b.json`'s three, `fb1001_regen.json`'s three
 (the Regenerate entry's school and caster) and `stackcap.json`'s two (the ward arm's merge).
 
 Every word a player reads goes through the text core (`t()`, the keys under `schools.` and `pause.master.spec.`),

@@ -82,7 +82,9 @@ shapes in play (design page section 10 names them). Mutants: `tools/mutants/audi
 so its record is the unknown id's), every one dead but the reflected-landing guard recorded equivalent (L5 M4); and
 by content `wb4b.json`'s three, `fb1001_regen.json`'s three and `stackcap.json`'s two (one aimed at the Shield arm's
 one site, the ward arm now sharing its line), every list run whole: dead. PIN MOVED (AUDIT SCHOOLS): the cast's wrapper
-and token in `serpent4`, `wb11_gate_host`, `wb9c_gate_reckoning`, `wb4b_gate_blows`, `audit24_scenes` and `x3casting`.
+and token in `serpent4`, `wb11_gate_host`, `wb9c_gate_reckoning`, `wb4b_gate_blows`, `auditwbx`, `audit24_scenes` and
+`x3casting`; the door's `castOnPlayer` and its `power` word in `set2_seams` (`auditwbx`'s and `set2_seams`' found red by
+the pull request's CI, the only two of its whole run).
 The first run of the two lists left three survivors - the redundant `pacifyImmune` guard (taken out), the
 Comprehend Languages pin cast at the wrong school (Comprehend is Mysticism's; re-cast), and the arc's reflected-guard
 record, whose own pin had been the made-up shape (recorded equivalent, its real path pinned). The second left one:
