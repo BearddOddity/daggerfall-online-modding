@@ -100,7 +100,10 @@ gatherer had taken back, chunks lying off the ground, and laws no pin could fail
 - Every existing record on the files whose logic the audit moved - `scenes/gatherHost.js`, `systems/gatherSounds.js`,
   `systems/chopAct.js`, `systems/mineAct.js`, `systems/gatherBlow.js`, `systems/audio.js`, `net/peerGather.js`,
   `net/peerBodies.js`, `net/remotePlayers.js`, `scenes/mineHost.js`, `scenes/treeHost.js`,
-  `render/enhancedLighting.js` - was judged again: see section 45's last paragraph for the count.
+  `render/enhancedLighting.js` - was put to a rejudge on the tree merged with MINE-PERKS, with this list whole: 927. At
+  the merge (Mac: "hurry up") 529 had been judged - 527 dead, the two recorded equivalents alive, no survivor - this
+  list's 81 among them; the other 398, from `gatherfeel2.json`'s last 53 on, were not judged here (section 45's AUDIT
+  GATHER-FEEL paragraph).
 
 NOT SEEN OR HEARD IN PLAY HERE: the chunks on a hillside were measured against the heightmap they fall on, the lane's
 seam against its codec, and every program compiled in Chromium's WebGL2; the fall taken back, the peers' stop and the

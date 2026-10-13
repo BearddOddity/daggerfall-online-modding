@@ -4530,8 +4530,14 @@ frozen snapshot of sections 44 and 45; thirty-four findings, one HIGH (every min
 flats for a frame), each fixed, pinned or recorded, and marked `AUDIT GATHER-FEEL <id>` above. A blow lands on one
 clock now, its machine's; an act is let go through one door; a peer drops a blow the gatherer took back; a net's water
 is heard at the net; the chunks lie on the ground they fall on; a refused tree's fall is heard no more. Pinned:
-`test/audit_gatherfeel.test.js` (22); `tools/mutants/auditgatherfeel.json` (81, all dead); forty-six records re-aimed by
-content, each dead. REJUDGE_LINE
+`test/audit_gatherfeel.test.js` (22); `tools/mutants/auditgatherfeel.json` (81, all dead); forty-six records re-aimed
+by content, each dead. Every existing record on the files whose logic the audit moved - `scenes/gatherHost.js`,
+`systems/gatherSounds.js`, `systems/chopAct.js`, `systems/mineAct.js`, `systems/gatherBlow.js`, `systems/audio.js`,
+`net/peerGather.js`, `net/peerBodies.js`, `net/remotePlayers.js`, `scenes/mineHost.js`, `scenes/treeHost.js`,
+`render/enhancedLighting.js` - was put to a rejudge on the tree merged with MINE-PERKS, with the audit's own list
+whole: 927, in the lists' name order. At the merge (Mac: "hurry up") 529 had been judged - 527 dead, the two recorded
+equivalents alive, no survivor - the audit's own 81 among them; the other 398, from `gatherfeel2.json`'s last 53 to
+`wwaudit.json`, were not judged here.
 
 Pinned: `test/gf2_blowshake.test.js` (8), `test/gf2_veincracks.test.js` (8), `test/gf2_peeracts.test.js` (12), over one
 rig shared with GATHER-FEEL's pins (`test/gatherRig.mjs` - `test/gatherfeel.test.js`'s own, lifted). Mutants:
