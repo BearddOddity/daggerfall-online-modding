@@ -4343,7 +4343,9 @@ lines and its NOT list (`test/la_cost.test.js`), the batch's minted fields, 60 (
 flats' counts (`test/gatherspeed.test.js`, `test/audit29_host.test.js` - a burst's batch is no node's flats); VEIN-HUE's
 group key (`test/fb1012b_veinhue.test.js`); the pose's arm, its line order (`test/mac7.test.js` - the gathering fields
 between the torch and the climb); the peers' rebase (`test/peerstride.test.js`); the lane's flat albedo
-(`test/blood1_decals.test.js` - the crack after the decode). Records re-aimed by content: `gatherfeel.json`
+(`test/blood1_decals.test.js` - the crack after the decode) and the classic one's (`test/audit39_render.test.js` R17 - the
+crack after the emission's cancel); the entry's static reach, 77 (`test/boot2.test.js` - `systems/veinCrack.js` on the
+renderer's path, a leaf of no imports, pinned so). Records re-aimed by content: `gatherfeel.json`
 GATHER-FEEL-follow-never-put-away (the stepAct line), `audit0928_render.json` AUDIT0928-N7, `audit29.json`
 AUDIT29-C5, `auditdrops.json` AD-E4, `cards2b.json` SB-wire-no-news, `disc12.json` DISC12-body-never-follows,
 `disc23b.json` D23B-no-stance, `fb1002_herbcursor.json` HERB-CURSOR-escape-unsynced, `fb1011_veinwash.json`

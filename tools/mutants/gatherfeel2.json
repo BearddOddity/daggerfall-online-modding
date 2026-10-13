@@ -767,8 +767,8 @@
  {
   "name": "GF2-PEERACTS-the-last-blow-unheard",
   "file": "src/net/peerGather.js",
-  "old": "const tool = act === 'chop' || act === 'mine' ? act : was === 'chop' || was === 'mine' ? was : null;",
-  "new": "const tool = act === 'chop' || act === 'mine' ? act : null;",
+  "old": "const tool = doing === 'chop' || doing === 'mine' ? doing : before === 'chop' || before === 'mine' ? before : null;",
+  "new": "const tool = doing === 'chop' || doing === 'mine' ? doing : null;",
   "tests": [
    "test/gf2_peeracts.test.js"
   ]
@@ -776,7 +776,7 @@
  {
   "name": "GF2-PEERACTS-the-kneel-lost",
   "file": "src/net/peerGather.js",
-  "old": "        if (act === 'hand' || act === 'steady' || act === 'basket') { this._say('kneel', place); cued = true; }",
+  "old": "        if (doing === 'hand' || doing === 'steady' || doing === 'basket') { this._say('kneel', place); cued = true; }",
   "new": "",
   "tests": [
    "test/gf2_peeracts.test.js"
@@ -785,8 +785,8 @@
  {
   "name": "GF2-PEERACTS-the-knife-kneels",
   "file": "src/net/peerGather.js",
-  "old": "if (act === 'hand' || act === 'steady' || act === 'basket') {",
-  "new": "if (act === 'hand' || act === 'steady' || act === 'basket' || act === 'trace') {",
+  "old": "if (doing === 'hand' || doing === 'steady' || doing === 'basket') {",
+  "new": "if (doing === 'hand' || doing === 'steady' || doing === 'basket' || doing === 'trace') {",
   "tests": [
    "test/gf2_peeracts.test.js"
   ]

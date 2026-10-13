@@ -190,7 +190,7 @@ export class PeerGatherSounds {
     if (!s) { this.peers.set(id, { ga, gb, net: null, cueAt: -Infinity, plipAt: Infinity, thrashAt: Infinity, held: [] }); return; }   // first seen: an old act is not replayed
     if (!ga && !s.ga && gb === s.gb && !s.held.length) return;   // gathering nothing, no new beat, nothing in the air: a frame's no work (every peer in the room passes here)
     const t = this.now();
-    const act = GATHER_POSE_ACTS[ga - 1] ?? null, was = GATHER_POSE_ACTS[s.ga - 1] ?? null;
+    const doing = GATHER_POSE_ACTS[ga - 1] ?? null, before = GATHER_POSE_ACTS[s.ga - 1] ?? null;   // the act now, and as last seen (named apart from the hosts' key `act` - ROAD-H H5's sweep reads `if (act === ...)` as a key's arm)
     const yaw = Number.isFinite(shown?.yaw) ? shown.yaw : 0;
     const ok = heard && !!feet && !!this.audio?.play3d;
     if (ok && this.install && this.on()) installGatherSounds(this.audio);
@@ -208,21 +208,21 @@ export class PeerGatherSounds {
     let cued = false;
     if (ok && cueOk) {
       // the act turned: the kneel among the leaves, the net thrown, landing, tugged, hauled
-      if (act !== was) {
-        if (act === 'hand' || act === 'steady' || act === 'basket') { this._say('kneel', place); cued = true; }
-        if (act === 'fly') { this._say('throw', place); cued = true; }
-        if (act === 'wait') {
+      if (doing !== before) {
+        if (doing === 'hand' || doing === 'steady' || doing === 'basket') { this._say('kneel', place); cued = true; }
+        if (doing === 'fly') { this._say('throw', place); cued = true; }
+        if (doing === 'wait') {
           s.net = feet && (shown?.gm | 0) > 0 ? [feet[0] + Math.sin(yaw) * shown.gm, feet[1], feet[2] + Math.cos(yaw) * shown.gm] : place;
           this._say('netLand', s.net); cued = true;
         }
-        if (act === 'tug') { this._say('tug', s.net ?? place); cued = true; }
-        if (act === 'haul') { this._say('hauling', s.net ?? place); cued = true; }
+        if (doing === 'tug') { this._say('tug', s.net ?? place); cued = true; }
+        if (doing === 'haul') { this._say('hauling', s.net ?? place); cued = true; }
       }
       // a beat: the tool's swing now and its blow on the hit frame (the tool the act's - or, a last blow come with the
       // pose that let the act go, the act's it ended); the hand's, the knife's and the net's own
       if (gb > 0 && gb !== s.gb) {
         const kind = gatherBeatOf(gb);
-        const tool = act === 'chop' || act === 'mine' ? act : was === 'chop' || was === 'mine' ? was : null;
+        const tool = doing === 'chop' || doing === 'mine' ? doing : before === 'chop' || before === 'mine' ? before : null;
         const blow = (kind === 'blow' || kind === 'clean') && tool ? BLOW_SAYS[tool][kind] : null;
         if (blow && tool && place) {
           this._say('swing', place, tool === 'mine' ? GATHER_SOUND.PICK_SWING_PITCH : 1);
@@ -235,14 +235,14 @@ export class PeerGatherSounds {
       }
     }
     if (cued) s.cueAt = t;
-    if (act !== 'wait' && act !== 'tug' && act !== 'haul') s.net = null;
+    if (doing !== 'wait' && doing !== 'tug' && doing !== 'haul') s.net = null;
     // the water's own beats: a plip by the floats while the net waits, the catch fighting while it hauls
-    if (act === 'wait') {
-      if (was !== 'wait' || !Number.isFinite(s.plipAt)) s.plipAt = t + this._span(GATHER_SOUND.PLIP_MIN_S, GATHER_SOUND.PLIP_MAX_S);
+    if (doing === 'wait') {
+      if (before !== 'wait' || !Number.isFinite(s.plipAt)) s.plipAt = t + this._span(GATHER_SOUND.PLIP_MIN_S, GATHER_SOUND.PLIP_MAX_S);
       else if (t >= s.plipAt) { if (ok) this._say('plip', s.net ?? place); s.plipAt = t + this._span(GATHER_SOUND.PLIP_MIN_S, GATHER_SOUND.PLIP_MAX_S); }
     } else s.plipAt = Infinity;
-    if (act === 'haul') {
-      if (was !== 'haul' || !Number.isFinite(s.thrashAt)) s.thrashAt = t + this._span(GATHER_SOUND.THRASH_MIN_S, GATHER_SOUND.THRASH_MAX_S);
+    if (doing === 'haul') {
+      if (before !== 'haul' || !Number.isFinite(s.thrashAt)) s.thrashAt = t + this._span(GATHER_SOUND.THRASH_MIN_S, GATHER_SOUND.THRASH_MAX_S);
       else if (t >= s.thrashAt) { if (ok) this._say('thrash', s.net ?? place); s.thrashAt = t + this._span(GATHER_SOUND.THRASH_MIN_S, GATHER_SOUND.THRASH_MAX_S); }
     } else s.thrashAt = Infinity;
     s.ga = ga;
