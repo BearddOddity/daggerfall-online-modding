@@ -1,4 +1,89 @@
 {
+ "death.goldLoss": {
+  "en": "e50b68fd3fd3",
+  "tr": "4019d3467cbd",
+  "by": "claude-in-session"
+ },
+ "death.hint.end": {
+  "en": "3396ff6bde44",
+  "tr": "d8e6f2c7cac5",
+  "by": "claude-in-session"
+ },
+ "death.hint.endLoad": {
+  "en": "907dcbbb54fb",
+  "tr": "4848b5d56ae4",
+  "by": "claude-in-session"
+ },
+ "death.hint.rise": {
+  "en": "c697c81bc0c9",
+  "tr": "49bfcd6bb533",
+  "by": "claude-in-session"
+ },
+ "death.hint.riseLoad": {
+  "en": "fd23eb8597f0",
+  "tr": "5d88b5363942",
+  "by": "claude-in-session"
+ },
+ "death.key.end": {
+  "en": "a0ee4b39684e",
+  "tr": "2ba8532868fe",
+  "by": "claude-in-session"
+ },
+ "death.key.load": {
+  "en": "ac2eae5a2392",
+  "tr": "644fbd7afcc9",
+  "by": "claude-in-session"
+ },
+ "death.key.rise": {
+  "en": "1a6b83afbf63",
+  "tr": "558e0deb2a4c",
+  "by": "claude-in-session"
+ },
+ "death.key.riseLegacy": {
+  "en": "563339f82447",
+  "tr": "888089f7b548",
+  "by": "claude-in-session"
+ },
+ "death.line": {
+  "en": "cdd3b91f52a8",
+  "tr": "e1ec52ad2705",
+  "by": "claude-in-session"
+ },
+ "death.lineOnline": {
+  "en": "5187ab11d756",
+  "tr": "a855250cceea",
+  "by": "claude-in-session"
+ },
+ "death.risingIn": {
+  "en": "e2f4872e1f81",
+  "tr": "ab7791c9f2b4",
+  "by": "claude-in-session"
+ },
+ "death.risingInClock": {
+  "en": "83357733b181",
+  "tr": "65206528f37e",
+  "by": "claude-in-session"
+ },
+ "death.risingInCount": {
+  "en": "d96ed88b4c48",
+  "tr": "2e28081e2ffd",
+  "by": "claude-in-session"
+ },
+ "death.risingInWild": {
+  "en": "b32fd38d8c93",
+  "tr": "2e28081e2ffd",
+  "by": "claude-in-session"
+ },
+ "death.title": {
+  "en": "9f7fced01119",
+  "tr": "da8f5ae0127d",
+  "by": "claude-in-session"
+ },
+ "death.youDied": {
+  "en": "6e4f16746fcc",
+  "tr": "da8f5ae0127d",
+  "by": "claude-in-session"
+ },
  "lang.offer": {
   "en": "4417f5798650",
   "tr": "b219aaef9176",
@@ -17,6 +102,1406 @@
  "lang.offer.yes": {
   "en": "5397e0583f14",
   "tr": "c92b4cda8bdf",
+  "by": "claude-in-session"
+ },
+ "menu.about.build": {
+  "en": "bbd80cf7e2de",
+  "tr": "00506ea3cabd",
+  "by": "claude-in-session"
+ },
+ "menu.about.devBuild": {
+  "en": "cdcca23e57c1",
+  "tr": "9e07d5364a4f",
+  "by": "claude-in-session"
+ },
+ "menu.about.exit": {
+  "en": "f83b6fe3aebf",
+  "tr": "ecc8edea5c44",
+  "by": "claude-in-session"
+ },
+ "menu.about.exitNote": {
+  "en": "5eecab82ed0f",
+  "tr": "e058e97c4644",
+  "by": "claude-in-session"
+ },
+ "menu.about.interface": {
+  "en": "7b4db7ef1fa2",
+  "tr": "bd8d3c61e1e9",
+  "by": "claude-in-session"
+ },
+ "menu.about.keys": {
+  "en": "242c24f91695",
+  "tr": "5f5d40e22991",
+  "by": "claude-in-session"
+ },
+ "menu.about.settings": {
+  "en": "c7f73bb54d92",
+  "tr": "6329f21c4163",
+  "by": "claude-in-session"
+ },
+ "menu.about.tagline": {
+  "en": "69257e7b74bc",
+  "tr": "519a557bf127",
+  "by": "claude-in-session"
+ },
+ "menu.about.update": {
+  "en": "fb91e24fa52d",
+  "tr": "d9db02d07adb",
+  "by": "claude-in-session"
+ },
+ "menu.act.begin": {
+  "en": "c3651ab2341e",
+  "tr": "2ad3eddc09d1",
+  "by": "claude-in-session"
+ },
+ "menu.begin.blurb": {
+  "en": "e4e4d4d671eb",
+  "tr": "ea15fa9e5589",
+  "by": "claude-in-session"
+ },
+ "menu.begin.title": {
+  "en": "130cd7fe3334",
+  "tr": "ea12219d0ec1",
+  "by": "claude-in-session"
+ },
+ "menu.brand.alt": {
+  "en": "2c59b884ccf1",
+  "tr": "2c59b884ccf1",
+  "by": "claude-in-session"
+ },
+ "menu.chat.colours": {
+  "en": "4b48c711c72d",
+  "tr": "01f7b12a0ff6",
+  "by": "claude-in-session"
+ },
+ "menu.chat.coloursNote": {
+  "en": "1fa02d8d74aa",
+  "tr": "85206c18df93",
+  "by": "claude-in-session"
+ },
+ "menu.chat.lang": {
+  "en": "0c4ca71fd59d",
+  "tr": "afdf733e84aa",
+  "by": "claude-in-session"
+ },
+ "menu.chat.langNote": {
+  "en": "92b570473ec2",
+  "tr": "a16838aff074",
+  "by": "claude-in-session"
+ },
+ "menu.chat.ping": {
+  "en": "a1259a561e06",
+  "tr": "2acee997014d",
+  "by": "claude-in-session"
+ },
+ "menu.chat.pingNote": {
+  "en": "8c4a916b055f",
+  "tr": "420483114b56",
+  "by": "claude-in-session"
+ },
+ "menu.chat.title": {
+  "en": "2ced57f12591",
+  "tr": "ab9f7ee6f8b0",
+  "by": "claude-in-session"
+ },
+ "menu.classic.status.classicSaves": {
+  "en": "355bf707a7a9",
+  "tr": "369278af9143",
+  "by": "claude-in-session"
+ },
+ "menu.classic.status.loadClassic": {
+  "en": "67f9e2405aac",
+  "tr": "29e3bc87a95e",
+  "by": "claude-in-session"
+ },
+ "menu.classic.status.loadGame": {
+  "en": "1d302b37dc4f",
+  "tr": "c5f9fcf15755",
+  "by": "claude-in-session"
+ },
+ "menu.classic.status.mainMenu": {
+  "en": "5368d874f4d9",
+  "tr": "65bbed805348",
+  "by": "claude-in-session"
+ },
+ "menu.classic.status.noExit": {
+  "en": "45a37bf5f9f6",
+  "tr": "bc50d3641699",
+  "by": "claude-in-session"
+ },
+ "menu.classic.status.noReadable": {
+  "en": "db54ce24a752",
+  "tr": "749f36d05b26",
+  "by": "claude-in-session"
+ },
+ "menu.classic.status.noSaves": {
+  "en": "a2bb76d83436",
+  "tr": "a4465bee11ec",
+  "by": "claude-in-session"
+ },
+ "menu.classic.status.openFailed": {
+  "en": "f0c92c9f15be",
+  "tr": "768cfdfcb314",
+  "by": "claude-in-session"
+ },
+ "menu.classic.status.title": {
+  "en": "3c6de1b7dd91",
+  "tr": "47b4753f220d",
+  "by": "claude-in-session"
+ },
+ "menu.classicLoad.dropFailed": {
+  "en": "120c0b901104",
+  "tr": "8ab2a057c79d",
+  "by": "claude-in-session"
+ },
+ "menu.classicLoad.noFolders": {
+  "en": "58f407283db9",
+  "tr": "20945b362fcd",
+  "by": "claude-in-session"
+ },
+ "menu.classicLoad.phone": {
+  "en": "02edfef9af97",
+  "tr": "3a9b2faff43b",
+  "by": "claude-in-session"
+ },
+ "menu.classicLoad.pick": {
+  "en": "205ae8a92968",
+  "tr": "02a9ff58ab27",
+  "by": "claude-in-session"
+ },
+ "menu.classicLoad.reading": {
+  "en": "405b3460f2a9",
+  "tr": "df9f82787727",
+  "by": "claude-in-session"
+ },
+ "menu.classicLoad.title": {
+  "en": "6b95d538c131",
+  "tr": "dcfdd2fd10f4",
+  "by": "claude-in-session"
+ },
+ "menu.classicLoad.unpacking": {
+  "en": "fa0ad742164e",
+  "tr": "f207406f3e28",
+  "by": "claude-in-session"
+ },
+ "menu.classicLoad.zipFailed": {
+  "en": "8957bdb8e421",
+  "tr": "c60fa9a37d68",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.backUp": {
+  "en": "8fbfcf2e7c03",
+  "tr": "8f38c88202af",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.backUpAgain": {
+  "en": "9a0483195ceb",
+  "tr": "2307c7db53c9",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.bad": {
+  "en": "e19c621c79da",
+  "tr": "790583aff7da",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.busy": {
+  "en": "f6005584e229",
+  "tr": "def3c0f8fe1d",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.deleteBackup": {
+  "en": "4fcb0270cc00",
+  "tr": "4e34745da096",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.deleteBackupAsk": {
+  "en": "3ad64e46930a",
+  "tr": "93500a4b367b",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.download": {
+  "en": "a479c9c34e87",
+  "tr": "bc3a85876c88",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.downloadHint": {
+  "en": "33a25fa1d105",
+  "tr": "c9ba746ce09c",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.newer": {
+  "en": "7314e2d3d514",
+  "tr": "4e7ad4cea7cc",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.newerWhen": {
+  "en": "f288c8391753",
+  "tr": "4ede50e40a4d",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.none": {
+  "en": "3ccc23a9f6e3",
+  "tr": "fd45eaf70692",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.only": {
+  "en": "83945d177124",
+  "tr": "6cb6dabd85dc",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.onlyInBackup": {
+  "en": "76151bbdc853",
+  "tr": "b20a085de2dd",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.onlyWhen": {
+  "en": "bb065154a2ca",
+  "tr": "796d60d3af81",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.replaceNewer": {
+  "en": "07abb75b5faa",
+  "tr": "4a75c4e7ef93",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.replaceWithBackup": {
+  "en": "372e7697eb97",
+  "tr": "9513fbb3e9a9",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.restoreBackup": {
+  "en": "a65eaa8807ce",
+  "tr": "14b70f9b3e19",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.saved": {
+  "en": "ab86fc02727c",
+  "tr": "b26d67444906",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.savedWhen": {
+  "en": "98803c42d6d0",
+  "tr": "41fba745471b",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.tryAgain": {
+  "en": "042c862e4467",
+  "tr": "5213848aa02c",
+  "by": "claude-in-session"
+ },
+ "menu.cloud.wait": {
+  "en": "c60bd5d34880",
+  "tr": "1c60687f1008",
+  "by": "claude-in-session"
+ },
+ "menu.continue.none": {
+  "en": "12f56a0fcace",
+  "tr": "056d5bf39d6a",
+  "by": "claude-in-session"
+ },
+ "menu.continue.noneHint": {
+  "en": "4f36916b69d3",
+  "tr": "11f3e61e24d2",
+  "by": "claude-in-session"
+ },
+ "menu.continue.play": {
+  "en": "2e02623966f9",
+  "tr": "8b7341cbc4a1",
+  "by": "claude-in-session"
+ },
+ "menu.continue.startNew": {
+  "en": "2d97aab2ed5d",
+  "tr": "e6bbbebf9e92",
+  "by": "claude-in-session"
+ },
+ "menu.credits.blurb": {
+  "en": "e8c6e4544712",
+  "tr": "831fdd3ca2f7",
+  "by": "claude-in-session"
+ },
+ "menu.credits.builtOn": {
+  "en": "5342a27487ee",
+  "tr": "2e12c1aee5c5",
+  "by": "claude-in-session"
+ },
+ "menu.credits.by": {
+  "en": "d057cb70c0f2",
+  "tr": "951458bf501e",
+  "by": "claude-in-session"
+ },
+ "menu.credits.contact": {
+  "en": "9c40c054df78",
+  "tr": "e0e668a19dae",
+  "by": "claude-in-session"
+ },
+ "menu.credits.mods": {
+  "en": "cc459f63a7ae",
+  "tr": "ec4b11bad0ed",
+  "by": "claude-in-session"
+ },
+ "menu.credits.title": {
+  "en": "bfac50d6424b",
+  "tr": "2c18a65a0831",
+  "by": "claude-in-session"
+ },
+ "menu.credits.translations": {
+  "en": "8ad8302d110b",
+  "tr": "07f1ecfe4fe4",
+  "by": "claude-in-session"
+ },
+ "menu.exit.allLost": {
+  "en": "167ac3ce542a",
+  "tr": "6fa041bbcb5a",
+  "by": "claude-in-session"
+ },
+ "menu.exit.blurb": {
+  "en": "7996962ac54d",
+  "tr": "dae36eb6f853",
+  "by": "claude-in-session"
+ },
+ "menu.exit.lastSave": {
+  "en": "f2fe336e16bc",
+  "tr": "2e8f7ce5c3cf",
+  "by": "claude-in-session"
+ },
+ "menu.exit.leave": {
+  "en": "475a284b4816",
+  "tr": "7b5a48d36609",
+  "by": "claude-in-session"
+ },
+ "menu.exit.lostSince": {
+  "en": "1c9b479277c9",
+  "tr": "dd183f46b7fd",
+  "by": "claude-in-session"
+ },
+ "menu.exit.lostSinceLast": {
+  "en": "1def724bf8ac",
+  "tr": "74d82014f13e",
+  "by": "claude-in-session"
+ },
+ "menu.exit.none": {
+  "en": "71f8e7976e4c",
+  "tr": "1a2e920ba7c6",
+  "by": "claude-in-session"
+ },
+ "menu.exit.title": {
+  "en": "f647a083063d",
+  "tr": "145998ccba6c",
+  "by": "claude-in-session"
+ },
+ "menu.exit.yes": {
+  "en": "f83b6fe3aebf",
+  "tr": "ecc8edea5c44",
+  "by": "claude-in-session"
+ },
+ "menu.features.allOff": {
+  "en": "97b783387e60",
+  "tr": "1968530836b3",
+  "by": "claude-in-session"
+ },
+ "menu.features.allOffAsk": {
+  "en": "6fc7e8590b8a",
+  "tr": "4cca8ad542d0",
+  "by": "claude-in-session"
+ },
+ "menu.features.allOffTitle": {
+  "en": "d4b4b93c1f3d",
+  "tr": "5432d1cb535f",
+  "by": "claude-in-session"
+ },
+ "menu.features.dials": {
+  "en": "46db4a55b4ec",
+  "tr": "cba5b54bc0bc",
+  "by": "claude-in-session"
+ },
+ "menu.features.dialsLabel": {
+  "en": "47b147ceeae9",
+  "tr": "22913fa72e6e",
+  "by": "claude-in-session"
+ },
+ "menu.features.keys": {
+  "en": "242c24f91695",
+  "tr": "5f5d40e22991",
+  "by": "claude-in-session"
+ },
+ "menu.features.keysLabel": {
+  "en": "e5651c683f14",
+  "tr": "c4ad48954bd3",
+  "by": "claude-in-session"
+ },
+ "menu.features.keysList": {
+  "en": "0b25d4917356",
+  "tr": "0b25d4917356",
+  "by": "claude-in-session"
+ },
+ "menu.features.keysNote": {
+  "en": "913bcf69cb59",
+  "tr": "c12bef1f2105",
+  "by": "claude-in-session"
+ },
+ "menu.features.modules": {
+  "en": "ac35ed35f8a0",
+  "tr": "0834da9a1dce",
+  "by": "claude-in-session"
+ },
+ "menu.features.modulesLabel": {
+  "en": "04e9462c0ff0",
+  "tr": "7f70a4d3ed1b",
+  "by": "claude-in-session"
+ },
+ "menu.features.onlineLock": {
+  "en": "2dbc2fd2358e",
+  "tr": "69078300f234",
+  "by": "claude-in-session"
+ },
+ "menu.features.restore": {
+  "en": "3cbe6d6b9a8d",
+  "tr": "c7f325f13f16",
+  "by": "claude-in-session"
+ },
+ "menu.features.toControls": {
+  "en": "47635b720537",
+  "tr": "225e634a8046",
+  "by": "claude-in-session"
+ },
+ "menu.foot.build": {
+  "en": "80754af91bfb",
+  "tr": "00506ea3cabd",
+  "by": "claude-in-session"
+ },
+ "menu.home.aria": {
+  "en": "376466506026",
+  "tr": "65bbed805348",
+  "by": "claude-in-session"
+ },
+ "menu.home.homeAria": {
+  "en": "c920f897c537",
+  "tr": "07c00985af17",
+  "by": "claude-in-session"
+ },
+ "menu.hud.foeBar": {
+  "en": "46745d50cb77",
+  "tr": "851428ff14c8",
+  "by": "claude-in-session"
+ },
+ "menu.hud.foeBarBar": {
+  "en": "e496fd20136d",
+  "tr": "625f9648bf11",
+  "by": "claude-in-session"
+ },
+ "menu.hud.foeBarBarNote": {
+  "en": "17689a0cf701",
+  "tr": "009a715c26ad",
+  "by": "claude-in-session"
+ },
+ "menu.hud.foeBarBlade": {
+  "en": "668c2d873516",
+  "tr": "e4faa4f917a7",
+  "by": "claude-in-session"
+ },
+ "menu.hud.foeBarBladeNote": {
+  "en": "01daa84b01e3",
+  "tr": "02026b2ffba1",
+  "by": "claude-in-session"
+ },
+ "menu.hud.fps": {
+  "en": "20e40e8f033c",
+  "tr": "1d5f5c8132fc",
+  "by": "claude-in-session"
+ },
+ "menu.hud.fpsNote": {
+  "en": "00fc9851408e",
+  "tr": "e7cff712f942",
+  "by": "claude-in-session"
+ },
+ "menu.hud.lock": {
+  "en": "5033d1309111",
+  "tr": "79666c32738c",
+  "by": "claude-in-session"
+ },
+ "menu.hud.lockOff": {
+  "en": "0c804ce51589",
+  "tr": "5447bab221eb",
+  "by": "claude-in-session"
+ },
+ "menu.hud.lockOn": {
+  "en": "2156ced4d521",
+  "tr": "62e1ac0a822c",
+  "by": "claude-in-session"
+ },
+ "menu.hud.reset": {
+  "en": "8f5367054c72",
+  "tr": "7087a506665c",
+  "by": "claude-in-session"
+ },
+ "menu.hud.resetDone": {
+  "en": "e9b450d14bc2",
+  "tr": "1cae18a9a401",
+  "by": "claude-in-session"
+ },
+ "menu.hud.resetGo": {
+  "en": "44c57abd888a",
+  "tr": "97b0a1c0a929",
+  "by": "claude-in-session"
+ },
+ "menu.hud.resetNote": {
+  "en": "ab70808c2064",
+  "tr": "82c603a1d757",
+  "by": "claude-in-session"
+ },
+ "menu.hud.scale": {
+  "en": "362323479a1d",
+  "tr": "44b8eecfd310",
+  "by": "claude-in-session"
+ },
+ "menu.hud.scaleNote": {
+  "en": "5a436a67b77d",
+  "tr": "8d4c5363c9c6",
+  "by": "claude-in-session"
+ },
+ "menu.hud.splitBars": {
+  "en": "94c4c1804df1",
+  "tr": "00e0c4afc638",
+  "by": "claude-in-session"
+ },
+ "menu.hud.splitBarsOff": {
+  "en": "e0b67e5657d9",
+  "tr": "84d24b417771",
+  "by": "claude-in-session"
+ },
+ "menu.hud.splitBarsOn": {
+  "en": "929e6e997806",
+  "tr": "f7b32cbb6b68",
+  "by": "claude-in-session"
+ },
+ "menu.intro.aria": {
+  "en": "a6cae2e21083",
+  "tr": "bc22dbd4c5a0",
+  "by": "claude-in-session"
+ },
+ "menu.intro.begin": {
+  "en": "c3651ab2341e",
+  "tr": "2ad3eddc09d1",
+  "by": "claude-in-session"
+ },
+ "menu.intro.creditInterkarma": {
+  "en": "01a71c58f07b",
+  "tr": "cd20ad788c79",
+  "by": "claude-in-session"
+ },
+ "menu.intro.creditNexus": {
+  "en": "a6d6ce7ba4e1",
+  "tr": "4dc9454fd4f9",
+  "by": "claude-in-session"
+ },
+ "menu.intro.enableSound": {
+  "en": "9778152819e2",
+  "tr": "e375f82693c1",
+  "by": "claude-in-session"
+ },
+ "menu.intro.musicFailed": {
+  "en": "90465798688d",
+  "tr": "064a190ab125",
+  "by": "claude-in-session"
+ },
+ "menu.intro.opening": {
+  "en": "b1b8530bbd68",
+  "tr": "f9b043440f93",
+  "by": "claude-in-session"
+ },
+ "menu.intro.preparing": {
+  "en": "5e0e2dc5fc95",
+  "tr": "e5084c86c3d8",
+  "by": "claude-in-session"
+ },
+ "menu.intro.ready": {
+  "en": "a7daa5d87a42",
+  "tr": "a5f1007484f1",
+  "by": "claude-in-session"
+ },
+ "menu.intro.readyReduced": {
+  "en": "46f3b8af49fa",
+  "tr": "915507bd0d4a",
+  "by": "claude-in-session"
+ },
+ "menu.intro.resume": {
+  "en": "b3bd0b5a7049",
+  "tr": "cde3eb972d17",
+  "by": "claude-in-session"
+ },
+ "menu.intro.resumeHint": {
+  "en": "e745fa1b8a49",
+  "tr": "ecd623faeb66",
+  "by": "claude-in-session"
+ },
+ "menu.intro.skip": {
+  "en": "ad575e89bc93",
+  "tr": "a9ea997441c7",
+  "by": "claude-in-session"
+ },
+ "menu.intro.tapContinue": {
+  "en": "cbaabfdc1025",
+  "tr": "12b6b483e75b",
+  "by": "claude-in-session"
+ },
+ "menu.load.deleteBody": {
+  "en": "e1111407f6a8",
+  "tr": "6bea1881805b",
+  "by": "claude-in-session"
+ },
+ "menu.load.deleteTitle": {
+  "en": "c00e0e2ccf88",
+  "tr": "346131109284",
+  "by": "claude-in-session"
+ },
+ "menu.load.noneHint": {
+  "en": "4e93e6c842e7",
+  "tr": "fd6c205fd057",
+  "by": "claude-in-session"
+ },
+ "menu.load.notHere": {
+  "en": "394fcbefee92",
+  "tr": "b7dada015781",
+  "by": "claude-in-session"
+ },
+ "menu.load.notHereWhy": {
+  "en": "d6f9be18a96d",
+  "tr": "0ac0985017c5",
+  "by": "claude-in-session"
+ },
+ "menu.load.onlineLocked": {
+  "en": "4fea8ff44e22",
+  "tr": "282e21210311",
+  "by": "claude-in-session"
+ },
+ "menu.load.onlineLockedWhy": {
+  "en": "7bf129779a96",
+  "tr": "62ee48921470",
+  "by": "claude-in-session"
+ },
+ "menu.mw.archives": {
+  "en": "8ebb43e7d7e7",
+  "tr": "c68417396528",
+  "by": "claude-in-session"
+ },
+ "menu.mw.arms": {
+  "en": "047072f53ca8",
+  "tr": "bbef2b0a0528",
+  "by": "claude-in-session"
+ },
+ "menu.mw.attach": {
+  "en": "eff3a4d5c425",
+  "tr": "25d66bf5d528",
+  "by": "claude-in-session"
+ },
+ "menu.mw.buildsLater": {
+  "en": "fd579621f151",
+  "tr": "29ff39a8c0bd",
+  "by": "claude-in-session"
+ },
+ "menu.mw.data": {
+  "en": "e5e429bcc9c2",
+  "tr": "d4d63da93d12",
+  "by": "claude-in-session"
+ },
+ "menu.mw.line": {
+  "en": "20ab7f817584",
+  "tr": "3caf990f6aab",
+  "by": "claude-in-session"
+ },
+ "menu.mw.noBody": {
+  "en": "64c1521463bc",
+  "tr": "ff3b12646fd8",
+  "by": "claude-in-session"
+ },
+ "menu.mw.noBodyNone": {
+  "en": "38e8e508a41a",
+  "tr": "7b8c5d5fe69f",
+  "by": "claude-in-session"
+ },
+ "menu.mw.notInArms": {
+  "en": "3d154ebc2a83",
+  "tr": "79788ec79c3d",
+  "by": "claude-in-session"
+ },
+ "menu.mw.remove": {
+  "en": "5e581723f990",
+  "tr": "5b484cba8a09",
+  "by": "claude-in-session"
+ },
+ "menu.mw.removeBody": {
+  "en": "75ea8b70c487",
+  "tr": "802ba33155e9",
+  "by": "claude-in-session"
+ },
+ "menu.mw.removeTitle": {
+  "en": "3c392281cf70",
+  "tr": "03a491e2852e",
+  "by": "claude-in-session"
+ },
+ "menu.mw.thirdRefused": {
+  "en": "dfbfe797bd75",
+  "tr": "48a1b01a61dc",
+  "by": "claude-in-session"
+ },
+ "menu.mw.title": {
+  "en": "35a30c316316",
+  "tr": "facfa2d45fdf",
+  "by": "claude-in-session"
+ },
+ "menu.new.blurb": {
+  "en": "22aa86b545b5",
+  "tr": "3df6c60d072f",
+  "by": "claude-in-session"
+ },
+ "menu.new.title": {
+  "en": "b0a66a091e51",
+  "tr": "b3301f5c6ca7",
+  "by": "claude-in-session"
+ },
+ "menu.new.wake": {
+  "en": "cb464406937b",
+  "tr": "96889504575c",
+  "by": "claude-in-session"
+ },
+ "menu.night.crickets": {
+  "en": "f69032854d43",
+  "tr": "4ee7ac96fe6c",
+  "by": "claude-in-session"
+ },
+ "menu.night.cricketsNote": {
+  "en": "f1640d769456",
+  "tr": "9a22b6316f92",
+  "by": "claude-in-session"
+ },
+ "menu.night.howl": {
+  "en": "503cbb86e518",
+  "tr": "e3b605a2c7b4",
+  "by": "claude-in-session"
+ },
+ "menu.night.howlNote": {
+  "en": "40e815456a49",
+  "tr": "6ba2861155d3",
+  "by": "claude-in-session"
+ },
+ "menu.night.title": {
+  "en": "a646584cd697",
+  "tr": "7644ae87574b",
+  "by": "claude-in-session"
+ },
+ "menu.online.balanceNote": {
+  "en": "20da9a30f839",
+  "tr": "a0cfa8866d98",
+  "by": "claude-in-session"
+ },
+ "menu.online.bring": {
+  "en": "b5d19a2c3fbc",
+  "tr": "839cc214c840",
+  "by": "claude-in-session"
+ },
+ "menu.online.bringAsk": {
+  "en": "2e90deac2625",
+  "tr": "36731c616cca",
+  "by": "claude-in-session"
+ },
+ "menu.online.bringHeading": {
+  "en": "b49a16d1c034",
+  "tr": "1687f7a8a7be",
+  "by": "claude-in-session"
+ },
+ "menu.online.carriageNote": {
+  "en": "1679b16eb701",
+  "tr": "29acf06e366b",
+  "by": "claude-in-session"
+ },
+ "menu.online.groundNote": {
+  "en": "eec62d46999b",
+  "tr": "1d8e670d039c",
+  "by": "claude-in-session"
+ },
+ "menu.online.lockNote": {
+  "en": "c9934515b520",
+  "tr": "3e57f2b18583",
+  "by": "claude-in-session"
+ },
+ "menu.online.lockedOff": {
+  "en": "a3335038aad3",
+  "tr": "3afff4d2c961",
+  "by": "claude-in-session"
+ },
+ "menu.online.lockedOn": {
+  "en": "1ae8fdd39900",
+  "tr": "6a2579f8ee8f",
+  "by": "claude-in-session"
+ },
+ "menu.online.lockedTier": {
+  "en": "9dac09a3a709",
+  "tr": "1f76ba72c7e7",
+  "by": "claude-in-session"
+ },
+ "menu.online.modsNote": {
+  "en": "7c9f800afc86",
+  "tr": "336b0c850fde",
+  "by": "claude-in-session"
+ },
+ "menu.online.needsAccount": {
+  "en": "0bb4ea85d18d",
+  "tr": "2156d5087c6a",
+  "by": "claude-in-session"
+ },
+ "menu.online.noSaves": {
+  "en": "422ce9716e5d",
+  "tr": "a61ead8262b4",
+  "by": "claude-in-session"
+ },
+ "menu.online.relay": {
+  "en": "9f537f977fa2",
+  "tr": "373ec36b654b",
+  "by": "claude-in-session"
+ },
+ "menu.online.rules": {
+  "en": "cb83b82de7f0",
+  "tr": "c93591414d61",
+  "by": "claude-in-session"
+ },
+ "menu.online.rulesetNote": {
+  "en": "c3dbe8f12181",
+  "tr": "e39b60ba958c",
+  "by": "claude-in-session"
+ },
+ "menu.online.settingNote": {
+  "en": "fd286cd798c1",
+  "tr": "c70003d55f3d",
+  "by": "claude-in-session"
+ },
+ "menu.online.sharedNote": {
+  "en": "6e53c453193f",
+  "tr": "4c0bcf106ed1",
+  "by": "claude-in-session"
+ },
+ "menu.online.signIn": {
+  "en": "fd465995601e",
+  "tr": "74c53c893ed5",
+  "by": "claude-in-session"
+ },
+ "menu.online.skyDay": {
+  "en": "a643031f3605",
+  "tr": "a01c6de8bea9",
+  "by": "claude-in-session"
+ },
+ "menu.online.skyDayUntil": {
+  "en": "2ca68625c3a2",
+  "tr": "02db87eb11e3",
+  "by": "claude-in-session"
+ },
+ "menu.online.testRoomOffline": {
+  "en": "560c3e1d0c0f",
+  "tr": "c2b705e5d97e",
+  "by": "claude-in-session"
+ },
+ "menu.online.travelNote": {
+  "en": "28bde4419e8c",
+  "tr": "6cb54461fd9b",
+  "by": "claude-in-session"
+ },
+ "menu.online.worldEventNote": {
+  "en": "d71ae0d4a596",
+  "tr": "681c9e8026a1",
+  "by": "claude-in-session"
+ },
+ "menu.ovh.addonBy": {
+  "en": "1c990cc8d9cd",
+  "tr": "66e6c7f5a0f6",
+  "by": "claude-in-session"
+ },
+ "menu.ovh.cursor": {
+  "en": "2239943c8d0a",
+  "tr": "f146b5dba62d",
+  "by": "claude-in-session"
+ },
+ "menu.ovh.cursorGauntlet": {
+  "en": "cea14ea3bbd0",
+  "tr": "7e4f542898e0",
+  "by": "claude-in-session"
+ },
+ "menu.ovh.cursorSystem": {
+  "en": "bc0792d8dc81",
+  "tr": "b3d83cd9d956",
+  "by": "claude-in-session"
+ },
+ "menu.ovh.custom": {
+  "en": "fa0c56a7c4ce",
+  "tr": "930b9d115ddd",
+  "by": "claude-in-session"
+ },
+ "menu.ovh.inUse": {
+  "en": "20716e9262a7",
+  "tr": "e6aa2cbd7b42",
+  "by": "claude-in-session"
+ },
+ "menu.ovh.itemHover": {
+  "en": "3ccf8cbc2055",
+  "tr": "ecdf3fea0496",
+  "by": "claude-in-session"
+ },
+ "menu.ovh.next": {
+  "en": "69f8d2b2c2b6",
+  "tr": "36e11a6be613",
+  "by": "claude-in-session"
+ },
+ "menu.ovh.packAlt": {
+  "en": "77203bf37913",
+  "tr": "b3fa7a84aaca",
+  "by": "claude-in-session"
+ },
+ "menu.ovh.packAltDesk": {
+  "en": "4e8b59bd1a5a",
+  "tr": "49c4c6c8ccbc",
+  "by": "claude-in-session"
+ },
+ "menu.ovh.plusColour": {
+  "en": "bd8bc6fbb31b",
+  "tr": "6388358319e0",
+  "by": "claude-in-session"
+ },
+ "menu.ovh.plusCursor": {
+  "en": "2a6f0dd9ab5b",
+  "tr": "129bbe2ff5d2",
+  "by": "claude-in-session"
+ },
+ "menu.ovh.previous": {
+  "en": "dbcaa2ace0a0",
+  "tr": "2d6437f7d944",
+  "by": "claude-in-session"
+ },
+ "menu.ovh.reading": {
+  "en": "bc1df64b8688",
+  "tr": "c6408242d28b",
+  "by": "claude-in-session"
+ },
+ "menu.ovh.uiColour": {
+  "en": "96e3613ba6ab",
+  "tr": "7ae4d2d8c13e",
+  "by": "claude-in-session"
+ },
+ "menu.ovh.use": {
+  "en": "c57d0d8c9870",
+  "tr": "dd99bcf5d78a",
+  "by": "claude-in-session"
+ },
+ "menu.packs.addDfmods": {
+  "en": "0eecc315d5d0",
+  "tr": "dafcd01518d5",
+  "by": "claude-in-session"
+ },
+ "menu.packs.attachLighting": {
+  "en": "dc8887d546a9",
+  "tr": "f851618a5c11",
+  "by": "claude-in-session"
+ },
+ "menu.packs.attachMusic": {
+  "en": "fe3d0d5420a5",
+  "tr": "027bb64e3577",
+  "by": "claude-in-session"
+ },
+ "menu.packs.attachSound": {
+  "en": "1c8b23051f4b",
+  "tr": "687a45f9adb7",
+  "by": "claude-in-session"
+ },
+ "menu.packs.attachTexture": {
+  "en": "b72d557a68c5",
+  "tr": "bdbf78bac7ac",
+  "by": "claude-in-session"
+ },
+ "menu.packs.attached": {
+  "en": "fb222ffa8dd8",
+  "tr": "727803ab3d9d",
+  "by": "claude-in-session"
+ },
+ "menu.packs.blurb": {
+  "en": "6aa4427c6db0",
+  "tr": "db974a91a82e",
+  "by": "claude-in-session"
+ },
+ "menu.packs.detail": {
+  "en": "ec28885442ce",
+  "tr": "d6b00066440d",
+  "by": "claude-in-session"
+ },
+ "menu.packs.detailFull": {
+  "en": "52e6d8ab8847",
+  "tr": "ed690ebb15cc",
+  "by": "claude-in-session"
+ },
+ "menu.packs.detailNote": {
+  "en": "2f5f4916ce35",
+  "tr": "b5191632b226",
+  "by": "claude-in-session"
+ },
+ "menu.packs.detailPx": {
+  "en": "178e6549776d",
+  "tr": "178e6549776d",
+  "by": "claude-in-session"
+ },
+ "menu.packs.dfmods": {
+  "en": "da7658021354",
+  "tr": "9fa3219a8dc3",
+  "by": "claude-in-session"
+ },
+ "menu.packs.dfmodsBlurb": {
+  "en": "6ba7ced52591",
+  "tr": "2807d24c7ac0",
+  "by": "claude-in-session"
+ },
+ "menu.packs.inBundle": {
+  "en": "720217146797",
+  "tr": "267fe1b24a94",
+  "by": "claude-in-session"
+ },
+ "menu.packs.inBundleOff": {
+  "en": "67617cae1c49",
+  "tr": "f40bbed864bc",
+  "by": "claude-in-session"
+ },
+ "menu.packs.indexing": {
+  "en": "3d575c5d8b1f",
+  "tr": "556f4c82eaa2",
+  "by": "claude-in-session"
+ },
+ "menu.packs.lighting": {
+  "en": "7876935629ea",
+  "tr": "9d0c8d790611",
+  "by": "claude-in-session"
+ },
+ "menu.packs.lightingBlurb": {
+  "en": "bf30dda675bb",
+  "tr": "c4af19ade320",
+  "by": "claude-in-session"
+ },
+ "menu.packs.loadOrder": {
+  "en": "e1e71b0d8149",
+  "tr": "8e5e59cd2849",
+  "by": "claude-in-session"
+ },
+ "menu.packs.nomods": {
+  "en": "95b405d8b85b",
+  "tr": "e651ac20801b",
+  "by": "claude-in-session"
+ },
+ "menu.packs.none": {
+  "en": "71f8e7976e4c",
+  "tr": "1a2e920ba7c6",
+  "by": "claude-in-session"
+ },
+ "menu.packs.notWorking": {
+  "en": "437766c5937f",
+  "tr": "259c16263f2d",
+  "by": "claude-in-session"
+ },
+ "menu.packs.reading": {
+  "en": "1f06fe8cac07",
+  "tr": "b41a6f702759",
+  "by": "claude-in-session"
+ },
+ "menu.packs.removeAllDfmods": {
+  "en": "46c749ba468b",
+  "tr": "7b0e0ee9e612",
+  "by": "claude-in-session"
+ },
+ "menu.packs.removeAllDfmodsBody": {
+  "en": "4705b1e7c113",
+  "tr": "004962b2510e",
+  "by": "claude-in-session"
+ },
+ "menu.packs.removeLightingBody": {
+  "en": "15be68779d26",
+  "tr": "4baf231be270",
+  "by": "claude-in-session"
+ },
+ "menu.packs.removeMod": {
+  "en": "4b995d793802",
+  "tr": "7f9c208bdaef",
+  "by": "claude-in-session"
+ },
+ "menu.packs.removeModBody": {
+  "en": "e71da7eb3cfa",
+  "tr": "8d4f480b6424",
+  "by": "claude-in-session"
+ },
+ "menu.packs.removeMusic": {
+  "en": "a45dabd9a8f5",
+  "tr": "39e22fb46cbb",
+  "by": "claude-in-session"
+ },
+ "menu.packs.removeMusicBody": {
+  "en": "d2a1bd1f4eae",
+  "tr": "61c738ea484a",
+  "by": "claude-in-session"
+ },
+ "menu.packs.removeSound": {
+  "en": "9a81ed182e1e",
+  "tr": "279b6e2ef566",
+  "by": "claude-in-session"
+ },
+ "menu.packs.removeSoundBody": {
+  "en": "5fbba6ac56b8",
+  "tr": "f66ffffa9610",
+  "by": "claude-in-session"
+ },
+ "menu.packs.removeTexture": {
+  "en": "cc02b4f9be09",
+  "tr": "013b120ea300",
+  "by": "claude-in-session"
+ },
+ "menu.packs.removeTextureBody": {
+  "en": "e30641d535f5",
+  "tr": "cf3ea9220210",
+  "by": "claude-in-session"
+ },
+ "menu.packs.removeYes": {
+  "en": "e963907dac5c",
+  "tr": "5cbdf1fd7082",
+  "by": "claude-in-session"
+ },
+ "menu.packs.shipped": {
+  "en": "d27c9985b88b",
+  "tr": "bb2bc5e76cdf",
+  "by": "claude-in-session"
+ },
+ "menu.packs.shippedOff": {
+  "en": "bf581aa77fa8",
+  "tr": "865df501bad5",
+  "by": "claude-in-session"
+ },
+ "menu.packs.supplied": {
+  "en": "abe82120ad71",
+  "tr": "ba5680f2f46f",
+  "by": "claude-in-session"
+ },
+ "menu.packs.switchOff": {
+  "en": "d61b7f2364ca",
+  "tr": "112d55a601ab",
+  "by": "claude-in-session"
+ },
+ "menu.packs.switchOn": {
+  "en": "bcdb919b512b",
+  "tr": "3e8e296cbc61",
+  "by": "claude-in-session"
+ },
+ "menu.packs.textureMods": {
+  "en": "223651de300a",
+  "tr": "fd77a0d63801",
+  "by": "claude-in-session"
+ },
+ "menu.packs.textureModsAttached": {
+  "en": "a4a2fb15f3a1",
+  "tr": "8583bbcaf081",
+  "by": "claude-in-session"
+ },
+ "menu.packs.textureModsBuiltIn": {
+  "en": "e2b5b520ddbd",
+  "tr": "c7460ea1e6f3",
+  "by": "claude-in-session"
+ },
+ "menu.packs.title": {
+  "en": "57555aec5d4c",
+  "tr": "bfb4a4ec2f1a",
+  "by": "claude-in-session"
+ },
+ "menu.packs.twoVersions": {
+  "en": "7cb7646d87e3",
+  "tr": "f074eb1e3ca5",
+  "by": "claude-in-session"
+ },
+ "menu.pad.auto": {
+  "en": "c614ba7c453c",
+  "tr": "9a0688084617",
+  "by": "claude-in-session"
+ },
+ "menu.pad.bindings": {
+  "en": "11d36f8f2671",
+  "tr": "d5e9eb943f15",
+  "by": "claude-in-session"
+ },
+ "menu.pad.crossbar": {
+  "en": "53d4eab10312",
+  "tr": "0842a2d583cf",
+  "by": "claude-in-session"
+ },
+ "menu.pad.hold": {
+  "en": "3bd32832287a",
+  "tr": "720d39df34e8",
+  "by": "claude-in-session"
+ },
+ "menu.pad.layout": {
+  "en": "c922fb6e3c33",
+  "tr": "e8afa62f1c97",
+  "by": "claude-in-session"
+ },
+ "menu.pad.reset": {
+  "en": "ca97f8410564",
+  "tr": "d64f25626a0d",
+  "by": "claude-in-session"
+ },
+ "menu.pad.stickRun": {
+  "en": "6f7e35efee47",
+  "tr": "bd009f160cec",
+  "by": "claude-in-session"
+ },
+ "menu.pad.toggle": {
+  "en": "d5e14b063514",
+  "tr": "50e58953fe8b",
+  "by": "claude-in-session"
+ },
+ "menu.peers.attack": {
+  "en": "ffbdd183b764",
+  "tr": "1bc95bbcc2cb",
+  "by": "claude-in-session"
+ },
+ "menu.peers.attackNote": {
+  "en": "baed5ece553d",
+  "tr": "448775a19b4b",
+  "by": "claude-in-session"
+ },
+ "menu.peers.blurb": {
+  "en": "11106ae7c13f",
+  "tr": "4d15b0768208",
+  "by": "claude-in-session"
+ },
+ "menu.peers.crowd": {
+  "en": "677b2a378be9",
+  "tr": "fcc5fab61335",
+  "by": "claude-in-session"
+ },
+ "menu.peers.crowdNote": {
+  "en": "d6d8d98f1fb3",
+  "tr": "99d325ad3d2e",
+  "by": "claude-in-session"
+ },
+ "menu.peers.everyone": {
+  "en": "c756f6af1f03",
+  "tr": "4220cd2fb7ed",
+  "by": "claude-in-session"
+ },
+ "menu.peers.footsteps": {
+  "en": "7d0c6fb66aec",
+  "tr": "e98a2e4f331f",
+  "by": "claude-in-session"
+ },
+ "menu.peers.footstepsNote": {
+  "en": "4be5b374a3df",
+  "tr": "c376d063f45c",
+  "by": "claude-in-session"
+ },
+ "menu.peers.metres": {
+  "en": "6b77f8ce983e",
+  "tr": "6b77f8ce983e",
+  "by": "claude-in-session"
+ },
+ "menu.peers.nearest": {
+  "en": "17f6e28f6f26",
+  "tr": "30a8d522d458",
+  "by": "claude-in-session"
+ },
+ "menu.peers.range": {
+  "en": "3912dcecf35b",
+  "tr": "cb1ea50d6a7b",
+  "by": "claude-in-session"
+ },
+ "menu.peers.rangeNote": {
+  "en": "e2c6fe03e8b7",
+  "tr": "3ef9c5d7ac4c",
+  "by": "claude-in-session"
+ },
+ "menu.peers.rest": {
+  "en": "f9682119ba1e",
+  "tr": "def814839aa3",
+  "by": "claude-in-session"
+ },
+ "menu.peers.restNote": {
+  "en": "84043782363f",
+  "tr": "9197596fca54",
+  "by": "claude-in-session"
+ },
+ "menu.peers.show": {
+  "en": "2c851fa6a7c1",
+  "tr": "19e205a23084",
+  "by": "claude-in-session"
+ },
+ "menu.peers.showNote": {
+  "en": "f48b1bfb4b14",
+  "tr": "74416e24d921",
+  "by": "claude-in-session"
+ },
+ "menu.peers.spells": {
+  "en": "0fd0642f2a0e",
+  "tr": "869f034a10ce",
+  "by": "claude-in-session"
+ },
+ "menu.peers.spellsNote": {
+  "en": "89f35842b418",
+  "tr": "ce06a3fe2a60",
+  "by": "claude-in-session"
+ },
+ "menu.peers.sprite": {
+  "en": "acc968666b60",
+  "tr": "6ce91ebb9b02",
+  "by": "claude-in-session"
+ },
+ "menu.peers.spriteNote": {
+  "en": "c633788496ff",
+  "tr": "3f73f01aad6f",
+  "by": "claude-in-session"
+ },
+ "menu.peers.title": {
+  "en": "7afdf72cd125",
+  "tr": "91f0dfb1e798",
+  "by": "claude-in-session"
+ },
+ "menu.peers.yards": {
+  "en": "7e4034e35ceb",
+  "tr": "17a55f85b18d",
+  "by": "claude-in-session"
+ },
+ "menu.peers.yardsNote": {
+  "en": "8fc7fe23e65e",
+  "tr": "556f70512429",
+  "by": "claude-in-session"
+ },
+ "menu.questRepair.ask": {
+  "en": "37502f30a930",
+  "tr": "1abdc850967f",
+  "by": "claude-in-session"
+ },
+ "menu.questRepair.away": {
+  "en": "13f711a128dd",
+  "tr": "294c1ee8cc4c",
+  "by": "claude-in-session"
+ },
+ "menu.questRepair.failed": {
+  "en": "257d173835bc",
+  "tr": "9dfc03be4446",
+  "by": "claude-in-session"
+ },
+ "menu.questRepair.go": {
+  "en": "5f60b1c2e605",
+  "tr": "6fcf24612237",
+  "by": "claude-in-session"
+ },
+ "menu.questRepair.name": {
+  "en": "2209c72af317",
+  "tr": "3ce083b7a4f6",
+  "by": "claude-in-session"
+ },
+ "menu.questRepair.note": {
+  "en": "37502f30a930",
+  "tr": "1abdc850967f",
+  "by": "claude-in-session"
+ },
+ "menu.questRepair.title": {
+  "en": "cc7f9456691e",
+  "tr": "3ce083b7a4f6",
   "by": "claude-in-session"
  },
  "menu.rail.about": {
@@ -74,6 +1559,11 @@
   "tr": "05c068672686",
   "by": "claude-in-session"
  },
+ "menu.rail.screenshots": {
+  "en": "597b6356e6ce",
+  "tr": "50942c44c03a",
+  "by": "claude-in-session"
+ },
  "menu.rail.settings": {
   "en": "c7f73bb54d92",
   "tr": "6329f21c4163",
@@ -82,6 +1572,1166 @@
  "menu.rail.test": {
   "en": "4fd8df831597",
   "tr": "e15ecb5e079b",
+  "by": "claude-in-session"
+ },
+ "menu.rail.tutorials": {
+  "en": "654171647baa",
+  "tr": "fb3a3ef67179",
+  "by": "claude-in-session"
+ },
+ "menu.realm.asking": {
+  "en": "e2f9c946efcd",
+  "tr": "5cdc9cfca830",
+  "by": "claude-in-session"
+ },
+ "menu.realm.broughtIn": {
+  "en": "b2a79752e1d3",
+  "tr": "e4615d765d8c",
+  "by": "claude-in-session"
+ },
+ "menu.realm.copied": {
+  "en": "923bb35ca7f2",
+  "tr": "2482c231ba21",
+  "by": "claude-in-session"
+ },
+ "menu.realm.copyOffline": {
+  "en": "63542efafc6f",
+  "tr": "cdef3df4b907",
+  "by": "claude-in-session"
+ },
+ "menu.realm.delete": {
+  "en": "85df5f045630",
+  "tr": "b66398be98d1",
+  "by": "claude-in-session"
+ },
+ "menu.realm.deleteAsk": {
+  "en": "7fd57c94c8dc",
+  "tr": "6cafe217bead",
+  "by": "claude-in-session"
+ },
+ "menu.realm.deleteBody": {
+  "en": "dc88b5a07a73",
+  "tr": "8ad3b62840e4",
+  "by": "claude-in-session"
+ },
+ "menu.realm.deleteYes": {
+  "en": "f6fdbe48dc54",
+  "tr": "5cbdf1fd7082",
+  "by": "claude-in-session"
+ },
+ "menu.realm.deleted": {
+  "en": "ecc39eba561e",
+  "tr": "826b71529113",
+  "by": "claude-in-session"
+ },
+ "menu.realm.heading": {
+  "en": "81480a8e85a4",
+  "tr": "9566d532718a",
+  "by": "claude-in-session"
+ },
+ "menu.realm.neverSaved": {
+  "en": "f2fb75a29eec",
+  "tr": "d0c1f0260eb5",
+  "by": "claude-in-session"
+ },
+ "menu.realm.new": {
+  "en": "a3ebe5942347",
+  "tr": "49f05be05d39",
+  "by": "claude-in-session"
+ },
+ "menu.realm.none": {
+  "en": "e782a4c7217e",
+  "tr": "d1f1a5d5a8bb",
+  "by": "claude-in-session"
+ },
+ "menu.realm.play": {
+  "en": "5d12bd53552c",
+  "tr": "4b346b942f50",
+  "by": "claude-in-session"
+ },
+ "menu.realm.undo": {
+  "en": "cf10805d6eb2",
+  "tr": "d16767f2b80f",
+  "by": "claude-in-session"
+ },
+ "menu.realm.undoAsk": {
+  "en": "6823cdc13bcd",
+  "tr": "1eef66e9795a",
+  "by": "claude-in-session"
+ },
+ "menu.realm.undoBody": {
+  "en": "c69972d87f9a",
+  "tr": "054142902f8a",
+  "by": "claude-in-session"
+ },
+ "menu.realm.undoYes": {
+  "en": "39fc72124884",
+  "tr": "f62457575c19",
+  "by": "claude-in-session"
+ },
+ "menu.realm.undone": {
+  "en": "81d5bed1d0c9",
+  "tr": "d30b1a867fae",
+  "by": "claude-in-session"
+ },
+ "menu.save.agoDays": {
+  "en": "5e4247c32900",
+  "tr": "d682b4bbedfa",
+  "by": "claude-in-session"
+ },
+ "menu.save.agoHours": {
+  "en": "a7ccfb719652",
+  "tr": "37b86e63b69f",
+  "by": "claude-in-session"
+ },
+ "menu.save.agoMinutes": {
+  "en": "e830e1381ba6",
+  "tr": "4e0f97259623",
+  "by": "claude-in-session"
+ },
+ "menu.save.agoNow": {
+  "en": "a7f8e7cc0d43",
+  "tr": "03593c5f184c",
+  "by": "claude-in-session"
+ },
+ "menu.save.gold": {
+  "en": "c57604db5869",
+  "tr": "717944e2c2c0",
+  "by": "claude-in-session"
+ },
+ "menu.save.level": {
+  "en": "cfb2d8403b03",
+  "tr": "ef3581fa9fc0",
+  "by": "claude-in-session"
+ },
+ "menu.save.newSlot": {
+  "en": "d02cb610cb22",
+  "tr": "224e03d42110",
+  "by": "claude-in-session"
+ },
+ "menu.save.notHereWhy": {
+  "en": "1687af8915f3",
+  "tr": "5fc86d978d80",
+  "by": "claude-in-session"
+ },
+ "menu.save.overwrite": {
+  "en": "0625c54e037e",
+  "tr": "65d8217bd7f0",
+  "by": "claude-in-session"
+ },
+ "menu.save.overwrites": {
+  "en": "19597902696d",
+  "tr": "b30bed886685",
+  "by": "claude-in-session"
+ },
+ "menu.save.slotName": {
+  "en": "8dbb38d39d0e",
+  "tr": "baef7a8a1c71",
+  "by": "claude-in-session"
+ },
+ "menu.save.tag": {
+  "en": "f313a0b1810b",
+  "tr": "d982ce7f5e4f",
+  "by": "claude-in-session"
+ },
+ "menu.save.unnamed": {
+  "en": "9b115c99b1da",
+  "tr": "f4f178874b30",
+  "by": "claude-in-session"
+ },
+ "menu.save.yourCharacter": {
+  "en": "ba1c4c9750b8",
+  "tr": "d1b9d61fd162",
+  "by": "claude-in-session"
+ },
+ "menu.saves.none": {
+  "en": "18d963b56573",
+  "tr": "32093962caac",
+  "by": "claude-in-session"
+ },
+ "menu.settings.less": {
+  "en": "4360b668f89c",
+  "tr": "00b4cae30140",
+  "by": "claude-in-session"
+ },
+ "menu.settings.more": {
+  "en": "b5bcf068eb39",
+  "tr": "7b10657471b7",
+  "by": "claude-in-session"
+ },
+ "menu.settings.reset": {
+  "en": "52af1c1f0024",
+  "tr": "ec530ad17d25",
+  "by": "claude-in-session"
+ },
+ "menu.settings.resetBody": {
+  "en": "050f49802191",
+  "tr": "91a64dc67610",
+  "by": "claude-in-session"
+ },
+ "menu.settings.resetTitle": {
+  "en": "2d6cd073edd7",
+  "tr": "2b2ac91ca754",
+  "by": "claude-in-session"
+ },
+ "menu.settings.resetYes": {
+  "en": "44c57abd888a",
+  "tr": "97b0a1c0a929",
+  "by": "claude-in-session"
+ },
+ "menu.settings.restoreTab": {
+  "en": "894a58ab60dc",
+  "tr": "d5aac98541e5",
+  "by": "claude-in-session"
+ },
+ "menu.settings.restoreTabBody": {
+  "en": "9d15a148331e",
+  "tr": "18c9ce786940",
+  "by": "claude-in-session"
+ },
+ "menu.settings.restoreTabTitle": {
+  "en": "c5fb9a970d09",
+  "tr": "8a37213ead98",
+  "by": "claude-in-session"
+ },
+ "menu.settings.restoreYes": {
+  "en": "3cbe6d6b9a8d",
+  "tr": "d1dc42fd1ba0",
+  "by": "claude-in-session"
+ },
+ "menu.settings.storedBlurb": {
+  "en": "04b28c35e19b",
+  "tr": "29f8da6f3d41",
+  "by": "claude-in-session"
+ },
+ "menu.settings.storedTitle": {
+  "en": "0cd94501d580",
+  "tr": "68072fa64eac",
+  "by": "claude-in-session"
+ },
+ "menu.settings.tabStatus": {
+  "en": "03662c8d2f8f",
+  "tr": "50c8986e093a",
+  "by": "claude-in-session"
+ },
+ "menu.settings.unavailableBlurb": {
+  "en": "0273c3385118",
+  "tr": "85fd19fee078",
+  "by": "claude-in-session"
+ },
+ "menu.settings.unavailableTitle": {
+  "en": "20decd241c1b",
+  "tr": "883431766c29",
+  "by": "claude-in-session"
+ },
+ "menu.sheet.close": {
+  "en": "bbfa773e5a63",
+  "tr": "3da5c1855151",
+  "by": "claude-in-session"
+ },
+ "menu.skipVideo.name": {
+  "en": "cb923a3b18a7",
+  "tr": "4d461dcff649",
+  "by": "claude-in-session"
+ },
+ "menu.skipVideo.note": {
+  "en": "8f0fbcd3aed5",
+  "tr": "fda867e25e3a",
+  "by": "claude-in-session"
+ },
+ "menu.sync.go": {
+  "en": "da6e566539e4",
+  "tr": "41920ea07a50",
+  "by": "claude-in-session"
+ },
+ "menu.sync.note": {
+  "en": "2f2aaffe835d",
+  "tr": "2bf130a9b8ba",
+  "by": "claude-in-session"
+ },
+ "menu.sync.same": {
+  "en": "25058c35991b",
+  "tr": "258d4e53f86b",
+  "by": "claude-in-session"
+ },
+ "menu.sync.title": {
+  "en": "e7d872e51122",
+  "tr": "c639ad54d041",
+  "by": "claude-in-session"
+ },
+ "menu.sync.undo": {
+  "en": "c2fdb276e7b7",
+  "tr": "34c4e68d7cbc",
+  "by": "claude-in-session"
+ },
+ "menu.sync.undoTip": {
+  "en": "fb10fd589c52",
+  "tr": "3f9a008bb5a7",
+  "by": "claude-in-session"
+ },
+ "menu.test.blurb": {
+  "en": "27346f101fe9",
+  "tr": "be33575a8149",
+  "by": "claude-in-session"
+ },
+ "menu.test.enterAs": {
+  "en": "c1147f3fe575",
+  "tr": "39589c550866",
+  "by": "claude-in-session"
+ },
+ "menu.test.enterLadder": {
+  "en": "f07a2cf02c18",
+  "tr": "97ac24ea3245",
+  "by": "claude-in-session"
+ },
+ "menu.test.outdoors": {
+  "en": "7467a6ba2f70",
+  "tr": "ad4d9cc1b087",
+  "by": "claude-in-session"
+ },
+ "menu.test.outdoorsName": {
+  "en": "ab10641dce9c",
+  "tr": "fa895556f4d3",
+  "by": "claude-in-session"
+ },
+ "menu.test.outdoorsNote": {
+  "en": "ab324f6e6e9c",
+  "tr": "6b4b8e5b8127",
+  "by": "claude-in-session"
+ },
+ "menu.test.rideOut": {
+  "en": "ed971b067dc2",
+  "tr": "42a8c595fd5c",
+  "by": "claude-in-session"
+ },
+ "menu.test.season.fall": {
+  "en": "c52888225c69",
+  "tr": "8d8f4aeca850",
+  "by": "claude-in-session"
+ },
+ "menu.test.season.spring": {
+  "en": "248902131a73",
+  "tr": "3e450648252d",
+  "by": "claude-in-session"
+ },
+ "menu.test.season.summer": {
+  "en": "6420ed4d831b",
+  "tr": "ce0a21de8541",
+  "by": "claude-in-session"
+ },
+ "menu.test.season.winter": {
+  "en": "1ef41af4175f",
+  "tr": "d5ca75a91f1a",
+  "by": "claude-in-session"
+ },
+ "menu.test.setSail": {
+  "en": "345b56b60944",
+  "tr": "f570c30928ae",
+  "by": "claude-in-session"
+ },
+ "menu.test.spawn": {
+  "en": "29de5042245a",
+  "tr": "26fa279ba2ec",
+  "by": "claude-in-session"
+ },
+ "menu.test.title": {
+  "en": "a973fa6cdc1d",
+  "tr": "e15ecb5e079b",
+  "by": "claude-in-session"
+ },
+ "menu.test.weather.cloudy": {
+  "en": "5a53260b3d6e",
+  "tr": "283112eb7d8b",
+  "by": "claude-in-session"
+ },
+ "menu.test.weather.fog": {
+  "en": "dfebbda7af18",
+  "tr": "056ed40d9562",
+  "by": "claude-in-session"
+ },
+ "menu.test.weather.overcast": {
+  "en": "7b77c51fb1d5",
+  "tr": "1ebe37c10eb7",
+  "by": "claude-in-session"
+ },
+ "menu.test.weather.rain": {
+  "en": "fbec17cb2fcb",
+  "tr": "8995b8979971",
+  "by": "claude-in-session"
+ },
+ "menu.test.weather.snow": {
+  "en": "b94e9f3d7e00",
+  "tr": "7d742a7f9f36",
+  "by": "claude-in-session"
+ },
+ "menu.test.weather.sunny": {
+  "en": "b892f067921d",
+  "tr": "0324f8ecbb96",
+  "by": "claude-in-session"
+ },
+ "menu.test.weather.thunder": {
+  "en": "badcfa3c6274",
+  "tr": "079d9746cf18",
+  "by": "claude-in-session"
+ },
+ "menu.toggle.off": {
+  "en": "e3de5ab0ca4c",
+  "tr": "17b500293e98",
+  "by": "claude-in-session"
+ },
+ "menu.toggle.on": {
+  "en": "e0049a66519c",
+  "tr": "647b72dd9154",
+  "by": "claude-in-session"
+ },
+ "menu.touch.analog": {
+  "en": "df5302341f70",
+  "tr": "3fb02024045a",
+  "by": "claude-in-session"
+ },
+ "menu.touch.analogNote": {
+  "en": "b703fec5a20d",
+  "tr": "34cd513a7b10",
+  "by": "claude-in-session"
+ },
+ "menu.touch.fullscreen": {
+  "en": "d4cf358ae9dd",
+  "tr": "1057b5664095",
+  "by": "claude-in-session"
+ },
+ "menu.touch.fullscreenNote": {
+  "en": "36c02a765228",
+  "tr": "4eab4dd03e91",
+  "by": "claude-in-session"
+ },
+ "menu.touch.gyro": {
+  "en": "c818d312007f",
+  "tr": "c7e0e2e9d0c0",
+  "by": "claude-in-session"
+ },
+ "menu.touch.gyroNote": {
+  "en": "edc76af08681",
+  "tr": "7100e3c5f84e",
+  "by": "claude-in-session"
+ },
+ "menu.touch.gyroSensitivity": {
+  "en": "a484207f7f80",
+  "tr": "39cedfe1ca1d",
+  "by": "claude-in-session"
+ },
+ "menu.touch.gyroSensitivityNote": {
+  "en": "1be7d6c028c3",
+  "tr": "a5f68becc7f4",
+  "by": "claude-in-session"
+ },
+ "menu.touch.haptics": {
+  "en": "020d6b5ecf82",
+  "tr": "aba332a987d0",
+  "by": "claude-in-session"
+ },
+ "menu.touch.hapticsNote": {
+  "en": "f756820bd198",
+  "tr": "3d70601dc141",
+  "by": "claude-in-session"
+ },
+ "menu.touch.look": {
+  "en": "b6d4e83afc1c",
+  "tr": "a718589b0c85",
+  "by": "claude-in-session"
+ },
+ "menu.touch.lookNote": {
+  "en": "6998a72192b3",
+  "tr": "c542ae982da6",
+  "by": "claude-in-session"
+ },
+ "menu.touch.slot1": {
+  "en": "73d3f1d3d1d0",
+  "tr": "05459a163775",
+  "by": "claude-in-session"
+ },
+ "menu.touch.slot2": {
+  "en": "3066e7ed0d62",
+  "tr": "00feb6225016",
+  "by": "claude-in-session"
+ },
+ "menu.touch.slot3": {
+  "en": "fe67f13d06db",
+  "tr": "c278fd6fb7bb",
+  "by": "claude-in-session"
+ },
+ "menu.touch.slotNote": {
+  "en": "a6378b341c5d",
+  "tr": "a77e983aa5c8",
+  "by": "claude-in-session"
+ },
+ "menu.touch.stick": {
+  "en": "8eab16a229e2",
+  "tr": "e30d14946bee",
+  "by": "claude-in-session"
+ },
+ "menu.touch.stickFixed": {
+  "en": "ab98f5b85764",
+  "tr": "f34fcf6d32a9",
+  "by": "claude-in-session"
+ },
+ "menu.touch.stickFixedNote": {
+  "en": "869f216e3f86",
+  "tr": "e7591b9edcb1",
+  "by": "claude-in-session"
+ },
+ "menu.touch.stickFloat": {
+  "en": "ab224b519653",
+  "tr": "c1813ce1c798",
+  "by": "claude-in-session"
+ },
+ "menu.touch.stickFloatNote": {
+  "en": "0b4d76a44ebf",
+  "tr": "c3c7ffa6ff1a",
+  "by": "claude-in-session"
+ },
+ "menu.transfer.app": {
+  "en": "48dd57c180cd",
+  "tr": "56120927a854",
+  "by": "claude-in-session"
+ },
+ "menu.transfer.export": {
+  "en": "f62d51978e32",
+  "tr": "9899271cc0ff",
+  "by": "claude-in-session"
+ },
+ "menu.transfer.importFolder": {
+  "en": "0748bcb0a65c",
+  "tr": "9451f3507887",
+  "by": "claude-in-session"
+ },
+ "menu.transfer.importZip": {
+  "en": "30c5a4c11657",
+  "tr": "877e40dd8905",
+  "by": "claude-in-session"
+ },
+ "menu.transfer.imported": {
+  "en": "5244369eaa7c",
+  "tr": "b42843fbfebb",
+  "by": "claude-in-session"
+ },
+ "menu.transfer.noneIn": {
+  "en": "3d53bb6e934a",
+  "tr": "42b8fa6069a9",
+  "by": "claude-in-session"
+ },
+ "menu.transfer.nothing": {
+  "en": "cb507beda1a8",
+  "tr": "84e02e22949a",
+  "by": "claude-in-session"
+ },
+ "menu.transfer.readFailed": {
+  "en": "585adc69653c",
+  "tr": "7276360a957d",
+  "by": "claude-in-session"
+ },
+ "menu.transfer.tag": {
+  "en": "0597059bba14",
+  "tr": "74c52a2e821c",
+  "by": "claude-in-session"
+ },
+ "menu.transfer.title": {
+  "en": "4172b4510297",
+  "tr": "ca2511795531",
+  "by": "claude-in-session"
+ },
+ "menu.transfer.web": {
+  "en": "a0508fd9805c",
+  "tr": "10cc51efcd99",
+  "by": "claude-in-session"
+ },
+ "net.mod.ambiguous": {
+  "en": "fb38a201f710",
+  "tr": "c30bc8c84e76",
+  "by": "claude-in-session"
+ },
+ "net.mod.chatAgain": {
+  "en": "d129693ce800",
+  "tr": "205549a15b80",
+  "by": "claude-in-session"
+ },
+ "net.mod.muteRange": {
+  "en": "9ef69d30bdcb",
+  "tr": "d69cb99fa862",
+  "by": "claude-in-session"
+ },
+ "net.mod.muted": {
+  "en": "55d74efe589d",
+  "tr": "b062bd6339ab",
+  "by": "claude-in-session"
+ },
+ "net.mod.mutedFor": {
+  "en": "94e963f0d302",
+  "tr": "6b2a36225810",
+  "by": "claude-in-session"
+ },
+ "net.mod.mutedLater": {
+  "en": "a44b359edc93",
+  "tr": "7e6e221d9088",
+  "by": "claude-in-session"
+ },
+ "net.mod.nobody": {
+  "en": "64f8a32af281",
+  "tr": "8cd250144f9b",
+  "by": "claude-in-session"
+ },
+ "net.mod.unaccounted": {
+  "en": "f5e8ec86e97b",
+  "tr": "51204fa03531",
+  "by": "claude-in-session"
+ },
+ "net.mod.unmuted": {
+  "en": "a68fcf54de53",
+  "tr": "31a78cacffb1",
+  "by": "claude-in-session"
+ },
+ "net.mod.usage": {
+  "en": "9fe3515f878b",
+  "tr": "4535605ede41",
+  "by": "claude-in-session"
+ },
+ "net.online.badUrl": {
+  "en": "4642ed29bdf4",
+  "tr": "a02ce966ffa8",
+  "by": "claude-in-session"
+ },
+ "net.online.busy": {
+  "en": "924391613eb2",
+  "tr": "57680fdb12cd",
+  "by": "claude-in-session"
+ },
+ "net.online.clock": {
+  "en": "b8c18baacc12",
+  "tr": "3bb3bfd32e57",
+  "by": "claude-in-session"
+ },
+ "net.online.connecting": {
+  "en": "9fd7d1f0f444",
+  "tr": "c456377f82f2",
+  "by": "claude-in-session"
+ },
+ "net.online.error": {
+  "en": "11f9578d05e6",
+  "tr": "ec6399d678a4",
+  "by": "claude-in-session"
+ },
+ "net.online.label": {
+  "en": "2dbc2fd2358e",
+  "tr": "69078300f234",
+  "by": "claude-in-session"
+ },
+ "net.online.noSocket": {
+  "en": "3f3cb6e06f44",
+  "tr": "637a6d3ce136",
+  "by": "claude-in-session"
+ },
+ "net.online.reconnecting": {
+  "en": "b8203fa509f0",
+  "tr": "393da783753f",
+  "by": "claude-in-session"
+ },
+ "net.online.refused": {
+  "en": "7d35c6df2723",
+  "tr": "5484b62ee4cb",
+  "by": "claude-in-session"
+ },
+ "net.online.relayError": {
+  "en": "1a8fa563cd81",
+  "tr": "164d6efbe884",
+  "by": "claude-in-session"
+ },
+ "net.online.seat": {
+  "en": "377d1e6c1457",
+  "tr": "33e5758d60b7",
+  "by": "claude-in-session"
+ },
+ "net.online.socketError": {
+  "en": "76a5d29d2b49",
+  "tr": "ffbc4d424e87",
+  "by": "claude-in-session"
+ },
+ "net.online.status": {
+  "en": "04c47f8207b8",
+  "tr": "50ec0052e282",
+  "by": "claude-in-session"
+ },
+ "net.online.threw": {
+  "en": "5d75d0d9a9be",
+  "tr": "5d64cf459280",
+  "by": "claude-in-session"
+ },
+ "net.online.waitingAccount": {
+  "en": "f66a6e147e2c",
+  "tr": "ad2e31ee3077",
+  "by": "claude-in-session"
+ },
+ "net.update.build": {
+  "en": "21da376bfb7d",
+  "tr": "37c3a7a86a4e",
+  "by": "claude-in-session"
+ },
+ "net.update.relayRestart": {
+  "en": "87647e758b2d",
+  "tr": "919eb519dcf1",
+  "by": "claude-in-session"
+ },
+ "pause.ask.hint": {
+  "en": "3b4376983a26",
+  "tr": "67bf429ad8ac",
+  "by": "claude-in-session"
+ },
+ "pause.ask.no": {
+  "en": "816c52fd2bdd",
+  "tr": "f901585367d6",
+  "by": "claude-in-session"
+ },
+ "pause.ask.yes": {
+  "en": "5397e0583f14",
+  "tr": "c92b4cda8bdf",
+  "by": "claude-in-session"
+ },
+ "pause.controlsNoArt": {
+  "en": "3ce6c532dd3f",
+  "tr": "476f2457958a",
+  "by": "claude-in-session"
+ },
+ "pause.door.arena": {
+  "en": "1a4ba8221918",
+  "tr": "f048e893e458",
+  "by": "claude-in-session"
+ },
+ "pause.door.ascend": {
+  "en": "013de34566d4",
+  "tr": "8eba6033e606",
+  "by": "claude-in-session"
+ },
+ "pause.door.chronicle": {
+  "en": "6162514652ea",
+  "tr": "a435bd474d1a",
+  "by": "claude-in-session"
+ },
+ "pause.door.masterCount": {
+  "en": "21da1435a986",
+  "tr": "175ddca2b8f7",
+  "by": "claude-in-session"
+ },
+ "pause.door.pack": {
+  "en": "152a5035bf6b",
+  "tr": "c9d7cc66c00a",
+  "by": "claude-in-session"
+ },
+ "pause.door.spellbook": {
+  "en": "bcf9bdc3fcc9",
+  "tr": "e2b4eb47fbaf",
+  "by": "claude-in-session"
+ },
+ "pause.effects.aSpell": {
+  "en": "4241c7bce537",
+  "tr": "7b094bd47201",
+  "by": "claude-in-session"
+ },
+ "pause.effects.end": {
+  "en": "a2bb9d34b8a1",
+  "tr": "ec7ae06b0999",
+  "by": "claude-in-session"
+ },
+ "pause.effects.endTip": {
+  "en": "563cf6cbd12d",
+  "tr": "ff49050a4681",
+  "by": "claude-in-session"
+ },
+ "pause.effects.none": {
+  "en": "7ba88fd7d155",
+  "tr": "0527b7bb7588",
+  "by": "claude-in-session"
+ },
+ "pause.effects.rounds": {
+  "en": "5a2c22cba4d8",
+  "tr": "7ce59b7133be",
+  "by": "claude-in-session"
+ },
+ "pause.effects.title": {
+  "en": "7c829a349b0b",
+  "tr": "2fb6c9cb4122",
+  "by": "claude-in-session"
+ },
+ "pause.effects.whileHeld": {
+  "en": "be4c4146cde1",
+  "tr": "02e910e2dd97",
+  "by": "claude-in-session"
+ },
+ "pause.guilds.none": {
+  "en": "124b3ac64e2a",
+  "tr": "ada95983a3c4",
+  "by": "claude-in-session"
+ },
+ "pause.guilds.probation": {
+  "en": "a531bb97940c",
+  "tr": "379940eacca5",
+  "by": "claude-in-session"
+ },
+ "pause.guilds.title": {
+  "en": "bb386fdbe7c3",
+  "tr": "727d89e2d9a2",
+  "by": "claude-in-session"
+ },
+ "pause.journal.abandon": {
+  "en": "4f5b1563ec75",
+  "tr": "1ce4838d5c51",
+  "by": "claude-in-session"
+ },
+ "pause.journal.abandonArmed": {
+  "en": "1e8fc8900802",
+  "tr": "dedc637c322f",
+  "by": "claude-in-session"
+ },
+ "pause.journal.abandoned": {
+  "en": "f34fb6e3669d",
+  "tr": "b655fb5332c8",
+  "by": "claude-in-session"
+ },
+ "pause.journal.archived": {
+  "en": "eddc813f35b1",
+  "tr": "c686c1a9dd78",
+  "by": "claude-in-session"
+ },
+ "pause.journal.clear": {
+  "en": "a3298591978a",
+  "tr": "509fcc1902a0",
+  "by": "claude-in-session"
+ },
+ "pause.journal.clearArmed": {
+  "en": "724ac1ba28e9",
+  "tr": "a399e63d3c63",
+  "by": "claude-in-session"
+ },
+ "pause.journal.completed": {
+  "en": "1798b3ba42ee",
+  "tr": "1cae18a9a401",
+  "by": "claude-in-session"
+ },
+ "pause.journal.completedAt": {
+  "en": "8f4176eb2593",
+  "tr": "eed25ed16a61",
+  "by": "claude-in-session"
+ },
+ "pause.journal.ended": {
+  "en": "90303d8df23e",
+  "tr": "ecc8edea5c44",
+  "by": "claude-in-session"
+ },
+ "pause.journal.endedAt": {
+  "en": "ed443864c485",
+  "tr": "2e90423e84c2",
+  "by": "claude-in-session"
+ },
+ "pause.journal.hidden": {
+  "en": "d4c2792a7245",
+  "tr": "dc9c6d6082c3",
+  "by": "claude-in-session"
+ },
+ "pause.journal.hide": {
+  "en": "bfd31f7bf49f",
+  "tr": "125088723523",
+  "by": "claude-in-session"
+ },
+ "pause.journal.hideHidden": {
+  "en": "827dedecd973",
+  "tr": "41242df416a8",
+  "by": "claude-in-session"
+ },
+ "pause.journal.main": {
+  "en": "1e53d22374b9",
+  "tr": "0f035d61b391",
+  "by": "claude-in-session"
+ },
+ "pause.journal.none": {
+  "en": "892d398de6ba",
+  "tr": "4f21a3da3c8d",
+  "by": "claude-in-session"
+ },
+ "pause.journal.notWired": {
+  "en": "dd5713c3da57",
+  "tr": "d697b6c840ab",
+  "by": "claude-in-session"
+ },
+ "pause.journal.remove": {
+  "en": "e963907dac5c",
+  "tr": "5cbdf1fd7082",
+  "by": "claude-in-session"
+ },
+ "pause.journal.removeArmed": {
+  "en": "1079be2f8c09",
+  "tr": "b14b54e6fab2",
+  "by": "claude-in-session"
+ },
+ "pause.journal.share": {
+  "en": "71650d6cfd0e",
+  "tr": "cf425227fb08",
+  "by": "claude-in-session"
+ },
+ "pause.journal.showHidden": {
+  "en": "a7497ca0f9ef",
+  "tr": "b63fd70574c9",
+  "by": "claude-in-session"
+ },
+ "pause.journal.side": {
+  "en": "a308fa709811",
+  "tr": "968ddd9c11cb",
+  "by": "claude-in-session"
+ },
+ "pause.journal.timeRemains": {
+  "en": "5ace806abdd3",
+  "tr": "20d9736cf34c",
+  "by": "claude-in-session"
+ },
+ "pause.journal.title": {
+  "en": "57d7f743bbd1",
+  "tr": "332878be3c99",
+  "by": "claude-in-session"
+ },
+ "pause.journal.unhide": {
+  "en": "37f0297a2ed2",
+  "tr": "8dda5ae7e9e5",
+  "by": "claude-in-session"
+ },
+ "pause.law.banished": {
+  "en": "a655d9991e41",
+  "tr": "5f39f697cff7",
+  "by": "claude-in-session"
+ },
+ "pause.law.banishedDays": {
+  "en": "b5da3d25b920",
+  "tr": "f31851a00cd1",
+  "by": "claude-in-session"
+ },
+ "pause.law.banishedDaysReal": {
+  "en": "c7c8cea11ecb",
+  "tr": "cceb11ae3a8f",
+  "by": "claude-in-session"
+ },
+ "pause.law.known": {
+  "en": "aea0085e36f8",
+  "tr": "9880c6dba1ec",
+  "by": "claude-in-session"
+ },
+ "pause.law.region": {
+  "en": "b79358faabe3",
+  "tr": "5f1686934c8a",
+  "by": "claude-in-session"
+ },
+ "pause.law.title": {
+  "en": "410ea1ad42e2",
+  "tr": "67be11d8f056",
+  "by": "claude-in-session"
+ },
+ "pause.law.wordNote": {
+  "en": "398223895446",
+  "tr": "398223895446",
+  "by": "claude-in-session"
+ },
+ "pause.loadOnlineLocked": {
+  "en": "4fea8ff44e22",
+  "tr": "282e21210311",
+  "by": "claude-in-session"
+ },
+ "pause.master.activate": {
+  "en": "13bfe5b77d31",
+  "tr": "a1d4e6cd0935",
+  "by": "claude-in-session"
+ },
+ "pause.master.askBody": {
+  "en": "b90316f0933c",
+  "tr": "b4b0859b7170",
+  "by": "claude-in-session"
+ },
+ "pause.master.askTitle": {
+  "en": "a85e3094286f",
+  "tr": "53c6436deb49",
+  "by": "claude-in-session"
+ },
+ "pause.master.chosen": {
+  "en": "8b9fee005074",
+  "tr": "7ec3bc34c2a5",
+  "by": "claude-in-session"
+ },
+ "pause.master.master": {
+  "en": "78f3842f0201",
+  "tr": "518467dd8f62",
+  "by": "claude-in-session"
+ },
+ "pause.master.mastered": {
+  "en": "550ec5fd235d",
+  "tr": "e9a44c0af001",
+  "by": "claude-in-session"
+ },
+ "pause.master.masteredFull": {
+  "en": "b15e1a1e3bb1",
+  "tr": "62573e743e97",
+  "by": "claude-in-session"
+ },
+ "pause.master.off": {
+  "en": "f4d4f25ddc7e",
+  "tr": "b0f4b373a986",
+  "by": "claude-in-session"
+ },
+ "pause.master.offClassic": {
+  "en": "60937518b0fb",
+  "tr": "afe72ad64bba",
+  "by": "claude-in-session"
+ },
+ "pause.master.on": {
+  "en": "c5d093a1603f",
+  "tr": "383916e3f491",
+  "by": "claude-in-session"
+ },
+ "pause.master.title": {
+  "en": "d47015d16c85",
+  "tr": "f31ff33557a5",
+  "by": "claude-in-session"
+ },
+ "pause.master.turnOff": {
+  "en": "c0d699adbcf9",
+  "tr": "a1434bd183d1",
+  "by": "claude-in-session"
+ },
+ "pause.profPagesClosed": {
+  "en": "e515d0544542",
+  "tr": "901851493e6c",
+  "by": "claude-in-session"
+ },
+ "pause.quitConfirm": {
+  "en": "ac99b4cb8b29",
+  "tr": "05a02b1e2307",
+  "by": "claude-in-session"
+ },
+ "pause.skills.hideMisc": {
+  "en": "87de14958572",
+  "tr": "f16de8eb9943",
+  "by": "claude-in-session"
+ },
+ "pause.skills.showMisc": {
+  "en": "ae8908eb22fa",
+  "tr": "6488cb81bc60",
+  "by": "claude-in-session"
+ },
+ "pause.skills.unknown": {
+  "en": "ea3897a254e8",
+  "tr": "f392c5e0a6a9",
+  "by": "claude-in-session"
+ },
+ "pause.specials.class": {
+  "en": "41ff354b2b33",
+  "tr": "8b27332ee07f",
+  "by": "claude-in-session"
+ },
+ "pause.specials.disadvantages": {
+  "en": "0fe24d838b5f",
+  "tr": "8d5ab0de9e75",
+  "by": "claude-in-session"
+ },
+ "pause.specials.none": {
+  "en": "1c6779440485",
+  "tr": "62794fc8ee4d",
+  "by": "claude-in-session"
+ },
+ "pause.specials.race": {
+  "en": "6643dce8e4d3",
+  "tr": "c34d1bc482e0",
+  "by": "claude-in-session"
+ },
+ "pause.standing.dress": {
+  "en": "f61e33bf74dc",
+  "tr": "931a5af2cc37",
+  "by": "claude-in-session"
+ },
+ "pause.standing.reputation": {
+  "en": "5f21606b3a35",
+  "tr": "f92b36134b35",
+  "by": "claude-in-session"
+ },
+ "pause.standing.temples": {
+  "en": "653ec62b6d90",
+  "tr": "583a656cb3ee",
+  "by": "claude-in-session"
+ },
+ "pause.stats.advantages": {
+  "en": "98b9cd3c8fce",
+  "tr": "bf1f0a0ebec1",
+  "by": "claude-in-session"
+ },
+ "pause.stats.adventurer": {
+  "en": "27d993619db6",
+  "tr": "8a2a436b9b4b",
+  "by": "claude-in-session"
+ },
+ "pause.stats.burden": {
+  "en": "4903c9ecc20a",
+  "tr": "5f37ad1de28c",
+  "by": "claude-in-session"
+ },
+ "pause.stats.character": {
+  "en": "ee9946c82d4a",
+  "tr": "614189b3887e",
+  "by": "claude-in-session"
+ },
+ "pause.stats.effects": {
+  "en": "8f25a859269c",
+  "tr": "f11e32f4cf40",
+  "by": "claude-in-session"
+ },
+ "pause.stats.encumbrance": {
+  "en": "8b467b1f8741",
+  "tr": "0a4f2ecb1c08",
+  "by": "claude-in-session"
+ },
+ "pause.stats.kind": {
+  "en": "28feb003ab52",
+  "tr": "0aca61fad4f3",
+  "by": "claude-in-session"
+ },
+ "pause.stats.kindCareer": {
+  "en": "86d00742be5f",
+  "tr": "836ca89df7ac",
+  "by": "claude-in-session"
+ },
+ "pause.stats.standing": {
+  "en": "742f03c37a89",
+  "tr": "5f5a91d26a3b",
+  "by": "claude-in-session"
+ },
+ "pause.tab.family": {
+  "en": "4efb6cb7c018",
+  "tr": "242e8e5c3fbc",
+  "by": "claude-in-session"
+ },
+ "pause.tab.holdings": {
+  "en": "72f9d3399791",
+  "tr": "d5277406f3dc",
+  "by": "claude-in-session"
+ },
+ "pause.tab.quests": {
+  "en": "eca701b5e1d8",
+  "tr": "2c5f7c56f475",
+  "by": "claude-in-session"
+ },
+ "pause.tab.stats": {
+  "en": "be763e9aba2a",
+  "tr": "0a409cee235c",
+  "by": "claude-in-session"
+ },
+ "pause.tab.system": {
+  "en": "bc0792d8dc81",
+  "tr": "b3d83cd9d956",
+  "by": "claude-in-session"
+ },
+ "pause.tab.tutorials": {
+  "en": "654171647baa",
+  "tr": "fb3a3ef67179",
   "by": "claude-in-session"
  },
  "settings.language.machine": {
@@ -285,8 +2935,8 @@
   "by": "claude-in-session"
  },
  "stats.critical.tip": {
-  "en": "c53dea197c1e",
-  "tr": "3520b7bff985",
+  "en": "9e6dca195e27",
+  "tr": "d2c437289edb",
   "by": "claude-in-session"
  },
  "stats.critical.tipDamage": {
@@ -425,8 +3075,8 @@
   "by": "claude-in-session"
  },
  "stats.rules.classic": {
-  "en": "b65a0dff50da",
-  "tr": "75a85c0c015e",
+  "en": "b2c3f59bc3f5",
+  "tr": "b119bcfed30c",
   "by": "claude-in-session"
  },
  "stats.rules.overhaul": {
