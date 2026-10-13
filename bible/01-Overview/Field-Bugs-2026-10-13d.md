@@ -78,6 +78,16 @@ pressed as any body - in a fight too, where DFU's loot window pauses the world.
 A DEATH IN A BUILDING STANDS NO BODY: its law is the street's - the place names no building, and the list opens anywhere
 on its town's pixel in the street, the moment the heir walks it.
 
+WHICH DUNGEON IS THEIRS (AUDIT FB1013d O1): the dungeon's ROW AND ITS PIXEL (`world.js
+legacyInDungeonOf`). The row alone - `abyss.location()`'s regionIndex and locationIndex, the place's since LEGACY4 - is
+no identity for a MADE dungeon: a spawn (`world/spawnedDungeons.js synthesizeDungeonLocation`), a hall, the Arena's floor,
+the Hour and the Court are each `locationIndex: -1` of their region, so the body stood in every spawn of the fallen's
+region, at their coordinates (on a floor there or in the rock), and its list opened on that spot. Inside, the GPS is the
+dungeon's own pixel (`playerTravelPixel` underground is the streamer's, which a load and a Recall stand at the dungeon's;
+Ocean Holes' abyss its template's - the save's and the anchor's law), and every row has kept it since LEGACY1 - the map's
+ring reads it - so rows written before stand right too. The row still counts beside it: the Arena's floor stands on
+Daggerfall's pixel, whose castle is the city's own row.
+
 ## LIVE-FIGHT: the fight is the place the one played stands in (1)
 
 `src/scenes/world.js` the Legacy host's `inFight`.
@@ -126,11 +136,13 @@ play online.
 
 ## Pins (1)
 
-- `test/fb1013d_remains.test.js` (5): the report end to end through the producers (the Legacy host, its death at the
+- `test/fb1013d_remains.test.js` (6): the report end to end through the producers (the Legacy host, its death at the
   collapse's own SetHealth(0) door, the Succession and the birth; a real ground pool; the world host's own `legacyHere`,
   `legacyAtPlace`, `legacyRemainsFeet`, the stand and `inFight` run off its text) - the body stands in the castle's pool
   on the floor under her last position, its list the record's own array, named, marked, on the ray, in no save, never
-  laid twice, in no other dungeon and not in the street; a take through it is the heir's claim, the bones go back into it
+  laid twice, in no other dungeon and not in the street; which dungeon is hers by its row and its pixel (AUDIT FB1013d O1:
+  spawns of her region minted by their producer, on other pixels, stand none and open nothing on her very coordinates,
+  her own spawn stands her, and the Arena's floor on Daggerfall's pixel is not Castle Daggerfall); a take through it is the heir's claim, the bones go back into it
   and into no other pile, carried home it is let go and laid again it stands again, and it is stood afresh at every
   change of its pool, its pile or its list, never for a waiting Succession, a page not the one played's or with the
   switch off; in the open at the height she stood (written in DFU's frame with its stamp, stood again through them),
@@ -138,7 +150,7 @@ play online.
   the place (a latched street walker no fight underground, the list opening on the spot; the dungeon's and the
   building's own foes a fight); its line with the rarity row off under the house's own word, no silver find, and the
   hosts by source.
-- `tools/mutants/fb1013d_remains.json` (34, all dead). Re-aimed by content: `auditlegacy2.json`
+- `tools/mutants/fb1013d_remains.json` (38, all dead - four of them AUDIT FB1013d O1's). Re-aimed by content: `auditlegacy2.json`
   AUDIT-LEGACY-II-H5-claimed-at-the-open and `itemwalk.json` ITEM-WALK-B-remains-unrepaired (a list's readiness has one
   home now, `readyList`); `loot11.json` LOOT11-pass-off and LOOT11-drop-pool-no-finds (the lines' word, each kind's own;
   a pile's own mark). Each list run whole: `auditlegacy2.json` and `itemwalk.json` 59 dead, `loot11.json` and

@@ -304,5 +304,41 @@
     "tests": [
       "test/fb1013d_remains.test.js"
     ]
+  },
+  {
+    "name": "FB1013d-AUDIT-O1-a-made-dungeon-by-its-row-alone",
+    "file": "src/scenes/world.js",
+    "old": "  const legacyInDungeonOf = (h, place) => h.mode === 'dungeon' && !!place?.dungeon && h.pixel?.x === place.pixel?.x && h.pixel?.y === place.pixel?.y && h.dungeon?.regionIndex === place.dungeon.regionIndex && h.dungeon?.locationIndex === place.dungeon.locationIndex;",
+    "new": "  const legacyInDungeonOf = (h, place) => h.mode === 'dungeon' && !!place?.dungeon && h.dungeon?.regionIndex === place.dungeon.regionIndex && h.dungeon?.locationIndex === place.dungeon.locationIndex;",
+    "tests": [
+      "test/fb1013d_remains.test.js"
+    ]
+  },
+  {
+    "name": "FB1013d-AUDIT-O1-the-pixel-s-x-unread",
+    "file": "src/scenes/world.js",
+    "old": "  const legacyInDungeonOf = (h, place) => h.mode === 'dungeon' && !!place?.dungeon && h.pixel?.x === place.pixel?.x && h.pixel?.y === place.pixel?.y && h.dungeon?.regionIndex === place.dungeon.regionIndex && h.dungeon?.locationIndex === place.dungeon.locationIndex;",
+    "new": "  const legacyInDungeonOf = (h, place) => h.mode === 'dungeon' && !!place?.dungeon && h.pixel?.y === place.pixel?.y && h.dungeon?.regionIndex === place.dungeon.regionIndex && h.dungeon?.locationIndex === place.dungeon.locationIndex;",
+    "tests": [
+      "test/fb1013d_remains.test.js"
+    ]
+  },
+  {
+    "name": "FB1013d-AUDIT-O1-the-pixel-s-y-unread",
+    "file": "src/scenes/world.js",
+    "old": "  const legacyInDungeonOf = (h, place) => h.mode === 'dungeon' && !!place?.dungeon && h.pixel?.x === place.pixel?.x && h.pixel?.y === place.pixel?.y && h.dungeon?.regionIndex === place.dungeon.regionIndex && h.dungeon?.locationIndex === place.dungeon.locationIndex;",
+    "new": "  const legacyInDungeonOf = (h, place) => h.mode === 'dungeon' && !!place?.dungeon && h.pixel?.x === place.pixel?.x && h.dungeon?.regionIndex === place.dungeon.regionIndex && h.dungeon?.locationIndex === place.dungeon.locationIndex;",
+    "tests": [
+      "test/fb1013d_remains.test.js"
+    ]
+  },
+  {
+    "name": "FB1013d-AUDIT-O1-the-row-s-index-unread",
+    "file": "src/scenes/world.js",
+    "old": "  const legacyInDungeonOf = (h, place) => h.mode === 'dungeon' && !!place?.dungeon && h.pixel?.x === place.pixel?.x && h.pixel?.y === place.pixel?.y && h.dungeon?.regionIndex === place.dungeon.regionIndex && h.dungeon?.locationIndex === place.dungeon.locationIndex;",
+    "new": "  const legacyInDungeonOf = (h, place) => h.mode === 'dungeon' && !!place?.dungeon && h.pixel?.x === place.pixel?.x && h.pixel?.y === place.pixel?.y && h.dungeon?.regionIndex === place.dungeon.regionIndex;",
+    "tests": [
+      "test/fb1013d_remains.test.js"
+    ]
   }
 ]

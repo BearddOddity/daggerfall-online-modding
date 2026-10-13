@@ -27769,8 +27769,11 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
       world: mode === 'exterior' ? { ...state.worldCoords(pos), y: groundFrameHeight(pos[1] - state.compensation[1], pos[0], pos[2]), terrainScale: STREAMING_TERRAIN_SCALE } : null,
     };
   };
-  /** LEGACY4 + AUDIT LEGACY H1: whether `h` (legacyHere) stands in the dungeon a remains' `place` names - by its location. */
-  const legacyInDungeonOf = (h, place) => h.mode === 'dungeon' && !!place?.dungeon && h.dungeon?.regionIndex === place.dungeon.regionIndex && h.dungeon?.locationIndex === place.dungeon.locationIndex;
+  /** LEGACY4 + AUDIT LEGACY H1: whether `h` (legacyHere) stands in the dungeon a remains' `place` names - by its location
+   *  AND the pixel it stands on (AUDIT FB1013d O1: a MADE dungeon is no table row - a spawn, a hall, the Arena's floor,
+   *  the Hour and the Court are each locationIndex -1 of their region, so the body stood in every spawn of the fallen's
+   *  region; inside, the GPS is the dungeon's own pixel - Ocean Holes' abyss its template's - as the map ring reads it). */
+  const legacyInDungeonOf = (h, place) => h.mode === 'dungeon' && !!place?.dungeon && h.pixel?.x === place.pixel?.x && h.pixel?.y === place.pixel?.y && h.dungeon?.regionIndex === place.dungeon.regionIndex && h.dungeon?.locationIndex === place.dungeon.locationIndex;
   /** LEGACY4: is the player where these remains lie - in their dungeon, or within a stone's throw of where they fell
    *  outdoors (in a building: anywhere on its town's pixel, in the street). */
   const legacyAtPlace = (place) => {

@@ -31,9 +31,18 @@ import { isRemainsItem, isHeirloom } from '../src/systems/legacy/heirloom.js';
 import { setItemFields, mintCondition } from '../src/systems/itemTemplates.js';
 import { setSilverFinder, silverFindAt, _resetSilverFindsForTests } from '../src/systems/silverFinds.js';
 import { setPref, _resetForTests } from '../src/systems/uiPrefs.js';
+import { synthesizeDungeonLocation, WORLD_SALT } from '../src/world/spawnedDungeons.js';
+import { arenaFloorLocation } from '../src/world/arenaFloor.js';
+import { ARENA_REGION, ARENA_LOCATION } from '../src/world/arenaCity.js';
 
 const rd = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
 const W = rd('src/scenes/world.js');
+/** The dungeon's summary as dungeonContext.js mints it (`abyss.location`), run off its own text. */
+const summaryOf = (() => {
+  const m = /\n\s+location: (\(\) => \(\{ regionIndex: dfLocation\.regionIndex[^\n]*\}\)),\n/.exec(rd('src/scenes/dungeonContext.js'));
+  assert.ok(m, 'dungeonContext.js\'s abyss.location moved');
+  return (dfLocation) => new Function('dfLocation', `return (${m[1]})();`)(dfLocation);
+})();
 const mem = () => { const m = new Map(); return { get length() { return m.size; }, key: (i) => [...m.keys()][i] ?? null, getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => { m.set(k, String(v)); }, removeItem: (k) => { m.delete(k); } }; };
 
 /** world.js's own text from `start` to the close of its statement (`\n  };` or `\n  });`). */
@@ -86,7 +95,7 @@ function worldOf(w) {
   const names = ['playerTravelPixel', 'maps', 'locationIndex', 'modes', 'walkMode', 'playerSpawned', 'player', 'cam', 'REGION_NAMES', 'state',
     'heightAt', 'floorLanding', 'collider', 'LEGACY_REMAINS_NEAR_DUNGEON', 'LEGACY_REMAINS_NEAR', 'createRemainsStand', 'droppedLoot', 'REMAINS_FLAT',
     'areEnemiesNearby', 'exteriorFoePool', 'exteriorFoes', 'cityGuards', 'groundFrameHeight', 'restandHeight', 'scaleOf', 'STREAMING_TERRAIN_SCALE', 'LEGACY_TEXT'];
-  const vals = [() => ({ x: 300, y: 200 }), maps, locationIndex, modes, true, true, player, { pos: [0, 0, 0] }, REGION_NAMES, state,
+  const vals = [() => ({ ...w.pixel }), maps, locationIndex, modes, true, true, player, { pos: [0, 0, 0] }, REGION_NAMES, state,
     heightAt, floorLanding, collider, 6, 2400, createRemainsStand, w.streetPool, REMAINS_FLAT,
     areEnemiesNearby, exteriorFoePool, exteriorFoes, cityGuards, groundFrameHeight, restandHeight, scaleOf, SCALE, LEGACY_TEXT];
   const body = `${HERE}\n${IN_DUNGEON}\n${AT_PLACE}\n${FEET}\n${STAND}\nconst inFight = ${FIGHT};\nreturn { legacyHere, legacyAtPlace, legacyRemainsFeet, legacyRemainsStand, inFight };`;
@@ -103,7 +112,7 @@ const sword = () => ({ ...mintCondition(setItemFields({ group: 'Weapons', templa
 function house() {
   _resetModSaveData();
   const w = {
-    mode: 'dungeon', pos: [10, -5, 30], castle: { ...CASTLE }, floorY: -5.4, comp: [0, 0, 0], ground: 0, roofY: -Infinity, built: true,
+    mode: 'dungeon', pos: [10, -5, 30], pixel: { x: 300, y: 200 }, castle: { ...CASTLE }, floorY: -5.4, comp: [0, 0, 0], ground: 0, roofY: -Infinity, built: true,
     streetPool: groundPool(), dungeonPool: groundPool(), roomPool: groundPool(), streetFoes: [], insideFoes: [],
     said: [], opened: [], storage: mem(), tab: mem(),
   };
@@ -182,6 +191,44 @@ test('REMAINS-STAND: the report - an Enduring elder whose span was spent collaps
   t.w.castle = { ...CASTLE }; t.w.mode = 'exterior'; t.w.pos = [0, 0, 0];
   assert.equal(frame(t), 0, 'the street stands none for a death underground');
   assert.equal(t.w.streetPool._piles.length, 0);
+});
+
+test('AUDIT FB1013d O1: a MADE dungeon is no table row - every spawn of a region is its locationIndex -1 - so where the fallen lie underground is their dungeon\'s row AND its pixel: a spawn of her region on another pixel stands no body and opens no list on the very spot, her own spawn does, and the Arena\'s floor on Daggerfall\'s pixel is not Castle Daggerfall (mutants: a made dungeon by its row alone; the pixel\'s x or y unread; the row\'s index unread)', () => {
+  // three spawns of one template in Wayrest's region, as the world mints them (world/spawnedDungeons.js), each on its pixel
+  const template = { name: 'Ruins of Old Hold', regionIndex: 5, locationIndex: 40, hasDungeon: true, mapTableData: { mapId: 777 }, exterior: { exteriorData: { locationId: 9 } }, dungeon: { recordElement: { header: { locationId: 9 } }, blocks: [{}] } };
+  const spawn = (px, py) => ({ loc: synthesizeDungeonLocation(template, { salt: WORLD_SALT, px, py, where: { regionIndex: 23 } }), pixel: { x: px, y: py } });
+  const A = spawn(310, 205), B = spawn(310, 209), C = spawn(314, 205);
+  assert.deepEqual([summaryOf(A.loc), summaryOf(B.loc), summaryOf(C.loc)].map((d) => d.locationIndex), [-1, -1, -1], 'no table row');
+  assert.deepEqual(summaryOf(A.loc), summaryOf(B.loc), 'one summary for every spawn of the region');
+  const t = house();
+  t.w.castle = summaryOf(A.loc); t.w.pixel = { ...A.pixel };   // inside, the GPS is the spawn's own pixel
+  const row = fallAndHeir(t);
+  assert.deepEqual(row.place.pixel, A.pixel, 'she fell in the spawn on her pixel');
+  // the heir in another spawn of the region, on the very coordinates she fell at: not where she lies
+  for (const other of [B, C]) {
+    t.w.castle = summaryOf(other.loc); t.w.pixel = { ...other.pixel }; t.w.pos = [10, -5, 30];
+    assert.equal(t.world.legacyAtPlace(row.place), false, `the spawn at ${other.pixel.x},${other.pixel.y} is not hers`);
+    t.host.tick();
+    assert.equal(t.w.opened.length, 0, 'no list opens there');
+    assert.equal(frame(t), 0, 'no body stands there');
+    assert.equal(t.w.dungeonPool._piles.length, 0);
+  }
+  // her own spawn: the body stands, and the list opens on the spot
+  t.w.castle = summaryOf(A.loc); t.w.pixel = { ...A.pixel };
+  assert.equal(frame(t), 1, 'her own spawn stands her');
+  assert.ok(pileOf(t.w.dungeonPool, row));
+  assert.equal(t.world.legacyAtPlace(row.place), true);
+  // the row's index still counts beside the pixel: the Arena's floor (made, -1) stands on Daggerfall's pixel, whose own
+  // castle is the city's table row - a death in Castle Daggerfall lies in the castle, never on the arena's sand
+  const d = house();
+  const daggerfall = { x: 207, y: 213 };
+  d.w.castle = { regionIndex: ARENA_REGION, locationIndex: ARENA_LOCATION }; d.w.pixel = { ...daggerfall };
+  const castleRow = fallAndHeir(d);
+  d.w.castle = summaryOf(arenaFloorLocation({ city: { regionIndex: ARENA_REGION, regionName: 'Daggerfall' } })); d.w.pixel = { ...daggerfall };
+  assert.equal(d.world.legacyAtPlace(castleRow.place), false, 'the arena floor is not the castle');
+  assert.equal(frame(d), 0, 'no body on the sand');
+  d.w.castle = { regionIndex: ARENA_REGION, locationIndex: ARENA_LOCATION };
+  assert.equal(frame(d), 1, 'the castle stands her');
 });
 
 test('REMAINS-STAND: the body IS the record\'s list - a take from it is the heir\'s claim, the bones go back into it and into no other pile, carried home it is let go; stood again at every change of its pool or its list, none for the past or with the switch off (mutants: the frame\'s five lets-go; remainsToStand\'s guards)', () => {

@@ -262,8 +262,9 @@ finishChargen`, `test/legacychoice.test.js`, `tools/mutants/legacychoice.json`):
   with them, and nothing is ever laid in the world twice (AUDIT LEGACY H1). AND THEY ARE SEEN THERE (FB1013d
   REMAINS-STAND, `01-Overview/Field-Bugs-2026-10-13d.md`: H1 had taken the pile's picture with the pile, and in Castle
   Wayrest's halls an heir walked past a six-pace spot nothing marked): a body - their own picture, a line of light over
-  it - stands where they lie, on the floor under the fallen's last position underground and at the spot outdoors (at the
-  height they stood), in the pool of the host the heir stands in; its list is the record's own
+  it - stands where they lie, on the floor under the fallen's last position underground (in their own dungeon: its row and
+  its pixel - a made dungeon is no table row, AUDIT FB1013d O1) and at the spot outdoors (at the height they stood), in
+  the pool of the host the heir stands in; its list is the record's own
   (`scenes/legacyRemainsStand.js`), so it is pressed as any body and no save carries it. A death in a building keeps the
   street's law and stands none. "Never in a fight" is the place the heir stands in (LIVE-FIGHT: the street's pools,
   frozen underground, kept it shut on the spot). The bones are always somewhere - in the list
