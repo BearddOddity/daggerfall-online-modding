@@ -1,4 +1,4 @@
-// ONE-BAD-BODY (FIELD BUGS 2026-10-13, "Morrowind assets Still missing" - "After update they seemed to work for a moment
+// ONE-BAD-BODY (FIELD BUGS 2026-10-13b, "Morrowind assets Still missing" - "After update they seemed to work for a moment
 // but now it stopped working again"; the owner: "people are saying with morrowind models, people are invisible", online
 // only). 12g's BATCH-SHUT closed one way the body batch stood open; the bodies still went, online, all at once, until a
 // restart. The batch (MWNPC2) packs every picture after the last - one picture whose size is not a number put every

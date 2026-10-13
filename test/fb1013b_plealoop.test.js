@@ -1,4 +1,4 @@
-// PLEA-LOOP (FIELD BUGS 2026-10-13, a player: "Pleading guilty not working" - "I'm stuck in a loop of being able to
+// PLEA-LOOP (FIELD BUGS 2026-10-13b, a player: "Pleading guilty not working" - "I'm stuck in a loop of being able to
 // plead guilty or not guilty for a crime after I assassinated an NPC for a quest"; the screenshot: the plea's buttons,
 // "7 days until freedom." under them, and the Crime tutorial page beside them).
 //

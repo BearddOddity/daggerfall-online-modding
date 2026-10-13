@@ -162,7 +162,7 @@ export function createArrestFlow({
    *  still the one standing? A load ends it (`abandon`, below) without running it to its release, and a step armed for
    *  a trial that is no longer standing does nothing at all - the boxes it drains and the keys that reach them before
    *  the drain act on no game. Null before the first trial and after a load.
-   *  PLEA-LOOP (FIELD BUGS 2026-10-13): ITS RELEASE ENDS IT TOO. ReleaseFromPrison is the court's last act - its
+   *  PLEA-LOOP (FIELD BUGS 2026-10-13b): ITS RELEASE ENDS IT TOO. ReleaseFromPrison is the court's last act - its
    *  CancelWindow (:490) takes every box of the trial with it - and the token used to stand on past it, so a step of a
    *  released trial still acted: a plea answered again after its release pleaded, took the fine and released again (four
    *  hours, the grace, the reposition), as often as it was pressed. `released` is set as the release begins; the token

@@ -56,7 +56,7 @@ export class ChoiceWindow {
   }
 
   input(code) {
-    // PLEA-LOOP (FIELD BUGS 2026-10-13): a box is answered ONCE, however many doors reach it - the occupant's half of
+    // PLEA-LOOP (FIELD BUGS 2026-10-13b): a box is answered ONCE, however many doors reach it - the occupant's half of
     // THE SLOT IS EMPTIED BEFORE THE OCCUPANT IS TOLD (bible/Home.md). The court's plea, answered under the tutorial
     // page and left painted in the stack, pleaded again on every press: each plea halved the term and took the fine.
     if (this.done) return;

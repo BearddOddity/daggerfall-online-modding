@@ -644,7 +644,7 @@ export class PeerBodies {
   /** A body's feet, pace, range and camera for this frame. */
   _place(b, peer, toScene, dt, near) {
     const f = toScene(peer.shown);
-    // FIELD BUGS 2026-10-13 ONE-BAD-BODY: a drawn pose with no finite place holds the body where it last stood. The body
+    // FIELD BUGS 2026-10-13b ONE-BAD-BODY: a drawn pose with no finite place holds the body where it last stood. The body
     // INTEGRATES its pose - the pace off the feet's travel, the yaw eased toward the pose's - so one NaN read stayed NaN
     // for as long as the body stood, its picture with it (the renderer's batch door refuses that one now), until a
     // reload. Its yaw is taken only when finite, below; said once, naming what was not

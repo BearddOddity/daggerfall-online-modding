@@ -290,7 +290,7 @@ view's (AUDIT OW4 J6), the flats' own - stands as handed. Classic
 billboards keep DFU's upright quad: they are flats, not pictures of a 3D
 figure. Pinned: `test/bodylean.test.js`; mutants `tools/mutants/bodylean.json`.
 
-ONE-BAD-BODY (FIELD BUGS 2026-10-13, `01-Overview/Field-Bugs-2026-10-13.md`;
+ONE-BAD-BODY (FIELD BUGS 2026-10-13b, `01-Overview/Field-Bugs-2026-10-13b.md`;
 the owner: "people are saying with norrowind models, people are invisable.
 Something in a recent commit borked it", online only). The packer places each tile after the last (`x += it.pw`),
 so one picture whose size was not a number - `Math.max(2, NaN)` is NaN,

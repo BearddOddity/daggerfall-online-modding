@@ -95,7 +95,7 @@ export const hidesHud = (win) => !!win && win.hidesHud === true;
  *  death screen goes. */
 export const holdsTop = (win) => !!win && win.holdsTop === true;
 
-/** PLEA-LOOP (FIELD BUGS 2026-10-13): the stack that holds each window - a window in no stack has no entry. Weak, so an
+/** PLEA-LOOP (FIELD BUGS 2026-10-13b): the stack that holds each window - a window in no stack has no entry. Weak, so an
  *  entry dies with its window: nothing here outlives what it names. */
 const HELD_BY = new WeakMap();
 

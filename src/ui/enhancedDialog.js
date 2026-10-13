@@ -172,7 +172,7 @@ export const enhancedDialogOpen = () => !!active || !!choice;
 // canvas panel reading "Y - yes / N - no". Same window here; a press
 // calls the window's own input(code), exactly what the key does.
 //
-// PLEA-LOOP (FIELD BUGS 2026-10-13, "Pleading guilty not working"): and
+// PLEA-LOOP (FIELD BUGS 2026-10-13b, "Pleading guilty not working"): and
 // ONLY WHILE THE KEY WOULD REACH IT. The key goes to the top window
 // alone, through the host; the button reached its window directly,
 // wherever it stood. A window another covers is still painted (the
