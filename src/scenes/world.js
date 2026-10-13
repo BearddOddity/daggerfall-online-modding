@@ -586,6 +586,7 @@ import { questActionsExtensionTemplates } from '../systems/quest/questActionsExt
 import { entityMaxEncumbrance } from '../combat/formulas.js';   // FORAGE1: PlayerEntity.MaxEncumbrance, for Foraging's last check
 import { packCapacityKg } from '../systems/naval/crewCompanions.js';   // COMPANION-WEIGHT: what his pack carries
 import { createComeSailAwayPool, CULL_DETAIL_PX, FADE_FLATS as CSA_FADE_FLATS } from './comeSailAwayPool.js';   // CSA-B: Come Sail Away's boats, drawn
+import { createShipPortraits } from './shipPortraits.js';   // MENU-ORDER: a ship's own picture on the shipmaster's card
 import { createComeSailAwayPeers } from './comeSailAwayPeers.js';   // CSA-J: another player's boats, seen
 import { createComeSailAwayAboard, CSA_ABOARD_GRACE, deckPose as csaDeckPose, helmWord as csaHelmWordOf, localOf as csaLocalOf, worldOf as csaWorldOf } from './comeSailAwayAboard.js';   // CSA-K: another player's boat, boarded; FIELD BUGS 2026-09-29 (the sea) #1: the deck's frame, the helmsman's place
 import { csaWireRecord, csaRecordKey } from '../systems/comeSailAwayWire.js';   // CSA-J: my boats, said
@@ -8624,6 +8625,8 @@ export async function bootWorld(canvas, renderer, params, status) {
   const _csaOnAtLoad = latchModLoaded('come-sail-away', (() => { try { return modSetting('come-sail-away', 'Enabled') !== false; } catch { return false; } })());   // AUDIT PRE-MERGE 0928 S4: and the mod's other doors (the shelf's rows, its keys, its effect's restore) read this answer too
   const csaOn = () => _csaOnAtLoad;
   const csa = createComeSailAwayPool({ renderer, pipeline, log: console });
+  /** MENU-ORDER: the shipmaster's cards' pictures - each hull's portrait boat, drawn after the frame's own pass (below) */
+  const shipPortraits = createShipPortraits({ renderer, canvas, doc: typeof document !== 'undefined' ? document : null, portrait: (hull) => (csaOn() ? csa.portrait(hull) : null) });
   /** NAV-H: the naval host (made below, with Come Sail Away's runtime) - declared here, beside the pool whose sea list
    *  it fills, because the boats' colliders, rays and particles below read its ships. */
   let naval = null;
@@ -10694,6 +10697,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       model: (view) => shipyardHost.model(site, view),
       act: (verb, a, b) => shipyardHost.act(site, verb, a, b),
       onDoor: (fn) => { door = typeof fn === 'function' ? fn : null; },
+      picture: (hull, where) => shipPortraits.picture(hull, where),   // MENU-ORDER: her own picture on her card
     });
     if (!win) return false;
     townTalk.showOverlay(win, () => { const fn = door; door = null; if (fn && fn() === false) openShipyard(site, 'fleet'); });
@@ -35095,6 +35099,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     if (magic.batches().length) renderer.drawBillboards(magic.batches(), camRight, bbUp);   // M2: spell missiles
     magic.drawFx?.();   // IMPACTFX: the spells' landings in light, over their flashes
     yards?.drawPreview();   // HOME-YARD: the decorator's panel, its pointed model turning in the preview box
+    shipPortraits.draw();   // MENU-ORDER: the shipmaster's cards' pictures, under his window
     // T2 towns: every built populated pixel runs its own pool
     // (PopulationManager is per-location); the pool sees the player in
     // the pixel's LOCATION frame, and live persons draw through the

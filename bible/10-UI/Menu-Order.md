@@ -86,6 +86,33 @@ where a picture cannot say it (a price, a name).
   figures a step larger (12px). The naval yard's three pages (Shipwright, Harbourmaster, Exchange) and a merchant's
   presses (Repair item, Talk, Sell or Banking, Exit - `MERCHANT_ICONS`; a service's own word, none) each wear theirs.
 
+- **MENU-ORDER g, the four left open** (the owner: "Finish the not done").
+  - **A refused press says why when pressed** (Plain-Words law 5, A FINGER HAS NO HOVER). The Reforge's nine refusals
+    (salvage, reforge, hone, imprint, extract, unset, set, scry, lift) and the Sigil Broker's Buy and an insignia's are
+    never `disabled` now: `refusePress` (`ui/brokerWindow.js`) marks one `aria-disabled`, keeps its title for the
+    pointer, and a press of it says the whole reason in the window's note line and does nothing else - on the Reforge
+    it lets a pending ask go with it (AUDIT LOOT II B4). It reads refused on both skins (`BROKER_CSS`, at rest, under
+    the pointer and held), its word in the dim bone rather than faded, since that word is the reason shortened. A press
+    in flight (an insignia being bought) stays `disabled`: it has nothing to say.
+  - **A model's own picture in its tile.** The panel asks for a model's picture as it asks for a flat's (when its tile
+    comes into view; `modelPicture`, `ui/decorPanel.js` - the catalogue's, a placed piece's and a built-in one's), and
+    shows it over its kind's glyph, which stands until it lands. The host (`scenes/decorTool.js` `drawThumbs`) draws a few
+    a frame (`DECOR_THUMBS_A_FRAME`) at the preview's own turn of the frame: the model loaded and drawn in the host's law
+    (AUDIT 05b A5), in the room's own textures (a picture is kept under its room's table - another room asks again),
+    with the preview's own second camera and copy (`scenes/panelPicture.js`, new - `panelPicture`, `canvasBoxUnder`)
+    into a square of the canvas under the panel's card, seen a quarter turned from a little above. An ask for a model
+    that never comes is let go after `DECOR_THUMB_WAIT_MS`; its tile keeps the glyph.
+  - **A ship's own picture.** The boat pool builds each hull once, standing at the origin and never on the water, its
+    sails baked as they stand (`scenes/comeSailAwayPool.js` `portrait`): her parts - every mesh the pool's own draw
+    would draw for her, at its own matrix - and her box. `scenes/shipPortraits.js` (new) draws her one a frame after
+    the world's own pass (world.js, beside the decorator's preview), under the shipmaster's window, from off her beam
+    and a little above, and copies her out once a hull for the session; the card (`ui/shipyardWindow.js`) shows her at
+    her size still (a Rowboat's picture the card's half, a Large Galley's its width) over her glyph. Ports are the
+    streaming world's, so world.js is the one host that opens the window and the one that draws her.
+  - **A portrait phone's placing bar** stands under the touch layer's two top-left presses (16px down, 48px tall,
+    `ui/touch.js`) at the screen's width; a 390px phone had given it 118px beside them. A landscape screen keeps its
+    clearance.
+
 THE FOUR HOSTS (Home.md, 17e): the decorator, the counter and the pages are each one surface every host opens through
 its one door (`scenes/decorTool.js`, `ui/tradeDoor.js`, the pause menu's pages). MENU-ORDER e's pictures are handed by
 the providers that stand them: `src/scenes/world.js` WIRED - the Stores page's (`setProfessionsPages`), the board's
@@ -111,20 +138,16 @@ door), so there is nothing there to wire.
   (ITEM00I0) - draw DFU's rects (THE NATIVE-WINDOW RULE, Home.md): no picture is added there.
 - **The Work tab** is cards already (the writs pinned on the cork), and **the Sigil Broker** pictures its offers in their
   frames already: neither changed.
-- **A refused press's reason on a touch screen.** The Reforge's refused presses say why in a word ("Worn", "Cannot")
-  and in full only on the hover (`title`), and a disabled press takes no tap - PLAIN-UI's law 5 unmet there. Answering
-  it means a press that is not disabled and says its reason when tapped, across every Reforge page and the pins that
-  hold `disabled` - OPEN, its own slice.
-- **A ship's own picture.** The yard draws a glyph at her size; her hull's model, rendered small, is a renderer's pass -
-  OPEN.
-- **A model's own picture in a tile.** A model has none until the host turns it in the preview; its tile wears its
-  kind's glyph. Rendering every model small for the grid is a renderer's pass - OPEN.
-- **A portrait phone's placing bar** keeps its 272px clearance for the touch layer (DECOR1e), so it is narrow there -
-  older than this, OPEN with it.
+- **The four left open by MENU-ORDER f** - a refused press's reason on a touch screen, a ship's own picture, a model's
+  own picture in a tile and a portrait phone's placing bar - are MENU-ORDER g's (section 2), CLOSED.
+- **A ship's crew and lanterns' flames** are billboards and stand in no picture (`portrait` takes her meshes alone); a
+  model's or a ship's picture is seen in no real ARENA2 in this repository's checks - its math, its hand-over and every
+  pass and copy are pinned over fakes, and the pool's portrait of every hull is read off the vendored models (the pass
+  itself is the decorator's preview's, which the game draws already). OPEN: a photograph of both on a real install.
 
 ## 5. Proof
 
-- `test/menuorder.test.js` (7): the glyphs (twelve by twelve, a rect a lit pixel, a mask each, every kind and station
+- `test/menuorder.test.js` (10): the glyphs (twelve by twelve, a rect a lit pixel, a mask each, every kind and station
   pictured); the decorator's tiles, its kind glyphs and letters, its badges, the Pictures / List switch, the tabs' and
   chips' glyphs, the switch after the tabs; a placed piece's pictured presses, Remove warned, the bar's legend folded
   behind Keys, the legend's pairs, the fold's count; the counter's title, its named column, its two figures, a price on
@@ -137,7 +160,23 @@ door), so there is nothing there to wire.
   each page its glyph, a ship on every card). PINS MOVED: the bar's keys read whole (`decor1e`, `decorfigure`), DECOR-FLIP reads the legend's own pair
   (`decorflip`), PLUS-DRESS's warn literals carry the decorator's Remove and the counter's Steal (`plusdress1`), the
   stations' order read in the tiles' list (`prof9_client`, `prof10_client`, `prof11_client`, `prof12_client`).
-- `tools/mutants/menuorder.json`: 47 mutants, 47 dead. Re-aimed by content and dead again: `decorfigure.json`'s
+  MENU-ORDER g: a refused press (`refusePress` itself; the Reforge's nine and the Broker's two its calls, no Reforge press
+  `disabled`; the grey on both skins), the portrait phone's bar, a model's picture (the catalogue's, a placed piece's and
+  a built-in one's tiles asking and wearing it; the camera centred and looking down; a few a frame, under the card,
+  copied from that square, in the room's textures, never another room's, given up on, only once the law answered), and
+  a ship's (the pool's portrait of a hull equal to its own draw of her standing - every mesh, her sails baked, at its
+  matrix - built once and never on the water; one a frame under the window, copied out, once a hull, moved under the
+  window that asks last, given up on and asked again; off her beam and from above; world.js's hand-over; her size on the
+  card). PINS MOVED: a refused press reads `aria-disabled` and says why when pressed (`loot9_reforge`, `loot16_curses`,
+  `loot17_hone`, `loot19_scry`, `fb1010_truecurse`, `fb1012d_salvageclassic` - which now also lets an ask go -
+  `set7_broker`, `wb9g_insignia`); a model's row is watched as a flat's is (`decor1d`); the shipmaster's window asks her
+  picture and wears it (`shipyards1_host`).
+- `tools/mutants/menuorder.json`: 96 mutants, 96 dead (MENU-ORDER g's 49 run on their own; MENU-ORDER a-f's 47 before).
+  MENU-ORDER g re-aimed by content and dead again: `set7.json`'s SET7-a-refused-offers-buy-pressable, `audit_wb9.json`'s
+  AUDIT-WB9-the-wares-pressable-mid-sale, `loot16.json`'s LOOT16-a-refusal-pressable, `loot17.json`'s
+  LOOT17-a-refused-press-pressable and `loot19.json`'s LOOT19-a-refusal-pressable (each now the `refusePress` call gone);
+  `nudedecor.json`'s NUDEDECOR-thumb-born (the flat's line of thumbOf, reworded) and `ows2.json`'s OWS2-rig-bounds (its
+  guard read whole with hullRig's next line - `portrait` opens with the same guard). Re-aimed by content and dead again: `decorfigure.json`'s
   DECOR-FIGURE-buttons-kept, `craft4.json`'s CRAFT4-pages-no-loom, `prof10.json`'s PROF10-pages-no-bench,
   `prof11.json`'s PROF11-pages-bench-undrawn, `prof12.json`'s PROF12-pages-alchemy-undrawn and
   PROF12-pages-enchant-undrawn.
@@ -145,4 +184,4 @@ door), so there is nothing there to wire.
   room, pack and bar; the counter's Buy and Sell in both lays; the Stores page at a smith's and away from every bench,
   an away tile pressed; the board's Market and Vendors (`tools/noticeBoardProbe.mjs`, its every tab inside the viewport
   at a desktop and a phone, and a copy handed stand-in pictures); the Reforge, the shipmaster's window and a merchant's
-  popup over the real sheet.
+  popup over the real sheet; MENU-ORDER g's placing bar on a 390x760 phone.

@@ -14,6 +14,11 @@ import { createDecorBar, decorBarKeys, decorFiltersText, DECOR_LAYOUT_WORDS, DEC
 import { all, one, text, chipNamed, rows, panelRig } from './decorFakes.mjs';
 import { fakeDoc, fakeWin, settle, toolRig } from './decorFakes.mjs';
 import { createDecorPanel } from '../src/ui/decorPanel.js';
+import { createShipPortraits, shipPortraitCamera, SHIP_PORTRAIT_W, SHIP_PORTRAIT_H, SHIP_PORTRAITS_A_FRAME, SHIP_PORTRAIT_WAIT_MS } from '../src/scenes/shipPortraits.js';
+import { canvasBoxUnder, PANEL_PICTURE_CLEAR } from '../src/scenes/panelPicture.js';
+import { createComeSailAwayPool } from '../src/scenes/comeSailAwayPool.js';
+import { Boat } from '../src/systems/comeSailAwayBoat.js';
+import { fileURLToPath } from 'node:url';
 import { decorThumbCamera, DECOR_THUMB_PX, DECOR_THUMBS_A_FRAME, DECOR_THUMB_WAIT_MS } from '../src/scenes/decorTool.js';
 import { withDom } from './invdrag.mjs';
 import { mountEnhancedTrade, TRADE_TITLE, TRADE_OWN_HEAD, TRADE_COST_WORD, TRADE_GOLD_WORD, TRADE_VIEW_WORDS, tradeGoldText } from '../src/ui/enhancedTrade.js';
@@ -438,4 +443,105 @@ test('MENU-ORDER a model\'s own picture in its tile: the catalogue\'s, a placed 
   await settle();
   for (let i = 0; i < 3; i++) { law.tool.drawPreview(table); await settle(); }
   assert.ok(law.draws.filter((d) => d.panel && d.panel.rect.w === DECOR_THUMB_PX).length > 0, 'drawn once it did');
+});
+
+const fileFetch = async (url) => {
+  const bytes = readFileSync(fileURLToPath(url));
+  return { ok: true, json: async () => JSON.parse(bytes.toString('utf8')), arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length) };
+};
+const standInPipeline = () => {
+  const textureFiles = new Map();
+  return {
+    textureFiles, cpuModels: new Map(), gpuMeshes: new Map(),
+    getTexture: async (a) => { if (!textureFiles.has(a)) textureFiles.set(a, { recordCount: 100, getSize: () => ({ width: 40, height: 64 }), getScale: () => ({ width: 0, height: 0 }) }); return textureFiles.get(a); },
+    uploadRecord() {},
+  };
+};
+test('MENU-ORDER a ship\'s own picture on the shipmaster\'s card: her portrait boat is her as the world draws her (every mesh, at its own matrix), built once and never on the water; the host draws one a frame once she has come, in a box of the canvas under the window, and copies it out; once a hull for the session; a window that asks again moves a waiting ask under it; one never answered gives none, and is asked again (mutants: a part left out; the box off the window; every ask at once; asked anew each card; never given up)', async () => {
+  // the pool's portrait: the same meshes and matrices its own draw gives a boat of the hull standing at the origin
+  const made = [];
+  const renderer = {
+    createMesh: (m) => { const g = { model: m, bounds: [0, 1, 0, 2], subMeshes: m.subMeshes }; made.push(g); return g; },
+    drawMesh() {}, updateMeshVertices() {}, createBillboardBatch: () => ({}), destroyBillboardBatch() {}, destroyMesh() {},
+  };
+  const pool = createComeSailAwayPool({ renderer, pipeline: standInPipeline(), fetchFn: fileFetch, log: { warn() {} } });
+  assert.equal(pool.portrait(2), null, 'nothing before the models are in');
+  await pool.ensureModels();
+  let her = null;
+  for (let i = 0; i < 40 && !her; i++) { her = pool.portrait(2); await settle(); }
+  assert.ok(her && her.parts.length > 3, 'her parts, once every one has come');
+  assert.equal(pool.boats.length + pool.peerBoats.length + pool.seaBoats.length, 0, 'never on the water');
+  assert.equal(pool.portrait(2).parts[0][1], her.parts[0][1], 'the same boat asked again - built once');
+  const b = pool.spawnPeerNow(new Boat(2, 0));
+  for (let i = 0; i < 3; i++) { pool.frame(1, { playerPosition: [0, 0, 0] }); await settle(); }
+  const drawn = [];
+  pool.draw({ ...renderer, drawMesh: (g, m) => drawn.push([g, Array.from(m)]) });
+  const key = ([g, m]) => `${g.model?.subMeshes?.map((x) => `${x.textureArchive}.${x.textureRecord}`).join(',')}@${Array.from(m).map((v) => v.toFixed(3)).join(',')}`;
+  const keys = (list) => list.map(key).sort();
+  assert.ok(drawn.length > 3);
+  assert.deepEqual(keys(her.parts), keys(drawn), 'her as the world draws her: every mesh - her sails baked too - at its matrix');
+  pool.remove(b);
+  const [x0, y0, z0, x1, y1, z1] = her.box;
+  assert.ok(x1 > x0 && y1 > y0 && z1 > z0 && z1 - z0 > 4, 'her box, her length in it');
+  // the camera: her box's middle at the middle of the frame, seen from above
+  const cam = shipPortraitCamera(her.box);
+  const mid = [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2];
+  const v = at(cam.view, mid);
+  assert.ok(Math.abs(v[0]) < 1e-3 && Math.abs(v[1]) < 1e-3 && v[2] < 0, 'centred, in front');
+  assert.ok(at(cam.view, [mid[0], y1, mid[2]])[2] > v[2] + 0.1, 'her masthead nearer the eye than her middle - looked down on');
+  assert.ok(Math.abs(at(cam.view, [mid[0], mid[1], mid[2] + 10])[0] - v[0]) > 8, 'off her beam: her length across the picture, never end on');
+  assert.ok(Math.abs(cam.proj[5] / cam.proj[0] + SHIP_PORTRAIT_W / SHIP_PORTRAIT_H) < 1e-4, 'the picture\'s own shape, mirrored as the world\'s lens is');
+  // the host's turn: one a frame, under the window, copied out; once a hull
+  const calls = [];
+  const fakeR = { panelFrame: (o, body) => { calls.push({ panel: o }); body(); }, drawMesh: (g, m) => calls.push({ g, m }), setFog() {}, setLighting() {} };
+  const canvas = { width: 1600, height: 900, getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 450 }) };
+  const copies = [];
+  const doc = { createElement: () => ({ getContext: () => ({ drawImage: (...a) => copies.push(a) }), toDataURL: () => `data:ship${copies.length}` }) };
+  let t = 0;
+  let ready = false;
+  const parts = [[{ id: 'hull' }, new Float32Array(16)], [{ id: 'mast' }, new Float32Array(16)]];
+  const sp = createShipPortraits({ renderer: fakeR, canvas, doc, now: () => t, portrait: (hull) => (ready ? { parts, box: [-1, 0, -4, 1, 6, 4], hull } : null) });
+  const box = { left: 150, top: 40, width: 500, height: 370 };
+  const p0 = sp.picture(0, () => box), p2 = sp.picture(2, () => box);
+  assert.equal(sp.picture(0, () => box), p0, 'once a hull');
+  assert.equal(sp.draw(), 0, 'nothing before she has come');
+  ready = true;
+  assert.equal(sp.draw(), SHIP_PORTRAITS_A_FRAME, 'one a frame');
+  const panel = calls.find((c) => c.panel).panel;
+  assert.deepEqual(panel.rect, canvasBoxUnder(canvas, box, SHIP_PORTRAIT_W, SHIP_PORTRAIT_H));
+  assert.deepEqual(panel.rect, { x: 680, y: 390, w: SHIP_PORTRAIT_W, h: SHIP_PORTRAIT_H }, 'under the window\'s middle, in the canvas\'s pixels');
+  assert.deepEqual(panel.clear, [...PANEL_PICTURE_CLEAR]);
+  assert.deepEqual(calls.filter((c) => c.g).map((c) => c.g.id), ['hull', 'mast'], 'every part');
+  assert.deepEqual(copies[0].slice(1), [680, 390, SHIP_PORTRAIT_W, SHIP_PORTRAIT_H, 0, 0, SHIP_PORTRAIT_W, SHIP_PORTRAIT_H], 'copied out of that box');
+  assert.equal(await p0, 'data:ship1');
+  sp.draw();
+  assert.equal(await p2, 'data:ship2');
+  assert.equal(sp.picture(2, () => box), p2, 'kept for the session');
+  // a window that asks again: the waiting ask is drawn under the new one
+  ready = false;
+  const p3 = sp.picture(3, () => null);
+  sp.picture(3, () => ({ left: 0, top: 0, width: 400, height: 300 }));
+  ready = true;
+  calls.length = 0;
+  sp.draw();
+  assert.deepEqual(calls.find((c) => c.panel).panel.rect, { x: 280, y: 240, w: SHIP_PORTRAIT_W, h: SHIP_PORTRAIT_H }, 'under the window that asked last');
+  assert.ok(await p3);
+  // never answered: none, and asked again by the next window
+  ready = false;
+  const p4 = sp.picture(4, () => box);
+  t = SHIP_PORTRAIT_WAIT_MS + 1;
+  sp.draw();
+  assert.equal(await p4, null, 'given up on');
+  await settle();
+  assert.notEqual(sp.picture(4, () => box), p4, 'asked again');
+  assert.equal(sp.pending(), 1);
+  // the world's hand-over: the pool's portrait, the window's ask, the frame's turn after the decorator's preview
+  const w = readFileSync('src/scenes/world.js', 'utf8');
+  assert.match(w, /const shipPortraits = createShipPortraits\(\{ renderer, canvas, doc: [^\n]*portrait: \(hull\) => \(csaOn\(\) \? csa\.portrait\(hull\) : null\) \}\);/);
+  assert.match(w, /picture: \(hull, where\) => shipPortraits\.picture\(hull, where\),/);
+  assert.match(w, /yards\?\.drawPreview\(\);[^\n]*\n    shipPortraits\.draw\(\);/);
+  // her picture at her size on her card, as her glyph was
+  const widths = SHIPYARD_HULLS.map((h) => Number(new RegExp(`\\.dfyard-card\\[data-hull="${h}"\\] \\.dfyard-shipimg \\{ width: (\\d+)%`).exec(SHIPYARD_CSS)?.[1] ?? 100));
+  assert.deepEqual(widths, [50, 62, 76, 88, 100], 'a rowboat\'s the card\'s half, a galley\'s its width');
+  assert.ok(SHIPYARD_CSS.includes('.dfyard-pic:has(> .dfyard-shipimg[src])::before { display: none; }'), 'her glyph gives way to her');
 });

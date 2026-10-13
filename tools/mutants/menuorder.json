@@ -38,7 +38,7 @@
   {
     "name": "MENUORDER-decor-model-glyph-dropped",
     "file": "src/ui/decorPanel.js",
-    "old": "      thumb.dataset.dficon = e.kind;   // MENU-ORDER: a model has no picture until it turns in the preview - its kind's\n",
+    "old": "      thumb.dataset.dficon = e.kind;   // MENU-ORDER: a model's kind's glyph, until its own picture lands over it\n",
     "new": "",
     "tests": [
       "test/menuorder.test.js"
@@ -595,18 +595,18 @@
   },
   {
     "name": "MENUORDER-thumb-square-off-card",
-    "file": "src/scenes/decorTool.js",
-    "old": "x: Math.round((card.left - c.left + card.width / 2) * sx - side / 2)",
-    "new": "x: Math.round((card.left - c.left) * sx - side / 2)",
+    "file": "src/scenes/panelPicture.js",
+    "old": "x: Math.round((box.left - c.left + box.width / 2) * sx - pw / 2)",
+    "new": "x: Math.round((box.left - c.left) * sx - pw / 2)",
     "tests": [
       "test/menuorder.test.js"
     ]
   },
   {
     "name": "MENUORDER-thumb-copy-wrong-square",
-    "file": "src/scenes/decorTool.js",
-    "old": "drawImage(deps.canvas, rect.x, rect.y, rect.w, rect.h, 0, 0, rect.w, rect.h)",
-    "new": "drawImage(deps.canvas, 0, 0, rect.w, rect.h, 0, 0, rect.w, rect.h)",
+    "file": "src/scenes/panelPicture.js",
+    "old": "drawImage(canvas, rect.x, rect.y, rect.w, rect.h, 0, 0, rect.w, rect.h)",
+    "new": "drawImage(canvas, 0, 0, rect.w, rect.h, 0, 0, rect.w, rect.h)",
     "tests": [
       "test/menuorder.test.js"
     ]
@@ -679,6 +679,195 @@
     "file": "src/scenes/decorTool.js",
     "old": "trs(-(x0 + x1) / 2, -(y0 + y1) / 2, -(z0 + z1) / 2, 0, 0, 0));\n  return { proj, view, model };",
     "new": "trs(-(x0 + x1) / 2, 0, -(z0 + z1) / 2, 0, 0, 0));\n  return { proj, view, model };",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-ship-asked-each-card",
+    "file": "src/scenes/shipPortraits.js",
+    "old": "    if (!p) {\n      p = new Promise",
+    "new": "    if (true) {\n      p = new Promise",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-ship-ask-stays-under-old-window",
+    "file": "src/scenes/shipPortraits.js",
+    "old": "    for (const a of asks) if (a.hull === hull) a.where = where;",
+    "new": "    for (const a of asks) if (a.hull === -1) a.where = where;",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-ship-none-kept",
+    "file": "src/scenes/shipPortraits.js",
+    "old": "      p.then((url) => { if (!url) made.delete(hull); });",
+    "new": "      p.then(() => {});",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-ship-every-ask-at-once",
+    "file": "src/scenes/shipPortraits.js",
+    "old": "    for (let i = 0; i < asks.length && drawn < SHIP_PORTRAITS_A_FRAME;) {",
+    "new": "    for (let i = 0; i < asks.length;) {",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-ship-never-given-up",
+    "file": "src/scenes/shipPortraits.js",
+    "old": "      if (now() - ask.asked > SHIP_PORTRAIT_WAIT_MS) { asks.splice(i, 1); ask.resolve(null); continue; }",
+    "new": "      if (now() - ask.asked > SHIP_PORTRAIT_WAIT_MS * 1e9) { asks.splice(i, 1); ask.resolve(null); continue; }",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-ship-one-part",
+    "file": "src/scenes/shipPortraits.js",
+    "old": "body: () => { for (const [gpu, m] of ship.parts) deps.renderer.drawMesh(gpu, m, null); },",
+    "new": "body: () => { const [gpu, m] = ship.parts[0]; deps.renderer.drawMesh(gpu, m, null); },",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-ship-camera-level",
+    "file": "src/scenes/shipPortraits.js",
+    "old": "export const SHIP_PORTRAIT_LOOK_DOWN = 0.22;",
+    "new": "export const SHIP_PORTRAIT_LOOK_DOWN = 0;",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-ship-camera-end-on",
+    "file": "src/scenes/shipPortraits.js",
+    "old": "export const SHIP_PORTRAIT_TURN = 1.15;",
+    "new": "export const SHIP_PORTRAIT_TURN = 0;",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-ship-camera-square",
+    "file": "src/scenes/shipPortraits.js",
+    "old": "proj: mirrorProjectionX(perspective(FOV, aspect, ",
+    "new": "proj: mirrorProjectionX(perspective(FOV, 1, ",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-ship-box-centre",
+    "file": "src/scenes/panelPicture.js",
+    "old": "y: Math.round((box.top - c.top + box.height / 2) * sy - ph / 2)",
+    "new": "y: Math.round((box.top - c.top) * sy - ph / 2)",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-portrait-sails-unbaked",
+    "file": "src/scenes/comeSailAwayPool.js",
+    "old": "        holderAsks.set(c, (holderAsks.get(c) ?? 0) + 1);\n        lateUpdateHolder(c, node, 1);\n",
+    "new": "        holderAsks.set(c, (holderAsks.get(c) ?? 0) + 1);\n",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-portrait-unwaited",
+    "file": "src/scenes/comeSailAwayPool.js",
+    "old": "      if (!gpu) { waiting = true; continue; }\n      const m = w.mats[i];",
+    "new": "      if (!gpu) continue;\n      const m = w.mats[i];",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-portrait-built-each-ask",
+    "file": "src/scenes/comeSailAwayPool.js",
+    "old": "      portraitBoats.set(hull, b);\n",
+    "new": "",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-portrait-on-the-water",
+    "file": "src/scenes/comeSailAwayPool.js",
+    "old": "      b = new Boat(hull, 0);\n      spawnBoat(b, ",
+    "new": "      b = new Boat(hull, 0);\n      peerBoats.push(b);\n      spawnBoat(b, ",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-world-ship-undrawn",
+    "file": "src/scenes/world.js",
+    "old": "    shipPortraits.draw();   // MENU-ORDER",
+    "new": "    // shipPortraits.draw();   // MENU-ORDER",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-world-ship-unasked",
+    "file": "src/scenes/world.js",
+    "old": "      picture: (hull, where) => shipPortraits.picture(hull, where),   // MENU-ORDER: her own picture on her card\n",
+    "new": "",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-card-ship-unasked",
+    "file": "src/ui/shipyardWindow.js",
+    "old": "      shipPicture(pic, s.hull);\n",
+    "new": "",
+    "tests": [
+      "test/shipyards1_host.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-card-ship-unkept",
+    "file": "src/ui/shipyardWindow.js",
+    "old": "    if (url) { img.setAttribute('src', url); return; }\n",
+    "new": "",
+    "tests": [
+      "test/shipyards1_host.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-card-ship-unset",
+    "file": "src/ui/shipyardWindow.js",
+    "old": "      for (const i of imgs) i.setAttribute('src', u);\n",
+    "new": "",
+    "tests": [
+      "test/shipyards1_host.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-card-ship-none-kept",
+    "file": "src/ui/shipyardWindow.js",
+    "old": "      if (!u || !alive) { shipPics.delete(hull); return; }",
+    "new": "      if (!u || !alive) return;",
+    "tests": [
+      "test/shipyards1_host.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-card-ship-sizeless",
+    "file": "src/ui/shipyardWindow.js",
+    "old": ".dfyard-card[data-hull=\"0\"] .dfyard-shipimg { width: 50%; }",
+    "new": ".dfyard-card[data-hull=\"0\"] .dfyard-shipimg { }",
     "tests": [
       "test/menuorder.test.js"
     ]

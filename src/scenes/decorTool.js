@@ -105,6 +105,7 @@ export const DECOR_STATION_GOLD_WENT = 'Your gold ran short while the station wa
 import { localAabb, transformedAabb } from '../render/frustum.js';
 import { billboardSize, isNatureArchive } from '../world/rmbFlats.js';   // DECOR-TURN (AUDIT Y6): a yard's tree turns in earnest
 import { lookAt, perspective, mirrorProjectionX, trs, multiply } from '../world/mat4.js';
+import { panelPicture, canvasBoxUnder } from './panelPicture.js';   // MENU-ORDER: a model's own picture, drawn small
 import { isTextEntryTarget } from '../ui/input.js';
 import { walletReserve } from '../net/realmGoldLaw.js';   // MARKET-AUDIT: a refusal gives back exactly what the payment took
 import { drawnFlat } from '../characters/nudeFlats.js';   // NUDE-DECOR: a nude figure shows its clothed stand-in while Show Nudity is off
@@ -121,13 +122,12 @@ export const DECOR_PREVIEW_SPIN = 30;
 /** MENU-ORDER (bible/10-UI/Menu-Order.md): A MODEL'S OWN PICTURE IN ITS TILE - the side of the square of the game canvas
  *  one is drawn in (px, the canvas's own; the grid's tile shows it at 76), how many the frame draws, how long an ask waits
  *  on a model that never comes before its tile keeps the kind's glyph, the turn and the look down it is seen at (a
- *  quarter's view from a little above, as a piece is met in a room), and the ground it stands on (the preview's). */
+ *  quarter's view from a little above, as a piece is met in a room). */
 export const DECOR_THUMB_PX = 128;
 export const DECOR_THUMBS_A_FRAME = 2;
 export const DECOR_THUMB_WAIT_MS = 20_000;
 export const DECOR_THUMB_TURN = -0.6;
 export const DECOR_THUMB_LOOK_DOWN = 0.35;
-export const DECOR_THUMB_CLEAR = Object.freeze([0.055, 0.063, 0.075, 1]);
 /** The camera a model's picture is drawn with: its box filling the square, turned and looked down on. Pure. */
 export function decorThumbCamera(box) {
   const [x0, y0, z0, x1, y1, z1] = box;
@@ -1632,11 +1632,10 @@ export function createDecorTool(deps) {
   }
 
   /** MENU-ORDER: A MODEL'S OWN PICTURE, SMALL. The panel asks for a model's tile picture (thumbOf) and the ask waits here
-   *  for the frame's preview pass (drawPreview): the model loaded and drawn in the host's law, the preview's own second
-   *  camera (renderer.panelFrame) draws it into a square of the game canvas under the panel's card, and it is copied out
-   *  as a picture in this frame, as the preview is. The player's own models, made while the game runs and kept nowhere
-   *  but the panel's tiles (Port-Doctrine). DECOR_THUMBS_A_FRAME a frame: a hundred tiles cost no hitch. An ask made under
-   *  another room's textures, or for a model that never came, gives no picture: the tile keeps its kind's glyph. */
+   *  for the frame's preview pass (drawPreview): the model loaded and drawn in the host's law, it is drawn into a square
+   *  of the game canvas under the panel's card and copied out (scenes/panelPicture.js - the preview's own pass and copy).
+   *  DECOR_THUMBS_A_FRAME a frame: a hundred tiles cost no hitch. An ask made under another room's textures, or for a
+   *  model that never came, gives no picture: the tile keeps its kind's glyph. */
   /** @type {Array<{ id: number, remap: any, asked: number, resolve: (url: string|null) => void }>} */
   const thumbAsks = [];
   let remapNow = null;   // the textures the frame draws the room's models in, as drawPreview was last handed them
@@ -1655,14 +1654,8 @@ export function createDecorTool(deps) {
   }
   function drawThumbs(texRemap) {
     if (!thumbAsks.length) return 0;
-    const card = panel?.cardRect?.();
-    const c = deps.canvas?.getBoundingClientRect?.();
-    if (!card || !c || !(c.width > 0) || !(c.height > 0)) return 0;
-    const sx = deps.canvas.width / c.width;
-    const sy = deps.canvas.height / c.height;
-    const side = Math.min(DECOR_THUMB_PX, Math.floor(card.width * sx), Math.floor(card.height * sy));
-    if (!(side >= 16)) return 0;
-    const rect = { x: Math.round((card.left - c.left + card.width / 2) * sx - side / 2), y: Math.round((card.top - c.top + card.height / 2) * sy - side / 2), w: side, h: side };
+    const rect = canvasBoxUnder(deps.canvas, panel?.cardRect?.(), DECOR_THUMB_PX, DECOR_THUMB_PX);
+    if (!rect) return 0;
     let drawn = 0;
     for (let i = 0; i < thumbAsks.length && drawn < DECOR_THUMBS_A_FRAME;) {
       const ask = thumbAsks[i];
@@ -1677,17 +1670,7 @@ export function createDecorTool(deps) {
   }
   function drawThumb(m, rect, texRemap) {
     const cam = decorThumbCamera(m.box);
-    renderer.panelFrame({
-      proj: cam.proj, view: cam.view, lightDir: new Float32Array([0, 0.707, -0.707]), rect, clear: [...DECOR_THUMB_CLEAR],
-      setup: () => { renderer.setFog?.('off'); renderer.setLighting?.(new Float32Array([0.8, 0.8, 0.8]), 0); },
-    }, () => renderer.drawMesh(m.gpu, cam.model, texRemap));
-    const out = deps.doc.createElement('canvas');
-    out.width = rect.w;
-    out.height = rect.h;
-    try {
-      out.getContext('2d')?.drawImage(deps.canvas, rect.x, rect.y, rect.w, rect.h, 0, 0, rect.w, rect.h);
-      return out.toDataURL('image/png');
-    } catch { return null; }   // a lost context copies nothing
+    return panelPicture({ renderer, canvas: deps.canvas, doc: deps.doc, rect, proj: cam.proj, view: cam.view, body: () => renderer.drawMesh(m.gpu, cam.model, texRemap) });
   }
 
   /** THE PANEL'S PREVIEW: the pointed model, turning - drawn by the automap's and the bank's second camera pass
