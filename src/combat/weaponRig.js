@@ -23,7 +23,7 @@
 // optional environment-attack ray (interiors: bash/Receive on action
 // objects; open exteriors have nothing in reach).
 
-import { PlayerWeapon, WEAPON_REACH, setWeaponPoseProbe, weaponPoseOf } from './playerWeapon.js';   // RR1: the rig's drawn state and weapon type, for laws that ask off-rig
+import { PlayerWeapon, WEAPON_REACH, setWeaponPoseProbe, weaponPoseOf, USING_RIGHT_HAND_TEXT } from './playerWeapon.js';   // RR1: the rig's drawn state and weapon type, for laws that ask off-rig
 import { eotbBody } from '../player/eotbBody.js';   // EOTB5: the sprite body, for a player with no Morrowind data
 import { eotbCamera } from '../player/eotbCamera.js';
 import { racialFpsWeapon } from '../systems/lycanthropy.js';   // V4: the transformed rig's claws
@@ -46,7 +46,8 @@ import { installThunderlockSounds, SFX as TL_SFX } from '../systems/thunderlock.
 // same rig because this is the one surface every FPS-weapon host
 // already mounts - so wiring it here wires all four at once.
 import { fpsSpellCasting, loadSpellCastArt, drawSpellCastHands, magicAnimFilename, readiedHandsFrame } from './fpsSpellCasting.js';   // RSH1: the readied hands
-import { createClimbHands } from './climbHands.js';   // CLIMB-HANDS: the classic lane's hands on the wall
+import { createClimbHands, climbLens } from './climbHands.js';   // CLIMB-HANDS: the classic lane's hands on the wall; II: the lens they are pinned through
+import { fieldOfView } from '../ui/viewSettings.js';   // CLIMB-HANDS II: the world's own field of view, the hands' lens
 // MW-D8: the classic sprite is still the DEFAULT and still the fallback,
 // and runs untouched otherwise. The Morrowind arm below is an opt-in
 // layer that either draws whole or does not draw at all - there is no
@@ -88,6 +89,7 @@ import { liveStat } from '../systems/statMods.js';   // WW1: the widget's speed 
 import { castRate } from '../systems/castSpeed.js';   // CAST-SPEED: the rate both lanes' hands cast at
 import './swingLaw.js';   // AUDIT PRE-MERGE 0929 S5: SWING-LAW's reader of the weapon in the hand, registered as it loads - every rig's
 import { walkSpeed } from '../player/motor.js';   // WW1: GetBaseSpeed's walk arm
+import { localizedText } from '../systems/textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language
 import { stepTechnique, claimShot, techniqueFlying, TECHNIQUE_ACTION } from './techniques.js';   // TECH1: the technique key - every host's rig steps the one runner
 import { techniqueHands } from './techniqueFx.js';   // TECH-FX: a technique's push of the first-person layer
 
@@ -1252,7 +1254,7 @@ export function createWeaponRig({ renderer, canvas, fetchBytes, palette, audio, 
     // queue - and `say` here is shared with the shield refusal below,
     // which really is a PopupMessage, so this line takes the label
     // directly rather than re-pointing the sink.
-    setMidScreenText(type === WEAPON_TYPES.Bow ? 'You have no arrows.' : 'You have no pellets.');
+    setMidScreenText(type === WEAPON_TYPES.Bow ? localizedText('youHaveNoArrows', 'You have no arrows.') : 'You have no pellets.');
   }
 
   /**
@@ -1537,7 +1539,7 @@ export function createWeaponRig({ renderer, canvas, fetchBytes, palette, audio, 
       // overwrite a weapon no equip table ever supplied.
       const line = playerWeapon.toggleHand({ entity, apply: bindWorn });
       if (line === null) return false;   // :704-705, the shield refuses
-      say(line);
+      say(line === USING_RIGHT_HAND_TEXT ? localizedText('usingRightHand', 'Using weapon in right hand.') : localizedText('usingLeftHand', 'Using weapon in left hand.'));   // L10N3d: WeaponManager.cs:709/711, in the player's language
       return true;
     },
     /**
@@ -1594,7 +1596,12 @@ export function createWeaponRig({ renderer, canvas, fetchBytes, palette, audio, 
       // the Morrowind body in third person too - `fpArm.active()` is first person's alone).
       const handsLane = !fpArm.active() && !fpArm.thirdActive() && !eotbHidesWeapon();
       _climbLower = climbLowerStep(_climbLower, climbing || (handsLane && climbHands.showing()), dt);
-      climbHands.update(dt, handsLane && _climbLower >= CLIMB_HANDS_AFTER ? (camNow?.climb ?? null) : null, camNow ?? {});   // CLIMB-HANDS: the hold, the shimmy, the free climb, the moves and the look off the wall
+      // CLIMB-HANDS: the hold, the shimmy, the free climb, the moves and the look off the wall - CLIMB-HANDS II: seen
+      // through the frame's own world lens (the setting's field of view on the strip the world was drawn into, the bar
+      // the hands stand on), so the fists stay on the stone as the view turns; asked only while there are hands to lay out
+      const handsClimb = handsLane && _climbLower >= CLIMB_HANDS_AFTER ? (camNow?.climb ?? null) : null;
+      const handsLens = handsClimb || climbHands.law.present > 0 ? climbLens(cv(), { fov: fieldOfView(), viewport: renderer?.worldViewportRect ?? null, aspect: renderer?.worldProjAspect ?? null, offsetHeight: weaponOffsetHeight() }) : null;
+      climbHands.update(dt, handsClimb, { yaw: camNow?.yaw, pitch: camNow?.pitch, lens: handsLens });
       const canAttack = !playerWeapon.sheathed && (entity?.equipCountdown ?? 0) <= 0 && !spellArmed() && !fpsSpellCasting.isPlayingAnim && !climbing && !actTool();   // AUDIT 29 D2: no swing behind a gathering act's tool
       // BOW-CLOCK: no shot starts the arm cannot draw (armLoosing, above) - gesture() is not asked, so its button
       // latch keeps the press made while waiting.
@@ -2100,7 +2107,16 @@ export function createWeaponRig({ renderer, canvas, fetchBytes, palette, audio, 
       // that hid the Morrowind arm with it - the hands in the spell stance and the whole cast were never on screen in
       // first person. The arm draws them; the classic hands above are the other lane's.
       const armCasts = fpArm.active() && (spellArmed() || fpsSpellCasting.isPlayingAnim || fpArm.castInFlight());
-      if (paralyzed || (!shown() && !torchOnly && !sheetOnly && !shieldRect && !gunSliding && !armCasts)) return;
+      // CLIMB-HANDS II (Mac, 2026-10-13: "the morrowind model should use climbing hands in first person"): THE HANDS ON
+      // THE STONE ARE NOT A WEAPON EITHER - the sixth relaxation of this gate, on the rule the five above keep. CLIMB6
+      // poses the Morrowind arms on the climb (the hands on the stone they hold, combat/climbRig.js) and they were drawn
+      // only past `shown()`, the WEAPON's predicate: climbing sheathed - the everyday case - the arm never drew, and the
+      // sprite lane's hands are the classic lane's (climbHands.draw above is `!fpArm.active()`), so the Morrowind lane
+      // climbed on an empty screen. It opens exactly where the arm paints the climb - `climbPosed`: first person, the
+      // pose's weight on the hands, no sheet in them - which is the same answer the lowering below reads, and the arm
+      // hides the weapon, the arrow and the torch while it climbs (fpArm.js, WeaponManager's climbing return).
+      const armsClimb = fpArm.active() && !!fpArm.climbPosed?.();
+      if (paralyzed || (!shown() && !torchOnly && !sheetOnly && !shieldRect && !gunSliding && !armCasts && !armsClimb)) return;
       // THE ONE SEAM. The arm draws whole and RETURNS, or it is inactive
       // and the classic sprite draws exactly as it always has. The return
       // is load-bearing: without it both composite and the player sees a
@@ -2108,11 +2124,13 @@ export function createWeaponRig({ renderer, canvas, fetchBytes, palette, audio, 
       // WW1: the widget's channels reach the Morrowind arms as a screen
       // transform over their composite (Bob, Inertia, Step); the Offset
       // module's slide is the sprite's own sheathe and stays with it.
-      fpArm.setScreenTransform(widgetOn() ? (base) => widget.armsTransform(base) : null);
+      // CLIMB-HANDS II: not while the arms climb - the hands are on the stone where the eye sees it (Mac: "the hands
+      // should stay on whatever your climbing and not rotate with the screen"), and Inertia's lag behind the look and
+      // Bob's sway are the weapon's feel, not the wall's.
+      fpArm.setScreenTransform(widgetOn() && !armsClimb ? (base) => widget.armsTransform(base) : null);
       // CLIMB4: and the climb's lowering over it - the arms leave the screen downward while the hands are on the wall.
       // CLIMB6: unless the Morrowind arms are posed on the climb - the hands reach the stone they hold (combat/climbRig.js),
       // and stay on the screen where the stone is.
-      const armsClimb = fpArm.active() && !!fpArm.climbPosed?.();
       if (_climbLower > 0 && !armsClimb) { const armsBase = fpArm.screenTransform(); fpArm.setScreenTransform((base) => climbLowerRect(armsBase ? armsBase(base) : base, _climbLower)); }
       // TECH-FX: and a technique's dip over all of it - through the transform, so the frame window grows over the edge
       // the dip opens (drawInner)
