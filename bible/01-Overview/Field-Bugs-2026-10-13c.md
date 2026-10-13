@@ -12,7 +12,7 @@ is a Ledger A row.
 | 2 | "Cant turn in writs" - "Have the materials literally on hand. They don't accept them" (Uncon...) | law 3: a writ spends only what the service counted (gathered, or bought with silver); looted, shop-bought, traded and gold-bought Iron is held and never counted - and the card said "0 held" and "Not enough" with 100 in the pack | in progress (WRIT-WALL) |
 | 3 | "Shared Guild quest doesn't give me map location after friend talked to the quest npc" (Starempire42) | a `reveal` marks the clicker's own map, and a shared quest's copy carried it complete without running it | fixed (SHARE-REVEAL) |
 | 4 | "The current situation where doors lock at shops and inns in Daggerfall Capital" - "Once you get stuck, there's no way out" (Nes) | one player's Lock spell, at the caster's level, reached every visitor through the building's act and its thirty-day memory | fixed (SPELL-LOCK) |
-| 5 | "Some locations have floating houses" - "Temple of Kynareth has floating houses due to terrain modifications" (SylviaBun) | the pack hills' stand-ins seat a plateau's houses at their origin and fall away under their edges | in progress (HILL-SEAT) |
+| 5 | "Some locations have floating houses" - "Temple of Kynareth has floating houses due to terrain modifications" (SylviaBun) | the pack hills' stand-ins seat a plateau's houses at their origin and fall away under their edges | fixed (HILL-SEAT) |
 | 6 | "Cant complete quest 'the lost child'" - "accidentally said 'no' ... now i cant interact with it at all" (Ant1-Chr1st) | DFU's own soft-lock: K0C00Y05's No leads nowhere and its clicked-npc task never listens again | in progress (NO-ASKS-AGAIN) |
 | 7 | "Performance issues with boss AoE attacks circles and player sprites" (HellRay) | being measured | in progress (AOE-PERF) |
 | 8 | "Molag bal mace do nothing" - "It's effect is not working and it's extremely fragile" (Boar) | the strength arm raises a stat the port caps at 100 - DFU raises the cap with it | in progress (MACE-MAX) |
@@ -100,6 +100,38 @@ quests (QREPAIR) files every reveal that has run again, and marks the dungeon.
 `test/fb1013c_sharereveal.test.js` (2); `tools/mutants/fb1013c_sharereveal.json` (1, dead); `disc28.json`'s
 DISC28-I-getitem-not-replayed re-aimed by content (the set's text grew), dead.
 
+## HILL-SEAT: a hill holds what the author stood on it (5)
+
+`world/townStandIns.js` (blockHillPatch, HILL_SEAT_TOLERANCE, HILL_PATCH_SINK; blockHillSeat's `lay` and its 2 m cell
+index; the hill's UV rule shared with hillMesh), `scenes/world.js`, `scenes/exterior.js`.
+
+FOUND. No terrain layer moves the ground under a location's buildings: blendLocationTerrain levels the rect and the
+buildings stand at the same height (measured 0.000 m on synthetic temple pixels, coastal and inland, Landforms on and
+off, with roads, rivers and the water bed). The grass in the screenshot is a HILL: Beautiful Villages stands its Kynareth
+temples as 1x1 blocks, and TEMPASH3 (Ipsham's, about a fifth of them) stands houses 127, 129 and 201 and temple 402 on
+the RMB Resource Pack's hill 52758, its plateau 4.13-4.22 m up. HILL-SHAPES (FIELD BUGS 2026-10-05) draws each pack hill
+as a stand-in - each cell the median of the pack's surface - and seated these houses at their ORIGIN; the median falls
+away toward the plateau's edge: 0.23-0.33 m under a house 5 m out, 0.74-1.24 m 7 m out, up to 2.23 m under a 14 m
+house's corners - the lit gap under the screenshot's wall. `fb1005_hills` sampled only the middle half of a footprint.
+In DFU with the pack, the author's own mesh holds the plateau.
+
+FIXED. A model whose lowest vertex stands over the block's plane (by 0.5 m), over a drawn hill, within a metre of its
+top (so not one the author hung there), and that hangs more than 0.05 m anywhere over the hull of its own drawn
+vertices, gets a pad: a flat top 0.05 m under its base over its whole footprint and 0.25 m past it, then a 45-degree
+bank down until it is 0.25 m under the hill or the plane, wearing the hill's picture in the hill's frame, every face up.
+Read exactly: the footprint's corners, the hill's vertices inside it and every crossing of a hill edge with the
+footprint's edge, and a 1 m grid. No model moves and nothing rises over a base. The pads are laid into the block's seat,
+so TREES-SEATED's trees stand on them. Every point of the four TEMPASH3 footprints is within 0.05 m now (0.15 m is the
+law, HILL-SHAPES' bar for the origin taken to the whole footprint); the four pads come to 837 triangles.
+
+NOT SEEN, with no ARENA2 and no GPU here: the real house meshes' footprints and bases, and which other classic models
+across both packs take a pad (the gated sweep is written and has not run); whether a bank buries a neighbour's door, a
+HILL-HOUSE placement or a quest marker; how the seam between bank and hill looks, at distance and under the climates'
+textures and the shadows; walking the bank; a real pixel's build cost (15-40 ms a block here, on a loaded machine).
+
+`test/fb1013c_hillseat.test.js` (8, one on ARENA2_PATH); `tools/mutants/fb1013c_hillseat.json` (18, all dead). No pin
+moved.
+
 ## THE FOUR HOSTS
 
 - SPELL-LOCK: the law is the ActionSystem's, every host's door graph. worldModes.js (a building: its act through
@@ -109,6 +141,10 @@ DISC28-I-getitem-not-replayed re-aimed by content (the set's text grew), dead.
 - DOOR-NAME: the plaque is worldModes.js's exteriorHoverName, the one namer both street hosts (world.js, exterior.js)
   call; a building's and a dungeon's doors name no building (worldModes.js's rooms, dungeonContext.js).
 - SHARE-REVEAL: the quest machine's, run wherever a quest ticks; no host seam.
+- HILL-SEAT: the street hosts stand the town blocks and both are wired through one function - world.js merges a
+  block's pads into the pixel's static batch and its collider bucket (freed with the pixel, and on a failed build);
+  exterior.js draws and collides them for the fixed city's life, as it does every model of its one location.
+  worldModes.js's rooms and dungeonContext.js stand no hill.
 
 ## Pins
 
@@ -117,3 +153,4 @@ DISC28-I-getitem-not-replayed re-aimed by content (the set's text grew), dead.
 by content, dead: `disc28.json`'s DISC28-I-getitem-not-replayed (the re-armed set grew) and `housing.json`'s
 HOME-DOORS-the-early-record-dropped (the early record now drops a peer's lock). `test/citedrift.test.js`'s vendor table
 carries the mod's `.cs:701-702` that DOOR-NAME's comment cites.
+`test/fb1013c_hillseat.test.js` (8, one on ARENA2_PATH); `tools/mutants/fb1013c_hillseat.json` 18, all dead.
