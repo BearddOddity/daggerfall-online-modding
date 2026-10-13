@@ -6487,7 +6487,7 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
     // restore, then each object settles its matrix and collider bucket
     // (an open door no longer restores solid-and-closed, and a door
     // saved mid-rise keeps rising).
-    actions.restoreSaveData(w.actions);
+    actions.restoreSaveData(w.actions, { remote: wire, level: playerEntity.level });   // SPELL-LOCK: the room's memory is a peer's word - its locks only to each door's own ceiling; the save's own, never past the player's level
     // AUDIT 63 F30: SerializablePlayer.cs:402-405's
     // `if (data.playerPosition.insideDungeon) playerEnterExit
     // .PlayerTeleportedIntoDungeon = data.playerPosition
