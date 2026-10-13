@@ -159,8 +159,8 @@ blow turned on it).
   crossed the wire's printable-ASCII label as nothing, and a language switch left a book naming a spell the shelf named
   otherwise (AUDIT SCHOOLS L4 4).
 - **The ready-made bands are nobody's to mint** (`spellMaker.js` READY_MADE_INDEX_CEILING, -45000): Resurrection's
-  -45001, Shared Cartography's -46001 and the signature band stand at or below it, and a made spell's index never does
-  - a restore steps the maker's next index past made spells alone (AUDIT SCHOOLS L3 F4: a book holding Shared
+  -45001, Shared Cartography's -46001 and the signature band stand at or below it, and a made spell's index never does:
+  a restore steps the maker's next index past made spells alone (AUDIT SCHOOLS L3 F4: a book holding Shared
   Cartography minted the hundredth made spell at Aegis Bolt's index, and the quickslots, keyed by index, showed one).
 - **The shelf.** The Mages Guild's (and a temple's) Buy Spells offers its own path's signature spell to a holder whose
   path is HELD (section 3 - mentoring too) - offline and online, at the shelf's own price. Nobody else is offered it.
