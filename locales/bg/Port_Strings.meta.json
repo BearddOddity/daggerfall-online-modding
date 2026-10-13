@@ -2974,6 +2974,31 @@
   "tr": "6df1fa052fed",
   "by": "claude-in-session"
  },
+ "chronicle.quests.abandon": {
+  "en": "4ff9809f333c",
+  "tr": "270d79f27580",
+  "by": "claude-in-session"
+ },
+ "chronicle.quests.abandonArmed": {
+  "en": "a32139057248",
+  "tr": "4bed783b8579",
+  "by": "claude-in-session"
+ },
+ "chronicle.quests.abandonArmedLabel": {
+  "en": "04bae325d2b3",
+  "tr": "9a6353f40c33",
+  "by": "claude-in-session"
+ },
+ "chronicle.quests.abandonLabel": {
+  "en": "79220059fdcb",
+  "tr": "fa906465f6bd",
+  "by": "claude-in-session"
+ },
+ "chronicle.quests.abandonTitle": {
+  "en": "1c10bcaa4896",
+  "tr": "603fab5975b2",
+  "by": "claude-in-session"
+ },
  "credits.ambientText.terms": {
   "en": "c62316ae06a4",
   "tr": "78050adc2504",
@@ -9734,6 +9759,21 @@
   "tr": "22b5e770dea3",
   "by": "claude-in-session"
  },
+ "prof.lode.legend": {
+  "en": "80b1736b1dfb",
+  "tr": "14a37a28c22a",
+  "by": "claude-in-session"
+ },
+ "prof.lode.name": {
+  "en": "d876aeaab489",
+  "tr": "b9a079464a31",
+  "by": "claude-in-session"
+ },
+ "prof.lode.rises": {
+  "en": "5a04337e81ee",
+  "tr": "5ea937209efe",
+  "by": "claude-in-session"
+ },
  "prof.page.act.strike": {
   "en": "f9ae58aa354c",
   "tr": "0deecf3c85d2",
@@ -10417,6 +10457,11 @@
  "prof.page.how.miningGround": {
   "en": "8e35469069dc",
   "tr": "5c38f75b854a",
+  "by": "claude-in-session"
+ },
+ "prof.page.how.miningSurveyor": {
+  "en": "8ea3b3f58e32",
+  "tr": "ab9043eea1e6",
   "by": "claude-in-session"
  },
  "prof.page.jewel": {

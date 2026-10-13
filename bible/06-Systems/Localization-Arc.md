@@ -911,10 +911,20 @@ points) stays `world/ethericSea.js`'s, passed as arguments in English: that modu
 routing is its own. `01-Overview/Audit-Ether-OW.md` has the record; `test/audit_etherow.test.js` reads the chart in
 French and in English.
 
+## The chronicle's quest Abandon, routed from the start (2026-10-13, QUEST-SHELF-MAIN)
+
+QUEST-SHELF-MAIN (`06-Systems/Quest-Arc.md`) was written before the ratchet reached main, and its Abandon in the
+chronicle (`ui/enhancedChronicle.js`) carried four new literals of prose. It landed with them routed instead: the label,
+the armed label, the title and both aria-labels are `chronicle.quests.*` (5 keys - the catalog's 2,511 at its merge of
+main), read when the button is drawn, so the file's count stays at 35. They are drafted in-session into the thirteen
+whole languages, and `abandon (a quest)` and `reclaim (a quest)` were added to those languages' glossaries. The twelve
+drafting languages owe them with the rest. `test/questshelfmain.test.js` reads the button in French and in English.
+
 ## CARDS-PLUS (2026-10-13): the card tables' new words, and the scan reads a selector
 
-A second change from outside the arc held to L10N6's laws, after the Eltheric chart above (`11-Multiplayer/Tavern-Cards.md`
-section 38: the card tables in the Enhanced Plus kit, Iliac Hand's table redrawn; section 39 its audit).
+A third change from outside the arc held to L10N6's laws, after the Eltheric chart and the chronicle's Abandon above
+(`11-Multiplayer/Tavern-Cards.md` section 38: the card tables in the Enhanced Plus kit, Iliac Hand's table redrawn;
+section 39 its audit).
 - **Its new words go through the text core**, read where they are shown: Iliac Hand's verdict (`VERDICT_WORDS`, a frozen
   table of getters), the setup's heads and boxes, the track, the other player's line and state, the empty tray - 15
   port keys under `cards.iliac.` - and the fold's two (`cards.table.fold.*`, `ui/cardPanelKit.js` foldWords - both
