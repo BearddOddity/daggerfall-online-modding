@@ -251,9 +251,11 @@ export function createDeepWatersHost({ woods, woodsBytes = null, locations = [],
 
   const centre = () => { const c = currentPixel(); return [c.x, c.y]; };
 
-  /** A pixel with no water of its own and no sea in the bake at or beside it: the promote's answer is nothing, without the trip. */
+  /** A pixel with no water of its own and no sea in the bake at or beside it: the promote's answer is nothing, without the
+   *  trip. AUDIT ETHER-OW C1-3: asked only of sea bits this thread holds - a fresh Eltheric cell flooded here first (1-8 ms
+   *  on the main thread at a landfall) and again on the worker; the trip answers it. */
   function isDry(pixel) {
-    if (!bake || bake.mapPixelOrCardinalNeighborHasWaterCells(pixel.px, pixel.py)) return false;
+    if (!bake || bake.holdsSea?.(pixel.px, pixel.py) === false || bake.mapPixelOrCardinalNeighborHasWaterCells(pixel.px, pixel.py)) return false;
     return !mapDataHasWater({ samples: pixel.samples, tilemap: pixel.tilemap });
   }
 

@@ -10,8 +10,9 @@
 // dragging (a finger, the mouse's first button) or the arrows; zoom by the wheel (about the pointer, a notch a step),
 // a pinch (about the fingers), + and - or the window's own buttons (about the chart's middle); C or Ship back to the
 // ship; a pointer on an isle - or a tap - says what it is and how far, and which way, from the ship. The key that opened
-// it (the travel map's or the map's, by binding) closes it. Nothing on it is pressed: the Eltheric Ocean is sailed. AUDIT
-// CAPTAIN'S SEA X6/X7/X8/X12/X13/X14/X17/X18.
+// it (the travel map's or the map's, by binding) closes it. Nothing on it is travelled to: the Eltheric Ocean is sailed,
+// and the chart's one way out to travel is the Overworld's door (ETHER-OW, below; AUDIT ETHER-OW D-5). AUDIT CAPTAIN'S
+// SEA X6/X7/X8/X12/X13/X14/X17/X18.
 //
 // ETHER-OW (2026-10-13, the owner: "Also allow the player to zoom out into the overworld like in the Iliac Bay for easy
 // travel") - THE DOOR UP: past the Veil this chart is the map's answer, and the held map's Overworld door (ui/heldMap.js,

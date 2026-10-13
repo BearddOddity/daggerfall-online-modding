@@ -4457,6 +4457,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   // made further down; the first pixels promote before it exists, so the question is late-bound (nothing is up yet).
   let _dwOverlayUp = () => false;
   const dwPlaying = () => !_dwOverlayUp();
+  const _etherRectScratch = new Uint8Array(128 * 128);   // AUDIT ETHER-OW C1-4: the isles' templates' tilemap, one for all
   const deepWaters = dwRender ? createDeepWatersHost({
     woods, woodsBytes,
     locations: [...locationIndex].map(([k, loc]) => { const i = k.indexOf(','); return [+k.slice(0, i), +k.slice(i + 1), loc]; }),
@@ -4473,7 +4474,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // - its places' rects read off the isles' templates once, as the Bay's are off its locations: a template's rect is
     // its blocks' alone, read as a clone reads them (the isles' region and an isle's own index - WD3 names the town
     // whose blocks come next, and no variant names a clone)
-    ether: etherSea ? etherPlaceRects(_etherTemplates, (t) => setLocationTiles({ ...t, regionIndex: ETHER_REGION, locationIndex: -1000 }, maps, blocks, new Uint8Array(128 * 128))) : null,
+    ether: etherSea ? etherPlaceRects(_etherTemplates, (t) => setLocationTiles({ ...t, regionIndex: ETHER_REGION, locationIndex: -1000 }, maps, blocks, _etherRectScratch.fill(0))) : null,   // AUDIT ETHER-OW C1-4: one tilemap, cleared per template (deepWatersLocationRects' own way)
   }) : null;
   /** OH-B: THERE'S A HOLE IN THE BOTTOM OF THE OCEAN 1.1.0 (jet082, vendor/ocean-holes/) - made below, after the decorations its
    *  pits keep out; the sea's floor builds are late-bound to it (a promote lands only after the world is up). */
@@ -15098,6 +15099,11 @@ export async function bootWorld(canvas, renderer, params, status) {
       position: shipMemory({ mapPixel: here, pos: [player.pos[0], groundFrameHeight(player.pos[1] - state.compensation[1], player.pos[0], player.pos[2]) + state.compensation[1], player.pos[2]], yaw: cam.yaw, terrainScale: STREAMING_TERRAIN_SCALE }, state.compensation[1]),   // AUDIT LANDFORMS C1: its height in DFU's frame   // TERRAIN-SCALE1 (audit): the ground `pos` stood on; AUDIT 68 S22: its height without the streamer's compensation
     });
     if (!t) return;
+    // AUDIT ETHER-OW C2-3 (AUDIT CAPTAIN'S SEA P6's law): NO BOARDING ACROSS THE VEIL - "Your Ship" is the Bay's (its two
+    // pixels in region 31), and the board is a teleport: from past the Veil the transport's Ship row and Warm Ashes' raid
+    // carried a captain over and home again without the crossing, the boat left behind. Leaving the ship always goes
+    // back where it was boarded (`boardShipPosition`), whichever side that is
+    if (!playerEntity.boardShipPosition && veilRefused(t.go)) return;
     // TR-AUDIT F-F1: READ the reposition rather than infer it from
     // `restore`. StreamingWorld's RandomStartMarker is
     // PositionPlayerToLocation, which puts you at a random SIDE of the
@@ -31041,6 +31047,9 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
   // within three pixels, a harbourmaster's chart, a corsair's papers - the chart's own isles), or the place found.
   const tvEtherPlace = (px, py) => { const isle = etherPlaceIsle(px, py); return isle ? (locationIndex.get(`${px},${py}`) ?? etherPlaceClone(isle)) : null; };
   const tvEtherKnown = (loc) => captainLedger.isCharted(loc.ether) || hasDiscoveredLocationId(loc.mapTableData.mapId);
+  /** AUDIT ETHER-OW C2-2: WHAT IS KNOWN, as the Overworld's lists key it - DFU's finds and the captain's charts: an isle
+   *  charted by sight, a harbourmaster's chart or a corsair's papers is a plate at once, never a pixel later. */
+  const tvKnownGen = () => `${discoveryGeneration()}:${captainLedger.chartedCount()}`;
   const tvPlaceSummary = (px, py) => {
     // ETHER-OW: past the Veil, an isle's place - known, it is its own summary (HALL-JOURNEY's way), its region the isles'
     if (etherSea && inEther(px, py)) {
@@ -31700,7 +31709,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
    *  changes; their plates stand over the town's middle. */
   function travelViewPlaces() {
     const at = playerTravelPixel();
-    const dg = discoveryGeneration();   // AUDIT DEEP2 B-3: a place found while standing on one pixel gets its plate now, not a pixel later
+    const dg = tvKnownGen();   // AUDIT DEEP2 B-3: a place found while standing on one pixel gets its plate now, not a pixel later (AUDIT ETHER-OW C2-2: or charted)
     if (tvPlates.at && tvPlates.at.x === at.x && tvPlates.at.y === at.y && tvPlates.dg === dg) return tvPlates.list;
     const r = Math.max(1, state.terrainDistance ?? 3);
     const list = [];
@@ -31722,7 +31731,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
   function travelViewFarPlaces() {
     const at = playerTravelPixel();
     const near = Math.max(1, state.terrainDistance ?? 3);
-    const dg = discoveryGeneration();   // AUDIT DEEP2 B-3: and a far one found (a quest, a map) stands at the edge at once
+    const dg = tvKnownGen();   // AUDIT DEEP2 B-3: and a far one found (a quest, a map) stands at the edge at once (AUDIT ETHER-OW C2-2: or charted)
     if (tvFar.at && tvFar.at.x === at.x && tvFar.at.y === at.y && tvFar.near === near && tvFar.dg === dg) return tvFar.list;
     // ETHER-OW: the map's settlements (gathered once - never an isle's, which the index holds only once built), and past the
     // Veil the port isles within the edge's range
@@ -31759,7 +31768,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
   function travelViewDungeons() {
     if (typeof _tvListsReady !== 'undefined' && !_tvListsReady) return [];   // BOOT-TDZ II (typeof: a slice lifted without the flag reads as standing)
     const at = playerTravelPixel();
-    const dg = discoveryGeneration();
+    const dg = tvKnownGen();   // AUDIT ETHER-OW C2-2: the finds and the charts
     // AUDIT OW3 D1/D3: and the grid's reach (what TV2 plates), and the index's churn - a spawn comes as its pixel streams
     // and goes when its time runs out or a road takes it back, on a pixel the traveller has not left (AUDIT OW4 D5: its
     // generation - the size missed one spawn gone and another come in the same window)
@@ -31785,7 +31794,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
    *  nearest TV_DUNGEON_MODELS_MAX; read again as TV6's is, when the pixel, the finds or the index move. */
   function tvDungeonModelList() {
     if (typeof _tvListsReady !== 'undefined' && !_tvListsReady) return [];   // BOOT-TDZ II (typeof: a slice lifted without the flag reads as standing)
-    const at = playerTravelPixel(), dg = discoveryGeneration(), n = _locIndexGen;
+    const at = playerTravelPixel(), dg = tvKnownGen(), n = _locIndexGen;   // AUDIT ETHER-OW C2-2: the finds and the charts
     if (tvDngModels.list.some((g) => g.spawn && !g.loc?.superTier && tvSpawnGone(g.px, g.py))) tvDngModels.at = null;   // AUDIT OW4 D2's law: a spawn whose time ran out goes
     if (tvDngModels.at && tvDngModels.at.x === at.x && tvDngModels.at.y === at.y && tvDngModels.dg === dg && tvDngModels.n === n) return tvDngModels.list;
     const near = nearDungeons({ at, dungeons: tvDungeonRowsAt(at), locAt: tvDungeonAt, isFound: (x, y) => !!tvPlaceSummary(x, y),
@@ -31870,7 +31879,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
    *  the Overworld for such a keep is travelDungeons.js nearDungeons' own). */
   function travelViewFindList() {
     if (typeof _tvListsReady !== 'undefined' && !_tvListsReady) return [];   // BOOT-TDZ II (typeof: a slice lifted without the flag reads as standing)
-    const at = playerTravelPixel(), dg = discoveryGeneration(), n = _locIndexGen;
+    const at = playerTravelPixel(), dg = tvKnownGen(), n = _locIndexGen;   // AUDIT ETHER-OW C2-2: the finds and the charts
     if (tvFind.at && tvFind.at.x === at.x && tvFind.at.y === at.y && tvFind.dg === dg && tvFind.n === n) return tvFind.list;
     const list = nearDungeons({ at, range: TV_FIND_REACH, max: Infinity, dungeons: tvDungeonRowsAt(at, TV_FIND_REACH),
       locAt: tvDungeonAt, isFound: (x, y) => !!tvPlaceSummary(x, y) }).filter((g) => !g.found).map((g) => {
@@ -32495,12 +32504,13 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
   /** The shared clock (the relay's, online): every player's raiders at the same minute. */
   const raidNowMs = () => Date.now() + _sharedOffsetMs;
   /** A raider's birth: the open sea - its pixel and every one about it water, the ocean's (never a lake, a bay's mouth).
-   *  AUDIT OW5b S5: and ON THE MAP - `tvWater` counts off the map as water (the planner's edge is the sea), and a column
-   *  off it read the PAK's first for its climate: a raider was born a pixel past the map's edge. */
-  // ETHER-OW (2026-10-13, the owner: "Enemies should show on the world map just like in the bay"): and ON THE ELTHERIC
-  // OCEAN'S - the Bay's map or its box (ethericSea.js onBayOrEther), the sea's climate the composed index's there
+   *  AUDIT OW5b S5: and ON ITS GROUND - the Bay's map (ETHER-OW: or the Eltheric Ocean's box, ethericSea.js onBayOrEther,
+   *  the sea's climate the composed index's there) - `tvWater` counts off the map as water (the planner's edge is the sea),
+   *  and a column off it read the PAK's first for its climate: a raider was born a pixel past the map's edge. AUDIT
+   *  ETHER-OW C2-3: past the Veil only where the sea fight stands her as a ship - the mod's raid boards the Bay's. */
   const tvRaidOpen = (px, py) => {
     if (!onBayOrEther(px, py) || maps.getClimateIndex(px, py) !== CLIMATES.Ocean) return false;
+    if (inEther(px, py) && !navalRaidersOn()) return false;   // AUDIT ETHER-OW C2-3
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (!tvWater(px + dx, py + dy)) return false;
     return true;
   };

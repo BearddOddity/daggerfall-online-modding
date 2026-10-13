@@ -2,8 +2,8 @@
   {
     "name": "ED-raw-bytes-inherited",
     "file": "src/world/deepWatersBake.js",
-    "old": "  const raw = Object.prototype.hasOwnProperty.call(woods, '_bytes');",
-    "new": "  const raw = !!woods._bytes;",
+    "old": "  const raw = Object.prototype.hasOwnProperty.call(woods, '_bytes') || isValidMapPixel(mapPixelX, mapPixelY);",
+    "new": "  const raw = !!woods._bytes || isValidMapPixel(mapPixelX, mapPixelY);",
     "tests": [
       "test/ether_deep.test.js"
     ]
@@ -73,8 +73,8 @@
   },
   {
     "name": "ED-kept-forever",
-    "file": "src/world/etherWatersBake.js",
-    "old": "    if (this._caches().some((c) => c.size > ETHER_KEEP_MAX)) this.evictOutside(px, py, ETHER_KEEP_RADIUS);",
+    "file": "src/world/deepWatersBake.js",
+    "old": "    if (this._caches().some((c) => c.size > PLANE_KEEP_MAX)) this.evictOutside(px, py, PLANE_KEEP_RADIUS);",
     "new": "    void px; void py;",
     "tests": [
       "test/ether_deep.test.js"
@@ -101,7 +101,7 @@
   {
     "name": "ED-routing-bay",
     "file": "src/world/etherWatersBake.js",
-    "old": "  of(px, py) { return this.ether.inFrame(px, py) ? this.ether : this.bay; }",
+    "old": "  of(px, py) { return waterFrameOf(px, py, true) === ETHER_FRAME ? this.ether : this.bay; }",
     "new": "  of(px, py) { return this.bay; }",
     "tests": [
       "test/ether_deep.test.js"
@@ -191,7 +191,7 @@
   {
     "name": "ED-world-unsaid",
     "file": "src/scenes/world.js",
-    "old": "    ether: etherSea ? etherPlaceRects(_etherTemplates, (t) => setLocationTiles({ ...t, regionIndex: ETHER_REGION, locationIndex: -1000 }, maps, blocks, new Uint8Array(128 * 128))) : null,",
+    "old": "    ether: etherSea ? etherPlaceRects(_etherTemplates, (t) => setLocationTiles({ ...t, regionIndex: ETHER_REGION, locationIndex: -1000 }, maps, blocks, _etherRectScratch.fill(0))) : null,",
     "new": "    ether: null,",
     "tests": [
       "test/ether_deep.test.js"

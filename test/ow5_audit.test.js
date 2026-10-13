@@ -50,7 +50,7 @@ test('AUDIT OW5 D1: the find asks every unfound dungeon in reach - a dozen found
   const rowsOf = /\n {2}(const tvDungeonRowsAt = \(at, range = TV_FAR_RANGE\) => \{\n[\s\S]*?\n {2}\};\n {2}const tvDungeonAt = [^\n]*;)\n/.exec(WORLD);
   assert.ok(rowsOf, 'the rows lifted');
   const host = mount(env, `let tvFind = { at: null, dg: -1, n: -1, list: [] }; let _tvDungeonRows = null;
-const etherSea = false, inEther = () => false, etherPlaceRows = () => [], tvEtherPlace = () => null, TV_FAR_RANGE = 24;
+const etherSea = false, inEther = () => false, etherPlaceRows = () => [], tvEtherPlace = () => null, TV_FAR_RANGE = 24, tvKnownGen = () => discoveryGeneration();
 ${rowsOf[1]}
 ${fnSource('travelViewFindList')}
 return { travelViewFindList };`);

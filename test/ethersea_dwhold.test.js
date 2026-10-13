@@ -13,7 +13,7 @@ const pixel = (px, py) => ({ px, py, samples: new Float32Array(4), tilemap: new 
 const floor = () => ({ positions: new Float32Array(9), indices: new Uint32Array(0), floorGridIndexCount: 0, vertexLocalY: new Float32Array(4225) });
 const settle = async () => { for (let i = 0; i < 5; i++) await null; };
 
-test('ETHER-HOLD: Deep Waters carves the Bay alone - an Eltheric Ocean pixel and one of the continent past the map keep the kernel\'s water, by every arm', async () => {
+test('ETHER-HOLD: a host told nothing of the sea carves the Bay alone - an Eltheric Ocean pixel and one of the continent past the map keep the kernel\'s water, by every arm', async () => {
   const lf = landfall();
   const ether = pixel(lf.px, lf.py), west = pixel(-5, 250), bay = pixel(500, 250);
   const built = new Map([[`${ether.px},${ether.py}`, ether], ['-5,250', west], ['500,250', bay]]);

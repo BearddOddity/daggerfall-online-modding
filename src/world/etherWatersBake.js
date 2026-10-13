@@ -11,8 +11,8 @@
 // the Ocean's 210 m off its coasts, under the player's Water Depth).
 //
 // WHAT DIFFERS is only how much of it is built, and when. The Bay's classes and its flood are one global record built
-// at boot; the Eltheric's box is forty million pixels, so each is asked when first read and kept (bounded: ETHER_KEEP_MAX
-// a plane, the farthest let go past ETHER_KEEP_RADIUS):
+// at boot; the Eltheric's box is forty million pixels, so each is asked when first read and kept (bounded: deepWatersBake.js
+// PLANE_KEEP_MAX a plane, the farthest let go past PLANE_KEEP_RADIUS - the Bay's planes' law too):
 //   CLASSES   - the bound's (classifyPixel), over the composed ground.
 //   THE FLOOD - an isle's CELL at a time (ISLE_CELL_PX square, world/ethericSea.js), from its own border: every cell's
 //               outer ring of pixels is open sea by the bound - an isle's land bytes lie a pixel and more inside its
@@ -35,10 +35,6 @@ import { etherTemplateOf } from './etherPlaces.js';
 
 /** The Eltheric Ocean's frame: its box, as the stream holds it (world/ethericSea.js etherFrame). */
 export const ETHER_FRAME = Object.freeze(etherFrame());
-/** The planes kept: past this many in any one, those farther than ETHER_KEEP_RADIUS pixels (Chebyshev) from the pixel
- *  last asked are let go (the worker's own PLANE_KEEP_RADIUS - a ship's stream and the windows round it). */
-export const ETHER_KEEP_MAX = 4096;
-export const ETHER_KEEP_RADIUS = 12;
 /** An exported row's frame: the composed bakes route it here by it. */
 export const ETHER_ROW = 'ether';
 
@@ -93,6 +89,13 @@ export class EtherWatersBake extends DeepWatersBake {
 
   _caches() { return [this._fine, this._full, this._dist, this._edge, this._sea, this._cls]; }
 
+  /** AUDIT ETHER-OW C1-3: whether this thread holds the sea bits the dry check reads - the pixel's and its cardinal
+   *  neighbours' in the box - without a flood: those the worker sent (adoptPlanes) or this thread already flooded. */
+  holdsSea(px, py) {
+    for (const [x, y] of [[px, py], [px - 1, py], [px + 1, py], [px, py - 1], [px, py + 1]]) if (this.inFrame(x, y) && !this._sea.has(this._index(x, y))) return false;
+    return true;
+  }
+
   /** The sea bits of a pixel: its cell's flood's (8 bytes), null outside the box. */
   seaBits(px, py) {
     if (!this.inFrame(px, py)) return null;
@@ -135,20 +138,12 @@ export class EtherWatersBake extends DeepWatersBake {
   }
 
   adoptPlanes(rows) {
-    let last = null;
     for (const r of rows ?? []) {
       if (!Number.isInteger(r?.i) || r.i < 0 || r.i >= this.frame.w * this.frame.h) continue;
       if (r.sea && r.sea.length === 8 && !this._sea.has(r.i)) this._sea.set(r.i, r.sea);
       if ((r.cls === PIXEL_LAND || r.cls === PIXEL_SEA || r.cls === PIXEL_MIXED) && !this._cls.has(r.i)) this._cls.set(r.i, r.cls);
-      last = r.i;
     }
-    super.adoptPlanes(rows);
-    if (last !== null) this._keep((last % this.frame.w) + this.frame.x0, Math.floor(last / this.frame.w) + this.frame.y0);
-  }
-
-  /** The planes bounded: past ETHER_KEEP_MAX in any one, those far from (px, py) let go. */
-  _keep(px, py) {
-    if (this._caches().some((c) => c.size > ETHER_KEEP_MAX)) this.evictOutside(px, py, ETHER_KEEP_RADIUS);
+    super.adoptPlanes(rows);   // the base keeps every cache bounded about the last row's pixel (its _keep reads this bake's six)
   }
 }
 
@@ -165,11 +160,11 @@ export class DeepWatersBakes {
     this.loaded = true;
     this.hasFineWaterMask = true;
   }
-  /** @returns {DeepWatersBake} */
-  of(px, py) { return this.ether.inFrame(px, py) ? this.ether : this.bay; }
-  /** Does a bake answer the pixel? */
-  answers(px, py) { return this.bay.inFrame(px, py) || this.ether.inFrame(px, py); }
-  frameOf(px, py) { return this.of(px, py).frame; }
+  /** @returns {DeepWatersBake} - AUDIT ETHER-OW C1-5: the bake whose frame answers the pixel, by the one law of it
+   *  (waterFrameOf, the host's own) */
+  of(px, py) { return waterFrameOf(px, py, true) === ETHER_FRAME ? this.ether : this.bay; }
+  frameOf(px, py) { return waterFrameOf(px, py, true); }
+  holdsSea(px, py) { return this.of(px, py).holdsSea(px, py); }
   sampleDistanceMeters(x, y, fx, fz) { return this.of(x, y).sampleDistanceMeters(x, y, fx, fz); }
   sampleEdgeDistanceMeters(x, y, fx, fz) { return this.of(x, y).sampleEdgeDistanceMeters(x, y, fx, fz); }
   sampleLocalEdgeDistanceMeters(x, y, fx, fz) { return this.of(x, y).sampleLocalEdgeDistanceMeters(x, y, fx, fz); }

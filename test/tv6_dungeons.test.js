@@ -20,7 +20,7 @@ const rd = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const liftDungeonRows = (w) => {
   const m = /\n {2}(const tvDungeonRowsAt = \(at, range = TV_FAR_RANGE\) => \{\n[\s\S]*?\n {2}\};\n {2}const tvDungeonAt = [^\n]*;)\n/.exec(w);
   assert.ok(m, 'the rows and their stand, lifted');
-  return `const etherSea = false, inEther = () => false, etherPlaceRows = () => [], tvEtherPlace = () => null, TV_FAR_RANGE = 24;\n${m[1]}`;
+  return `const etherSea = false, inEther = () => false, etherPlaceRows = () => [], tvEtherPlace = () => null, TV_FAR_RANGE = 24, tvKnownGen = () => discoveryGeneration();\n${m[1]}`;   // AUDIT ETHER-OW C2-2: the finds' generation (no charts here)
 };
 const loc = (name, locationType) => ({ name, mapTableData: { locationType } });
 /** A map row as systems/mapDirectory.js buildMapDict makes it (the key is the pixel id; the MapId carries more bits). */

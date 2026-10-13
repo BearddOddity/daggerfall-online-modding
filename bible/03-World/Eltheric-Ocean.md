@@ -457,7 +457,8 @@ three letters longer, was cut on a phone held upright (`tools/etherChartProbe.mj
 
 NOT RENAMED, by intent: the code's own names - the ETHER-* slices (their records are history), `world/ethericSea.js`
 and every `ether*` identifier, the ledger's `ether` trade key and the Captain save's `ether` record (a rename there is a
-migration with nothing to gain), the band "the Deep Aether", and the owner's quoted words. This page was
+migration with nothing to gain), the band "the Deep Aether", and quoted words (the owner's and the players' reports
+keep their own spelling - AUDIT ETHER-OW D-7). This page was
 `03-World/Etheric-Sea.md`; every link to it moved with it.
 
 ## ETHER-DEEP - the sea's depth
@@ -476,7 +477,8 @@ bake's own frame (`etherWatersBake.js:"export class EtherWatersBake extends Deep
 from the same composed ground the world streams: the bound's classes, the coarse candidates and fine masks off the
 pixel's own samples, the 8-connected flood that keeps a pond out (`floodSteps`, the map's flood over any frame), the
 octile distance planes. Only how much of it is built differs: forty million pixels are asked as they are read and kept
-(ETHER_KEEP_MAX a plane, the far ones let go past ETHER_KEEP_RADIUS), and the flood runs an isle's CELL at a time -
+(PLANE_KEEP_MAX a plane, the far ones let go past PLANE_KEEP_RADIUS - AUDIT ETHER-OW C1-2: the base bake's law, so the
+Bay's planes this thread adopts are bounded too), and the flood runs an isle's CELL at a time -
 every cell's ring of pixels is open sea by the bound (an isle's land bytes lie a pixel and more inside its cell, and
 the kernel carries none of them out to the ring), so the rings are one sea that reaches the box's edge and a cell's own
 flood is the box's (pinned over three whole rows of the box, and against the flood of the nine cells round four cells
@@ -518,8 +520,10 @@ THE LAW. The nodes' ground is the Bay's map and the Eltheric's box
 home is `world/ethericSea.js` `onBayOrEther` since ETHER-OW, where the Overworld's bands and raiders are born too), and a node's and a haul's ids are read in their one spelling with four digits and a sign. Nothing
 else moves: the day's counts by climate, the tiers, the witnessed world (an isle pixel is unconfirmed until three
 week-old accounts agree, worth its kind's least till then), the regions' materials (an isle's herbs are Betony's), a
-Levy in Betony's seat. The service reads the same law: it takes an isle's harvest and answers its pixels' witnesses -
-no migration (its keys are text). Its law moved, so `ACCOUNT_VERSION` is acct124 (service.js's discipline: a deploy
+Levy in Betony's seat. Betony's Court writs read the isles' witnessed ground with the region's own (DECIDED, AUDIT
+ETHER-OW C2-4: the isles' region is Betony's). The service reads the same law: it takes an isle's harvest and answers its pixels' witnesses -
+no migration (its keys are text). Its law moved, so `ACCOUNT_VERSION` was acct124 (acct125 since AUDIT ETHER-OW C2-1,
+below; service.js's discipline: a deploy
 that did not happen looks exactly like one that did), and `world/ethericSea.js` - the box's one home - joins the account
 Worker's bundle, so the deploy's path filter carries it (`.github/workflows/account-deploy.yml`, held to the import
 graph by `test/accountdeploy.test.js`, which caught it in CI). `test/ether_nodes.test.js` holds the ground, the spelling, and the service end to end
@@ -545,7 +549,9 @@ cross water in a boat (OWS2). Five of its reads still held the Bay:
    pixel has built, else its clone, marked and never stood (`etherPlaceClone`, the build's own half of `etherPlaceAt` -
    `tvSpawnAt`'s law: a far place is marked, never built). It is KNOWN as the sea knows a place: its isle on the
    captain's charts (`sight` within three pixels, a harbourmaster's chart, a corsair's papers - the chart's own isles),
-   or the place found (its door entered, or met on approach). A known port or ruin within the grid wears TV2's plate; a
+   or the place found (its door entered, or met on approach) - and the lists are keyed on the charts as on DFU's finds
+   (`tvKnownGen`, AUDIT ETHER-OW C2-2: an isle charted where the captain stands is a plate at once, not a pixel later).
+   A known port or ruin within the grid wears TV2's plate; a
    known port within the edge's range (TV_FAR_RANGE, 24 pixels) is TV5's far plate, a journey there; a ruin within it is
    TV6's - a lair where it lies until known, a far plate once - and among the nearest, OW-DUNGEONS' model, as any
    dungeon's (`world/etherPlaces.js` `etherPlaceRows`, world.js `tvDungeonRowsAt`, `tvDungeonAt`). The map's settlements, gathered once, never keep an isle's place the
@@ -559,8 +565,11 @@ cross water in a boat (OWS2). Five of its reads still held the Bay:
    - AUDIT OW4 B2's and AUDIT OW5b S5's bounds). Their ground is the Bay's map or the Eltheric's box now - one home,
    `world/ethericSea.js` `onBayOrEther`, the nodes' own - over the sea's composed ground: a band roams an isle's land,
    never its town's or its ruin's pixel (`etherPlaceIsle`) nor the sea; a raider is born on the open sea (the ocean's
-   climate, every pixel about it water) and sails it, never past the box (S5's floored pixel - the Bay's bounds exactly
-   as they were). They are marked, chased, slowed for and met as the Bay's are, by the same code; the camps already were
+   climate, every pixel about it water) and sails it, never past the box (S5's edges kept, by the point's own pixel
+   floored - the Bay's bounds exactly as they were), and only where the sea fight stands her as a ship (AUDIT ETHER-OW
+   C2-3: with it off, the mod's raid boarded the Bay's "Your Ship" - a teleport over the Veil and home again; "Your
+   Ship" is boarded from the Bay alone now, `boardOrDisembark` asking `veilRefused`, and leaving it goes back where it
+   was boarded). They are marked, chased, slowed for and met as the Bay's are, by the same code; the camps already were
    (they are the foes standing). A raider stood as a ship past the Veil (NAV-R) is the sea's own corsair - `launch`
    dresses every ship launched there (its names, its colours, no crown's law) - and her class is drawn the band's levels
    over the captain's, as every class the director draws there is (`navalHost.js` `raiders`; it read the captain's
@@ -572,12 +581,13 @@ cross water in a boat (OWS2). Five of its reads still held the Bay:
 
 **Measured, kept.** The route planner (OWS2's sea, TV-BEYOND's ground past the map) plans past the Veil as it does past
 the Bay: a crossing of 12 pixels between two isles by Veilhaven in 12 ms, and "no way by land" on foot in 14 ms - its
-widest box held about the two ends, under twice the Bay's whole map.
+widest box held about the two ends, about twice the Bay's whole map (1,001 by 1,012 pixels - AUDIT ETHER-OW D-4).
 **Held.** The sea lanes (`laneOpen`: the Bay's packets between its ports) and the serpent's site stay the Bay's. The sea
 fight's own traffic - the director's corsairs and the legends - is drawn under the view as hulls and is not marked, as
 the Bay's own pirates are not; a raider is marked where she stands as a ship (NAV-R). The chart is still never pressed
 to travel: the Overworld is. The node law reads the one home with every answer unchanged (`test/ether_nodes.test.js`
-as it stood), so the account Worker's law did not move and `ACCOUNT_VERSION` stays acct124.
+as it stood), so the account Worker's law did not move with ETHER-OW (AUDIT ETHER-OW C2-1 moved it, to acct125: a
+Motherlode is sited where a Watch receipt can name its pixel).
 **THE FOUR HOSTS.** The Overworld is the streaming host's alone (`06-Systems/Travel-View.md`): `scenes/world.js` wired;
 `scenes/exterior.js`, `scenes/worldModes.js` and `scenes/dungeonContext.js` raise no view - FLAGGED, as TV's.
 
@@ -674,7 +684,7 @@ lists all die. `tools/etherChartProbe.mjs` measures in Chromium what node cannot
 five sizes, the late face, a full captain's repaint.
 
 ELTHERIC, ETHER-DEEP, ETHER-NODES: `test/eltheric.test.js` (4) - the word and its readers, the source scanned, the
-chart's title wrapped; `test/ether_deep.test.js` (9) - the raw reader's bytes its own, the cells' rings over three rows,
+chart's title wrapped; `test/ether_deep.test.js` (10) - the raw reader's bytes its own, the cells' rings over three rows,
 the cell's flood the nine cells', the frame and the routing, the planes bounded, the places' rects, the open sea carved
 through the pixel builder to the Ocean's plain, the client and the worker, the host's every arm; `test/ether_nodes.test.js`
 (3) - the ground, the spelling, the service. `test/oh_host.test.js` holds the pits' hold. Mutants
@@ -684,9 +694,9 @@ clamped edge answers the same, the host's word to its client never reached - and
 of the sea's words (`test/ethersea.test.js`, `test/ethercross.test.js`, `test/audit_etherchart2.test.js`,
 `test/auditcaptsea.test.js`), `test/tamriel2.test.js` (the near promote's gate the host's),
 `test/ethersea_dwhold.test.js` (a host told nothing of the sea), and `tools/mutants/dwa.json`'s two border seeds (the
-flood's names the frame's).
+flood's names the frame's), auditcaptsea's ACS-V1 and captlog's CL-ether-crowned (the words - AUDIT ETHER-OW D-17).
 
-ETHER-OW: `test/ether_ow.test.js` (8) - the chart's door mounted (hidden, shown at a paint, pressed, its key) and the
+ETHER-OW: `test/ether_ow.test.js` (9) - the chart's door mounted (hidden, shown at a paint, pressed, its key) and the
 host's (handed where the view can rise, the view lifted once the slot is empty), the governor's line over the real
 stream law, the places (the summary, known by chart or find, never stood, the index's first), the far ports and the
 ruins as TV6's (lifted and run), the bands' land and the raiders' sea over the sea's composed ground (bands and raiders
@@ -699,9 +709,20 @@ and `test/tv_wasd.test.js` (the governor's ground), `test/audit_etherchart2.test
 re-aimed by content: `tools/mutants/ether_nodes.json` (EN-bay-alone, EN-law-margin), `ow3d.json` (OW3D3-rows-off-the-index),
 `ow4t.json` (OW4-B2-live-index), `ow5s.json` (the two S5 records), `tv7.json` (TV7b-off-the-map).
 
+AUDIT ETHER-OW (`01-Overview/Audit-Ether-OW.md`): `test/audit_etherow.test.js` (4) - the Motherlodes' ground (the
+Watch's, one home; the service end to end), a chart a plate at once, no boarding across the Veil; the lanes' other
+pins in their slices' files - `test/ether_deep.test.js` (the Bay's pixels off the bytes, every delegate routed, the
+keep exact and the near kept, a tile's climates and east edge, the dry check's held bits), `test/ether_ow.test.js`
+(the find and the models past the Veil, the chase word's place, the bands off the continent's land, no raiders with the
+sea fight off), `test/nav_r_raiders.test.js` (the band's levels, not its tier), `test/oh_host.test.js` (the continent's
+pits). `tools/mutants/audit_etherow.json` (47) all die. PIN MOVED: the account version (acct125) in nineteen suites and the relay's (world199),
+`test/seat1b_client.test.js` (the relay's mint), `test/audit68_worldjs.test.js` (the board asks the Veil), `test/ows3_raiders.test.js` (the raiders' host), and the lists' key in
+`test/tv6_dungeons.test.js`, `test/ow5_audit.test.js` and `test/owdungeons.test.js`; re-aimed by content: four records
+of `tools/mutants/ether_deep.json`, `seat1b.json`'s relay record and `soc1.json`'s relay version.
+
 **Not verified here:** the look and feel in a real browser (the isles on the horizon, the light - the chart was read in
 Chromium at ETHER-CHART2, mounted alone), a crossing end to end in a running world (its jump, the ship brought round,
-the stream past the Veil), a town's buildings and a ruin's halls entered on an isle, and online play past the Veil -
+the stream past the Veil), a town's buildings and a ruin's halls entered on an isle, and online play past the Veil;
 ETHER-DEEP's seabed seen and swum in a running world (its pins build real Eltheric pixels through the mod's own
 builder; the renderer and the swim's motor are the Bay's, unchanged), the places' rects read off the player's MAPS.BSA
 and BLOCKS.BSA (no archive here: their pick is pinned, their reading is `setLocationTiles`'s), and ETHER-NODES' harvest

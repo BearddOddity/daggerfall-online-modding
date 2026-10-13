@@ -231,7 +231,7 @@ test('TV7b THE CHASE, SHARED: the band word - my chases where they are, then the
     ['b1.2.3', 100, 200, 1], ['b1.2.3', 5, 5, 1],          // once
     ['b4.5.6', 0, 0, 2],                                      // spent
     // PIN MOVED (ETHER-OW, test/ether_ow.test.js): a place is refused past the WORLD's edge (net/wire.js worldPixelOk) - it
-    // was a native unit west of the Bay, where the land past it and the Eltheric Ocean now stream and the bands are born
+    // was a native unit west of the Bay - where the land past it now streams; the Eltheric Ocean's bands are born far north of it
     ['nope', 1, 1, 1], ['b7.8.9', -8192 * 32768, 2, 1], ['b7.8.9', 1.5, 2, 1], ['b7.8.9', 1, 2, 3], ['b7.8.9', 1e12, 2, 1],   // refused
     ['b2500.4000.9', 5000 * 32768, (499 + 5160) * 32768, 1],   // ETHER-OW: a chase on the Eltheric Ocean, held
     'junk', [1, 2], null,

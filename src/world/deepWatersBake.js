@@ -145,16 +145,25 @@ function cubicLo(hi0, lo1, lo2, hi3) {
   return m - (s < q ? s : q);
 }
 
+/** THE PLANES A THREAD KEEPS (ETHER-DEEP's law, the Bay's too since AUDIT ETHER-OW C1-2 - the main thread's Bay planes
+ *  were adopted at every promote and never let go, 6,314 of them after a 900-pixel voyage and growing): past this many
+ *  in any one cache, those farther than PLANE_KEEP_RADIUS pixels (Chebyshev) from the pixel last asked are let go. The
+ *  worker's own radius (deepWatersWorker.js) - a stream and the windows round it. */
+export const PLANE_KEEP_MAX = 4096;
+export const PLANE_KEEP_RADIUS = 12;
+
 /**
  * WoodsFile.GetLargeHeightMapValuesRange(mx - 1, my, 3), flattened the way
  * DefaultTerrainSampler flattens it (lhm[y * 9 + x] = lhm2[x, y]), written
  * into `out` without the reader's per-call arrays. Verbatim clamps.
  */
 function readLargeWindow(woods, mapPixelX, mapPixelY, out) {
-  // ETHER-DEEP: the raw file's bytes are the raw file's own - a composition (world/ethericSea.js etherWoods, TAMRIEL2's
-  // groundWoods: a prototype child of the file) answers its own ground past the map through its door, and read through
-  // the inherited bytes an Eltheric pixel was the Bay's clamped edge
-  const raw = Object.prototype.hasOwnProperty.call(woods, '_bytes');
+  // ETHER-DEEP: the raw file's bytes answer the raw file's own map - a composition (world/ethericSea.js etherWoods,
+  // TAMRIEL2's groundWoods: a prototype child of the file) answers its own ground past the map through its door, and read
+  // through the inherited bytes an Eltheric pixel was the Bay's clamped edge. AUDIT ETHER-OW C1-1: and a pixel of the
+  // Bay's map reads the bytes whoever holds them - the mod's own clamped window, as it read before ETHER-DEEP; the
+  // world's reader is always a composition, and its door cost every Bay classification three times over
+  const raw = Object.prototype.hasOwnProperty.call(woods, '_bytes') || isValidMapPixel(mapPixelX, mapPixelY);
   const bytes = raw ? woods._bytes : null, offsets = raw ? woods.dataOffsets : null;
   if (!bytes || !offsets) {                    // a reader without the raw file: the reader's own door
     out.set(woods.getLargeHeightMapValuesRange(mapPixelX - 1, mapPixelY, 3));
@@ -793,14 +802,24 @@ export class DeepWatersBake {
   /** An exported row, or null when it carries nothing (ETHER-DEEP: the Eltheric's carry more - etherWatersBake.js). */
   _row(_i, row) { return row.fine || row.dist || row.edge ? row : null; }
 
-  /** Take exportPlanes' rows into this bake's caches (what is already here stays - the bytes are the same). */
+  /** Take exportPlanes' rows into this bake's caches (what is already here stays - the bytes are the same), and keep
+   *  them bounded about the last row's pixel (`_keep` - AUDIT ETHER-OW C1-2: this thread's Bay planes grew for the session). */
   adoptPlanes(rows) {
+    let last = null;
     for (const r of rows ?? []) {
       if (!Number.isInteger(r?.i) || r.i < 0 || r.i >= this.frame.w * this.frame.h) continue;
       if (r.fine && r.fine.length === 512 && !this._fine.has(r.i)) this._fine.set(r.i, r.fine);
       if (r.dist && r.dist.length === 64 && !this._dist.has(r.i)) this._dist.set(r.i, r.dist);
       if (r.edge && r.edge.length === 64 && !this._edge.has(r.i)) this._edge.set(r.i, r.edge);
+      last = r.i;
     }
+    if (last !== null) this._keep((last % this.frame.w) + this.frame.x0, Math.floor(last / this.frame.w) + this.frame.y0);
+  }
+
+  /** The planes bounded: past PLANE_KEEP_MAX in any one cache, those farther than PLANE_KEEP_RADIUS from (px, py) let go
+   *  (asked again, they are built again - the bytes are the same). */
+  _keep(px, py) {
+    if (this._caches().some((c) => c.size > PLANE_KEEP_MAX)) this.evictOutside(px, py, PLANE_KEEP_RADIUS);
   }
 
   /** Forget the per-pixel planes of pixels farther than `radius` (Chebyshev) from (px, py). */
@@ -898,6 +917,10 @@ export class DeepWatersBake {
 
   /** MapPixelHasWaterCells. */
   mapPixelHasWaterCells(mapPixelX, mapPixelY) { return this._mapPixelHasCoarseCell(mapPixelX, mapPixelY, true); }
+
+  /** AUDIT ETHER-OW C1-3: whether this thread holds the sea bits the dry check reads without a flood - the Bay's always
+   *  (its global record), the Eltheric's those flooded or adopted (etherWatersBake.js). */
+  holdsSea(_px, _py) { return true; }
 
   /** MapPixelOrCardinalNeighborHasWaterCells. */
   mapPixelOrCardinalNeighborHasWaterCells(mapPixelX, mapPixelY) {

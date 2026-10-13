@@ -31,14 +31,12 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import { WoodsFile } from '../formats/woodsFile.js';
-import { buildGlobal, DeepWatersBake } from './deepWatersBake.js';
+import { buildGlobal, DeepWatersBake, PLANE_KEEP_RADIUS } from './deepWatersBake.js';   // AUDIT ETHER-OW C1-2: the planes' keep, one home
 import { cachedBake, bakeCacheKey, fnv1a, rectsFingerprint, rectsLookup } from './deepWatersBakeCache.js';
 import { buildDeepWatersPixel, deepWatersPixelTransfers } from './deepWatersPixel.js';
 import { worldBakes } from './etherWatersBake.js';   // ETHER-DEEP
 import { etherWoods } from './ethericSea.js';
 
-/** How far (Chebyshev pixels) from the player this thread keeps its planes. */
-const PLANE_KEEP_RADIUS = 12;
 
 let bake = null;            // this thread's DeepWatersBake, once built
 let failed = null;          // the build's error message, when it failed

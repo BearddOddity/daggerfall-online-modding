@@ -21,6 +21,7 @@ import { StreamingWorldState } from '../src/world/streamingWorld.js';
 import { unbuiltAround } from '../src/systems/travelGovernor.js';
 import { farPlaces, settlementPixels, TV_FAR_RANGE } from '../src/systems/travelFarPlaces.js';
 import { nearDungeons, dungeonRows, spawnedPixels } from '../src/systems/travelDungeons.js';
+import { dungeonModelSet } from '../src/systems/travelDungeonModels.js';
 import { bandsNear, validBandWord, BAND_LIFE_MS } from '../src/systems/travelBands.js';
 import { raidersNear, raiderAt, validRaiderWord, NATIVE_PIXEL, RAIDER_LIFE_MS, RAIDER_LEG_MS } from '../src/systems/seaRaiders.js';
 import { createCaptainLedger } from '../src/systems/naval/captainLedger.js';
@@ -54,6 +55,8 @@ test('ETHER-OW, the door: the chart wears the held map\'s Overworld door - its w
   const exits = [];
   const host = document.createElement('div');
   const view = mountEtherChartWindow(host, { word: () => ({ px: H.px, py: H.py, yaw: 0, charted: [H.key], legends: [], stats: {} }), overworld: () => can, onExit: (r) => exits.push(r) });
+  // AUDIT ETHER-OW T-15: the chart's dialog named by the sea's one name (a reader's first word of it)
+  assert.equal(host.querySelectorAll('*').find((n) => n.getAttribute('role') === 'dialog')?.getAttribute('aria-label'), `A chart of ${ES.ETHER_SEA_NAME}`);
   const door = host.querySelectorAll('button').find((b) => b.textContent === TRAVEL_VIEW_BUTTON);
   assert.ok(door, 'the door stands in the chart\'s tools');
   assert.equal(door.hidden, true, 'where the view cannot rise, no door');
@@ -150,6 +153,8 @@ test('ETHER-OW, the places: past the Veil an isle\'s place is its own summary - 
   assert.deepEqual([ruin.name, ruin.mapId, ruin.loc.etherKind], [RUIN_ISLE.name, etherPlaceId(RUIN_ISLE), 'ruin']);
   assert.equal(h.tvPlaceSummary(WILD_ISLE.px, WILD_ISLE.py), null, 'a wild isle stands no place');
   assert.equal(h.tvPlaceSummary(H.px + 1, H.py), null, 'an isle\'s other pixels none');
+  // AUDIT ETHER-OW T-8: the place's own pixel on both axes - its column's others none
+  assert.deepEqual([etherPlaceIsle(H.px, H.py + 1), etherPlaceIsle(H.px, H.py - 1), etherPlaceIsle(H.px - 1, H.py)], [null, null, null]);
   assert.equal(h.env.locationIndex.size, 0, 'marked, never stood: the build stands a place, the view never does');
   const stood = { ...port.loc, name: 'Stood' };
   h.env.locationIndex.set(`${H.px},${H.py}`, stood);
@@ -157,6 +162,11 @@ test('ETHER-OW, the places: past the Veil an isle\'s place is its own summary - 
   const found = placesHost({ found: [etherPlaceId(RUIN_ISLE)] });
   assert.equal(found.tvPlaceSummary(RUIN_ISLE.px, RUIN_ISLE.py)?.name, RUIN_ISLE.name, 'found (its door entered, or met on approach): known, charted or not');
   assert.deepEqual(PLACE_KINDS, ['port', 'ruin']);
+  // AUDIT ETHER-OW T-12: a place's row is MAPS.BSA's shape in the isles' own region (the find's discovery reads its
+  // region), its circle closed - a ruin exactly the reach away is within it
+  const ring = etherPlaceRows({ x: RUIN_ISLE.px - 24, y: RUIN_ISLE.py }, 24, 'ruin');
+  assert.deepEqual(ring.find((r) => r.isle === RUIN_ISLE), { x: RUIN_ISLE.px, y: RUIN_ISLE.py, isle: RUIN_ISLE, row: { mapID: etherPlaceId(RUIN_ISLE), regionIndex: ETHER_REGION } });
+  assert.equal(etherPlaceRows({ x: RUIN_ISLE.px - 25, y: RUIN_ISLE.py }, 24, 'ruin').some((r) => r.isle === RUIN_ISLE), false, 'a pixel past it, not');
   assert.equal(etherPlaceIsle(H.px, H.py), H);
   assert.equal(etherPlaceIsle(WILD_ISLE.px, WILD_ISLE.py), null);
 });
@@ -176,6 +186,7 @@ test('ETHER-OW, the far places and the dungeons: a charted port past the grid is
   };
   const body = `let tvFar = { at: null, near: -1, list: [] }, _tvSettlements = null, tvDng = { at: null, dg: -1, list: [] }, _tvDungeonRows = null, _locIndexGen = 0;
     const _tvListsReady = true;
+    ${liftLine('  const tvKnownGen = ')}
     ${lift('  function travelViewFarPlaces() {')}
     ${lift('  const tvDungeonRowsAt = (at, range = TV_FAR_RANGE) => {', '\n  };\n')}
     ${liftLine('  const tvDungeonAt = ')}
@@ -195,9 +206,31 @@ test('ETHER-OW, the far places and the dungeons: a charted port past the grid is
   assert.deepEqual(gathered.map((s) => s.loc.name), ['Ripwych']);
 });
 
+test('ETHER-OW, the find and the models: past the Veil an uncharted ruin within a kilometre is found on approach - its row the isles\' region\'s, its place the isle\'s own - and stands as its model on the Overworld as the Bay\'s dungeons do (AUDIT ETHER-OW T-2: lifted and run; mutants: the find\'s rows the Bay\'s, its place the index\'s alone, the models\' the same, the row\'s region 0)', () => {
+  const ruin = RUIN_ISLE;
+  const h = placesHost();
+  const env = {
+    ...h.env, tvPlaceSummary: h.tvPlaceSummary, tvEtherPlace: h.tvEtherPlace, playerTravelPixel: () => ({ x: ruin.px - 2, y: ruin.py }), discoveryGeneration: () => 0,
+    nearDungeons, dungeonRows, spawnedPixels, dungeonModelSet, etherPlaceRows, TV_FAR_RANGE, TV_FIND_REACH: 4, locationWorldRect: (l, x, y) => ({ minX: x, maxX: x + 1, minZ: y, maxZ: y + 1 }),
+    tvFiledSpawns: () => [], tvSpawnKnown: () => false, tvSpawnFound: () => false, tvSpawnGone: () => false,
+  };
+  const v = run(env, `let tvFind = { at: null, dg: -1, n: -1, list: [] }, tvDngModels = { at: null, dg: -1, n: -1, list: [] }, _tvDungeonRows = null, _locIndexGen = 0;
+    ${liftLine('  const tvKnownGen = ')}
+    ${lift('  const tvDungeonRowsAt = (at, range = TV_FAR_RANGE) => {', '\n  };\n')}
+    ${liftLine('  const tvDungeonAt = ')}
+    ${lift('  function travelViewFindList() {')}
+    ${lift('  function tvDungeonModelList() {')}
+    return { travelViewFindList, tvDungeonModelList };`);
+  const key = `dng:${etherPlaceId(ruin)}`;
+  assert.deepEqual(v.travelViewFindList().filter((g) => g.key === key).map((g) => [g.loc.etherKind, g.loc.ether, g.row.regionIndex]), [['ruin', ruin.key, ETHER_REGION]], 'found on approach, in the isles\' region');
+  assert.ok(v.tvDungeonModelList().some((g) => g.key === key && g.loc.etherKind === 'ruin'), 'and its model stands');
+  assert.equal(h.env.locationIndex.size, 0, 'neither stood');
+});
+
 /** The bands' land and the raiders' sea, lifted - the host's own lines over the sea's ground. */
 const bandOk = run({ onBayOrEther: ES.onBayOrEther, tvWater, _bandPlacePixels: new Set(['5,5']), etherPlaceIsle }, `${lift('  const bandOk = (x, z) => {', '\n  };\n')}\nreturn bandOk;`);
-const { tvRaidOpen, tvRaidSea } = run({ onBayOrEther: ES.onBayOrEther, tvWater, maps, CLIMATES, RAID_NATIVE_PIXEL: NATIVE_PIXEL },
+let seaFight = true;   // AUDIT ETHER-OW C2-3: past the Veil a raider is the sea fight's ship alone
+const { tvRaidOpen, tvRaidSea } = run({ onBayOrEther: ES.onBayOrEther, inEther: ES.inEther, navalRaidersOn: () => seaFight, tvWater, maps, CLIMATES, RAID_NATIVE_PIXEL: NATIVE_PIXEL },
   `${lift('  const tvRaidOpen = (px, py) => {', '\n  };\n')}\n${lift('  const tvRaidSea = (x, z) => {', '\n  };\n')}\nreturn { tvRaidOpen, tvRaidSea };`);
 const native = (px, py) => [(px + 0.5) * NATIVE_PIXEL, (499 - py + 0.5) * NATIVE_PIXEL];
 
@@ -220,6 +253,13 @@ test('ETHER-OW, the bands: an isle\'s land is a band\'s ground - its town\'s and
   assert.equal(bandOk(...native(500, 250)), true, 'the Bay\'s land as ever');
   assert.equal(bandOk(...native(5, 5)), false, 'nor a place of the Bay\'s');
   assert.equal(bandOk(...native(ES.ETHER_BOX.x0 - 1, H.py)), false, 'past the box: no ground');
+  // AUDIT ETHER-OW T-11: and for its ground, not its water - over the continent's land (TAMRIEL-GROUND), which the
+  // water law reads as land west of the box and off the map, a band stands on neither
+  const tamriel = ES.etherWoods({ isTamrielGround: true, getHeightMapValue: () => 60, getLargeMapData: () => [] });
+  const landWater = run({ woods: tamriel, WATER_BYTE }, `${liftLine('  const tvWater = (px, py) =>')}\nreturn tvWater;`);
+  const landOk = run({ onBayOrEther: ES.onBayOrEther, tvWater: landWater, _bandPlacePixels: new Set(), etherPlaceIsle }, `${lift('  const bandOk = (x, z) => {', '\n  };\n')}\nreturn bandOk;`);
+  assert.deepEqual([landWater(-5, 250), landWater(ES.ETHER_BOX.x0 - 70, H.py)], [false, false], 'land there');
+  assert.deepEqual([landOk(...native(-5, 250)), landOk(...native(ES.ETHER_BOX.x0 - 70, H.py)), landOk(...native(500, 250))], [false, false, true]);
   // the bands about a captain at Veilhaven, life by life: some there are, each on an isle's land
   let seen = 0;
   for (let life = 1000; life < 1040; life++) {
@@ -249,14 +289,26 @@ test('ETHER-OW, the raiders: the Eltheric Ocean\'s open sea is the raiders\' - b
   }
   assert.ok(seen > 0, 'raiders sail the Eltheric Ocean');
   assert.equal(tvRaidOpen(H.px, H.py), false, 'never on an isle');
+  // AUDIT ETHER-OW C2-3: the sea fight off, none past the Veil - the mod's raid boards the Bay's "Your Ship", a teleport
+  // across the Veil; the Bay's as ever
+  seaFight = false;
+  let off = 0;
+  for (let life = 2000; life < 2010; life++) off += raidersNear({ at, ms: life * RAIDER_LIFE_MS, open: tvRaidOpen, sea: tvRaidSea }).length;
+  assert.equal(off, 0, 'no raider past the Veil with the sea fight off');
+  assert.ok(raidersNear({ at: { x: 30, y: 30 }, ms: 2000 * RAIDER_LIFE_MS, open: (x, y) => x >= 0 && y >= 0 && x < 60 && y < 60, sea: () => true }).length > 0, 'the seeding itself unchanged');
+  seaFight = true;
   // the box's west edge: past it no ground, so no water a raider may sail
   const edge = native(ES.ETHER_BOX.x0, H.py);
   assert.equal(tvRaidSea(edge[0], edge[1]), true, 'the box\'s last pixel of open sea');
   assert.equal(tvRaidSea(edge[0] - NATIVE_PIXEL, edge[1]), false, 'past it: nothing');
   assert.equal(tvRaidOpen(ES.ETHER_BOX.x0 - 2, H.py), false);
   // the Bay's own edge stands as AUDIT OW5b S5 left it - the strip past the west and south edges floored off the map
-  assert.equal(tvRaidSea(-1, 250 * NATIVE_PIXEL), false, 'a native unit west of the Bay');
-  assert.equal(tvRaidSea(5 * NATIVE_PIXEL, -1), false, 'a native unit south of it');
+  // (AUDIT ETHER-OW T-13: over a world all water, so the floor alone refuses it)
+  const wet = run({ onBayOrEther: ES.onBayOrEther, inEther: ES.inEther, navalRaidersOn: () => true, tvWater: () => true, maps, CLIMATES, RAID_NATIVE_PIXEL: NATIVE_PIXEL },
+    `${lift('  const tvRaidSea = (x, z) => {', '\n  };\n')}\nreturn tvRaidSea;`);
+  assert.deepEqual([wet(0, 250 * NATIVE_PIXEL), wet(5 * NATIVE_PIXEL, 0)], [true, true], 'the Bay\'s own edge water');
+  assert.equal(wet(-1, 250 * NATIVE_PIXEL), false, 'a native unit west of the Bay');
+  assert.equal(wet(5 * NATIVE_PIXEL, -1), false, 'a native unit south of it');
 });
 
 test('ETHER-OW, the word: a chase past the Veil is heard by the peers it is said to - a band\'s and a raider\'s place a pixel of the world (net/wire.js worldPixelOk), past the world\'s edge still dropped (mutant: the Bay\'s extent)', () => {
@@ -264,4 +316,12 @@ test('ETHER-OW, the word: a chase past the Veil is heard by the peers it is said
   assert.deepEqual(validBandWord([['b4030.2697.9', x, z, 1]]), [['b4030.2697.9', x, z, 1]]);
   assert.deepEqual(validRaiderWord([['r1338.-864.9', x, z, 1]]), [['r1338.-864.9', x, z, 1]]);
   assert.deepEqual(validRaiderWord([['r1338.-864.9', 9000 * NATIVE_PIXEL, z, 1]]), [], 'past the world');
+  // AUDIT ETHER-OW T-3: the place a pixel of the world on both axes, by its own pixel floored, a whole native unit
+  const P = NATIVE_PIXEL;
+  assert.deepEqual(validBandWord([['b1.2.3', 5, (499 + 8192) * P, 1]]), [], 'north past the world (pixel row -8192)');
+  assert.deepEqual(validBandWord([['b1.2.3', 5, -7693 * P, 1]]), [], 'south past it (pixel row 8192)');
+  assert.deepEqual(validBandWord([['b1.2.3', 5, 2.5, 1]]), [], 'a whole native unit alone');
+  assert.deepEqual(validBandWord([['b1.2.3', -8192 * P + 1, 5, 1]]), [], 'floored, not truncated: pixel -8192');
+  const last = ['b1.2.3', -8191 * P, (499 + 8191) * P, 1];
+  assert.deepEqual(validBandWord([last]), [last], 'the world\'s last pixel, its north-west');
 });

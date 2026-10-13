@@ -73,7 +73,7 @@ function rig({ onRoad = false } = {}) {
     travelAsked: 20, csaHoldsTimeScale: () => false,
     travelGovernor: createLoadGovernor({ max: MAX_TIME_SCALE }),
     state: { terrainDistance: 3 }, playerTravelPixel: () => ({ x: 100, y: 200 }), tvGroundGenNow: () => w.unbuilt.size,
-    unbuiltAround, built: { has: (k) => !w.unbuilt.has(k) }, StreamingWorldState,   // ETHER-OW: what the world streams is what is built
+    unbuiltAround, built: { has: (k) => !w.unbuilt.has(k) }, StreamingWorldState,   // ETHER-OW: only what the world streams is owed a build
     journeyThreatCap: () => ({ cap: Infinity }), journeySlowSaid: () => {},   // OW6: no enemy about (test/ow6_slowdown.test.js runs the cap)
   };
   return { w, g: mountGovernor(env) };

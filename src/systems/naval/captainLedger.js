@@ -338,6 +338,8 @@ export function createCaptainLedger() {
     },
     isCharted: (key) => chartedSet.has(key),
     charted: () => ether.charted.slice(),
+    /** AUDIT ETHER-OW C2-2: how many isles are charted - asked each frame by the Overworld's lists' keys (no copy). */
+    chartedCount: () => ether.charted.length,
     /** A legend ended on `day`, and the day a legend was last ended (null: never). */
     endLegend(id, day) { if (typeof id === 'string' && Number.isFinite(day)) ether.legends[id] = Math.floor(day); },
     legendDay: (id) => (Number.isFinite(ether.legends[id]) ? ether.legends[id] : null),

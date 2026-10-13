@@ -337,21 +337,23 @@ test('THE MERGE (OW6) the world host, run: with the sea fight on my raider word 
   assert.deepEqual(h.journeyThreats(true), [{ dx: 300, dz: 0, reach: RAIDER_SIGHT_M }, { dx: 1 - 100000, dz: 1 - 200000, reach: RAIDER_SIGHT_M }]);
 });
 
-test('ETHER-OW: past the Veil a raider stands as the sea\'s own corsair - her class drawn the band\'s levels over the captain\'s, as every class the director draws there is (navalDirector.js ctx.ether), her names and colours the sea\'s, no crown\'s law over her (mutant: the band\'s levels unread)', async () => {
+test('ETHER-OW: past the Veil a raider stands as the sea\'s own corsair - her class drawn the band\'s levels over the captain\'s, as every class the director draws there is (navalDirector.js ctx.ether), her names and colours the sea\'s, no crown\'s law over her (mutants: the band\'s levels unread, its tier read for them)', async () => {
   const abyss = BANDS.find((b) => b.id === 'abyss');
+  // AUDIT ETHER-OW T-9: a captain of level 1, so the Abyss's levels (a pool with the galley) and its tier (none) draw apart
   let seed = 1;
-  while (raiderClassOf(seed, 5) === raiderClassOf(seed, 5 + abyss.level)) seed += 1;   // a seed the band's levels move
+  while (raiderClassOf(seed, 1 + abyss.level) === raiderClassOf(seed, 1 + abyss.tier) || raiderClassOf(seed, 1 + abyss.level) === raiderClassOf(seed, 1)) seed += 1;
   const where = { px: 2000, py: -5000, region: 19, day: 1, nearPort: false, capitals: [], cityLights: false, ether: { band: 'abyss', bandName: abyss.name, depth: 150 } };
-  const { host } = await harness({ settings: { ShipsAtSea: 'off' }, where });
+  const { host } = await harness({ settings: { ShipsAtSea: 'off' }, where, level: 1 });
   host.raiders([{ ...RAIDER, seed }], { sight: RAIDER_SIGHT_M, spent: new Set() });
   const [e] = raiderShips(host);
   assert.ok(e, 'stood');
-  assert.equal(e.ship.cls, raiderClassOf(seed, 5 + abyss.level), 'the Abyss\'s nine levels over my five');
-  assert.notEqual(e.ship.cls, raiderClassOf(seed, 5));
+  assert.equal(e.ship.cls, raiderClassOf(seed, 1 + abyss.level), 'the Abyss\'s nine levels over my one');
+  assert.notEqual(e.ship.cls, raiderClassOf(seed, 1 + abyss.tier), 'its levels, not its tier');
   assert.equal(e.ether, 'abyss', 'a ship of the sea: no crown\'s law (chargeEther), the band\'s hold');
   assert.equal(e.ship.names.name, etherShipNames(e.ship.cls, seed).name, 'the sea\'s names');
   assert.equal(e.ship.flag, etherFlagOf(e.ship.cls), 'and its colours - a corsair the black flag');
-  const bay = await harness({ settings: { ShipsAtSea: 'off' } });
+  const bay = await harness({ settings: { ShipsAtSea: 'off' }, level: 1 });
   bay.host.raiders([{ ...RAIDER, seed }], { sight: RAIDER_SIGHT_M, spent: new Set() });
-  assert.equal(raiderShips(bay.host)[0].ship.cls, raiderClassOf(seed, 5), 'the Bay\'s at my own level, as ever');
+  assert.equal(raiderShips(bay.host)[0].ship.cls, raiderClassOf(seed, 1), 'the Bay\'s at my own level, as ever');
+  assert.notEqual(raiderClassOf(seed, 1), e.ship.cls);
 });
