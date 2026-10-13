@@ -635,9 +635,10 @@
   {
     "name": "SURVBOONS-page-silent",
     "file": "src/systems/survival/status.js",
-    "old": "  for (const id of boons) lines.push(STATUS_TEXT.boon(id, s));",
+    "old": "  for (const id of boons) lines.push(STATUS_TEXT.boon(id), id === 'rested' ? STATUS_TEXT.restedFor(s) : null);",
     "new": "",
     "why": "the page says no boon",
+    "note": "AUDIT C&C (lens S): re-aimed by content - the bank's hours are a line of their own (STATUS_TEXT.restedFor), pushed after the boon's.",
     "tests": [
       "test/survboons.test.js"
     ]

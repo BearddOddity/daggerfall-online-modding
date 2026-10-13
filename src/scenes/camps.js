@@ -315,7 +315,7 @@ export function createCamps({
   function feedFire(item, list) {
     const feet = camera?.()?.feet;
     const t = now();
-    const near = feet ? camps.filter((c) => mine(c) && c.rec.kind === CAMP_KIND.Fire && !c.rec.jar && !!c.rec.fuel && within(c.rec.pos, feet, BY_FIRE_REACH)) : [];   // AUDIT REST-PARTY B5: never an old save's kit fire
+    const near = feet ? camps.filter((c) => mine(c) && visible(c) && c.rec.kind === CAMP_KIND.Fire && !c.rec.jar && !!c.rec.fuel && within(c.rec.pos, feet, BY_FIRE_REACH)) : [];   // AUDIT REST-PARTY B5: never an old save's kit fire; AUDIT C&C: nor one out of sight
     // AUDIT REST III B3: the emptiest of mine in reach WITH ROOM, as H11 has the pack's - four may stand, and the first
     // found took the stick only to refuse it ("all the fuel it can take") while a cold one beside it had none left
     const placed = near.filter((c) => (c.rec.wear | 0) < CAMPFIRE_USES).sort((a, b) => (a.rec.wear | 0) - (b.rec.wear | 0))[0] ?? null;
@@ -392,7 +392,7 @@ export function createCamps({
     if (!feet) return;
     for (const c of camps) {
       const tended = c.rec.kind === CAMP_KIND.Tent || (c.rec.kind === CAMP_KIND.Fire && !!c.rec.fuel);   // AUDIT REST-PARTY B2: and my own Campfire - an offline night moves the world's minutes, so one lit before the rest burned out under its sleeper, who woke beside a cold fire and spent no charge (spendNightNear asks a lit one): the fuel was free offline
-      if (!mine(c) || !tended || (c.rec.wear | 0) <= 0 || !fireLit(c.rec, t) || !within(c.rec.pos, feet, BY_FIRE_REACH)) continue;
+      if (!mine(c) || !visible(c) || !tended || (c.rec.wear | 0) <= 0 || !fireLit(c.rec, t) || !within(c.rec.pos, feet, BY_FIRE_REACH)) continue;   // AUDIT C&C: never one out of sight
       if ((c.rec.litUntil ?? 0) - t > FIRE_MINUTES - 60) continue;   // tended within the hour: one word on the wire an hour, not a frame
       c.rec.litUntil = t + FIRE_MINUTES;
       onChanged?.();
@@ -519,7 +519,7 @@ export function createCamps({
     if (typeof key === 'string' && key.startsWith('hearth:')) {
       if (mode === 'info' || mode === 'dialogue') { say(CAMP_TEXT.seeHearth); return true; }
       // REST2: a world fire rests too - its rows are Rest and Cook; the plaque's lit one, or the list without a plaque
-      if (lit === 'rest') { openRest?.(null); return true; }
+      if (lit === 'rest') { restAtHearth(); return true; }
       if (lit === 'cook' || !sharedClockOn()) { openCook(null); return true; }   // offline the cooking list, as HEARTH1 opened it
       openHearthMenu();
       return true;
@@ -531,9 +531,18 @@ export function createCamps({
     openMenu(c);
     return true;
   }
+  /** AUDIT C&C (lens I): A WORLD FIRE'S REST IS THE FIRE'S, AND SO IS ITS REACH - a camp's has been since AUDIT
+   *  SURV-TIERS' third pass (act's 'rest', below). The ray meets a fire's sprite up to CAMP_REACH from the eye, and the
+   *  rest's place (each host's `restKind`) reads the feet against the flame, which a collector stands as high as the top
+   *  of its flat - so the Rest row opened a rough night at the far edge of a brazier. It asks what the place will. */
+  function restAtHearth() {
+    const feet = camera?.()?.feet;
+    if (!feet || !fireNear(feet)) { say(CAMP_TEXT.restCloser); return; }
+    openRest?.(null);
+  }
   /** REST2: a world fire's own list, where no plaque stands: rest or cook. */
   function openHearthMenu() {
-    const win = new ListPickerWindow({ items: HEARTH_ROWS.map((r) => r.text), onPick: (i) => { if (HEARTH_ROWS[i]?.key === 'rest') openRest?.(null); else openCook(null); } });
+    const win = new ListPickerWindow({ items: HEARTH_ROWS.map((r) => r.text), onPick: (i) => { if (HEARTH_ROWS[i]?.key === 'rest') restAtHearth(); else openCook(null); } });
     if (showOverlay) showOverlay(win); else openCook(null);
     return win;
   }
@@ -544,7 +553,7 @@ export function createCamps({
     if (!pos) return false;
     let best = null, bestD = BY_FIRE_REACH;
     for (const c of camps) {
-      if (!mine(c) || !fireLit(c.rec, now())) continue;
+      if (!mine(c) || !visible(c) || !fireLit(c.rec, now())) continue;   // AUDIT C&C: never one out of sight
       const d = Math.hypot(c.rec.pos[0] - pos[0], c.rec.pos[1] - pos[1], c.rec.pos[2] - pos[2]);
       if (d <= bestD) { best = c; bestD = d; }
     }
@@ -665,7 +674,7 @@ export function createCamps({
    * the fire. Everything this player USES reads `byFire`, which is Off's
    * to hide.
    */
-  const fireNear = (pos) => !!nearestFire(camps.map((c) => c.rec), pos, now())
+  const fireNear = (pos) => !!nearestFire(seen().map((c) => c.rec), pos, now())   // AUDIT C&C (lens I): a camp out of sight answers no reach - a deck camp hidden with her boat still found its fire at its last posed point
     || hearthNear(hearths ? hearths() : null, pos, BY_FIRE_REACH);
   /** AUDIT C&C I2: a tent this player uses in reach - the roof a rest at it sleeps under (the hosts' `sheltered`). */
   const tentNear = (pos) => tentInReach(shown().map((c) => c.rec), pos);

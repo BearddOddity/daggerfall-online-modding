@@ -1823,11 +1823,13 @@ and as law in `survival/needs.js`:
    costs in every tier, and stands before the boons so a full band never
    folds it away first. The boons are the strip's GREEN tiles (`level:
    'boon'`, a `buff` tile): the need's own glyph for the need it rewards, a
-   flame for the Hearth (its own - REST1's Rested is the campfire), a gold
+   flame for the Hearth (its own - REST1's Next night is the campfire), a gold
    sparkle for Thriving (`ui/hudStatus.js` `STATUS_GLYPHS`), Well rested's
    whole hours left at its foot. The status page says each in a line read off
-   `BOON` - "Well fed: +5 Strength, +5 Endurance." - and says "You are not
-   tired." where Casual says "well rested" and no bank stands; the Stats side
+   `BOON` - "Well fed: +5 Strength, +5 Endurance." - with Well rested's bank
+   in a line of its own after it ("Rested for another 12 hours.", AUDIT C&C
+   S-S1), and says "You are not tired." where Casual says "well rested" and
+   no bank stands; the Stats side
    lists them (its Boons section). Each attribute boon is said once as it is
    earned and again only after it lapsed; the Hearth has no line - its tile
    says it.
@@ -1909,7 +1911,8 @@ trigger and words, and the sheet's rows in another tier - all 75 dead.
 **Not driven in the container:** no ARENA2, so the game was not played on
 Boons; the boon tiles were driven through the real `drawEnhancedHud` on a
 fake document, not photographed (the temperature plate beside them was -
-TEMP-UI).
+TEMP-UI). That drive was this session's own, not a suite's; since AUDIT C&C
+(R-S2) `test/auditcc_ui.test.js` drives them so.
 
 ## AUDIT SURV-BOONS (2026-10-12)
 
@@ -2510,8 +2513,9 @@ re-aimed by content.
   of size, scale, word or foe's bar, and placed whole, compact beside the
   compass with room for its mark, hung under the compass's end, or aside
   - clear of the FPS read-out, the foe's bar, the quest card and the party
-  list (711 Chromium checks). Recorded: the chat's peek lines are not yet
-  among what it keeps clear of.
+  list (711 Chromium checks), and of an arena session's button and a
+  journey's pace box (S-S4, the leads closed, below). Recorded: the chat's
+  peek lines are not yet among what it keeps clear of.
 - **S4 - the Grimoire dress drowned the cost's signal.** The wood's chip
   rule outweighed the plate's level frames, and the Felt plaque's number
   wore the Armour plaque's red. The level frames win now, and the number
@@ -2666,7 +2670,8 @@ SENTENCE):
   fifteen places, not nine, and AUDIT TEMP-UI the law in eight, not seven
   (and made the plate live); `loot15.json` is 45, all dead (below). The
   boon tiles were held to be pinned by a regex alone; survboons drives
-  them through `statusTiles`, the HUD's own builder.
+  them through `statusTiles`, the HUD's own builder, and `auditcc_ui`
+  through the real `drawEnhancedHud` (R-S2, the leads closed, below).
 - **The law in its own words (R4, R8, R10, R22, T10).** A lit fire in
   Casual answers the cold, never the heat, so the heat beside one stays
   red. The body's own warmth is not resisted (`temperature.js`'s header,
@@ -2726,3 +2731,167 @@ the corner, where the plate never stands), CLOTHES-BREATHE's threshold
 (continuous since E7), and four older ones the run met standing as
 recorded (SURVTIERS-off-eats-at-hard, SURVTIERS3-a-meal-in-the-future,
 and AUDITREST-F1's and REST6's Ember Jar).
+
+### The leads closed
+
+Each lens ended on what it suspected and had not reproduced, and on the
+decisions it left for the owner. After the run above every lead was
+driven against the tree: what reproduced was fixed at its root and
+pinned, and the rest is answered here.
+
+**Reproduced and fixed** (each pinned, its mutants dead):
+
+- **I-S1 - a world fire's Rest reached past the fire.** The ray meets a
+  brazier's sprite up to `CAMP_REACH` (3.2) from the eye, while the
+  rest's place - each host's `restKind`, through `fireNear` - reads the
+  feet against the flame, which an exterior collector stands at the top
+  of its flat. Three metres out and three under a tall brazier's flame
+  (4.24 from it), the Rest row opened a rough night beside the fire. The
+  row asks what the place will (`camps.js` `restAtHearth`, as a camp's
+  Rest has since AUDIT SURV-TIERS' third pass): within `BY_FIRE_REACH` it
+  rests at the fire, and beyond it says "Move closer to the fire to rest
+  here." and opens nothing - from the plaque and from the list alike.
+- **I-S4 - a hidden deck camp still answered.** A camp pitched on a
+  ship's deck is hidden with her boat, and the rest's place read every
+  camp: it found the fire at its last posed point, and a night there was
+  slept as a camp's beside a fire nobody could see. The place reads the
+  camps in sight, in every tier (`seen`), and the feed, the tending and a
+  night's charge pass a camp out of sight by; when she stands again, her
+  fire answers again.
+- **T-S1 - a castle's halls read "Underground".** The dungeon host
+  stands a castle too, and the mod's `Dungeon()` corrects a castle's air
+  as a dungeon's (`IsPlayerInsideDungeonCastle` beside
+  `IsPlayerInsideDungeon`), so the law is one. The breakdown's word was
+  wrong: the row is named by where the body stands - "Castle walls" in a
+  castle block, "Underground" below it - and the dungeon host says which
+  (`env.js` `castle`).
+- **T-S2 - the standalone exterior read the raw climate.** DFU's
+  `StreamingWorld.ReadyCheck` dilates the coast's Ocean pixels before any
+  climate is read, and the streaming host runs that repair at boot
+  (`terrainHelper.js` `dilateCoastalClimate`). The standalone exterior
+  (`?loc`, `?region`) read the raw buffer, so a coastal town whose own
+  pixel is raw Ocean felt the sea's nought (E4) there and its land's
+  climate in the streaming world. It runs the same repair after its maps
+  load.
+- **H-S2 - a save inside a journey.** DFU's fast travel is one frame
+  (`TeleportToCoordinates`, then `RaiseTime`). Here the teleport is
+  awaited, frames running, before the clock moves, and nothing refused a
+  save between them: the online checkpoint, the page's exit save or a key
+  wrote the arrival's place with the departure's clock and needs.
+  `worldQuickSave` refuses while the journey stands - its flag rises
+  before the teleport, falls after the clock, and falls whatever happens -
+  and the checkpoint tries again when it is next due.
+- **R-S2 - the boon tiles were held driven, by a session.** SURV-BOONS
+  drove them through `drawEnhancedHud` in its own session, and the suite
+  pinned `statusTiles` alone. A Boons body fed and watered, after a
+  minute of the law, now draws Well fed and Quenched as green tiles
+  through the real HUD, each saying its word; turned to Casual, it draws
+  neither.
+- **S-S1 - the status page's widest line.** The classic box sizes itself
+  to its widest line and wraps nothing (`DaggerfallMessageBox`), centred
+  on a 320-pixel screen. Well rested's line with its bank ran 59
+  characters ("Well rested (12 hours left): +5 Intelligence, +5
+  Willpower."), past the felt line's 53, the widest the box has drawn
+  since TEMP-UI. The bank is a line of its own ("Rested for another 12
+  hours."), and every line a body's record can mint, in every tier, is
+  held to 53 (`status.js` `STATUS_LINE_MAX`).
+- **S-S4 - the plate stood on the arena's button.** An arena session's
+  button and a journey's pace box stand 64 pixels down and 12 in from the
+  top right; on an 800-pixel screen at a HUD scale of 2 the compact plate
+  beside the compass stood on the button. Both are among what the plate
+  keeps clear of (`enhancedHud.js` `TEMP_CLEAR_OF`): it hangs under the
+  compass's right end, below the button, and stands beside the compass
+  again once the button goes.
+- **S-D7 - "Rested" beside "Well rested".** REST1's tile counts down the
+  wait until a night can pass again, and online in Boons it stood beside
+  the Well rested boon, a bank of sleep. It is "Next night" now
+  (`hudStatus.js`, held equal to `REST_ACT_TEXT.rested` by its pin;
+  Rest-Arc).
+
+**Answered by a fix above.** H-S5, a Boons pool over its ceiling after
+Well fed lapsed in a replay: N5's clamp in all five sinks. N-S1,
+SURV-THIRST1's 120 as "the mod's own heat-only line": R16's Ledger row,
+with the source's answer beside it. N-S3, no collapse guard in
+`exterior.js` online: N2/H1's guard stands in both lanes in the three
+hosts. N-S2, the nested tick walking minutes past the jump's end
+(`lastMinute` going back), and H-S1, a nested collapse hour's encounter
+roll turning a later collapse into a death: no collapse fires inside a
+replay since N2/H1, and a live collapse's hour is rolled as DFU's own
+catch-up loop rolls every minute a raise moves. H-S3, a frame during the
+awaited teleport sampling the arrival's weather: the road is felt under
+a fair sky (H3) and its landing at its own (N1/H4).
+
+**Driven, and not so.** S-S2, a load's first frames reading the last
+place's feed: the ticker rebuilds the feed every tick, so a reading from
+before the load lasts a frame at most. S-S3, the Hearth tile flickering
+past braziers: the tile says what the minute law paid, and the law pays
+by the minute (`survivalBoons`, written once a minute), so a brazier
+passed lights it for a minute at most, never frame by frame.
+
+**Decided, not changed.**
+
+- **I-D1 - Boons eats at Hungry.** Lens I would have the tier that
+  rewards eat a sack at Peckish: on the sacks alone Well fed (and
+  Thriving with it) holds 230 of every 710 minutes, and eating at Peckish
+  would hold it for about six sacks a day against two. Mac's word decides
+  it (RATIONS-HUNGRY,
+  2026-10-03): *"With C&C let it auto consume any rations in inventory
+  when hungry"* - in every tier, Boons with them. Well fed is kept by
+  eating before the rumble turns to hunger, by hand.
+- **H-D3 - the tier stays the device's.** Lens H would store the tier on
+  the character, the device's choice only a new character's default.
+  Every Features row is a preference of the device (`uiPrefs.js`), and
+  the row says so ("Online, each player picks their own"); a tier on the
+  character would be the first row that is not, and is Mac's call.
+- **H-S4 - the escort's road reads its departure.** The Living World
+  escort (`world.js` `travelWith`) moves the clock and then teleports, so
+  its replayed minutes are felt in the departure's climate where a fast
+  travel's are felt in the arrival's (E5). Either end stands for a route
+  neither walks; reordering it means awaiting the teleport inside the
+  caravan host's synchronous door, a change to the Living World's
+  contract and not to the needs'. Recorded.
+
+**Recorded, open - each needs ARENA2 to measure.**
+
+- **I-S2 - a fire warms through a wall.** `byFire`, `fireNear` and
+  `hearthNear` measure distance alone. The mod's temperature has no fire
+  in it (its fire is a camp's, met by activating it); the warmth, the
+  drying and the rest within four metres of one are the port's own law
+  (SURV3, HEARTH1). Whether a wall stands between a fire and a body
+  inside that reach in a real scene needs ARENA2's geometry to answer; it
+  is not changed blind.
+- **I-S3, D6 - a tavern's fireplace.** The mod's activation counts the
+  flats 210.0 and 210.1, two records of archive 101 (DFU's lights,
+  `emissiveTextures.js`) and the two fireplace models, 41116 and 41117;
+  indoors any of them opens the rest window as a camp's. HEARTH1 left a
+  hearth mesh to a slice of its own (`survival/hearth.js`: a lookup by
+  model id where models are placed), and IIL1 already finds the two
+  models' centres (`interiorContext.js` `iilFireplaces`). A
+  model's box is not a flat's: it stands in a wall, between doors and
+  shelves, and HEARTH1's FIX-D was a fire's box that ate a door's click.
+  Which taverns have a fireplace and no flame flat, and what a
+  fireplace's box would stand over, needs ARENA2 to measure.
+- **R-S1 - water pixels with a land climate.** `isWaterPixel`'s height
+  arm calls a low pixel water whatever its climate, so a ship over one
+  feels the land's climate and not E4's sea. Lens R's call stands: count
+  them with ARENA2 first, and if they are common, the survival reader
+  takes "sea" from the water law.
+- **T-S3 - 1.7.1 against 1.7.0.** The published source stops at 1.7.0,
+  and the 1.7.1 DLL SURV1 read is not in the tree to read again
+  (`tools/ilDump.py` is its reader). T2, T9 and T11, and T1's cover, follow
+  the newest source there is.
+
+Pinned by `test/auditcc.test.js` (the castle, the coast, the journey's
+save), `auditcc_items` (the world fire's reach), `auditcc_ui` (the boon
+tiles, the line's width, the plate and the top right's two pieces),
+`deckcamp` (the hidden camp) and `rest1_act` (the tile's name), with
+`hearth1_worldfires`, `rest2_campfire`, `survboons`, `rest1_act` and
+`auditcc_ui`'s R11 moved by content. The round was judged as the run
+above was: every record within six lines of a line it changed, and every
+record a test it changed kills - 379 records, 376 dead and 3 equivalent
+as recorded (R18's two and S12's boxless node), none surviving. Eight
+records it moved were re-aimed by content: S12's four (the keep-clear
+list is longer), SURV7's dungeon fire (the castle's word follows its
+line), SURVBOONS' silent page (the bank's line rides beside the boon's),
+SURVTIERS' tiers again (the place reads `seen`, and `shown` is still the
+mutant) and R11's comment (it names REST1's tile).

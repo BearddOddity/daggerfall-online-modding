@@ -58,14 +58,14 @@ export const LEVEL_WORDS = Object.freeze({ danger: 'it costs you', warn: 'felt, 
 export const levelSaid = (word, level) => (Object.hasOwn(LEVEL_WORDS, level) ? `${word} - ${LEVEL_WORDS[level]}` : word);
 /**
  * SURV-BOONS (2026-10-12): A BOON'S CHIP - its word and the glyph it stands on (ui/hudStatus.js STATUS_GLYPHS): the need's
- * own for the need it rewards, a flame for the hearth (its own - REST1's Rested is the campfire), a sparkle for
+ * own for the need it rewards, a flame for the hearth (its own - REST1's Next night is the campfire), a sparkle for
  * Thriving. The strip reads them off the record's `boons` (needs.js survivalBoons, written by the minute law), so it
  * shows what the body has, in a rewarding tier (Boons), where nothing costs - so no need's chip there is red (RED MEANS
  * IT COSTS). The drink is the exception it is in every tier: its swing is the drink's.
  */
 export const HUD_BOON_WORDS = Object.freeze({
   fed: Object.freeze(['Well fed', 'hunger']), quenched: Object.freeze(['Quenched', 'thirst']), rested: Object.freeze(['Well rested', 'sleep']),
-  thriving: Object.freeze(['Thriving', 'thriving']), hearth: Object.freeze(['Hearth', 'hearth']),   // AUDIT SURV-BOONS C7: its own flame - REST1's Rested is the campfire, and the two stood side by side
+  thriving: Object.freeze(['Thriving', 'thriving']), hearth: Object.freeze(['Hearth', 'hearth']),   // AUDIT SURV-BOONS C7: its own flame - REST1's Next night is the campfire, and the two stood side by side
 });
 /** The tier a reader reads the record by: the LIVE tier's rules where the reader knows them (AUDIT SURV-BOONS C14: the
  *  HUD, the pack and - AUDIT C&C S11 - the Status page hand `rules` in, survival/switch.js survivalRules, so a turn of
@@ -183,16 +183,23 @@ export const STATUS_TEXT = Object.freeze({
   vampire: 'You have no need for food or sleep.',
   invigorated: 'You are invigorated from your last meal.',
   // SURV-BOONS: a boon's line - its word and what it gives, read off needs.js BOON (never restated), the attributes named
-  // as the sheet names them (AUDIT SURV-BOONS C11) in the sheet's order, the hours whole and singular at one (C10); the
-  // hearth's own. Plain characters: the classic's faces draw this box (TEMP-UI's felt line says why).
-  boon: (id, s = null) => {
+  // as the sheet names them (AUDIT SURV-BOONS C11) in the sheet's order; the hearth's own. Plain characters: the
+  // classic's faces draw this box (TEMP-UI's felt line says why).
+  boon: (id) => {
     if (id === 'hearth') return 'The fire\'s warmth restores your stamina.';
     const w = HUD_BOON_WORDS[id]?.[0];
     if (!w || !BOON[id]) return null;
-    const left = id === 'rested' && restedLeft(s) ? ` (${restedLeft(s)} left)` : '';
-    return `${w}${left}: ${boonEffect(id)}.`;
+    return `${w}: ${boonEffect(id)}.`;
   },
+  // AUDIT C&C (lens S): Well rested's bank, a line of its own - the hours whole and singular at one (C10). The classic
+  // box sizes itself to its widest line and never wraps (DaggerfallMessageBox), centred on a 320-pixel screen, and the
+  // one line that said both ran 59 characters, past the felt line's 53 (STATUS_LINE_MAX).
+  restedFor: (s) => (restedLeft(s) ? `Rested for another ${restedLeft(s)}.` : null),
 });
+/** AUDIT C&C (lens S): the widest a line of the status page's third box may run - the felt line's longest ("Felt
+ *  temperature: -120 (comfortable from -10 to +10)."), which the classic box has drawn since TEMP-UI. The box takes its
+ *  width from its widest line and wraps nothing, so every line the needs can say is held to it. */
+export const STATUS_LINE_MAX = 53;
 
 /**
  * The status page's third box: one line a need (the vampire's one line
@@ -221,7 +228,7 @@ export function survivalStatusLines(entity, now, { vampire = false, endurance = 
   if (Number.isFinite(s.felt)) { const word = temperatureWord(s.felt); lines.push(warmedBy(s, word) ? STATUS_TEXT.warmedByFire : STATUS_TEXT.temp(word), STATUS_TEXT.felt(s.felt)); }   // TEMP-UI: and its number
   if (isStiff(s, now)) lines.push(STATUS_TEXT.stiff);
   if (s.drunk > endurance / 2) lines.push(s.drunk > endurance - 10 ? STATUS_TEXT.veryDrunk : STATUS_TEXT.drunk);
-  for (const id of boons) lines.push(STATUS_TEXT.boon(id, s));   // SURV-BOONS: what the body has earned
+  for (const id of boons) lines.push(STATUS_TEXT.boon(id), id === 'rested' ? STATUS_TEXT.restedFor(s) : null);   // SURV-BOONS: what the body has earned - AUDIT C&C: the bank's hours after it
   return lines.filter(Boolean);
 }
 /** The box's rows, in the hosts' `{ text, center }` shape. */

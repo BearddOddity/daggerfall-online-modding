@@ -503,3 +503,37 @@ test('AUDIT C&C D5: BARE FEET READ THE NATURAL TEMPERATURE AGAINST THE LIVE ENDU
   const deep = wearer(); deep.stats.endurance = 30;
   assert.equal(bare(deep, { climateIndex: CLIMATES.Mountain, month: 0, hour: 2, weather: 'snow', insideDungeon: true }), false);
 });
+
+test('AUDIT C&C (lens T): A CASTLE\'S HALLS ARE NOT UNDERGROUND - the mod\'s Dungeon() corrects a castle\'s air as a dungeon\'s (IsPlayerInsideDungeonCastle beside IsPlayerInsideDungeon), so the law is one; the breakdown names the row by where the body stands, "Castle walls" in a castle block and "Underground" below it, and the dungeon host says which (mutants: the label ignores the castle; the host never says it; the feed drops it)', () => {
+  setPref(SURVIVAL_PREF, 'casual');
+  const hall = { climateIndex: CLIMATES.Woodlands, month: 0, hour: 12, weather: 'sunny', insideDungeon: true };
+  const ground = (env) => temperatureBreakdown(env, feltTemperature(env, [], { raceId: RACES.Breton })).find((r) => r.key === 'ground') ?? null;
+  assert.deepEqual(ground(hall), { key: 'ground', label: 'Underground', value: 10 }, 'a Woodlands winter\'s -30 held to the -20 below');
+  assert.deepEqual(ground({ ...hall, castle: true }), { key: 'ground', label: 'Castle walls', value: 10 }, 'the same law in a palace, named for where it is');
+  assert.equal(ground({ ...hall, insideDungeon: false }), null, 'on the surface, no row');
+  // the feed carries the host's word (off by default - a host that says nothing stands in no castle), and the host says it
+  assert.equal(survivalFeed(wearer(), { ...hall, castle: true }).env.castle, true);
+  assert.equal(survivalFeed(wearer(), hall).env.castle, false);
+  assert.match(read('src/scenes/dungeonContext.js'), /\n {6}castle: !!\(_fpFeet && castleBlockAt\(_fpFeet\[0\], _fpFeet\[2\]\)\),/);
+});
+
+test('AUDIT C&C (lens T): THE STANDALONE EXTERIOR READS THE REPAIRED CLIMATE - StreamingWorld.ReadyCheck dilates the coast\'s ocean pixels before DFU reads a climate, and the streaming host runs it at boot; the standalone exterior (?loc, ?region) read the raw buffer, so a coastal town whose own pixel is raw Ocean felt the sea\'s nought there and its land\'s climate in the world - it runs the same repair, after its maps load and before its first location read (mutant: no repair)', () => {
+  const ext = read('src/scenes/exterior.js');
+  const load = ext.indexOf('  maps.load(mapsBytes, climateBytes, politicBytes);');
+  const repair = ext.indexOf('\n  dilateCoastalClimate(maps, 2);\n');
+  const first = ext.indexOf('maps.getLocation');
+  assert.ok(load >= 0 && repair >= 0 && first >= 0, 'the load, the repair and the first read all stand');
+  assert.ok(load < repair && repair < first, 'the repair between the load and the first read');
+  assert.match(read('src/scenes/world.js'), /\n {2}const dilated = dilateCoastalClimate\(maps, 2\);/, 'as the streaming host runs it');
+});
+
+test('AUDIT C&C (lens H): NO SAVE INSIDE A JOURNEY - DFU\'s fast travel is one frame (TeleportToCoordinates, then RaiseTime), and here the teleport is awaited with frames running before the clock moves: a save between them wrote the arrival\'s place with the departure\'s clock and needs; the save refuses while the journey stands, and the journey\'s flag stands from before the teleport to after the clock, and falls whatever happens (mutant: no refusal)', () => {
+  const w = read('src/scenes/world.js');
+  const at = w.indexOf('function worldQuickSave(');
+  const save = w.slice(at, w.indexOf('const pf = walkMode && playerSpawned ? player.pos : cam.pos;', at));
+  assert.match(save, /\n {4}if \(_traveling\) \{ if \(!quiet\) townTalk\.say\('You cannot save now\.'\); return false; \}/, 'refused, said to a save pressed');
+  const rise = w.indexOf('      _traveling = true;\n'), teleport = w.indexOf('await _teleportToPixel(pick.pixel.x, pick.pixel.y', rise);
+  const clock = w.indexOf('playerTicker.advance(computed.minutes);', teleport), fall = w.indexOf('        _traveling = false;\n', clock);
+  assert.ok(rise > 0 && rise < teleport && teleport < clock && clock < fall, 'the flag over the teleport and the clock');
+  assert.ok(/\} finally \{\n {6}try \{ if \(hccPostDue\)[^\n]*\n {6}finally \{\n {8}_traveling = false;/.test(w), 'and it falls in a finally');
+});

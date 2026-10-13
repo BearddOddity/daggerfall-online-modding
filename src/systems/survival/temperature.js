@@ -477,7 +477,7 @@ export function temperatureBreakdown(env = {}, temp = null) {
   add('hour', HOUR_NAMES[hourBand(env.hour)], p.hour);
   add('weather', WEATHER_NAMES[env.weather] ?? 'The weather', p.weather);
   add('roof', 'Shelter', p.roof);
-  add('ground', 'Underground', temp.dungeon);
+  add('ground', env.castle ? 'Castle walls' : 'Underground', temp.dungeon);   // AUDIT C&C (lens T): the mod's Dungeon() corrects a castle's halls as a dungeon's, and a palace is not underground
   add('resist', 'Resistances', temp.worldResist);
   add('race', 'Your race', temp.race);
   add('clothes', 'Clothing', temp.clothes, temp.clothesDry > temp.clothes && temp.wet > 0 ? `${signedDegrees(temp.clothesDry)} dry` : null);

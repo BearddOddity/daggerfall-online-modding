@@ -6,7 +6,7 @@ import { SURVIVAL_RULES } from '../src/systems/survival/difficulty.js';
 import { newSurvival, survivalMinute, warmedByFire } from '../src/systems/survival/needs.js';
 import { temperatureWord } from '../src/systems/survival/temperature.js';
 import { survivalFeed, feltNow } from '../src/systems/survival/env.js';
-import { HUD_NEED_WORDS, LEVEL_WORDS, needLevel, levelSaid, survivalHudChips, temperatureReadout } from '../src/systems/survival/status.js';
+import { HUD_NEED_WORDS, LEVEL_WORDS, needLevel, levelSaid, survivalHudChips, temperatureReadout, survivalStatusLines, STATUS_TEXT, STATUS_LINE_MAX } from '../src/systems/survival/status.js';
 import { SURVIVAL_PREF } from '../src/systems/survival/switch.js';
 import { setPref, _resetForTests } from '../src/systems/uiPrefs.js';
 import { LOOT_RARITY_KEY, applyRarity, WARDROBE_LEGENDARIES } from '../src/systems/lootRarity.js';
@@ -26,6 +26,7 @@ import { packTemperature, temperaturePlaque, temperatureWear, boonStatRows } fro
 import { asKnown, wearComparison } from '../src/ui/armourCard.js';
 import { mountEnhancedInventory } from '../src/ui/enhancedInventory.js';
 import { HOTBAR_PREF } from '../src/ui/enhancedHotbar.js';
+import { PACE_BOX_ID } from '../src/ui/travelPaceControls.js';
 import { buildStatsPage } from '../src/ui/statsCard.js';
 import { ARMOUR_CSS } from '../src/ui/enhancedPlusStyle.js';
 import { ENHANCED_CSS } from '../src/ui/enhancedStyle.js';
@@ -596,8 +597,9 @@ test('AUDIT C&C D6, R11: THE COMFORTABLE THERMOMETER IS NEUTRAL - its column the
     assert.ok(Math.max(r, g, b) - Math.min(r, g, b) <= 52, `${c}: no hue to speak of`);
   }
   for (const f of ['src/systems/survival/status.js', 'src/ui/hudStatus.js']) assert.doesNotMatch(read(f), /the campfire for the hearth/, f);
-  assert.match(read('src/systems/survival/status.js'), /a flame for the hearth \(its own - REST1's Rested is the campfire\)/);
-  assert.match(read('src/ui/hudStatus.js'), /a flame of its own for the hearth \(REST1's\n\/\/ {5}Rested is the campfire\)/);
+  // PIN MOVED (AUDIT C&C, lens S): REST1's tile is Next night now
+  assert.match(read('src/systems/survival/status.js'), /a flame for the hearth \(its own - REST1's Next night is the campfire\)/);
+  assert.match(read('src/ui/hudStatus.js'), /a flame of its own for the hearth \(REST1's\n\/\/ {5}Next night is the campfire\)/);
 });
 
 // ═══ R5, R6, R7 - THE PINS THAT DID NOT FAIL ════════════════════════════
@@ -668,4 +670,76 @@ test('AUDIT C&C R5 (B11): THE ENHANCED MENU\'S ATTRIBUTES PAGE, DRIVEN - the pau
     for (const k of Object.keys(playerEntity)) if (!(k in kept)) delete playerEntity[k];
     Object.assign(playerEntity, kept);
   }
+});
+
+test('AUDIT C&C (lens R): THE BOON TILES, DRIVEN THROUGH THE REAL HUD - a Boons body after a minute of the law, fed and watered: the strip draws Well fed and Quenched as green tiles; turned to Casual, the same body draws neither (SURV-BOONS drew them in its own session, and survboons pins the tiles\' builder, `statusTiles`, alone)', async () => {
+  const doc = hudDoc();
+  await withHud(doc, async ({ drawEnhancedHud }) => {
+    const e = realPlayer('boons');
+    minute(e, ROOM, 101);
+    assert.deepEqual(e.survival.boons, ['fed', 'quenched'], 'the minute law granted them');
+    const boonCells = () => {
+      drawEnhancedHud(e, 0, 0, {});
+      return doc.querySelectorAll('.hud-stat .hst-cell').map((c) => [c.querySelector('.hst-name')?.textContent, ['buff', 'warn', 'danger'].find((k) => c.classList.contains(k))])
+        .filter(([name]) => name === 'Well fed' || name === 'Quenched');
+    };
+    assert.deepEqual(boonCells(), [['Well fed', 'buff'], ['Quenched', 'buff']], 'green, each by its word');
+    setPref(SURVIVAL_PREF, 'casual');
+    assert.deepEqual(boonCells(), [], 'Casual earns no boon tile');
+  });
+});
+
+test('AUDIT C&C (lens S): EVERY LINE OF THE STATUS PAGE\'S THIRD BOX FITS THE CLASSIC BOX - it sizes itself to its widest line and wraps nothing (DaggerfallMessageBox), centred on a 320-pixel screen; Well rested\'s line with its bank ran 59 characters, past the felt line\'s 53, the widest the box has drawn since TEMP-UI - the bank\'s hours are a line of their own, and every line a body\'s record can mint, in every tier, is held to 53 (mutant: the hours back in the boon\'s line)', () => {
+  assert.equal(STATUS_LINE_MAX, 53);
+  assert.equal(STATUS_TEXT.felt(-120).length, 53, 'the budget is the felt line\'s longest');
+  let widest = '';
+  for (const tier of ['boons', 'casual', 'hard']) {
+    const rules = SURVIVAL_RULES[tier];
+    for (const vampire of [false, true]) for (const lastAte of [990, 700, 200, -2000]) for (const thirst of [0, 60, 100, 140]) for (const sleepDebt of [0, 2, 5, 10]) for (const wet of [0, 60, 150, 250]) for (const felt of [-120, -25, 0, 30, 120]) for (const drunk of [0, 30, 60]) {
+      const s = { ...newSurvival(0), lastAte, thirst, sleepDebt, wet, felt, drunk, stiffUntil: 2000, boons: ['fed', 'quenched', 'rested', 'thriving', 'hearth'], wellRested: 720 };
+      for (const l of survivalStatusLines({ survival: s }, 1000, { vampire, endurance: 50, rules })) if (l.length > widest.length) widest = l;
+    }
+  }
+  assert.ok(widest.length <= STATUS_LINE_MAX, `"${widest}" (${widest.length})`);
+  assert.equal(widest.length, 53, 'and the felt line is the widest, as it was');
+});
+
+test('AUDIT C&C (lens S): THE PLATE KEEPS CLEAR OF THE TWO PIECES FIXED AT THE TOP RIGHT - an arena session\'s button and a journey\'s pace box stand 64 px down and 12 in; on an 800-pixel screen at a HUD scale of 2 the compact plate beside the compass stood on the button: it hangs under the compass\'s right end, below the button, and stands beside the compass again once the button goes (mutant: the button not kept clear of)', async () => {
+  const doc = hudDoc();
+  await withHud(doc, async ({ drawEnhancedHud }) => {
+    const e = realPlayer('casual');
+    minute(e, MOUNTAIN_NIGHT, 1001);
+    const draw = (n = 1) => { for (let i = 0; i < n; i++) drawEnhancedHud(e, 0, 0, {}); };
+    draw();
+    const plate = doc.querySelector('.hud .hud-temp');
+    // the S3 harness's plate: beside the compass whole or compact, or hung under its right end - at a HUD scale of 2 (k)
+    const at = { compassRight: 700, compassBottom: 46, top: 18, whole: [710, 912], compact: [710, 780], k: 2 };
+    plate.offsetHeight = 24;
+    plate.getBoundingClientRect = () => {
+      const px = (v) => parseFloat(plate.style[v] ?? '0') || 0;
+      const h = 24 * at.k;
+      if (plate.classList.contains('temp-hung')) {
+        const w = at.compact[1] - at.compact[0], right = at.compassRight - px('--hud-temp-in') * at.k, top = at.compassBottom + (6 + px('--hud-temp-drop')) * at.k;
+        return { left: right - w, right, top, bottom: top + h, width: w, height: h };
+      }
+      const [l, r] = plate.classList.contains('compact') ? at.compact : at.whole;
+      return { left: l, right: r, top: at.top, bottom: at.top + h, width: r - l, height: h };
+    };
+    const box = (cls, id, r) => { const n = doc.mk('div'); n.className = cls; n.id = id; n.getBoundingClientRect = () => ({ ...r, width: r.right - r.left, height: r.bottom - r.top }); doc.body.append(n); return n; };
+    const state = () => [plate.className, plate.style['--hud-temp-in'] ?? null, plate.style['--hud-temp-drop'] ?? null];
+    draw(31);
+    assert.deepEqual(state(), ['hud-temp compact', null, null], 'the glyph and the number beside the compass');
+    const arena = box('arena-session-btn', '', { left: 700, right: 788, top: 64, bottom: 92 });
+    draw(30);
+    assert.deepEqual(state(), ['hud-temp compact temp-hung', null, '21px'], 'hung under the compass\'s end, eight under the button\'s foot');
+    arena.remove();
+    draw(30);
+    assert.deepEqual(state(), ['hud-temp compact', null, null], 'the button gone: beside the compass again');
+    // the pace box stands where the button does, by the id its own module gives it
+    assert.equal(PACE_BOX_ID, 'travel-pace-box');
+    const pace = box('', PACE_BOX_ID, { left: 600, right: 788, top: 64, bottom: 200 });
+    draw(30);
+    assert.equal(plate.classList.contains('compact') && (plate.classList.contains('temp-hung') || plate.classList.contains('temp-aside')), true, 'not on the pace box');
+    pace.remove();
+  }, 800);
 });

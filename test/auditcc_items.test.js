@@ -287,3 +287,29 @@ test('AUDIT C&C I2: A REST IN A TENT SLEEPS UNDER ITS ROOF, AND NO REST RUSTS - 
     assert.match(src, /byFire: m === 'exterior' && camps\.byFire\(feet\), sheltered,/, file);
   }
 });
+
+test('AUDIT C&C (lens I): A WORLD FIRE\'S REST IS THE FIRE\'S, AND SO IS ITS REACH - the ray meets a brazier\'s sprite from the far side of its box while the rest\'s place reads the feet against the flame at the top of the flat; the Rest row asks what the place will: within reach it rests, beyond it says so and opens no rough night - from the plaque and from the list alike (mutants: the plaque\'s row unchecked; the list\'s row unchecked; the reach dropped)', () => {
+  setPref(SURVIVAL_PREF, SURVIVAL_STORED.casual);
+  setSharedClock(() => 1000);   // online: no plaque row lit opens the hearth's own list
+  const said = [], overlays = [];
+  const state = { feet: [3, 0, 0] };
+  // a brazier whose collector stood its light at the top of a three-metre flat (the exterior hosts' cityLights)
+  const camps = createCamps({
+    entity: { items: [] }, hearths: () => [{ x: 0, y: 3, z: 0, foot: 0, w: 1, h: 3 }], camera: () => ({ feet: state.feet, yaw: 0 }),
+    say: (l) => said.push(l), showOverlay: (w) => overlays.push(w), openRest: (c) => said.push(c === null ? 'REST' : 'CAMP REST'),
+  });
+  // three metres out and three under the flame - 4.24 from it: past BY_FIRE_REACH, the place the rest would read rough
+  assert.equal(camps.fireNear(state.feet), false, 'the place: no fire in reach');
+  assert.equal(camps.activate('hearth:0', 'grab', 'rest'), true);
+  assert.deepEqual(said, [CAMP_TEXT.restCloser], 'the plaque\'s Rest: told to come closer, no rest opened');
+  camps.activate('hearth:0', 'grab');
+  assert.equal(overlays.length, 1, 'with no row lit online, the hearth\'s own list');
+  overlays[0].onPick(0);
+  assert.deepEqual(said, [CAMP_TEXT.restCloser, CAMP_TEXT.restCloser], '...and its Rest row the same');
+  // two metres out - 3.61 from the flame: in reach, and the rest the fire's
+  state.feet = [2, 0, 0];
+  assert.equal(camps.fireNear(state.feet), true);
+  camps.activate('hearth:0', 'grab', 'rest');
+  overlays[0].onPick(0);
+  assert.deepEqual(said.slice(2), ['REST', 'REST'], 'both doors rest at the fire once the feet are in its reach');
+});

@@ -77,7 +77,7 @@ import { survivalOn, survivalRules } from '../systems/survival/switch.js';   // 
 import { temperatureReadout, levelSaid } from '../systems/survival/status.js';   // TEMP-UI: the temperature plate's reading; AUDIT C&C S14: its level in words
 import { feltNow } from '../systems/survival/env.js';   // TEMP-UI: live, where the body stands this frame
 
-import { ownMinutes, sharedClockOn } from '../systems/worldTick.js';   // LIVED1: the needs' strip reads the character's own clock   // REST1: and the Rested tile is online's
+import { ownMinutes, sharedClockOn } from '../systems/worldTick.js';   // LIVED1: the needs' strip reads the character's own clock   // REST1: and the Next night tile is online's
 import { nightRealMinutesLeft } from '../systems/restAct.js';   // REST1: the night interval's minutes left
 import { compassScroll, breathShortThreshold, compassMarkerLerp, DETECT_MARKER_RGB } from './hud.js';
 import { PARTY_GREEN_CSS } from '../net/social.js';   // COMPASS-PARTY: the party's one green
@@ -1347,8 +1347,11 @@ const TEMP_EDGE = 8;
  *  nothing (a 360 phone had the plate a pixel from the edge, and the mark past it). */
 const TEMP_MARK = 5;
 /** AUDIT C&C S3, S12: what the plate keeps clear of, where it would stand: the FPS read-out (ui/fpsCounter.js, over every
- *  host at the top right), a foe's bar under the compass, and down the right edge the quest card and the party list. */
-const TEMP_CLEAR_OF = '#fps-counter, .hud-foe.on, .qtrack, .dfparty';
+ *  host at the top right), a foe's bar under the compass, and down the right edge the quest card and the party list -
+ *  and (lens S) the two pieces fixed 64 px down and 12 in from the top right: an arena session's button
+ *  (ui/arenaSessionButton.js) and a journey's pace box (ui/travelPaceControls.js PACE_BOX_ID), which a compact plate
+ *  beside the compass met on a narrow screen at a large HUD scale. */
+const TEMP_CLEAR_OF = '#fps-counter, .hud-foe.on, .qtrack, .dfparty, .arena-session-btn, #travel-pace-box';
 
 /** UI3: frames between two measures of the widget's band - a layout read is not free, and a band moves only when the
  *  chat, the escorts or the quickslot block do. */

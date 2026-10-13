@@ -252,9 +252,10 @@
   {
     "name": "AUDITCC-UI-S12-the-fps-read-out-unseen",
     "file": "src/ui/enhancedHud.js",
-    "old": "const TEMP_CLEAR_OF = '#fps-counter, .hud-foe.on, .qtrack, .dfparty';",
-    "new": "const TEMP_CLEAR_OF = '.hud-foe.on, .qtrack, .dfparty';",
+    "old": "const TEMP_CLEAR_OF = '#fps-counter, .hud-foe.on, .qtrack, .dfparty, .arena-session-btn, #travel-pace-box';",
+    "new": "const TEMP_CLEAR_OF = '.hud-foe.on, .qtrack, .dfparty, .arena-session-btn, #travel-pace-box';",
     "why": "the plate under the FPS read-out (1440, 1280, 1024)",
+    "note": "AUDIT C&C (lens S): re-aimed by content - the list also keeps clear of an arena session's button and a journey's pace box.",
     "tests": [
       "test/auditcc_ui.test.js"
     ]
@@ -262,9 +263,10 @@
   {
     "name": "AUDITCC-UI-S12-the-foe-s-bar-unseen",
     "file": "src/ui/enhancedHud.js",
-    "old": "const TEMP_CLEAR_OF = '#fps-counter, .hud-foe.on, .qtrack, .dfparty';",
-    "new": "const TEMP_CLEAR_OF = '#fps-counter, .qtrack, .dfparty';",
+    "old": "const TEMP_CLEAR_OF = '#fps-counter, .hud-foe.on, .qtrack, .dfparty, .arena-session-btn, #travel-pace-box';",
+    "new": "const TEMP_CLEAR_OF = '#fps-counter, .qtrack, .dfparty, .arena-session-btn, #travel-pace-box';",
     "why": "the hung plate on a foe's bar",
+    "note": "AUDIT C&C (lens S): re-aimed by content - the list also keeps clear of an arena session's button and a journey's pace box.",
     "tests": [
       "test/auditcc_ui.test.js"
     ]
@@ -272,9 +274,10 @@
   {
     "name": "AUDITCC-UI-S12-the-quest-card-unseen",
     "file": "src/ui/enhancedHud.js",
-    "old": "const TEMP_CLEAR_OF = '#fps-counter, .hud-foe.on, .qtrack, .dfparty';",
-    "new": "const TEMP_CLEAR_OF = '#fps-counter, .hud-foe.on, .dfparty';",
+    "old": "const TEMP_CLEAR_OF = '#fps-counter, .hud-foe.on, .qtrack, .dfparty, .arena-session-btn, #travel-pace-box';",
+    "new": "const TEMP_CLEAR_OF = '#fps-counter, .hud-foe.on, .dfparty, .arena-session-btn, #travel-pace-box';",
     "why": "the hung plate on the quest card",
+    "note": "AUDIT C&C (lens S): re-aimed by content - the list also keeps clear of an arena session's button and a journey's pace box.",
     "tests": [
       "test/auditcc_ui.test.js"
     ]
@@ -282,9 +285,10 @@
   {
     "name": "AUDITCC-UI-S12-the-party-list-unseen",
     "file": "src/ui/enhancedHud.js",
-    "old": "const TEMP_CLEAR_OF = '#fps-counter, .hud-foe.on, .qtrack, .dfparty';",
-    "new": "const TEMP_CLEAR_OF = '#fps-counter, .hud-foe.on, .qtrack';",
+    "old": "const TEMP_CLEAR_OF = '#fps-counter, .hud-foe.on, .qtrack, .dfparty, .arena-session-btn, #travel-pace-box';",
+    "new": "const TEMP_CLEAR_OF = '#fps-counter, .hud-foe.on, .qtrack, .arena-session-btn, #travel-pace-box';",
     "why": "the hung plate on the party list",
+    "note": "AUDIT C&C (lens S): re-aimed by content - the list also keeps clear of an arena session's button and a journey's pace box.",
     "tests": [
       "test/auditcc_ui.test.js"
     ]
@@ -803,9 +807,10 @@
   {
     "name": "AUDITCC-UI-R11-the-campfire-for-the-hearth",
     "file": "src/systems/survival/status.js",
-    "old": "own for the need it rewards, a flame for the hearth (its own - REST1's Rested is the campfire), a sparkle for",
+    "old": "own for the need it rewards, a flame for the hearth (its own - REST1's Next night is the campfire), a sparkle for",
     "new": "own for the need it rewards, the campfire for the hearth, a sparkle for",
     "why": "the code names the hearth's glyph wrong",
+    "note": "AUDIT C&C (lens S): re-aimed by content - REST1's tile is Next night now.",
     "tests": [
       "test/auditcc_ui.test.js"
     ]
@@ -929,5 +934,55 @@
       "test/auditcc_ui.test.js"
     ],
     "why": "S5 (REST6): the strip hands the salts' hold to the sleep's level"
+  },
+  {
+    "name": "AUDITCC-UI-R-the-boon-tile-amber",
+    "file": "src/ui/hudStatus.js",
+    "old": "kind: c.level === 'boon' ? 'buff' : c.level === 'danger'",
+    "new": "kind: c.level === 'boon' ? 'warn' : c.level === 'danger'",
+    "tests": [
+      "test/auditcc_ui.test.js"
+    ],
+    "why": "lens R: the boon tiles, driven through the real HUD - green, each by its word"
+  },
+  {
+    "name": "AUDITCC-UI-S-the-bank-s-line-runs-wide",
+    "file": "src/systems/survival/status.js",
+    "old": "`Rested for another ${restedLeft(s)}.`",
+    "new": "`Well rested (${restedLeft(s)} left): +5 Intelligence, +5 Willpower.`",
+    "tests": [
+      "test/auditcc_ui.test.js"
+    ],
+    "why": "lens S: every line of the status page's third box is held to the classic box's width - the felt line's 53"
+  },
+  {
+    "name": "AUDITCC-UI-S-the-arena-button-stood-on",
+    "file": "src/ui/enhancedHud.js",
+    "old": ".dfparty, .arena-session-btn, #travel-pace-box';",
+    "new": ".dfparty, #travel-pace-box';",
+    "tests": [
+      "test/auditcc_ui.test.js"
+    ],
+    "why": "lens S: the plate keeps clear of an arena session's button"
+  },
+  {
+    "name": "AUDITCC-UI-S-the-pace-box-stood-on",
+    "file": "src/ui/enhancedHud.js",
+    "old": ".dfparty, .arena-session-btn, #travel-pace-box';",
+    "new": ".dfparty, .arena-session-btn';",
+    "tests": [
+      "test/auditcc_ui.test.js"
+    ],
+    "why": "lens S: and of a journey's pace box"
+  },
+  {
+    "name": "AUDITCC-UI-S-the-night-tile-named-rested",
+    "file": "src/ui/hudStatus.js",
+    "old": "name: 'Next night', foot: `${rested.minutes}m`",
+    "new": "name: 'Rested', foot: `${rested.minutes}m`",
+    "tests": [
+      "test/rest1_act.test.js"
+    ],
+    "why": "lens S (D7): the interval's tile is Next night - Rested stood beside Boons' Well rested"
   }
 ]

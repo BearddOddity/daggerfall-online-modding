@@ -10,6 +10,7 @@ import { effectiveLevel } from '../systems/mentorMode.js';   // SOFTCAP2: mentor
 import { dfmodGroundLayers } from '../systems/dfmodTextures.js';   // GROUND1: an attached mod's terrain tile set
 import { getFloat } from '../systems/settings.js';   // AUDIT 28 W1: NightAmbientLightScale
 import { markPuddleWater, carryPuddleMask } from '../world/puddleMask.js';   // WATER-PUDDLE: the puddle is the art's
+import { dilateCoastalClimate } from '../world/terrainHelper.js';   // AUDIT C&C (lens T): ReadyCheck's coastal repair, as the streaming host runs it
 import { WORLD_FRAME } from '../render/renderer.js';   // AUDIT-EL F5
 import { windmillsOn } from '../world/windmills.js';   // WM3: the Windmills pack's switch
 import { wodOn, wodLightColors } from '../world/worldOfDaggerfall.js';   // WOD4: the mod's switch and its per-light colours
@@ -365,6 +366,10 @@ export async function bootExterior(canvas, renderer, params, status) {
   arch.load(archBytes);
   const maps = new MapsFile();
   maps.load(mapsBytes, climateBytes, politicBytes);
+  // AUDIT C&C (lens T): StreamingWorld.ReadyCheck's coastal repair, as world.js runs it - DFU reads every climate after
+  // it (PlayerGPS.CurrentClimateIndex), and this host read the raw buffer: a coastal town whose own pixel is raw Ocean
+  // read the sea's nought (E4) here and its land's climate in the streaming world.
+  dilateCoastalClimate(maps, 2);
   // QX1 - THE QUEST PACK, loaded WITH the rest of the location's data
   // and not later. The bridge itself cannot be built until the clock,
   // the talk seam and the guard pool exist, far down this boot, but

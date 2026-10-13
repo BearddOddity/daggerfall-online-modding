@@ -374,7 +374,8 @@ test('SURV-BOONS: the strip and the page - the boons are green tiles on their ow
     const s = { ...newSurvival(0), boons: ['rested'], wellRested: bank };
     assert.equal(survivalHudChips({ survival: s }, 0).find((c) => c.key === 'boon:rested').foot, foot, `${bank} minutes`);
     assert.equal(restedLeft(s), left);
-    assert.equal(STATUS_TEXT.boon('rested', s), `Well rested (${left} left): +5 Intelligence, +5 Willpower.`);
+    assert.equal(STATUS_TEXT.boon('rested', s), 'Well rested: +5 Intelligence, +5 Willpower.');   // PIN MOVED (AUDIT C&C, lens S): the bank's hours a line of their own
+    assert.equal(STATUS_TEXT.restedFor(s), `Rested for another ${left}.`);
   }
   // NO RED but the drink
   const worst = body({ survival: { ...newSurvival(0), lastAte: -5000, thirst: 140, sleepDebt: 20, wet: 250, drunk: 60 } });
@@ -389,11 +390,12 @@ test('SURV-BOONS: the strip and the page - the boons are green tiles on their ow
   assert.equal(survivalHudChips(e, 481, { rules: CASUAL }).some((c) => c.level === 'boon'), false, 'and no green');
   assert.equal(temperatureReadout(worst, undefined, { rules: HARD }).level, 'danger');
   // the page, in words
-  assert.deepEqual(survivalStatusLines(e, 481, { endurance: 50 }).slice(-6), [
+  assert.deepEqual(survivalStatusLines(e, 481, { endurance: 50 }).slice(-7), [
     'You are very drunk.',
     'Well fed: +5 Strength, +5 Endurance.',
     'Quenched: +5 Agility, +5 Speed.',
-    'Well rested (12 hours left): +5 Intelligence, +5 Willpower.',
+    'Well rested: +5 Intelligence, +5 Willpower.',
+    'Rested for another 12 hours.',   // PIN MOVED (AUDIT C&C, lens S): the classic box wraps nothing - the bank's hours a line of their own
     'Thriving: +5 Luck.',
     'The fire\'s warmth restores your stamina.',
   ]);

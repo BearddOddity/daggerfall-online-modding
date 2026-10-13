@@ -649,8 +649,9 @@
   {
     "name": "SURVTIERS-fireNear-is-the-tiers-again",
     "file": "src/scenes/camps.js",
-    "old": "  const fireNear = (pos) => !!nearestFire(camps.map((c) => c.rec), pos, now())",
+    "old": "  const fireNear = (pos) => !!nearestFire(seen().map((c) => c.rec), pos, now())",
     "new": "  const fireNear = (pos) => !!nearestFire(shown().map((c) => c.rec), pos, now())",
+    "note": "AUDIT C&C (lens I): re-aimed by content - the place reads the camps in sight in every tier (seen), so a deck camp hidden with her boat answers no reach; the tiers' shown() is still the mutant.",
     "tests": [
       "test/auditsurv.test.js"
     ]

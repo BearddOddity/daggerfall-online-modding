@@ -123,7 +123,10 @@ test('REST2 the pool: online a Campfire stands with the arc Off; a night at your
 test('REST2 a world fire rests too: its plaque rows are Rest and Cook; online the lit Rest rests', () => {
   setSharedClock(() => 1000);
   const said = [];
-  const p = createCamps({ hearths: () => [{ pos: [0, 0, 0], record: 1 }], entity: { items: [] }, say: (l) => said.push(l), openRest: () => said.push('REST') });
+  // AUDIT C&C (lens I, PIN MOVED): the Rest row asks the rest's place first (camps.js restAtHearth), so the fixture
+  // stands a hearth as its collectors mint one ({x, y, z} at the flame, the sprite's foot and size) and the player beside
+  // it - the reach itself is test/auditcc_items.test.js's
+  const p = createCamps({ hearths: () => [{ x: 0, y: 0, z: 0, foot: -1.6, w: 0.8, h: 1.6 }], camera: () => ({ feet: [1, -1.6, 0], yaw: 0 }), entity: { items: [] }, say: (l) => said.push(l), openRest: () => said.push('REST') });
   assert.deepEqual(p.hoverName('hearth:0').actions.map((a) => a.id), ['rest', 'cook']);
   p.activate('hearth:0', 'grab', 'rest');
   assert.equal(said.at(-1), 'REST');

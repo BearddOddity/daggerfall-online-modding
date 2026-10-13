@@ -31,7 +31,7 @@
 //     how bad at its foot ("2/3", NEED-TIER); and in the Boons tier
 //     (SURV-BOONS) a BOON, framed green as a buff - the need's own glyph
 //     for the need it rewards, a flame of its own for the hearth (REST1's
-//     Rested is the campfire) and a gold sparkle for Thriving, a Well
+//     Next night is the campfire) and a gold sparkle for Thriving, a Well
 //     rested bank's hours at its foot;
 //   - a POISON and a DISEASE, shown at last - on the Status box's own
 //     law (systems/healthStatus.js): a poison once it has left its
@@ -331,8 +331,10 @@ export function statusTiles({ spells = [], powers = [], afflictions = [], needs 
     tile({ key: `need:${c.key}`, kind: c.level === 'boon' ? 'buff' : c.level === 'danger' ? 'danger' : 'warn', name: String(c.text ?? ''), glyph: needGlyph(c), foot: c.foot != null ? String(c.foot) : c.tier ? `${c.tier}/${c.of}` : null,
       say: c.level === 'boon' ? null : levelSaid(String(c.text ?? ''), c.level), cost: c.level === 'danger' });
   }
-  // REST1: Rested - the night interval's real minutes left at its foot (systems/restAct.js nightRealMinutesLeft), a buff
-  if (rested?.minutes > 0) tile({ key: 'rested', kind: 'buff', name: 'Rested', foot: `${rested.minutes}m`, glyph: 'rested' });
+  // REST1: the night interval's real minutes left at its foot (systems/restAct.js nightRealMinutesLeft), a buff.
+  // AUDIT C&C (lens S): named "Next night" (REST_ACT_TEXT.rested, held equal by its pin) - REST1's "Rested" stood online
+  // beside Boons' Well rested, a bank of sleep and not a countdown; this is the wait until a night can pass again
+  if (rested?.minutes > 0) tile({ key: 'rested', kind: 'buff', name: 'Next night', foot: `${rested.minutes}m`, glyph: 'rested' });
   return out;
 }
 

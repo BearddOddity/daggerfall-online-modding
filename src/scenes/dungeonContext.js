@@ -4071,6 +4071,7 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
       insideBuilding: false, insideDungeon: true, inSunlight: false, swimming: !!_activity.swimming, transport: false,
       submerged: _submergedNow,   // AUDIT C&C (lens T D3): the head under the hall's water soaks at once; a swim on its surface wades (env.js)
       byFire: !!(_fpFeet && camps.byFire(_fpFeet)),
+      castle: !!(_fpFeet && castleBlockAt(_fpFeet[0], _fpFeet[2])),   // AUDIT C&C (lens T): a palace's hall reads as the mod's Dungeon() reads it, and says so - not "Underground"
       resting: !!playerEntity.isResting, sleeping: playerEntity.isResting && !playerEntity.isLoitering ? (playerEntity.restKind ?? 'rough') : null,
     };
   };
