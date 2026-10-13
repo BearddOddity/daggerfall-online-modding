@@ -525,7 +525,7 @@ function poisson(lambda, r) {
  * candidates, each { type, id, bornX, bornZ, bornAt, life, core, rings, strength } -
  * `core` its core radius at full growth, `rings` as the birth law made
  * them where and when it was born, `strength` how hard it falls at its
- * heart (RAIN-HEART, `strengthOf`). Pure over climateAt. */
+ * heart (RAIN-HEART, `systemStrength`). Pure over climateAt. */
 export function birthsIn(type, gx, gz, gt, climateAt) {
   return memoised(`${type}:${gx}:${gz}:${gt}`, climateAt, () => drawBirths(type, gx, gz, gt, climateAt));
 }
@@ -558,7 +558,7 @@ let _births = new WeakMap();
 export const BIRTHS_MEMO = 40000;
 
 /** A system's id as a seed (FNV-1a over its characters): a front's cells are drawn from it, and a system's strength
- *  (RAIN-HEART, `strengthOf`). */
+ *  (RAIN-HEART, `systemStrength`). */
 function idHash(id) {
   let h = 0x811c9dc5;
   for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 0x01000193);
@@ -590,7 +590,7 @@ function drawBirths(type, gx, gz, gt, climateAt) {
       core: spec.core[0] + rc * (spec.core[1] - spec.core[0]),
       life: spec.life[0] + rl * (spec.life[1] - spec.life[0]),
       rings: law.rings[type],
-      strength: strengthOf(type, id),   // RAIN-HEART: drawn from the id, never from `r` - no candidate's draws move
+      strength: systemStrength(type, id),   // RAIN-HEART: drawn from the id, never from `r` - no candidate's draws move
     }));
   }
   return out;
@@ -755,7 +755,7 @@ export const EDGE_INTENSITY = 0.2;
 /**
  * RAIN-HEART (Mac, 2026-10-13: "sometimes instead of downpours it should just sprinkle"): HOW HARD A SYSTEM FALLS AT
  * ITS HEART, as a share of the heaviest - a range per type, and each system's strength drawn evenly in it from its own
- * id (`strengthOf`), never from its node's generator, so no other draw moves. WEATHER3b put the place's intensity where
+ * id (`systemStrength`), never from its node's generator, so no other draw moves. WEATHER3b put the place's intensity where
  * WX2's roll per shower had stood, and the envelope is 1 at every grown system's heart: every rain front poured there,
  * and a sprinkle was only ever a front's edge. A rain front's heart now falls anywhere from the heaviest front's edge
  * (EDGE_INTENSITY: the weakest is a drizzle from heart to edge) to the downpour. A type with no range falls whole: a
@@ -766,7 +766,7 @@ export const STRENGTH = Object.freeze({ rain: Object.freeze([EDGE_INTENSITY, 1])
 for (const t of Object.keys(STRENGTH)) if (!SYSTEM_TYPES[t] || SYSTEM_TYPES[t].parent) throw new Error(`weatherMap: a strength for ${t}, which is not born on the lattice`);
 const STRENGTH_SEED = 0x53545247;   // 'STRG'
 /** A system's strength: its type's range (STRENGTH) placed by its id's own draw; 1 for a type with none. */
-export function strengthOf(type, id) {
+export function systemStrength(type, id) {
   const range = STRENGTH[type];
   return range ? range[0] + (range[1] - range[0]) * seededFirst((idHash(id) ^ STRENGTH_SEED) >>> 0) : 1;
 }

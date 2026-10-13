@@ -74,7 +74,7 @@
   {
     "name": "RAIN-HEART-drawn-from-the-node-moves-every-birth-after-it",
     "file": "src/systems/weatherMap.js",
-    "old": "      strength: strengthOf(type, id),   // RAIN-HEART: drawn from the id, never from `r` - no candidate's draws move\n",
+    "old": "      strength: systemStrength(type, id),   // RAIN-HEART: drawn from the id, never from `r` - no candidate's draws move\n",
     "new": "      strength: STRENGTH[type] ? STRENGTH[type][0] + (STRENGTH[type][1] - STRENGTH[type][0]) * r() : 1,\n",
     "tests": [
       "test/rainhours.test.js",

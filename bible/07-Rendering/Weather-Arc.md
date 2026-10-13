@@ -1177,7 +1177,7 @@ sprinkle. Two causes, both in the map's law:
   The woodlands' spring: rain 25% -> 12.5%, storms 10% -> 5%, clear air 35% -> 44.4%, cloud 15% -> 19.0%, the deck 10%
   -> 12.7%, fog 5% -> 6.3%. Snow keeps its odds (the ask was the rain). The classic lane's table and roll are DFU's,
   untouched.
-- **`STRENGTH`** (rain: [EDGE_INTENSITY, 1]) **and `strengthOf`**. Each rain front is born with its own strength - how
+- **`STRENGTH`** (rain: [EDGE_INTENSITY, 1]) **and `systemStrength`**. Each rain front is born with its own strength - how
   hard it falls at its heart - drawn evenly from the heaviest front's edge (0.2: the weakest is a drizzle from heart to
   edge) to the downpour, and `bandAt` scales the place's intensity by it. It is the front's own draw, from its id
   (`idHash`, the FNV hash `drawCells` already seeded a front's cells from, now one function for both), never from its

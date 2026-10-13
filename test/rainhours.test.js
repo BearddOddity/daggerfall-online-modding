@@ -10,7 +10,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  targetShares, WET_HOURS, STRENGTH, strengthOf, EDGE_INTENSITY, birthsIn, cellsOf, systemAt, bandAt, weatherAt,
+  targetShares, WET_HOURS, STRENGTH, systemStrength, EDGE_INTENSITY, birthsIn, cellsOf, systemAt, bandAt, weatherAt,
   envelope, BIRTH_RADIUS, SYSTEM_TYPES, SAND_SHARE_OF_CLOUDY, PRIORITY,
 } from '../src/systems/weatherMap.js';
 import { WEATHER_TABLE } from '../src/systems/weatherTable.js';
@@ -71,7 +71,7 @@ test('RAIN-HEART: a rain front is born with its own strength - evenly from the h
   const fronts = springFronts();
   assert.ok(fronts.length > 400, `a spring's fronts over the woodlands (${fronts.length})`);
   for (const f of fronts) {
-    assert.equal(f.strength, strengthOf('rain', f.id), 'the id\'s own draw');
+    assert.equal(f.strength, systemStrength('rain', f.id), 'the id\'s own draw');
     assert.ok(f.strength >= EDGE_INTENSITY && f.strength <= 1, `inside the range (${f.strength})`);
   }
   const s = fronts.map((f) => f.strength).sort((a, b) => a - b);
@@ -80,7 +80,7 @@ test('RAIN-HEART: a rain front is born with its own strength - evenly from the h
   // a storm is born in its front and is a storm, whatever the front's strength; nothing else has a range
   const cells = fronts.slice(0, 80).flatMap((f) => cellsOf(f, woods));
   assert.ok(cells.length > 0 && cells.every((c) => c.strength === undefined), 'a cell carries no strength - it falls whole');
-  for (const type of ['overcast', 'cloudy', 'fog', 'snow', 'sandstorm', 'thunder']) assert.equal(strengthOf(type, `${type}:1:2:3:0`), 1, `${type} falls whole`);
+  for (const type of ['overcast', 'cloudy', 'fog', 'snow', 'sandstorm', 'thunder']) assert.equal(systemStrength(type, `${type}:1:2:3:0`), 1, `${type} falls whole`);
   const desert = () => CLIMATES.Desert;
   const [, sandMinutes] = SYSTEM_TYPES.sandstorm.node;
   const sand = [];
