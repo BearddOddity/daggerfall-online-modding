@@ -326,8 +326,8 @@
   {
     "name": "GATHER-FEEL-follow-never-put-away",
     "file": "src/scenes/gatherHost.js",
-    "old": "if (follow) { follow.act.tick(dt, {}); if (!(follow.act.swing > 0)) follow = null; }",
-    "new": "if (follow) { follow.act.tick(dt, {}); }",
+    "old": "if (follow) { stepAct(follow, dt, {}); if (!(follow.act.swing > 0)) follow = null; }",
+    "new": "if (follow) { stepAct(follow, dt, {}); }",
     "tests": [
       "test/gatherfeel.test.js"
     ]

@@ -835,3 +835,26 @@ Mac: "I want to improve gathering, add gathering sounds and overall make the exp
   `systems/profSounds.js`'s DFU clips, said by the ear on the same beats.
 - **Levels** are each clip's measured loudness (its loudest 50 ms) set against the others: a blow near -15 dB at the
   bus, the fall near -8, the water's plip near -28 - a first mix, set on numbers; no clip here has been heard by ear.
+
+## GATHER-FEEL II (2026-10-13): another player's gathering, heard at their act
+
+Mac: "Do the not done." The record is `06-Systems/Professions-Arc.md` section 44 (PEER-ACTS); what it is to this page:
+
+- **The same clips, the same beats.** A peer's act rides their pose (RELAY_VERSION world199: the act, its beats, the
+  net's throw), and the beats the pose counts are the gatherer's own ear's law (`actBeats`) - so the others hear what
+  the gatherer hears. `net/peerGather.js` PeerGatherSounds says them positional through `play3d`, with the peers' own
+  falloff (`net/remotePlayers.js` PEER_SOUND_PROFILE - full inside 6 m, silent past 30), at the act's place: a metre
+  before the body at the hands' height, the net's sounds where it landed (the throw's metres along the way the body
+  faces).
+- **On the blow's time.** A tool's swing sounds as its beat arrives; its blow is held for DFU's melee hit frame of the
+  swing (PEER_BLOW_DELAY_S - the acts' own `landsIn` at the press), as the gatherer's own lands. The water keeps its own
+  clock on the listener's side: a plip every 2.2-5.5 s while the net waits, the catch fighting every 0.5-1.1 s while it
+  hauls.
+- **The skins.** The port's clips on the enhanced skin (ES1), each at its `GATHER_SAY` volume, pitch and variety; on the
+  classic skin the DFU cue the gatherer's ear says for that beat (`systems/profSounds.js`), positional too.
+- **The switch and the floor.** Behind the swings' switch (`peerAttackSounds`, "Attack sounds" - a tool's blow is a
+  swing) and the earshot; the law is told every change while silent, so turning it back on replays nothing; one cue a
+  peer every 100 ms (the climb's floor, AUDIT CLIMB-ARC N6); a peer gone forgotten; the floating origin's shift drops a
+  blow in the air.
+- **Not heard here**: the creak, the fall, the logs, a vein's rubble and its chunks are the node's, and the node is each
+  character's own - another's tree still stands for you.

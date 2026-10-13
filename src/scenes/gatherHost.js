@@ -71,6 +71,9 @@ import { BAG_WORDS, goodsWhere } from '../net/bagLaw.js';   // BAG1: where the g
 import { nodeMarkCss } from '../ui/nodeMarks.js';   // GATHER-OW: a group's glyph in its profession's compass colour
 import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 import { createGatherEar } from '../systems/gatherSounds.js';   // GATHER-FEEL: the gathering's ear
+import { gatherBlowFeel, landedBlow, chunksFor, shedChunks, stepChunk, chunkSink, chunkBox, VEIN_CHUNKS } from '../systems/gatherBlow.js';   // GATHER-FEEL II: what a landed blow does besides its sound
+import { setBatchCrack, crackSeedOf } from '../systems/veinCrack.js';   // VEIN-CRACKS: a worked vein's cracks, on its own batch
+import { createGatherPose } from '../net/peerGather.js';   // PEER-ACTS: the act and its beats, on the pose the others draw
 
 /** A node answers E within DFU's activation distance, and within this many degrees of the look. */
 export const NODE_REACH = DEFAULT_ACTIVATION_DISTANCE;
@@ -242,6 +245,10 @@ export function aimAt(eyePos, at, view) {
  *   prompt's words (GROUND_WHERE_WORDS) - a ready plan there is no ready plan; null where it passes
  * @property {boolean} [marksLoose] NODE-MARKS: its loose nodes are walked for the marks (Hunting's bodies); without it
  *   they are never asked for there (Fishing's cast - the look itself, and its water's check is Foraging's whole world)
+ * @property {boolean} [cracks] VEIN-CRACKS (GATHER-FEEL II): a node of it cracks as its blows land (systems/veinCrack.js) -
+ *   its flats stood as a batch of their own while it is worked - and sheds chunks (`chunkOf`)
+ * @property {(node: any) => ({ archive: number, record: number, tint?: ReadonlyArray<number>|null, dye?: number, floor: number })} [chunkOf]
+ *   VEIN-CRACKS: the picture a node's chunks wear and the height of the ground they fall to, in the node's own frame
  * @property {string} [goneSound] GATHER-FEEL: what the ear hears as a node of it goes (systems/gatherSounds.js
  *   GATHER_SAY) - a tree's fall, a vein's rubble; none where the act's own end says it (a herb pulled)
  */
@@ -261,7 +268,7 @@ export function aimAt(eyePos, at, view) {
  *   step?: (n: number) => boolean, settled?: (pos: number[]) => boolean,
  *   pointer?: (want: 'cursor'|'look') => ((() => void) | null), haul?: (entries: any[]) => boolean,
  *   marks?: { findLine: (found: any, kind: string) => (string|null) } | null,
- *   audio?: any, ear?: any,
+ *   audio?: any, ear?: any, feel?: (kind: string, clean: boolean) => any, rand?: () => number,
  * }} deps `active` - the streaming world's exterior, walking, nothing over it (the host's); `activeDungeon` - a dungeon
  *   entered, walking, nothing over it; `activeInterior` - INDOOR-SKIN: a building entered, walking, nothing over it (its
  *   loose nodes alone); `nowMs` the shared clock. PROF-MENU: `plaque` - the loot plaque stands (it names
@@ -272,7 +279,9 @@ export function aimAt(eyePos, at, view) {
  *   wealthy home, its footprint and a block round it), where no node of the ground (a kind with a `where`) stands.
  *   `pointer(want)` - HERB-CURSOR: the mouse an act needs (ACT_POINTER), asked as it starts; answers its release, called
  *   as it ends, or null. `marks` - SILVER-FINDS: the marks book (net/marksBook.js), a harvest's find said and its
- *   balance kept. `audio` - GATHER-FEEL: the bus the ear says the acts on (systems/audio.js), or `ear` one built already
+ *   balance kept. `audio` - GATHER-FEEL: the bus the ear says the acts on (systems/audio.js), or `ear` one built already.
+ *   `feel` - GATHER-FEEL II: the view's answer to a landed blow (systems/gatherBlow.js gatherBlowFeel, BLOW-SHAKE - the
+ *   pins' seam); `rand` - VEIN-CRACKS: the shed chunks' dice (Math.random bare)
  */
 export function createGatherHost(deps) {
   const { book, hud, kinds } = deps;
@@ -301,6 +310,147 @@ export function createGatherHost(deps) {
   const ear = deps.ear ?? createGatherEar({ audio: deps.audio ?? null });
   let follow = null;
   let landing = [];
+  /** GATHER-FEEL II: the view's answer to a landed blow (systems/gatherBlow.js gatherBlowFeel - BLOW-SHAKE) */
+  const feel = deps.feel ?? gatherBlowFeel;
+  /** PEER-ACTS (GATHER-FEEL II): the act and its beats as the others see and hear them (net/peerGather.js) - fed each
+   *  frame of an act beside the ear (a new act is heard afresh), read by the online frame's pose (`poseAct`) */
+  const pose = createGatherPose();
+  /** VEIN-CRACKS (GATHER-FEEL II): the node a cracking kind's act works (its flats a batch of their own while it does);
+   *  each worked node's crack (key -> { share, seed }); the batches that stand a worked node's flats (key -> batches - the
+   *  street's stood apart, a dungeon's its own); the chunks in the air or lying, a burst a blow (`{ chunks, floor, batch,
+   *  entry, dungeon, centers, gone }` - a street burst stands in its pixel's own frame, on its list); and their dice */
+  let worked = null;
+  const cracks = new Map();
+  const crackBatches = new Map();
+  let bursts = [];
+  const rand = deps.rand ?? Math.random;
+  /** VEIN-CRACKS: a node's flats stand apart while it is worked or cracked - its crack is its own, never its pixel's */
+  const isolated = (n) => { const k = kindOf(n); return !!k?.cracks && !k.gone(n) && (worked === n.key || cracks.has(n.key)); };
+  /** VEIN-CRACKS: a batch that stands a worked node's flats, kept by its key and cracked as the node is */
+  function holdCrack(key, batch) {
+    const list = crackBatches.get(key) ?? [];
+    list.push(batch);
+    crackBatches.set(key, list);
+    const c = cracks.get(key);
+    if (c) setBatchCrack(batch, c.share, c.seed);
+  }
+  /** VEIN-CRACKS: batches gone (a pixel stood again or torn down, a dungeon left) are kept by no node */
+  function forgetCrackBatches(gone) {
+    if (!gone?.length) return;
+    for (const [key, list] of crackBatches) {
+      const keep = list.filter((b) => !gone.includes(b));
+      if (keep.length) crackBatches.set(key, keep); else crackBatches.delete(key);
+    }
+  }
+  /** VEIN-CRACKS: a node worked to `share` - its cracks opened that far on every batch that stands it */
+  function crackTo(key, share) {
+    const c = { share, seed: crackSeedOf(key) };
+    cracks.set(key, c);
+    for (const b of crackBatches.get(key) ?? []) setBatchCrack(b, c.share, c.seed);
+  }
+  /** VEIN-CRACKS: an act on a node ended with the node standing (Escape, walked off, a window, a refusal) - its cracks
+   *  close over: the node stands whole, as it does for every other player (section 6) */
+  function unwork(a) {
+    const key = a?.node?.key;
+    if (!key) return;
+    if (worked === key) worked = null;
+    if (!cracks.delete(key)) return;
+    for (const b of crackBatches.get(key) ?? []) setBatchCrack(b, 0);
+  }
+  /** VEIN-CRACKS: a burst's chunks, out of the struck face toward the striker - the node's own picture, small (the kind's
+   *  `chunkOf`), in the node's own frame (a street node's pixel's, a dungeon's own) */
+  function shed(a, k, n) {
+    const look = k.chunkOf?.(a.node);
+    if (!look || !(n > 0) || !deps.renderer) return;
+    const entry = a.dungeon ? null : stood.get(pixelKey(a.px, a.py))?.entry ?? null;
+    const d = a.dungeon ? dungeon : null;
+    if (!entry && !d) return;   // its pixel torn down, its dungeon left: nowhere to fall
+    const tr = entry ? deps.pixelTranslation(a.px, a.py, [0, 0, 0]) : [0, 0, 0];
+    const eye = deps.eye().pos;
+    const at = [a.node.local[0], a.node.local[1] + (a.node.lift ?? 0), a.node.local[2]];
+    const bu = { chunks: shedChunks(at, [eye[0] - tr[0], eye[1] - tr[1], eye[2] - tr[2]], n, rand), floor: look.floor, at, batch: null, entry, dungeon: d, centers: null, gone: false };
+    bursts.push(bu);
+    mintBurst(bu, look);
+  }
+  /** VEIN-CRACKS: a burst's batch, once its picture's texture answers - a dynamic one, moved every frame (EVERY ALLOCATION
+   *  HAS AN OWNER: a street burst's is its pixel's, on its list, freed by its teardown or dropped here; a dungeon's is
+   *  the dungeon's, through its own doors) */
+  async function mintBurst(bu, look) {
+    const at = bu.chunks.map((c) => [c.p[0], c.p[1], c.p[2]]);
+    let b = null;
+    if (bu.dungeon) {
+      b = await bu.dungeon.stand(look.archive, look.record, VEIN_CHUNKS.scale, at, { dynamic: true });
+      if (!b) return;
+      if (bu.gone || dungeon !== bu.dungeon) { bu.dungeon.drop(b); return; }   // gone, or the dungeon left, while it came
+    } else {
+      const t = await deps.getTexture(look.archive);
+      if (bu.gone || !t || look.record >= t.recordCount) return;
+      deps.uploadRecord(look.archive, look.record);
+      const base = deps.billboardSize(t, look.record);
+      const size = { w: base.w * VEIN_CHUNKS.scale, h: base.h * VEIN_CHUNKS.scale };
+      b = deps.renderer.createBillboardBatch(look.archive, look.record, size, at, { dynamic: true });
+      b._box = chunkBox(bu.at, bu.floor, size.h);   // EV3: every place a chunk of it can be
+      bu.entry.batches.push(b);
+    }
+    if (look.tint) b.tint = look.tint;   // VEIN-WASH: the ore's own wash, as its flats wear it
+    if (look.tint && look.dye) b.dye = look.dye;   // VEIN-HUE: as its colour
+    b.noShadow = true;   // a fist-sized chunk, moving: no shadow of its own
+    bu.batch = b;
+  }
+  /** VEIN-CRACKS: every frame, the chunks fly, fall, lie and sink away - a burst's batch moved, dropped once it is empty */
+  function stepBursts(dt) {
+    for (const bu of bursts) {
+      let live = false;
+      for (const c of bu.chunks) if (stepChunk(c, dt, bu.floor)) live = true;
+      if (!live) { dropBurst(bu); continue; }
+      if (!bu.batch) continue;
+      const h = bu.batch.size?.h ?? 0;
+      const centers = bu.centers ?? (bu.centers = bu.chunks.map(() => [0, 0, 0]));
+      for (let i = 0; i < bu.chunks.length; i++) {
+        const c = bu.chunks[i], o = centers[i];
+        o[0] = c.p[0]; o[1] = c.p[1] - chunkSink(c, h); o[2] = c.p[2];
+      }
+      deps.renderer.moveBillboardBatch?.(bu.batch, centers);
+    }
+    if (bursts.some((bu) => bu.gone)) bursts = bursts.filter((bu) => !bu.gone);
+  }
+  /** VEIN-CRACKS: a burst done - its batch off its list and freed (a dungeon's through its door) */
+  function dropBurst(bu) {
+    if (bu.gone) return;
+    bu.gone = true;
+    const b = bu.batch;
+    bu.batch = null;
+    if (!b) return;
+    if (bu.dungeon) { bu.dungeon.drop(b); return; }
+    const i = bu.entry?.batches.indexOf(b) ?? -1;
+    if (i >= 0) bu.entry.batches.splice(i, 1);
+    deps.renderer.destroyBatch(b);
+  }
+  /** GATHER-FEEL II: AN ACT'S FRAME, AND THE BLOW IT LANDED. The machine stepped (its own tick - the act playing, or a
+   *  finished one's last swing running out), and the frame its swing's blow came down - its `landsIn` gone from in the
+   *  air to none, the hit frame the ear sounds it on (chopAct's and mineAct's own; an act that swings nothing has none)
+   *  - told to blowLanded. Answers whether one landed. */
+  function stepAct(a, dt, input) {
+    const was = Number(a.act.landsIn) || 0;
+    a.act.tick(dt, input);
+    if (!(was > 0) || Number(a.act.landsIn) > 0) return false;
+    blowLanded(a);
+    return true;
+  }
+  /** GATHER-FEEL II: a blow landed (systems/gatherBlow.js landedBlow - its kind, and whether it was the clean one) -
+   *  BLOW-SHAKE's kick. A blow's answer never stops an act. */
+  function blowLanded(a) {
+    const b = landedBlow(a.act.state);
+    try { feel(b.kind, b.clean); } catch { /* the view's answer never stops an act */ }
+    // VEIN-CRACKS: a cracking node opens to the share it has been worked with every blow but the one that ends the act (that
+    // one takes it down, GATHER-FEEL's landing), and sheds its chunks - the most where that blow broke it (`fell`: the
+    // node went as it landed; a harvest refused first left it standing, a blow like any other)
+    const k = kindOf(a.node);
+    if (!k?.cracks) return;
+    const done = a.act.state.done === true;
+    if (!done) crackTo(a.node.key, Number(a.act.progress) || 0);
+    shed(a, k, chunksFor(done && a.fell === true, b.clean));
+  }
   /** GATHER-FEEL: a kind's own beat said through the ear (the tree's logs taken) */
   const sayKind = (name, at = null) => ear.say(name, at);
   /** PROF2: the dungeon the player stands in, as a place: its identity and ground, the wall its veins stand on, and its
@@ -329,6 +479,7 @@ export function createGatherHost(deps) {
       if (i >= 0) entry.batches.splice(i, 1);
       deps.renderer.destroyBatch(b);
     }
+    forgetCrackBatches(s.batches);   // VEIN-CRACKS
     s.batches = [];
   }
   /** ROCK-NEAR (FIELD BUGS 2026-10-09b, "Motherlode ore veins can spawn inside rocks!"): the rock pieces the eight BUILT
@@ -391,19 +542,20 @@ export function createGatherHost(deps) {
     for (const n of rec.nodes) {
       const k = kindOf(n);
       if (!k) continue;
+      const lone = isolated(n);   // VEIN-CRACKS: a worked node's flats are a batch of their own - its crack is its own
       // gone for the day: nothing, or what it leaves (PROF4: a felled tree's stump)
       for (const f of k.gone(n) ? (k.goneFlatsOf?.(n, entry) ?? []) : k.flatsOf(n)) {
         if (!groups.has(f.archive)) groups.set(f.archive, new Map());
         const g = groups.get(f.archive);
-        const gk = `${f.record}:${f.scale}:${f.tint ?? ''}:${f.dye ?? 0}`;
-        if (!g.has(gk)) g.set(gk, { record: f.record, scale: f.scale, tint: f.tint ?? null, dye: f.dye ?? 0, centers: [] });
+        const gk = `${f.record}:${f.scale}:${f.tint ?? ''}:${f.dye ?? 0}${lone ? `#${n.key}` : ''}`;
+        if (!g.has(gk)) g.set(gk, { record: f.record, scale: f.scale, tint: f.tint ?? null, dye: f.dye ?? 0, centers: [], node: lone ? n.key : null });
         g.get(gk).centers.push(...f.centers);
       }
     }
     for (const [archive, byRecord] of groups) {
       const t = await deps.getTexture(archive);
       if (deps.built().get(key) !== entry || stood.get(key) !== rec) return;   // torn down, or stood again, during the await
-      for (const { record, scale, tint, dye, centers } of byRecord.values()) {
+      for (const { record, scale, tint, dye, centers, node } of byRecord.values()) {
         if (!t || record >= t.recordCount) continue;
         deps.uploadRecord(archive, record);
         const base = deps.billboardSize(t, record);
@@ -414,6 +566,7 @@ export function createGatherHost(deps) {
         batch._box = deps.flatBatchAabb(centers, size);
         entry.batches.push(batch);
         rec.batches.push(batch);
+        if (node) holdCrack(node, batch);   // VEIN-CRACKS: a worked node's own batch, cracked as it is
       }
     }
   }
@@ -424,6 +577,7 @@ export function createGatherHost(deps) {
     const d = dungeon;
     if (!d || d.id === null) return;   // AUDIT 32 H2: a dungeon with no identity stands no veins
     const gen = d.gen = (d.gen | 0) + 1;   // AUDIT 29 C7: the newest stand alone keeps its flats (two in flight drew twice)
+    forgetCrackBatches(d.batches);   // VEIN-CRACKS
     for (const b of d.batches) d.drop(b);
     d.batches = [];
     d.nodes = [];
@@ -443,6 +597,7 @@ export function createGatherHost(deps) {
         if (b && f.tint && f.dye) b.dye = f.dye;   // VEIN-HUE: its colour too
         if (dungeon !== d || d.gen !== gen) { if (b) d.drop(b); return; }   // left, entered another, or stood again, during the await
         if (b) d.batches.push(b);
+        if (b && k.cracks) holdCrack(n.key, b);   // VEIN-CRACKS: a deep vein is its own batch already, cracked as it is
       }
     }
   }
@@ -611,6 +766,8 @@ export function createGatherHost(deps) {
     if (a.refused) { hud.toast(a.refused); return false; }
     act = { ...a, node: t.node, px: t.px, py: t.py, dungeon: t.dungeon, interior: !!t.interior, loose: !!t.loose, info: t.info, world: t.world };
     follow = null;   // GATHER-FEEL: the new act's tool is the hand's now
+    // VEIN-CRACKS: a cracking node worked - its flats stood apart, before its first blow lands (a dungeon's are already)
+    if (k.cracks && !act.loose) { worked = t.node.key; if (!act.dungeon) restandAt(t.px, t.py); }
     syncPointer();   // HERB-CURSOR: in the press's frame, while its activation stands (a lock a browser asks one for)
     chipProfession = a.profession;
     chipLeft = CHIP_S;
@@ -678,6 +835,8 @@ export function createGatherHost(deps) {
       try { Promise.resolve(k.felled(now, { entry: s.entry, from: deps.eye().pos, tr: deps.pixelTranslation(a.px, a.py, [0, 0, 0]) })).catch((e) => console.warn('[gather] a fall', e)); } catch (e) { console.warn('[gather] a fall', e); }
     }
     if (k.goneSound) ear.say(k.goneSound, actWorld(a) ?? a.world);   // GATHER-FEEL: the node heard going - a tree's fall, a vein's rubble
+    if (worked === a.node.key) worked = null;   // VEIN-CRACKS: worked out - its cracks go with it
+    cracks.delete(a.node.key);
     restandOf(a);
   }
   /** A harvest's answer said: the Stores, the XP, a gem, a rank's rise; a refusal in words; a kept one once. */
@@ -742,6 +901,7 @@ export function createGatherHost(deps) {
     }
     hud.toast(accountRefusalText(r?.error));
     if (a?.landing) { a.landing = false; landing = landing.filter((l) => l.a !== a); }   // GATHER-FEEL: refused before its blow landed - its node never went
+    if (a && !a.loose && r?.error !== 'node-taken') unwork(a);   // VEIN-CRACKS: refused - the node stands whole (another's, node-taken, stands as GATHER-SPEED stands it)
     // GATHER-SPEED: and a refused one - its node went as its act ended, and stands again unless it is another's (node-taken)
     if (a && !a.loose && (r?.error === 'node-taken' || a.fell)) restandOf(a);
     else if (!a && nodeKeyOf) restandNode(nodeKeyOf);
@@ -769,13 +929,17 @@ export function createGatherHost(deps) {
     /** A pixel torn down: its batches went with it (they are in its list); forgotten here. */
     onDestroyed(entry) {
       if (!entry) return;
+      forgetCrackBatches(stood.get(`${entry.px},${entry.py}`)?.batches);   // VEIN-CRACKS: its batches go with its teardown...
+      for (const bu of bursts) if (bu.entry === entry) { bu.gone = true; bu.batch = null; }   // ...its chunks' too (on its list, freed with it)
+      bursts = bursts.filter((bu) => !bu.gone);
       stood.delete(`${entry.px},${entry.py}`);
       for (const k of kinds) k.dropped?.(entry);   // PROF4: a fall or logs under way on it went with its batches
     },
     /**
      * PROF2: A DUNGEON ENTERED - `{ id, climate, region, wall, stand, drop }`: DFU's identity for it (MapId & 0xfffff),
      * its ground as this client derives it, the wall its veins stand on (`wall(marker, bearing)`), and its own doors
-     * for flats (`stand(archive, record, scale, centers)` -> a batch it owns, `drop(batch)`).
+     * for flats (`stand(archive, record, scale, centers, { dynamic })` -> a batch it owns - VEIN-CRACKS: a dynamic one for
+     * a blow's chunks - `drop(batch)`).
      */
     enterDungeon(d) {
       if (dungeon) this.leaveDungeon();
@@ -791,9 +955,12 @@ export function createGatherHost(deps) {
       const d = dungeon;
       dungeon = null;
       if (!d) return;
+      forgetCrackBatches(d.batches);   // VEIN-CRACKS
       for (const b of d.batches) d.drop(b);
       d.batches = [];
-      if (act?.dungeon) { act.act.cancel(); act = null; ear.stop(); hud.setMeter(null); hud.toast(ACT_STOPPED_LINE); }   // GATHER-SAID; GATHER-FEEL: its blows go with it
+      for (const bu of bursts) if (bu.dungeon === d) dropBurst(bu);   // VEIN-CRACKS: its chunks, through its doors
+      bursts = bursts.filter((bu) => !bu.gone);
+      if (act?.dungeon) { act.act.cancel(); unwork(act); act = null; ear.stop(); hud.setMeter(null); hud.toast(ACT_STOPPED_LINE); }   // GATHER-SAID; GATHER-FEEL: its blows go with it; VEIN-CRACKS: its cracks close
       if (follow?.dungeon) follow = null;   // GATHER-FEEL: the pick put away with the dungeon...
       landing = landing.filter((l) => !l.a.dungeon);   // ...and a vein's last blow lands in no other place
     },
@@ -831,6 +998,9 @@ export function createGatherHost(deps) {
     },
     /** The tool in the hand for the rig (combat/weaponRig.js actTool): the act's, as DFU's own sprite. */
     handTool: () => (act?.hand ? act.hand(act) : follow?.hand ? follow.hand(follow) : null),   // GATHER-FEEL: and a finished act's last swing, until it runs out
+    /** PEER-ACTS (GATHER-FEEL II): the pose's gathering fields (net/wire.js validPose `ga`, `gb`, `gm`) - the act the hand
+     *  is on, as `handTool` holds it (the one playing, or a finished one's last swing), and the beats counted. */
+    poseAct: () => pose.fields(act?.act ?? follow?.act ?? null),
     /**
      * E pressed - or, PROF-MENU, the activation's click (`click`): a node in reach takes it. The row the plaque has lit
      * over the node is the one pressed; a click presses that and nothing else (a click with no lit row of a node's is the
@@ -951,7 +1121,7 @@ export function createGatherHost(deps) {
       return start(t, plan, templateIndex) ? 'started' : 'taken';
     },
     /** Escape: the act ends, nothing lost. True when there was one. */
-    cancel() { if (!act) return false; ear.stop(); act.act.cancel(); act = null; syncPointer(); hud.setMeter(null); return true; },   // HERB-CURSOR: the mouse given back; GATHER-FEEL: its blows in the air with it
+    cancel() { if (!act) return false; ear.stop(); act.act.cancel(); unwork(act); act = null; syncPointer(); hud.setMeter(null); return true; },   // VEIN-CRACKS: its cracks close   // HERB-CURSOR: the mouse given back; GATHER-FEEL: its blows in the air with it
     /** Every frame the host is in the streaming world. */
     tick(dt) {
       syncPointer();   // AUDIT HERB-CURSOR A3/B1: before anything of the frame can throw
@@ -972,7 +1142,7 @@ export function createGatherHost(deps) {
       if (eye !== standSpecs) { if (standSpecs !== undefined) restandAll(); standSpecs = eye; }
       if (book.state.open !== true) {
         ear.stop();   // GATHER-FEEL: an act shut mid-way takes its blows with it...
-        if (act) { act.act.cancel(); act = null; }   // AUDIT 29 C5: shut mid-act - the act ends (the swing was held off, the tool in the hand)
+        if (act) { act.act.cancel(); unwork(act); act = null; }   // AUDIT 29 C5: shut mid-act - the act ends (the swing was held off, the tool in the hand); VEIN-CRACKS: its cracks close
         follow = null; landing = [];   // GATHER-FEEL: ...and a finished one's last swing is put away, nothing left to land
         ear.frame(dt, null);   // GATHER-FEEL: a beat said still sounds
         target = null;   // NODE-SHUT (AUDIT 2026-10-01 part four): shut, no node is the target - CLIMB-NODE's hold reads it, and it held the free climb everywhere until they opened again
@@ -994,6 +1164,7 @@ export function createGatherHost(deps) {
       // PROF4: the kinds' own frame - a felled tree's fall, the logs at its foot
       const feetNow = deps.feet();
       for (const k of kinds) k.frame?.(dt, { feet: feetNow, translation: (e) => (stood.get(pixelKey(e.px, e.py))?.entry === e ? deps.pixelTranslation(e.px, e.py, [0, 0, 0]) : null), say: sayKind });   // GATHER-FEEL: `say` - a kind's own beat (the logs taken)
+      if (bursts.length) stepBursts(dt);   // VEIN-CRACKS: the chunks fly, fall, lie and sink away
       // GATHER-FEEL: the last blows in the air land - their nodes go - and the tool that struck one is put away as its
       // swing runs out
       if (landing.length) {
@@ -1001,7 +1172,7 @@ export function createGatherHost(deps) {
         const due = landing.filter((l) => !(l.left > 0));
         if (due.length) { landing = landing.filter((l) => l.left > 0); for (const l of due) { l.a.landing = false; fallNow(l.a); } }
       }
-      if (follow) { follow.act.tick(dt, {}); if (!(follow.act.swing > 0)) follow = null; }
+      if (follow) { stepAct(follow, dt, {}); if (!(follow.act.swing > 0)) follow = null; }   // GATHER-FEEL II: its last blow lands through stepAct
       const input = deps.input();
       const attack = input.attack || (!!act && struck === act);   // ACT-TOUCH: the edge ring's press, or the hooks' - on the act it struck
       struck = null;
@@ -1012,8 +1183,9 @@ export function createGatherHost(deps) {
         const w = actWorld(act);
         act.world = w ?? act.world;
         const gone = act.loose ? !w : !act.dungeon && !stood.has(pixelKey(act.px, act.py));   // its pixel torn down under it; PROF7: its body let go
-        act.act.tick(dt, { held: input.held || act.heldByUse === true, attack, view: v, pos: { x: feet[0], z: feet[2] }, aim: aimAt(pos, act.world, v) });   // TOOL-USE: a hold the Use made
+        stepAct(act, dt, { held: input.held || act.heldByUse === true, attack, view: v, pos: { x: feet[0], z: feet[2] }, aim: aimAt(pos, act.world, v) });   // TOOL-USE: a hold the Use made; GATHER-FEEL II: and a blow landed
         ear.frame(dt, act.act, act.world, pos);   // GATHER-FEEL: the act heard - its blows as they land, its node's place, the net's
+        pose.frame(act.act);   // PEER-ACTS: and its beats counted for the others - here, before its end lets it go, so its last beat counts
         const away = gone || Math.hypot(act.world[0] - pos[0], act.world[2] - pos[2]) > (act.node.reach ?? NODE_REACH) + 1;
         const here = act.dungeon ? inDungeon() : act.interior ? indoors() : deps.active();   // INDOOR-SKIN: a building's act ends at its door
         if (act.act.state.cancelled || away || !here) {   // GATHER-SAID: said, never only the meter gone (Escape ends it in `cancel`, unsaid)
@@ -1021,6 +1193,7 @@ export function createGatherHost(deps) {
           // edge: Fishing's live cast stayed neither done nor cancelled and kept the bank a target (SHORE-CAST)
           if (!act.act.state.done && !act.act.state.cancelled) act.act.cancel();
           ear.stop();   // GATHER-FEEL: its blows in the air go with it
+          unwork(act);   // VEIN-CRACKS: and its cracks close over
           act = null; hud.setMeter(null); hud.toast(ACT_STOPPED_LINE);
         }
         else if (act.act.state.done) { hud.setMeter(act.act, act.label ?? '', { byUse: act.heldByUse === true }); finish(act); }   // PROF-SCENES: the last frame drawn (its blow's cue) before the marks go
@@ -1172,6 +1345,6 @@ export function createGatherHost(deps) {
       return out;
     },
     /** The page's teardown. */
-    dispose() { this.leaveDungeon(); for (const s of stood.values()) unstand(s.entry); ear.stop(); follow = null; landing = []; stood.clear(); act = null; syncPointer(); hud.dispose(); },   // GATHER-FEEL: the ear's beats, the hand and the landings let go
+    dispose() { this.leaveDungeon(); for (const s of stood.values()) unstand(s.entry); for (const bu of bursts) dropBurst(bu); bursts = []; cracks.clear(); crackBatches.clear(); worked = null; ear.stop(); follow = null; landing = []; stood.clear(); act = null; syncPointer(); hud.dispose(); },   // GATHER-FEEL: the ear's beats, the hand and the landings let go; VEIN-CRACKS: the chunks, the cracks
   };
 }

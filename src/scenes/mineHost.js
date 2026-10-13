@@ -323,6 +323,10 @@ export const DUNGEON_SKIP = Object.freeze(['inside', 'town', 'daylight', 'sea'])
  * @param {{ dungeon: number, day: number, climate: number, confirmed?: boolean,
  *   wall: (marker: number, bearing: number) => (number[]|null) }} p
  */
+/** VEIN-CRACKS (GATHER-FEEL II): how far up its wall a dungeon's vein stands over the floor under it, metres - the
+ *  dungeon's own law (scenes/dungeonContext.js profVeinWall, PROF_VEIN_UP_M), pinned equal by test/gf2_veincracks.test.js
+ *  and not imported: the dungeon's host takes no professions module. A vein's chunks fall to that floor. */
+export const DVEIN_UP_M = 0.5;
 export function standDungeonVeins({ dungeon, day, climate, confirmed = false, wall }) {
   const out = [];
   for (const v of dungeonVeins({ dungeon, day, climate, confirmed })) {
@@ -430,6 +434,11 @@ export function mineKind({ book, lodes = null, marks = null }) {
     },
     tools: Object.freeze([FT.PickAxe]),   // TOOL-USE: the Pick-Axe's Use at a vein or a boulder is E there
     goneSound: 'rubble',   // GATHER-FEEL: a vein or a boulder heard worked out as its last blow lands
+    /** VEIN-CRACKS (GATHER-FEEL II): a vein or a boulder cracks as its blows land (systems/veinCrack.js) and sheds chunks
+     *  of its own picture - its ore's record, its wash and its colour, as its flats wear them - that fall to the ground
+     *  it stands on (a dungeon's vein stands DVEIN_UP_M up its wall). */
+    cracks: true,
+    chunkOf: (n) => ({ archive: ORE_FLAT_ARCHIVE, record: mineRecord(n), tint: mineWash(n), dye: mineWash(n) ? ORE_DYE : 0, floor: n.what === 'dvein' ? n.local[1] - DVEIN_UP_M : n.local[1] }),
     where: (n) => (n.what === 'dvein' ? null : actChecksRefusal(GROUND_WHERE, GROUND_WHERE_WORDS)),   // SETTLE-SAID: a dungeon's vein asks no settlement (DUNGEON_SKIP)
     /** PROF-MENU: the menu's title - the boulder, or the vein's ore. */
     nodeName: (n) => (n.what === 'boulder' ? 'Boulder' : n.what === 'motherlode' ? `Motherlode of ${materialLabel(n.material).replace(/ Ore$/, '')}` : `${materialLabel(n.material).replace(/ Ore$/, '')} Vein`),

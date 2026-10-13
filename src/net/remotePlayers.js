@@ -62,6 +62,7 @@ import { billboardSize } from '../world/rmbFlats.js';   // PCORPSE1: a corpse st
 import { raceGenderPain3Sound, CLASSIC_PLAYER_DEATH_SOUND } from '../systems/playerDeath.js';   // PCORPSE1: the fallen player's own cry
 import { SEAT_HIP_DROP } from '../player/seatPose.js';   // CARDS2c: a seated sprite sinks by the seat's own drop
 import { RACES } from '../systems/races.js'; import { PeerClimbSounds, peerBodyYaw, peerMoving } from './peerClimb.js';   // CLIMB5: a peer on the wall faces it, takes no stride, and is heard climbing
+import { PeerGatherSounds, peerGatherSwing, peerKneeling } from './peerGather.js';   // PEER-ACTS: a peer gathering is seen at it and heard
 
 // ── PCORPSE1: THE FALLEN ──────────────────────────────────────────
 //
@@ -526,6 +527,7 @@ export class RemotePlayers {
     this._footsteps = new Map(); // PEER-FS1: peer id -> FootstepMachine (the stride timing off their own pose)
     this._attackAn = new Map();  // PEER-FS2: peer id -> the last `an` heard, so a new swing count is a swing
     this._climbSounds = new PeerClimbSounds({ audio: deps?.audio ?? null, profile: PEER_SOUND_PROFILE });   // CLIMB5: peer id -> their climb's last state and place, heard at them
+    this._gatherSounds = new PeerGatherSounds({ audio: deps?.audio ?? null, profile: PEER_SOUND_PROFILE });   // PEER-ACTS: peer id -> their act's last state, its blows in the air - heard at them
     this._riding = new Map();
     this._onFoot = new Set();    // AUDIT DISC7 B4: peer ids last seen on foot - their next mount is a mount (the neigh soon after)    // RIDE-SOUND: peer id -> { anim: RidingAnimator, rd } - the mounted peer's hooves
     this._batches = new Map();   // peer id -> { batch, key, doll, peer } (doll kind) | { batch, kind: 'mobile', mobileType, gender, mobileUnit, archive, tex, height, lastAn, lastCn, peer } (mobile kind)
@@ -860,6 +862,7 @@ export class RemotePlayers {
       this._syncFootsteps(peer, toScene, eye);
       this._syncClimbSound(peer, toScene, eye);   // CLIMB5
       this._syncAttackSound(peer, toScene, eye);
+      this._syncGatherSound(peer, toScene, eye);   // PEER-ACTS
       this._syncRidingSound(peer, toScene, dt, eye, poseAgeMs);
       // AUDIT (the pre-merge audit, I-G): a peer the classic lane stands NOWHERE (INVIS-NET) is still heard - DFU turns a
       // concealed entity's renderer off, not its sounds - but has no sprite, no doll and no name here
@@ -927,6 +930,7 @@ export class RemotePlayers {
     }
     for (const id of this._footsteps.keys()) if (!seen.has(id)) this._footsteps.delete(id);
     for (const id of [...this._climbSounds.peers.keys()]) if (!seen.has(id)) this._climbSounds.forget(id);   // CLIMB5: a peer gone - their next climb seen is a first
+    for (const id of [...this._gatherSounds.peers.keys()]) if (!seen.has(id)) this._gatherSounds.forget(id);   // PEER-ACTS: and their next act - its blows in the air with them
     for (const id of this._attackAn.keys()) if (!seen.has(id)) this._attackAn.delete(id);
     for (const id of [...this._riding.keys()]) if (!seen.has(id)) this._stopRidingSound(id);   // RIDE-SOUND: a peer gone (or every peer, on the dead's empty sync) takes their hooves with them
     for (const id of [...this._onFoot]) if (!seen.has(id)) this._onFoot.delete(id);   // AUDIT DISC7 B4: and what they were last seen on
@@ -996,6 +1000,7 @@ export class RemotePlayers {
   rebaseFootsteps() {
     for (const fm of this._footsteps.values()) fm.rebase();
     this._climbSounds.rebase();   // CLIMB5: and the climb's last places - the shift is no reach up the wall
+    this._gatherSounds.rebase();   // PEER-ACTS: and a net's place, a blow in the air - places in the old frame
   }
 
   /** PEER-FS2 (Mac: "attacking sounds are not in"): every SWING - not just
@@ -1021,6 +1026,16 @@ export class RemotePlayers {
     const hand = peer.shown.lh ? EQUIP_SLOTS.LeftHand : EQUIP_SLOTS.RightHand;
     const weapon = peer.shown.wd && !peer.shown.wb ? ((peer.look?.items ?? []).find((it) => it?.group === 'Weapons' && it.equipSlot === hand) ?? null) : null;
     peerSound(this.deps.audio, swingSoundFor(weapon), f, 1.1);
+  }
+
+  /** PEER-ACTS (GATHER-FEEL II): a peer's gathering, heard at them (net/peerGather.js PeerGatherSounds) - the act's
+   *  beats within earshot, behind the swings' switch ('peerAttackSounds' - a tool's blow is a swing, the rest its hands'
+   *  work). Told every change with the switch off, as the climb is (AUDIT CLIMB-ARC N5), so switching it back on replays
+   *  nothing. */
+  _syncGatherSound(peer, toScene, eye) {
+    if (!this.deps?.audio?.play3d) return;
+    const f = this._feet(peer, toScene);
+    this._gatherSounds.update(peer.id, peer.shown, f, getPref('peerAttackSounds') !== false && peerInEarshot(f, eye));
   }
 
   /** RIDE-SOUND (Mac: the known limit - "other players' horses make no hoof sounds yet"): A PEER IN THE SADDLE IS
@@ -1133,7 +1148,10 @@ export class RemotePlayers {
     const f = this._feet(peer, toScene);
     const moving = peerMoving(shown);   // CLIMB5: a shimmy along a lip is no walk
     const an = shown.an | 0;
-    const striking = entry != null && entry.lastAn != null && an !== entry.lastAn;
+    // PEER-ACTS: a gathering tool's blow, and the net's throw, are its strike too - the first sight of an act none
+    const gather = entry?.gather ?? {};
+    const acted = peerGatherSwing(gather, shown);
+    const striking = (entry != null && entry.lastAn != null && an !== entry.lastAn) || acted != null;
     const face = peerBodyYaw(shown);   // CLIMB5: on the wall, facing it
     const yaw = Number.isFinite(face) ? face : 0;
     // BUGFIX (2026-09-17): mobileOrientation (characters/mobileUnit.js) reads cameraPos[0]/[2] unconditionally to
@@ -1148,7 +1166,11 @@ export class RemotePlayers {
     // plain Array. So this always failed and silently substituted the peer's OWN feet as "the viewer", making every
     // peer face a coincident (zero-distance) point forever - orientation frozen regardless of anyone's real yaw or
     // position. `eye.length === 3` accepts either array kind.
-    const out = bundle.mobileUnit.update(dt, { moving, striking }, yaw, f, eye && eye.length === 3 ? eye : f);
+    const viewer = eye && eye.length === 3 ? eye : f;
+    const stepped = bundle.mobileUnit.update(dt, { moving, striking }, yaw, f, viewer);
+    // PEER-ACTS: kneeling at an act - a herb, the Basket's search, the knife at a body - the sprite kneels as a yielding foe
+    // kneels (REVENANT-FATE's held hurt frame, systems/revenantFate.js), its own clock untouched; a one-shot plays through
+    const out = peerKneeling(shown) && !moving && !bundle.mobileUnit.isPlayingOneShot() ? bundle.mobileUnit.heldPose('hurt', -1, yaw, f, viewer) : stepped;
     const rkey = `${out.record}#${out.frame}`;
     if (!this.renderer.textures?.has?.(`${bundle.archive}_${rkey}`)) this.deps.uploadRecordFrame(bundle.archive, out.record, out.frame);
     const sz = mobileBillboardSize(bundle.tex, out.record);
@@ -1157,7 +1179,7 @@ export class RemotePlayers {
     if (!entry) {
       const batch = this.renderer.createBillboardBatch(bundle.archive, rkey, size, [[0, 0, 0]]);
       batch.origin = [0, 0, 0];
-      entry = { kind: 'mobile', batch, mobileUnit: bundle.mobileUnit, archive: bundle.archive, tex: bundle.tex, height: sz.h * g, lastAn: an, peer, g: 1, drawnFrames: 0 };
+      entry = { kind: 'mobile', batch, mobileUnit: bundle.mobileUnit, archive: bundle.archive, tex: bundle.tex, height: sz.h * g, lastAn: an, gather, peer, g: 1, drawnFrames: 0 };   // PEER-ACTS: `gather` the act as last seen
       this._batches.set(peer.id, entry);
     } else {
       entry.batch.record = rkey;
