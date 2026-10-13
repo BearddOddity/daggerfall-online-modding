@@ -3915,8 +3915,8 @@
   "by": "claude-in-session"
  },
  "features.enhancedSounds.note": {
-  "en": "96af68cb8c24",
-  "tr": "63e815a3b530",
+  "en": "3bd846fda933",
+  "tr": "e7da787736c7",
   "by": "claude-in-session"
  },
  "features.enhancedSounds.title": {
@@ -5770,8 +5770,8 @@
   "by": "claude-in-session"
  },
  "menu.peers.attackNote": {
-  "en": "baed5ece553d",
-  "tr": "fbe0e16e3e43",
+  "en": "c23377041c1d",
+  "tr": "fdd4dfeae201",
   "by": "claude-in-session"
  },
  "menu.peers.blurb": {
@@ -12072,6 +12072,11 @@
  "prof.work.yours.writ": {
   "en": "ce32bc277933",
   "tr": "69a9a2a78334",
+  "by": "claude-in-session"
+ },
+ "sea.board.cargoVoid": {
+  "en": "ab24e7cbf348",
+  "tr": "af06588791bb",
   "by": "claude-in-session"
  },
  "sea.chart.anIsle": {
