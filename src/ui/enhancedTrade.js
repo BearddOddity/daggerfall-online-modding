@@ -48,15 +48,15 @@ import { enhancedSoundsOn } from '../systems/enhancedSounds.js';
 import { SOUND } from '../systems/soundClips.js';
 import {
   tradeCost, getTradePrice, tradeDecision, sellProceeds,
-  localListAccepts, localClickDecision, sellGuardOf, DOESNT_NEED_IDENTIFY,
+  localListAccepts, localClickDecision, sellGuardOf, doesntNeedIdentifyText, letterOfCreditText,
   MAGIC_ITEMS_CANNOT_BE_REPAIRED_TEXT_ID, DOES_NOT_NEED_TO_BE_REPAIRED_TEXT_ID,
 } from '../systems/tradeModes.js';
 import {
-  CANNOT_BE_REPAIRED_TEXT, TRANSPORT_CANNOT_BE_REPAIRED_TEXT, INTERRUPT_REPAIR_TEXT,
+  cannotBeRepairedText, TRANSPORT_CANNOT_BE_REPAIRED_TEXT, interruptRepairText,
   isBeingRepaired as itemIsBeingRepaired, isRepairFinished, collectRepaired,
   updateRepairTimes, repairCountdown, repairCountdownText,   // UXB1-K: when a job is ready
 } from '../systems/repairService.js';
-import { planTake, applyTransfer, clearLightSourceOnLeave, CANNOT_CARRY_TEXT, HOW_MANY_ITEMS, parseSplitAmount } from '../systems/itemTransfer.js';
+import { planTake, applyTransfer, clearLightSourceOnLeave, cannotCarryText, HOW_MANY_ITEMS, parseSplitAmount } from '../systems/itemTransfer.js';
 import { isKeptSpellbook, SPELLBOOK_KEPT_TEXT } from '../systems/itemTransfer.js';   // KEEP-SPELLBOOK: never sold
 import { howManyField } from './howManyField.js';   // DISC25-F: the counter's how-many field, the pack's own
 import { isTextEntryTarget } from './input.js';
@@ -70,11 +70,12 @@ import { dateFromClassicMinutes, dateString } from '../systems/gameDate.js';
 import { ownTimeLeftText, ownTimeLeftShort } from '../systems/worldTick.js';   // UXB1-K: online, the ready time in the player's own terms (LIVED1: their own clock)
 import { shopliftAttempt } from '../systems/theft.js';
 import { entityMaxEncumbrance } from '../combat/formulas.js';
-import { CANNOT_REMOVE_ITEM_TEXT } from '../systems/createItem.js';
+import { cannotRemoveItemText } from '../systems/createItem.js';
 import { questTransferRefused, TABS, tabAccepts } from './nativeInventory.js';
-import { initialTradeTab, STEAL_SUCCESS_TEXT, STEAL_FAILURE_TEXT } from './nativeTrade.js';
+import { initialTradeTab, stealSuccessText, stealFailureText } from './nativeTrade.js';
 import { expandGuildMacros } from '../systems/guildServiceActions.js';
 import { firstName } from '../systems/talkSession.js';   // MACRO-4: %pct's shop arm
+import { t } from '../systems/textManager.js';   // L10N4: MENU-ORDER's own words in the player's language
 
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -94,12 +95,16 @@ const TAB_LABEL = Object.freeze({
 });
 /** MENU-ORDER (2026-10-12): the counter's title says the mode whole - a counter that buys magic alone says so, where
  *  the button's verb is plain "Sell". */
-export const TRADE_TITLE = Object.freeze({ ...MODE_LABEL, SellMagic: 'Sell magic items' });
+export const TRADE_TITLE = Object.freeze({ ...MODE_LABEL, get SellMagic() { return t('trade.counter.title.sellMagic', 'Sell magic items'); } });
 /** MENU-ORDER: the player's own column, named as the shop's is ("On the shelf"). */
 export const TRADE_OWN_HEAD = 'Your pack';
 /** MENU-ORDER: the footer's two figures, each under its own name - what the lot costs (or brings, selling) and the
  *  purse - where one span read "Cost: 0   Gold: 1840" and the spaces collapsed. */
-export const TRADE_COST_WORD = Object.freeze({ Buy: 'To pay', Sell: 'You get', SellMagic: 'You get', Repair: 'To pay', Identify: 'To pay' });
+export const TRADE_COST_WORD = Object.freeze({
+  get Buy() { return t('trade.counter.cost.pay', 'To pay'); }, get Sell() { return t('trade.counter.cost.get', 'You get'); },
+  get SellMagic() { return t('trade.counter.cost.get', 'You get'); }, get Repair() { return t('trade.counter.cost.pay', 'To pay'); },
+  get Identify() { return t('trade.counter.cost.pay', 'To pay'); },
+});
 export const TRADE_GOLD_WORD = 'Your gold';
 /** MENU-ORDER: a figure as the footer says it. */
 export const tradeGoldText = (n) => `${Math.max(0, Math.round(Number(n) || 0)).toLocaleString('en-US')} gold`;
@@ -242,9 +247,9 @@ function refuse(refusal) {
   const text = {
     magic: rows(MAGIC_ITEMS_CANNOT_BE_REPAIRED_TEXT_ID),
     undamaged: rows(DOES_NOT_NEED_TO_BE_REPAIRED_TEXT_ID),
-    notRepairable: [{ text: CANNOT_BE_REPAIRED_TEXT, center: true }],
+    notRepairable: [{ text: cannotBeRepairedText(), center: true }],
     transport: [{ text: TRANSPORT_CANNOT_BE_REPAIRED_TEXT, center: true }],   // WAGONS4
-    identified: [{ text: DOESNT_NEED_IDENTIFY, center: true }],
+    identified: [{ text: doesntNeedIdentifyText(), center: true }],
     bagLoaded: [{ text: BAG_WORDS.notEmpty, center: true }],   // BAG1: a Materials Bag holding anything
   }[refusal] ?? [];
   box = { rows: text.length ? text : [{ text: '...', center: true }], buttons: null };
@@ -279,7 +284,7 @@ function refuseTransfer(item) {
     fromLocal: true, toWagon: false, getQuest: deps.getQuest ?? null,
   });
   if (!refused) return false;
-  box = { rows: [{ text: CANNOT_REMOVE_ITEM_TEXT, center: true }], buttons: null };
+  box = { rows: [{ text: cannotRemoveItemText(), center: true }], buttons: null };
   render();
   return true;
 }
@@ -442,7 +447,7 @@ function pickRemote(item) {
   if (inBuy()) {
     const plan = buyPlan(item);
     if (!plan.ok) {
-      box = { rows: [{ text: plan.refusal?.text ?? CANNOT_CARRY_TEXT, center: true }], buttons: null };
+      box = { rows: [{ text: plan.refusal?.text ?? cannotCarryText(), center: true }], buttons: null };
       render();
       return;
     }
@@ -458,7 +463,7 @@ function pickRemote(item) {
     const now = deps.nowMinutes?.() ?? 0;
     if (itemIsBeingRepaired(item) && !isRepairFinished(item, now)) {
       box = {
-        rows: [{ text: INTERRUPT_REPAIR_TEXT, center: true }], buttons: 'YesNo',
+        rows: [{ text: interruptRepairText(), center: true }], buttons: 'YesNo',
         onYes: () => { takeItemFromRepair(item); render(); },
       };
       render();
@@ -568,13 +573,13 @@ function runSteal() {
   const out = shopliftAttempt({ basket: items, pickpocketSkill: deps.pickpocketSkill?.() ?? 0, shopQuality: ctx.quality ?? 0 });
   deps.tallyPickpocket?.(1);
   if (!out.caught) {
-    deps.say?.(STEAL_SUCCESS_TEXT, 2);
+    deps.say?.(stealSuccessText(), 2);
     if (basket.length) { deliverFurniture(basket); transferAll(basket, deps.packItems()); }
     else if (!deliverFurniture(deps.shelfItems(), items[0])) move(items[0], deps.shelfItems(), deps.packItems());
     selected = null;
     deps.tallyCrimeGuild?.(true, 1);
   } else {
-    deps.say?.(STEAL_FAILURE_TEXT, 2);
+    deps.say?.(stealFailureText(), 2);
     deps.crimeTheft?.();
     deps.spawnCityGuards?.(true);
   }
@@ -598,7 +603,7 @@ function confirmTrade(price) {
   if (refused) { render(); return; }
   audio.playOneShot(proceeds?.kind === 'letterOfCredit' ? SOUND.ParchmentScratching : SOUND.GoldPieces, 1);
   if (proceeds?.kind === 'letterOfCredit') {
-    box = { rows: [{ text: 'You are paid with a letter of credit.', center: true }], buttons: null };
+    box = { rows: [{ text: letterOfCreditText(), center: true }], buttons: null };
   }
   render();
 }
@@ -631,7 +636,7 @@ function quickSellSelected() {
       selected = null;
       audio.playOneShot(proceeds?.kind === 'letterOfCredit' ? SOUND.ParchmentScratching : SOUND.GoldPieces, 1);
       if (proceeds?.kind === 'letterOfCredit') {
-        box = { rows: [{ text: 'You are paid with a letter of credit.', center: true }], buttons: null };
+        box = { rows: [{ text: letterOfCreditText(), center: true }], buttons: null };
       }
       render();
     },
@@ -845,7 +850,7 @@ function localCol() {
   // MENU-ORDER: the player's column named over its tabs, as the shop's is - the two columns read as a pair
   const head = el('div', 'remotehead trade-ownhead');
   const who = el('div', 'remotewho');
-  who.append(el('h3', null, TRADE_OWN_HEAD), el('p', 'meta', tradeCountText(items.length)));
+  who.append(el('h3', null, t('trade.counter.ownHead', TRADE_OWN_HEAD)), el('p', 'meta', tradeCountText(items.length)));
   head.append(who);
   col.append(head);
   const tabsEl = el('div', 'packtabs');
@@ -938,7 +943,7 @@ function footer() {
   // MENU-ORDER: two figures, each under its name, where one span ran them together
   const figs = el('span', 'meta trade-cost');
   const fig = (word, value) => { const f = el('span', 'trade-fig'); f.append(el('small', null, word), el('b', null, value)); return f; };
-  figs.append(fig(TRADE_COST_WORD[mode] ?? TRADE_COST_WORD.Buy, tradeGoldText(c)), fig(TRADE_GOLD_WORD, tradeGoldText(deps.gold?.() ?? 0)));
+  figs.append(fig(TRADE_COST_WORD[mode] ?? TRADE_COST_WORD.Buy, tradeGoldText(c)), fig(t('trade.counter.gold', TRADE_GOLD_WORD), tradeGoldText(deps.gold?.() ?? 0)));
   bar.append(figs);
   if (inBuy() && !deps.stealRefusal?.()) {   // AUDIT MERCHANT-YARDS Y1: no Steal at a counter whose keeper never looks away
     const steal = el('button', 'act trade-steal', 'Steal');   // MENU-ORDER: a crime, edged in blood and set apart from the sale

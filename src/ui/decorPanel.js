@@ -55,6 +55,7 @@ import {
 import { homeLookSwatch } from '../world/homeLook.js';
 import { decorIsDoor } from '../systems/decorDoorways.js';   // HOME-DOORS (AUDIT): a door's controls
 import { DFICON_CSS } from './menuGlyphs.js';   // MENU-ORDER: a kind and a press each wear a picture
+import { t } from '../systems/textManager.js';   // L10N4: MENU-ORDER's own words in the player's language
 /** The crafts a piece may be made here: every station, the Forge only where it works (AUDIT 29 B2). HOME-VENDOR: and a
  *  trader only where the market trades - online, the trades open (its stock is market listings). */
 /** WAGONS2 (FINAL AUDIT): `trader` - whether the room is a home, where a hired trader trades (the view's `trader`); a
@@ -270,20 +271,22 @@ export const DECOR_SORTS = Object.freeze({ common: 'Most common', price: 'Cheape
  *  a part of the house to paint are words, never pictures). */
 export const DECOR_LAYOUT_WORDS = Object.freeze({ grid: 'Pictures', list: 'List' });
 export const DECOR_GRID_MODES = Object.freeze(['catalogue', 'look', 'own', 'room', 'base']);
-/** MENU-ORDER: each view's tab's picture, by the word it starts with. */
-const TAB_ICONS = Object.freeze([['Catalogue', 'all'], ['In this room', 'room'], ['In this yard', 'nature'], ['Your things', 'own'], ['Built in', 'furniture'],
-  ['Rooms to rent', 'rent'], ['Paint', 'paint'], ['Exterior', 'paint']]);
 /** MENU-ORDER: the names over the panel's rows of choices - its rooms, and each group of a side's presses. */
 export const DECOR_ROOMS_WORD = 'Room';
 export const DECOR_FILTERS_WORD = 'Filters';
 export const DECOR_ACT_GROUPS = Object.freeze({
-  arrange: 'Arrange', use: 'Light and storage', station: 'Crafting station',   // a placed piece
-  piece: 'This piece', whole: 'The whole room',   // BASE-HIDE: the room's own furniture
-  price: 'Price a day', offer: 'Offer this room', rent: 'Rent held',   // HOME-RENT
+  get arrange() { return t('decor.panel.group.arrange', 'Arrange'); }, get use() { return t('decor.panel.group.use', 'Light and storage'); },   // a placed piece
+  get station() { return t('decor.panel.group.station', 'Crafting station'); },
+  get piece() { return t('decor.panel.group.piece', 'This piece'); }, get whole() { return t('decor.panel.group.whole', 'The whole room'); },   // BASE-HIDE: the room's own furniture
+  get price() { return t('decor.panel.group.price', 'Price a day'); }, get offer() { return t('decor.panel.group.offer', 'Offer this room'); },   // HOME-RENT
+  get rent() { return t('decor.panel.group.rent', 'Rent held'); },
 });
 /** MENU-ORDER: the painter's rows - a part's climate, then its building's style (walls, windows) or its own (a roof, a
  *  door); a caravan's part, its paint. */
-export const DECOR_PAINT_WORDS = Object.freeze({ climate: 'Climate', set: 'Building style', style: 'Style', paint: 'Paint' });
+export const DECOR_PAINT_WORDS = Object.freeze({
+  get climate() { return t('decor.panel.paint.climate', 'Climate'); }, get set() { return t('decor.panel.paint.set', 'Building style'); },
+  get style() { return t('decor.panel.paint.style', 'Style'); }, get paint() { return t('decor.panel.paint.paint', 'Paint'); },
+});
 /** MENU-ORDER: the phone's filter fold, and how many filters it hides that are chosen (a kind each, a size, holding,
  *  light) - "Filters" with none. */
 export function decorFiltersText({ kinds, size, storage, light }) {
@@ -485,7 +488,7 @@ export function createDecorPanel({
   const filters = el('div', 'dfdecor-filters');
   const search = el('input', 'dfdecor-search');
   search.type = 'search';
-  search.setAttribute('placeholder', 'Search by name');
+  search.setAttribute('placeholder', t('decor.panel.search', 'Search by name'));
   search.setAttribute('aria-label', 'Search the catalogue');
   const kindChips = el('div', 'dfdecor-chips dfdecor-kinds');
   const sizeChips = el('div', 'dfdecor-chips');
@@ -501,11 +504,11 @@ export function createDecorPanel({
   const searchGroup = el('div', 'dfdecor-fgroup dfdecor-fg-search');
   searchGroup.append(search, filterToggle);
   const lineOne = el('div', 'dfdecor-fline');
-  lineOne.append(searchGroup, group('Sort', sortChips, 'dfdecor-fg-sort'));
+  lineOne.append(searchGroup, group(t('decor.panel.filter.sort', 'Sort'), sortChips, 'dfdecor-fg-sort'));
   const lineTwo = el('div', 'dfdecor-fline dfdecor-fline-more');
-  lineTwo.append(group('Type', kindChips, 'dfdecor-fg-kinds'));
+  lineTwo.append(group(t('decor.panel.filter.type', 'Type'), kindChips, 'dfdecor-fg-kinds'));
   const lineThree = el('div', 'dfdecor-fline dfdecor-fline-more');
-  lineThree.append(group('Size', sizeChips, 'dfdecor-fg-size'), group('Show only', hasChips, 'dfdecor-fg-has'));
+  lineThree.append(group(t('decor.panel.filter.size', 'Size'), sizeChips, 'dfdecor-fg-size'), group(t('decor.panel.filter.has', 'Show only'), hasChips, 'dfdecor-fg-has'));
   filters.append(lineOne, lineTwo, lineThree);
 
   const body = el('div', 'dfdecor-body');
@@ -742,31 +745,27 @@ export function createDecorPanel({
   function badges({ storage = false, light = false, station = false }) {
     const b = el('span', 'dfdecor-badges');
     const one = (icon, word) => { const x = el('span', 'dfdecor-badge'); x.dataset.dficon = icon; x.title = word; x.setAttribute('aria-label', word); return x; };
-    if (storage) b.append(one('storage', 'Holds things'));
-    if (light) b.append(one('light', 'Gives light'));
-    if (station) b.append(one('station', 'A crafting station'));
+    if (storage) b.append(one('storage', t('decor.panel.badge.storage', 'Holds things')));
+    if (light) b.append(one('light', t('decor.panel.badge.light', 'Gives light')));
+    if (station) b.append(one('station', t('decor.panel.badge.station', 'A crafting station')));
     return b;
   }
-  /** MENU-ORDER: each view's tab its picture, read off its own word. */
-  function tabIcons() { for (const c of tabs.children ?? []) { const w = TAB_ICONS.find(([lead]) => String(c.textContent).startsWith(lead)); if (w) c.dataset.dficon = w[1]; } }
   function drawTabs() {
     if (card.dataset.yard !== (view?.yard ? '1' : '0')) card.dataset.yard = view?.yard ? '1' : '0';
     if (view?.yard) {   // HOME-YARD: the catalogue, the yard's pieces, and (HOME-LOOK) the house outside
-      tabs.replaceChildren(chip('Catalogue', mode === 'catalogue', () => setMode('catalogue')), chip(`In this yard (${(view.placed ?? []).length})`, mode === 'room', () => setMode('room')),
-        ...(view.paint ? [chip('Exterior', mode === 'paint', () => setMode('paint'))] : []));
-      tabIcons();
+      tabs.replaceChildren(chip('Catalogue', mode === 'catalogue', () => setMode('catalogue'), 'all'), chip(`In this yard (${(view.placed ?? []).length})`, mode === 'room', () => setMode('room'), 'nature'),
+        ...(view.paint ? [chip('Exterior', mode === 'paint', () => setMode('paint'), 'paint')] : []));   // MENU-ORDER: each view's tab its picture
       roomsBar.replaceChildren();
       return;
     }
     const n = roomed(view?.placed ?? []).length;
     const m = view?.own?.length ?? 0;
     const k = roomed(view?.base ?? []).length;
-    tabs.replaceChildren(chip('Catalogue', mode === 'catalogue', () => setMode('catalogue')), chip(`In this room (${n})`, mode === 'room', () => setMode('room')),
-      chip(`Your things (${m})`, mode === 'own' || mode === 'look', () => setMode('own')),   // DECOR2b: a look is chosen within them
-      chip(`Built in (${k})`, mode === 'base', () => setMode('base')),   // BASE-HIDE: the room's own furniture
-      ...(view?.rent ? [chip(`Rooms to rent (${(view.rent.rows ?? []).filter((r) => r.offer).length})`, mode === 'rent', () => setMode('rent'))] : []),   // HOME-RENT
-      ...(view?.paint?.caravan ? [chip('Paint', mode === 'paint', () => setMode('paint'))] : []));   // WAGONS2: a caravan's inside, painted
-    tabIcons();
+    tabs.replaceChildren(chip('Catalogue', mode === 'catalogue', () => setMode('catalogue'), 'all'), chip(`In this room (${n})`, mode === 'room', () => setMode('room'), 'room'),
+      chip(`Your things (${m})`, mode === 'own' || mode === 'look', () => setMode('own'), 'own'),   // DECOR2b: a look is chosen within them
+      chip(`Built in (${k})`, mode === 'base', () => setMode('base'), 'furniture'),   // BASE-HIDE: the room's own furniture
+      ...(view?.rent ? [chip(`Rooms to rent (${(view.rent.rows ?? []).filter((r) => r.offer).length})`, mode === 'rent', () => setMode('rent'), 'rent')] : []),   // HOME-RENT
+      ...(view?.paint?.caravan ? [chip('Paint', mode === 'paint', () => setMode('paint'), 'paint')] : []));   // WAGONS2: a caravan's inside, painted; MENU-ORDER: each tab its picture
     roomsBar.replaceChildren(...roomChips());   // DECOR-ROOMS; MENU-ORDER: a row of their own
   }
   /** DECOR-ROOMS: THE ROOM TABS - one a room, the chosen one pressed, each saying how many pieces stand in it. Choosing
@@ -1333,10 +1332,10 @@ const DECOR_BAR_ICONS = Object.freeze({ place: 'place', turnLeft: 'turn-left', t
 /** MENU-ORDER: THE BAR'S LEGEND - each key's name and what presses it, a pair a line (a finger's two: the stick and
  *  Fly, and the look). DECOR-FIGURE: `sized` false tells no Size key. */
 export function decorBarKeys(touch, sized = true) {
-  if (touch) return [['Fly', 'the stick, and hold Fly up or Fly down'], ['Look', 'drag - the piece stands where you look']];
-  return [['Fly', 'walk keys, Jump up, Crouch down, Run faster'], ['Look', 'mouse'],
-    ['Turn', 'wheel or Turn Left/Right (Shift: fine; a picture turned half round faces the other way)'], ['Raise/lower', 'Float Up/Down'],
-    ...(sized ? [['Size', '- and =']] : []), ['Grid', '/'], ['Place', 'click or Interact'], ['Back', 'right click or Escape']];
+  if (touch) return [['Fly', t('decor.bar.keys.flyTouch', 'the stick, and hold Fly up or Fly down')], ['Look', t('decor.bar.keys.lookTouch', 'drag - the piece stands where you look')]];
+  return [['Fly', t('decor.bar.keys.fly', 'walk keys, Jump up, Crouch down, Run faster')], ['Look', t('decor.bar.keys.look', 'mouse')],
+    ['Turn', t('decor.bar.keys.turn', 'wheel or Turn Left/Right (Shift: fine; a picture turned half round faces the other way)')], ['Raise/lower', t('decor.bar.keys.raise', 'Float Up/Down')],
+    ...(sized ? [['Size', '- and =']] : []), ['Grid', '/'], ['Place', t('decor.bar.keys.place', 'click or Interact')], ['Back', t('decor.bar.keys.back', 'right click or Escape')]];
 }
 
 /**

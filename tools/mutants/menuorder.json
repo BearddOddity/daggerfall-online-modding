@@ -74,8 +74,8 @@
   {
     "name": "MENUORDER-decor-tab-icons-one",
     "file": "src/ui/decorPanel.js",
-    "old": "if (w) c.dataset.dficon = w[1];",
-    "new": "if (w) c.dataset.dficon = 'all';",
+    "old": "chip(`In this room (${n})`, mode === 'room', () => setMode('room'), 'room')",
+    "new": "chip(`In this room (${n})`, mode === 'room', () => setMode('room'), 'all')",
     "tests": [
       "test/menuorder.test.js"
     ]
@@ -155,7 +155,7 @@
   {
     "name": "MENUORDER-trade-figures-together",
     "file": "src/ui/enhancedTrade.js",
-    "old": "figs.append(fig(TRADE_COST_WORD[mode] ?? TRADE_COST_WORD.Buy, tradeGoldText(c)), fig(TRADE_GOLD_WORD, tradeGoldText(deps.gold?.() ?? 0)));",
+    "old": "figs.append(fig(TRADE_COST_WORD[mode] ?? TRADE_COST_WORD.Buy, tradeGoldText(c)), fig(t('trade.counter.gold', TRADE_GOLD_WORD), tradeGoldText(deps.gold?.() ?? 0)));",
     "new": "figs.append(fig(TRADE_COST_WORD[mode] ?? TRADE_COST_WORD.Buy, `${tradeGoldText(c)} ${tradeGoldText(deps.gold?.() ?? 0)}`));",
     "tests": [
       "test/menuorder.test.js"
@@ -173,8 +173,8 @@
   {
     "name": "MENUORDER-trade-magic-title",
     "file": "src/ui/enhancedTrade.js",
-    "old": "SellMagic: 'Sell magic items' });",
-    "new": "SellMagic: 'Sell' });",
+    "old": "get SellMagic() { return t('trade.counter.title.sellMagic', 'Sell magic items'); } });",
+    "new": "get SellMagic() { return t('trade.counter.title.sellMagic', 'Sell'); } });",
     "tests": [
       "test/menuorder.test.js"
     ]

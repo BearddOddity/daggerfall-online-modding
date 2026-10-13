@@ -190,6 +190,15 @@ door), so there is nothing there to wire.
   DECOR-FIGURE-buttons-kept, `craft4.json`'s CRAFT4-pages-no-loom, `prof10.json`'s PROF10-pages-no-bench,
   `prof11.json`'s PROF11-pages-bench-undrawn, `prof12.json`'s PROF12-pages-alchemy-undrawn and
   PROF12-pages-enchant-undrawn.
+- MERGED WITH L10N4 (main's localization arc, `06-Systems/Localization-Arc.md`): MENU-ORDER's own words go through the
+  text core - the decorator's group names, paint rows, filter names, badges, search and keys' legend (`decor.panel.*`,
+  `decor.bar.keys.*`), the counter's title, column and figures (`trade.counter.*`), the station tiles' Here, Away and
+  hint (`prof.page.tile.*`) - as getters where a table is exported, so a test reading `DECOR_ACT_GROUPS.use` still reads
+  English; the view tabs take their glyph from `chip`'s own argument, never read back off their (now translatable)
+  words. The ratchet (`test/l10n4_hardcoded.test.js`) holds `decorPanel.js` at 96. The thirteen whole languages hold
+  the 36 new keys, drafted in-session (`tools/l10nInSession.mjs`). Re-aimed by content and dead again: `basehide.json`'s
+  BASEHIDE-the-tab-uncounted, `decor1e.json`'s DECOR1e-the-tabs-idle, `decor2b.json`'s DECOR2b-the-tab-unpressed-in-a-look,
+  and `menuorder.json`'s MENUORDER-decor-tab-icons-one, MENUORDER-trade-figures-together, MENUORDER-trade-magic-title.
 - Photographed in Chromium over the real enhanced sheet, at 1440x900 and a 390px phone: the decorator's catalogue,
   room, pack and bar; the counter's Buy and Sell in both lays; the Stores page at a smith's and away from every bench,
   an away tile pressed; the board's Market and Vendors (`tools/noticeBoardProbe.mjs`, its every tab inside the viewport
