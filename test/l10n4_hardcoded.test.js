@@ -544,7 +544,7 @@ const HARDCODED = {
   'src/ui/credits.js': 86,
   'src/ui/cursor.js': 1,
   'src/ui/deathScreen.js': 2,
-  'src/ui/decorPanel.js': 97,
+  'src/ui/decorPanel.js': 96,
   'src/ui/duelPrompt.js': 2,
   'src/ui/enhancedAccount.js': 8,
   'src/ui/enhancedBook.js': 1,
