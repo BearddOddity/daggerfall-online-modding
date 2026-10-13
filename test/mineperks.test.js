@@ -15,19 +15,23 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { standService, T0 } from './accountDb.mjs';
-import { createGatherHost, GROUP_REFRESH_MS, NODE_MARK_M, MARK_WALK_M, OW_ONE_MAX, groupLabel } from '../src/scenes/gatherHost.js';
-import { mineKind, mineNodeName, MINE_MARKS, PROSPECT_M, DEEP_DELVER_M } from '../src/scenes/mineHost.js';
+import { createGatherHost, GROUP_REFRESH_MS, NODE_MARK_M, NODE_MARK_MAX, MARK_WALK_M, OW_ONE_MAX, GROUP_MAX, groupLabel } from '../src/scenes/gatherHost.js';
+import { mineKind, mineNodeName, MINE_MARKS, PROSPECT_M, PROSPECT_DEEP_M, PROSPECT_REACH, DEEP_DELVER_M } from '../src/scenes/mineHost.js';
 import { setForagingHost } from '../src/systems/foragingInstall.js';
 import { CLIMATES, LOCATION_TYPES } from '../src/formats/mapsFile.js';
 import { CLIMATES as C } from '../src/formats/mapsTables.js';
-import { vein, veins, veinSlots, boulders, nodeKey, utcDayOfMs, UNCONFIRMED_VEIN_TIER } from '../src/net/nodeLaw.js';
+import { vein, veins, veinSlots, boulders, nodeKey, dveinKey, utcDayOfMs, UNCONFIRMED_VEIN_TIER } from '../src/net/nodeLaw.js';
 import { HEIGHTMAP_DIMENSION, TERRAIN_SIZE } from '../src/world/terrainSampler.js';
 import { nodeMarkCss, MOTHERLODE_MARK_CSS } from '../src/ui/nodeMarks.js';
 import { SURVEYOR, specOk, specOf, SPECIALISATIONS, DEEP_DELVER_MULT, minedMaterial, xpForRank } from '../src/net/professionLaw.js';
 import { veinYield } from '../src/net/nodeLaw.js';
 import { utcDay } from '../src/net/marksLaw.js';
 import { oreMapTip } from '../src/ui/oreMapTip.js';
-import { lodeMapMarks, localClock, LODE_RING_CSS, LODE_DOT_RGB, LODE_LEGEND_TEXT } from '../src/ui/lodeMapMark.js';
+import { lodeMapMarks, lodeLabel, lodeLegendText, LODE_RING_CSS, LODE_FILL_CSS, LODE_COMPASS_CSS, LODE_DOT_RGB, LODE_LEGEND_TEXT } from '../src/ui/lodeMapMark.js';
+import { PARCHMENT_RGB } from '../src/ui/inkMap.js';
+import { SERPENT_RING_MAP_CSS } from '../src/ui/serpentMapMark.js';
+import { createProfBook } from '../src/net/profBook.js';
+import { MINING_SURVEYOR_LINE } from '../src/ui/profPages.js';
 import { readBountyMarks, BOUNTY_RING_R } from '../src/ui/bountyMapMark.js';
 import { createMotherlodeBook } from '../src/net/motherlodeBook.js';
 import { motherlodeKey } from '../src/net/motherlodeLaw.js';
@@ -48,8 +52,9 @@ function pixelEntry(px, py, climate) {
   return { px, py, samples, tilemap: new Uint8Array(128 * 128).fill(2), locationRect: null, batches: [], rocks };
 }
 
-/** The real gathering host with the real mine kind over one stood pixel; the track's choices `S.specs`, live. */
-async function stage({ climate = CLIMATES.Mountain, px = 405, py = 150 } = {}) {
+/** The real gathering host with the real mine kind over stood pixels - one, or `grid` x `grid` about it, laid out east and
+ *  south of the first as the streamer lays them; the track's choices `S.specs`, live. */
+async function stage({ climate = CLIMATES.Mountain, px = 405, py = 150, grid = 1 } = {}) {
   const S = { now: NOON_MS, specs: { 50: null, 100: null } };
   const book = {
     state: { open: true, today: {}, caps: { stores: 5000 } },
@@ -58,12 +63,13 @@ async function stage({ climate = CLIMATES.Mountain, px = 405, py = 150 } = {}) {
     track: (prof) => ({ rank: 100, specs: prof === 'mining' ? S.specs : { 50: null, 100: null } }), harvest: () => new Promise(() => {}),   // Mining's choices alone
   };
   const renderer = { createBillboardBatch: () => ({}), destroyBatch: () => {}, moveBillboardBatch: () => true };
-  const built = new Map([[`${px},${py}`, pixelEntry(px, py, climate)]]);
+  const built = new Map();
+  for (let j = 0; j < grid; j++) for (let i = 0; i < grid; i++) built.set(`${px + i},${py + j}`, pixelEntry(px + i, py + j, climate));
   S.host = createGatherHost({
     book, kinds: [mineKind({ book })],
     hud: { setPrompt: () => {}, setMeter: () => {}, toast: () => {}, banner: () => {}, setChip: () => {}, frame: () => {}, dispose: () => {} },
     renderer, getTexture: async () => ({ recordCount: 999 }), uploadRecord: () => {}, billboardSize: () => ({ w: 0.3, h: 0.3 }), flatBatchAabb: () => [0, 0, 0, 0, 0, 0],
-    built: () => built, pixelTranslation: (x, y, out) => { out[0] = 0; out[1] = 0; out[2] = 0; return out; },
+    built: () => built, pixelTranslation: (x, y, out) => { out[0] = (x - px) * TERRAIN_SIZE; out[1] = 0; out[2] = (py - y) * TERRAIN_SIZE; return out; },
     pixelInfo: () => ({ climate, region: MARCH }), nowMs: () => S.now,
     eye: () => ({ pos: [0, 1.6, 0], dir: [0, 0, 1] }), view: () => ({ yaw: 0, pitch: 0 }), feet: () => [0, 0, 0], entity: () => ({ items: [] }),
     keyLabel: () => 'E', input: () => ({ held: false, attack: false, choice: false }), active: () => true, activeDungeon: () => false,
@@ -92,15 +98,56 @@ test('MINE-PERKS the four choices say what they now do; the Surveyor stands on t
 
 // ─── THE PROSPECTOR ───────────────────────────────────────────────────
 
-test('MINE-PERKS the Prospector: veins on the compass from 500 m (everyone\'s 150), the marks\' walk reaching past it; a dungeon\'s vein is a vein (mutants: the reach 200; the walk short of it)', () => {
+test('MINE-PERKS the Prospector: surface veins on the compass from 500 m (everyone\'s 150), a dungeon\'s from PROF2\'s 200 - the Deep Delver\'s whole dungeon is the other choice\'s (mutants: the reach 200; a dungeon\'s 500)', () => {
   assert.equal(PROSPECT_M, 500);
+  assert.equal(PROSPECT_DEEP_M, 200);
   assert.equal(NODE_MARK_M, 150);
-  assert.ok(MARK_WALK_M >= PROSPECT_M, 'the stood pixels walked for the marks reach the Prospector\'s veins');
   const kind = mineKind({ book: { taken: () => false, counting: () => false } });
   const specs = (s50) => () => ({ 50: s50, 100: null });
   assert.equal(kind.mark({ key: 'v', what: 'vein' }, { specs: specs('prospector') }).reach, PROSPECT_M);
+  assert.equal(kind.mark({ key: 'd', what: 'dvein' }, { specs: specs('prospector') }).reach, PROSPECT_DEEP_M);
   assert.equal(kind.mark({ key: 'v', what: 'vein' }, { specs: specs(null) }).reach, undefined, 'everyone\'s: NODE_MARK_M');
   assert.equal(kind.mark({ key: 'b', what: 'boulder' }, { specs: specs('prospector') }).reach, undefined, 'a boulder never');
+});
+
+test('AUDIT MINE-PERKS the Prospector\'s walk and count: the stood pixels within 500 m walked and up to 32 marked - for a Prospector alone; everyone else\'s walk 256 m and sixteen (mutants: the walk unread; the count unread; the reach for anyone)', async () => {
+  assert.equal(MARK_WALK_M, 256);
+  assert.equal(NODE_MARK_MAX, 16);
+  assert.deepEqual({ ...PROSPECT_REACH }, { walk: PROSPECT_M, max: 32 });
+  const kind = mineKind({ book: { taken: () => false, counting: () => false } });
+  assert.equal(kind.markReach({ specs: () => ({ 50: 'prospector', 100: null }) }), PROSPECT_REACH);
+  assert.equal(kind.markReach({ specs: () => ({ 50: 'deep-delver', 100: null }) }), null);
+  // 5 x 5 Mountain pixels: the standpoint over the middle one with the most veins within 500 m - more than sixteen, and
+  // some on pixels whose ground is farther than the 256 m walk
+  const S = await stage({ grid: 5 });
+  try {
+    const all = [];
+    for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) {
+      for (const n of S.host.nodesOf(405 + i, 150 + j)) if (n.what === 'vein') all.push({ key: n.key, x: n.local[0] + i * TERRAIN_SIZE, z: n.local[2] - j * TERRAIN_SIZE, i, j });
+    }
+    const rectD = (i, j, f) => Math.hypot(Math.max(i * TERRAIN_SIZE - f[0], 0, f[0] - (i + 1) * TERRAIN_SIZE), Math.max(-j * TERRAIN_SIZE - f[2], 0, f[2] - (-j + 1) * TERRAIN_SIZE));
+    let feet = null, veinsNear = [];
+    for (let a = 0; a <= 16; a++) for (let b = 0; b <= 16; b++) {
+      const f = new Float32Array([2 * TERRAIN_SIZE + (a * TERRAIN_SIZE) / 16, 0, -2 * TERRAIN_SIZE + (b * TERRAIN_SIZE) / 16]);
+      const near = all.filter((v) => Math.hypot(v.x - f[0], v.z - f[2]) <= PROSPECT_M).map((v) => ({ ...v, far: rectD(v.i, v.j, f) > MARK_WALK_M }));
+      if (near.length > veinsNear.length) { feet = f; veinsNear = near; }
+    }
+    assert.ok(veinsNear.length > NODE_MARK_MAX, `more than sixteen veins within 500 m (${veinsNear.length})`);
+    const plain = S.host.marks(feet);
+    assert.ok(plain.length <= NODE_MARK_MAX && plain.every((m) => m.d <= NODE_MARK_M), 'everyone: sixteen at most, 150 m');
+    S.specs = { 50: 'prospector', 100: null };
+    const pro = S.host.marks(feet);
+    const vs = pro.filter((m) => m.reach === PROSPECT_M);
+    assert.equal(vs.length, Math.min(veinsNear.length, PROSPECT_REACH.max - pro.filter((m) => m.reach !== PROSPECT_M).length), 'every vein within 500 m, room kept');
+    assert.ok(vs.length > NODE_MARK_MAX, 'past sixteen');
+    // from the middle pixel's heart every neighbour's ground is 409 m off - past the 256 m walk - and its veins within
+    // 500 m are the Prospector's all the same
+    const heart = new Float32Array([2.5 * TERRAIN_SIZE, 0, -1.5 * TERRAIN_SIZE]);
+    const far = all.filter((v) => Math.hypot(v.x - heart[0], v.z - heart[2]) <= PROSPECT_M && rectD(v.i, v.j, heart) > MARK_WALK_M);
+    assert.ok(far.length > 0, 'a neighbour\'s vein within 500 m of the heart');
+    const fromHeart = new Set(S.host.marks(heart).map((m) => m.key));
+    assert.ok(far.every((v) => fromHeart.has(v.key)), 'each marked - its pixel walked');
+  } finally { S.done(); }
 });
 
 test('MINE-PERKS the Prospector on the Overworld: each vein a mark of its own, named by its ore, nearest first - the boulders still Mining\'s group; everyone else sees the group alone (mutants: the singles never asked; asked for anyone; a boulder single; the singles uncapped)', async () => {
@@ -127,7 +174,35 @@ test('MINE-PERKS the Prospector on the Overworld: each vein a mark of its own, n
     }
   } finally { S.done(); }
   assert.equal(OW_ONE_MAX, 24);
-  assert.match(read('src/scenes/gatherHost.js'), /groupsKept = \[\.\.\.all\.slice\(0, GROUP_MAX\), \.\.\.ones\.slice\(0, OW_ONE_MAX\)\];/, 'the singles beside the groups, each list its own cap');
+  // AUDIT MINE-PERKS: the singles past their cap go back into their pixel's group (the many-pixel pin, below)
+  assert.match(read('src/scenes/gatherHost.js'), /while \(kept < ones\.length && kept < OW_ONE_MAX && ones\[kept\]\.d <= GROUP_M\) kept\+\+;\n\s*for \(const o of ones\.splice\(kept\)\) join\(o\.s, o\.n, o\.profession\);/, 'the singles beside the groups, their cap their own');
+});
+
+test('AUDIT MINE-PERKS the Prospector\'s Overworld over many pixels: the nearest 24 veins stand alone, and every other still counts in its pixel\'s group - none lost (mutants: the overflow dropped; the cap unread)', async () => {
+  const S = await stage({ grid: 5 });
+  try {
+    const heart = [2.5 * TERRAIN_SIZE, 0, -1.5 * TERRAIN_SIZE];
+    const count = (m) => Number(/×(\d+)$/.exec(m.label)?.[1] ?? NaN);
+    const plain = new Map(S.host.overworldGroups(heart).map((m) => [m.key, count(m)]));
+    assert.equal(plain.size, GROUP_MAX, 'everyone: the nearest twelve groups');
+    S.specs = { 50: 'prospector', 100: null };
+    S.later();
+    const pro = S.host.overworldGroups(heart);
+    const ones = pro.filter((m) => m.key.startsWith('gather:one:'));
+    assert.equal(ones.length, OW_ONE_MAX, 'twenty-four singles where more stand');
+    const pixelOf = (nodeKey) => { const [, x, y] = nodeKey.split(':'); return `gather:${x},${y}:mining`; };
+    const alone = new Map();
+    for (const o of ones) { const k = pixelOf(o.key.slice('gather:one:'.length)); alone.set(k, (alone.get(k) ?? 0) + 1); }
+    let checked = 0;
+    for (const g of pro.filter((m) => !m.key.startsWith('gather:one:'))) {
+      if (!plain.has(g.key)) continue;
+      assert.equal(count(g) + (alone.get(g.key) ?? 0), plain.get(g.key), `${g.key}: its group and its singles are everyone's count`);
+      checked++;
+    }
+    assert.ok(checked >= 8, 'most groups compared');
+    const far = pro.filter((m) => !m.key.startsWith('gather:one:')).map(count);
+    assert.ok(far.some((n) => n > 5), 'a far pixel\'s group still holds its veins (a Mountain\'s boulders are five)');
+  } finally { S.done(); }
 });
 
 // ─── THE DEEP DELVER ──────────────────────────────────────────────────
@@ -149,7 +224,10 @@ test('MINE-PERKS every dungeon vein stands at its wall\'s foot - on the floor, 0
   const d = read('src/scenes/dungeonContext.js');
   assert.match(d, /const PROF_VEIN_WALL_M = 12, PROF_VEIN_OFF_M = 0\.75, PROF_VEIN_CHEST_M = 0\.9, PROF_VEIN_UP_M = 0;/);
   assert.match(d, /const d = Math\.max\(0, hit\.dist - PROF_VEIN_OFF_M\);/);
-  assert.match(d, /return \[at\[0\], at\[1\] - down \+ PROF_VEIN_UP_M, at\[2\]\];/);
+  assert.match(d, /const foot = \[at\[0\], at\[1\] - down \+ PROF_VEIN_UP_M, at\[2\]\];/);
+  // AUDIT MINE-PERKS: a wall nearer the marker than the offset stood the vein on the marker, as near the wall - the next
+  // bearing, and that foot only where none of the four markers' stands one clear (a vein never lost to the rule)
+  assert.match(d, /if \(hit\.dist < PROF_VEIN_OFF_M\) \{ close \?\?= foot; continue; \}\n\s*return foot;\n\s*\}\n\s*\}\n\s*return close;/);
 });
 
 // ─── THE SURVEYOR ─────────────────────────────────────────────────────
@@ -235,6 +313,12 @@ test('MINE-PERKS the Surveyor at the service: an unwitnessed Mountain pixel\'s v
     const sigSlot = veinSlots({ climate: C.Mountain, region: WAYREST, confirmed: false });
     const sg = await s.call('/v1/prof/harvest', { character: mac.character, node: nodeKey({ kind: 'vein', x: 600, y: 200, day, slot: sigSlot }), kind: 'ore', climate: C.Mountain, region: WAYREST, act: { glints: 0, clean: false }, at: now - 2, rid: 'ore-000003' }, mac.secret);
     assert.equal(sg.body.error, 'bad-node', 'no signature on the Surveyor\'s word');
+    // AUDIT MINE-PERKS: and never a dungeon's - its id the client's word - nor its gem: a Surveyor's strike in a dungeon
+    // nobody vouched for is held to Silver and finds no gem, the dice at their lowest
+    const dv = await s.call('/v1/prof/harvest', { character: mac.character, node: dveinKey({ dungeon: 4242, day, slot: 0 }), kind: 'ore', climate: C.Mountain, region: MARCH, act: { glints: 3, clean: true }, at: now - 2, rid: 'ore-000004' }, mac.secret);
+    assert.equal(dv.status, 200, JSON.stringify(dv.body));
+    assert.ok(minedMaterial(dv.body.material).tier <= UNCONFIRMED_VEIN_TIER, 'a deep vein on anyone\'s word');
+    assert.equal(dv.body.gem, undefined, 'no gem underground on the Surveyor\'s word');
   } finally { Date.now = realNow; }
   const svc = read('server-account/src/professions.js');
   assert.match(svc, /const surveyed = n\.kind === 'vein' && !confirmed && specs\[100\] === SURVEYOR;/);
@@ -248,6 +332,33 @@ test('MINE-PERKS the Surveyor\'s ore card: no vein waits on witnesses for them -
   assert.match(oreMapTip({ climate: C.Mountain, region: WAYREST, fact: { state: 'none' }, surveyed: true }).lines.join('\n'), /Not yet witnessed: no Mithril here yet/, 'the crown\'s own ore still waits');
   const w = read('src/scenes/world.js');
   assert.match(w, /const surveyed = profBook\?\.state\?\.open === true && profBook\.track\('mining'\)\.specs\?\.\[100\] === SURVEYOR;   \/\/ MINE-PERKS/);
+});
+
+test('AUDIT MINE-PERKS a change of mind come due is the book\'s at once - the service stands a track under its paid change once its week is out, and the client stood the old choice\'s veins until the next read (mutants: the change never applied; applied before its hour)', async () => {
+  let t = 1_000_000_000;
+  const at = Math.floor(t / 1000) + 3600;
+  const door = { account: () => 'acct-1', harvest: async () => ({ ok: true, data: { node: 'vein:1:1:1:0', kind: 'ore', material: 'metal:iron', qty: 2, xp: 0, today: 1,
+    track: { profession: 'mining', xp: xpForRank(100), rank: 100, specs: { 50: null, 100: SURVEYOR }, respec: { rank: 100, to: 'motherlode-sense', at } },
+    store: { material: 'metal:iron', own: 2, bought: 0 } } }) };
+  const mem = new Map();
+  const book = createProfBook({ door, storage: { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)) }, character: () => 'char-1', now: () => t, sleep: () => Promise.resolve() });
+  const r = await book.harvest({ node: 'vein:1:1:1:0', kind: 'ore', climate: 226, region: 21, act: {}, at: Math.floor(t / 1000) });
+  assert.equal(r.ok, true);
+  assert.equal(book.track('mining').specs[100], SURVEYOR, 'its week not out: the Surveyor still');
+  assert.ok(book.track('mining').respec, 'the change said as coming');
+  t = at * 1000 - 1;
+  assert.equal(book.track('mining').specs[100], SURVEYOR, 'a millisecond short');
+  t = at * 1000;
+  assert.equal(book.track('mining').specs[100], 'motherlode-sense', 'its hour: the change stands, as the service\'s specsAt says');
+  assert.equal(book.track('mining').respec, null, 'and is no longer coming');
+  assert.equal(book.track('mining').specs[50], null, 'the other rank\'s choice untouched');
+});
+
+test('AUDIT MINE-PERKS the Mining page tells a Surveyor what their word does on unwitnessed ground, under the line that says Silver at most - theirs alone, the choice named by its card (mutants: said to anyone; never said)', () => {
+  assert.equal(MINING_SURVEYOR_LINE, 'As a {name}, your own word witnesses the ground: your veins there can be any ore of its land. A region\'s own ore still waits on the witnesses.');
+  const src = read('src/ui/profPages.js');
+  assert.match(src, /const miningSurveyorLine = \(\) => t\('prof\.page\.how\.miningSurveyor', MINING_SURVEYOR_LINE, \{ name: specOf\('mining', 100, SURVEYOR\)\?\.name \?\? '' \}\);/);
+  assert.match(src, /if \(_sel === 'mining'\) pane\.append\(el\('p', 'px-note', miningGroundLine\(\)\)\);[^\n]*\n\s*if \(_sel === 'mining' && tr\.specs\?\.\[100\] === SURVEYOR\) pane\.append\(el\('p', 'px-note', miningSurveyorLine\(\)\)\);/);
 });
 
 // ─── THE MOTHERLODE SENSE ─────────────────────────────────────────────
@@ -278,7 +389,7 @@ test('MINE-PERKS a Sense\'s map holds every one of the day\'s Motherlodes from t
   assert.deepEqual(f.b.sensedAll(), [], 'a finder: none');
 });
 
-test('MINE-PERKS the maps\' Motherlode marks: the bounty\'s circle on its pixel, its ore and its hour while it is to rise, in the compass\'s aqua - read by the bounty\'s reader (mutants: the hour once risen; off its pixel)', () => {
+test('MINE-PERKS the maps\' Motherlode marks: the bounty\'s circle on its pixel, its ore and its hour while it is to rise - read by the bounty\'s reader; no clock, no hour (mutants: the hour once risen; off its pixel)', () => {
   const nowS = 1_000_000;
   const clock = (s) => `@${s}`;
   const m = lodeMapMarks([{ x: 300, y: 120, material: 'ore:ebony', opensAt: nowS + 600 }, { x: 10, y: 20, material: 'ore:adamantium', opensAt: nowS - 5 }, null, { x: 1.5, y: 2 }], nowS, { oreName: (k) => k.slice(4), clock });
@@ -287,9 +398,37 @@ test('MINE-PERKS the maps\' Motherlode marks: the bounty\'s circle on its pixel,
     { cx: 10.5, cy: 20.5, r: BOUNTY_RING_R, label: 'adamantium Motherlode' },
   ]);
   assert.deepEqual(readBountyMarks(() => m, { width: 1000, height: 500 }, LODE_LEGEND_TEXT).map((x) => x.label), m.map((x) => x.label), 'the bounty\'s reader takes them whole');
-  assert.equal(LODE_RING_CSS, MOTHERLODE_MARK_CSS, 'the compass\'s colour');
-  assert.deepEqual([...LODE_DOT_RGB], [0, 229, 200]);
-  assert.match(localClock(0), /^\d\d:\d\d$/);
+  assert.deepEqual(lodeMapMarks([{ x: 1, y: 2, material: 'ore:ebony', opensAt: nowS + 600 }], nowS, { oreName: (k) => k.slice(4) }).map((x) => x.label), ['ebony Motherlode'], 'no clock: no hour');
+  assert.equal(lodeLabel({ material: 'ore:ebony', opensAt: nowS + 1 }, nowS, { oreName: () => 'Ebony', clock }), `Ebony Motherlode, @${nowS + 1}`, 'the Overworld\'s words are the maps\'');
+  assert.equal(lodeLegendText(), LODE_LEGEND_TEXT, 'English through the text core, byte for byte');
+});
+
+/** WCAG's contrast ratio of two sRGB triples. */
+const contrast = (a, b) => {
+  const lum = (c) => { const [r, g, bl] = c.map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * bl; };
+  const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+};
+const hexRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+
+test('AUDIT MINE-PERKS the held map\'s Motherlode is read: its ink 4.5 : 1 on the parchment its label rides (the compass\'s aqua stood 1.2 : 1), and apart from the serpent\'s sea-green ring; the classic page and the Overworld keep the compass\'s aqua (mutants: the aqua back on the parchment)', () => {
+  assert.ok(contrast(hexRgb(LODE_RING_CSS), [...PARCHMENT_RGB]) >= 4.5, `ink ${contrast(hexRgb(LODE_RING_CSS), [...PARCHMENT_RGB]).toFixed(2)} : 1`);
+  assert.ok(contrast(hexRgb(MOTHERLODE_MARK_CSS), [...PARCHMENT_RGB]) < 1.5, 'the aqua was not');
+  const [a, b] = [hexRgb(LODE_RING_CSS), hexRgb(SERPENT_RING_MAP_CSS)];
+  assert.ok(Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) > 100, 'apart from the serpent\'s');
+  assert.match(LODE_FILL_CSS, /^rgba\(14, 107, 94, 0\.16\)$/, 'its wash its own hue');
+  assert.equal(LODE_COMPASS_CSS, MOTHERLODE_MARK_CSS);
+  assert.deepEqual([...LODE_DOT_RGB], [0, 229, 200], 'the classic page draws no words: the bright aqua over its land');
+});
+
+test('AUDIT MINE-PERKS a Motherlode\'s hour is said on THIS machine\'s clock with its weekday where it is not today (a bare "13:00" read as past across the date line), and a Sense\'s Motherlodes stand on the Overworld too, held at the edge with their distance (mutants: the relay\'s clock; the hour bare; the Overworld unwired; shown without the Sense)', () => {
+  const w = read('src/scenes/world.js');
+  assert.match(w, /const lodeWords = \{ oreName: \(m\) => materialLabel\(m\)\.replace\(\/ Ore\$\/, ''\), clock: \(s\) => localWhenText\(s \* 1000 - _sharedOffsetMs, Date\.now\(\)\) \};/);
+  assert.match(w, /const lodeSense = \(\) => !!motherlodeBook && profBook\?\.state\.open === true && profBook\.track\('mining'\)\.specs\?\.\[100\] === 'motherlode-sense';/);
+  assert.match(w, /if \(!lodeSense\(\)\) return \[\];\n\s*return lodeMapMarks\(motherlodeBook\.sensedAll\(_lodesSensed\), Math\.floor\(\(Date\.now\(\) \+ _sharedOffsetMs\) \/ 1000\), lodeWords\);/);
+  assert.match(w, /if \(lodeSense\(\)\) \{\n\s*const nowS = [^\n]*\n\s*for \(const l of motherlodeBook\.sensedAll\(_lodesSensed\)\) \{/);
+  assert.match(w, /marks\.push\(\{ key: `lode:\$\{l\.key\}`, at: tvSceneKept\(h, x, z, TV_PLACE_LIFT\), label: lodeLabel\(l, nowS, lodeWords\), sub: farDistanceText\(km\), kind: 'gather mining', color: LODE_COMPASS_CSS, edge: true \}\);/);
+  assert.match(w, /for \(const k of \[\.\.\._tvLodeHold\.keys\(\)\]\) if \(!keep\.has\(k\)\) _tvLodeHold\.delete\(k\);/);
 });
 
 test('MINE-PERKS every map reads them: the held map (its poll, its sheet, its legend), the classic region page (its texels and its repaint), the ink, and the world host\'s dep - a Sense\'s alone (mutants: any unwired; shown without the Sense)', () => {
@@ -297,7 +436,7 @@ test('MINE-PERKS every map reads them: the held map (its poll, its sheet, its le
   assert.match(h, /const lodes = readBountyMarks\(this\.deps\.lodes, this\._size, LODE_LEGEND_TEXT\);/);
   assert.match(h, /if \(mKey !== this\._lodesKey\) \{ this\._lodesKey = mKey; this\._lodes = lodes; gateMoved = true; this\._dirty = true; \}/);
   assert.match(h, /lodes: this\._lodes,   \/\/ MINE-PERKS/);
-  assert.match(h, /if \(this\._lodes\.length\) \{   \/\/ MINE-PERKS: and a Motherlode's aqua circle\n\s*const dot = el\('span', 'hmlegdot'\);\n\s*dot\.style\.background = LODE_RING_CSS;/);
+  assert.match(h, /if \(this\._lodes\.length\) \{   \/\/ MINE-PERKS: and a Motherlode's teal circle\n\s*const dot = el\('span', 'hmlegdot'\);\n\s*dot\.style\.background = LODE_RING_CSS;\n\s*leg\.append\(dot, el\('span', 'hmlegtext', lodeLegendText\(\)\)\);/);
   assert.match(h, /&& !this\._vendor && !this\._lodes\.length\)/);
   const t = read('src/ui/travelMapWindow.js');
   assert.match(t, /const lodes = readBountyMarks\(this\.deps\.lodes, \{ width: MAP_WIDTH, height: MAP_HEIGHT \}, LODE_LEGEND_TEXT\);\n\s*this\._lodesKey = bountyMarksKey\(lodes\);\n\s*if \(lodes\.length\) \{\n\s*const lodePx = packRGBA\(LODE_DOT_RGB\[0\], LODE_DOT_RGB\[1\], LODE_DOT_RGB\[2\], 255\);\n\s*for \(const \[x, y\] of bountyRingTexels\(lodes, originX, originY, width, height\)\) plot\(x, y, lodePx\);/);
@@ -305,5 +444,4 @@ test('MINE-PERKS every map reads them: the held map (its poll, its sheet, its le
   assert.match(read('src/ui/inkMap.js'), /for \(const b of opts\.lodes \?\? \[\]\) if \(visible\(b\.cx, b\.cy, b\.r \+ 2\)\) paintBountyRing\(ctx, view, b, pulse, LODE_INK\);/);
   const w = read('src/scenes/world.js');
   assert.match(w, /lodes: \(\) => lodeMapMarksNow\(\),/);
-  assert.match(w, /if \(!motherlodeBook \|\| profBook\?\.state\.open !== true \|\| profBook\.track\('mining'\)\.specs\?\.\[100\] !== 'motherlode-sense'\) return \[\];\n\s*return lodeMapMarks\(motherlodeBook\.sensedAll\(_lodesSensed\),/);
 });

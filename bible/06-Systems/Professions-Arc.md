@@ -1827,7 +1827,7 @@ instruction), and what was found (FACT):
   band ((INT + AGI) / 2, FORAGE0 14.4), then moves - after a strike too. Attack strikes (one a 0.45 s swing); with the
   crosshair within **2.5 degrees** of the glinting point it counts **double**. A **clean finish** is every strike on
   the glint. FACT: the Stores keep no quality (section 22), so the finish's "one quality step" waits for PROF3's
-  quality; here a clean finish is the clean act (+50% XP), and on a boulder, or always for a Stonebreaker, it yields
+  quality; here a clean finish is the clean act (+50% XP), and on a boulder, or always for a Stonebreaker (the Surveyor since MINE-PERKS, section 43), it yields
   **Cut Stone** at the mason's 2 : 1 (the cut done at the rock; Quarryman's 1 : 1 is the bench's). A **gem**: 3% a
   strike on the glint (Prospector x1.1), by the node's climate (4.6: Amber, Jade, Turquoise, Malachite, one of Ruby,
   Sapphire, Emerald in the Mountain; a Diamond from a dungeon vein), on a confirmed pixel or dungeon only - the
@@ -1863,7 +1863,7 @@ instruction), and what was found (FACT):
   one's tiers 1-3 since UNWITNESSED-ORE - what its veins stand), its region's signature ore on a confirmed pixel of that kingdom, and Rough Stone where its climate
   has boulders. Never an ingot, Cut Stone or a gem (smelted, cut or found, not the ground's). A metal's or stone's writ
   XP is Mining's.
-- **The Prospector** (3.3): the veins stood within 200 m are marked on the compass, both skins, beside the party's
+- **The Prospector** (3.3): the veins stood within 200 m (500 since MINE-PERKS, section 43; a dungeon's still 200) are marked on the compass, both skins, beside the party's
   marks (`ui/hud.js`, `ui/enhancedHud.js`). The held map's marks are not built (as PROF1's patches'). NODE-MARKS
   (section 31) since: every node is marked within 150 m, and the Prospector's veins from 200 m - the mine kind's own
   `mark` (`PROSPECTOR_MARKS`).
@@ -3035,7 +3035,7 @@ and nothing in the world set a node apart from the ground about it. DECIDED here
 - **Each kind says its own** (`GatherKind.mark(node, { specs })` -> `{ w, h, reach? }` or null): its glow's footprint
   about the base and how far off the compass marks it (`NODE_MARK_M`, 150 m, without a reach). A patch while either of
   its harvests stands (`PATCH_MARK`); a vein, a boulder and a dungeon vein while unmined (`MINE_MARKS`) - **a
-  Prospector's veins from 200 m** (`PROSPECT_M`, PROF0 3.3: the specialisation keeps its edge, now the mine kind's
+  Prospector's veins from 200 m** (`PROSPECT_M` - 500 since MINE-PERKS, section 43, a dungeon's `PROSPECT_DEEP_M` 200; PROF0 3.3: the specialisation keeps its edge, now the mine kind's
   word, and a dungeon's vein is a vein); a standing tree, never a felled one's stump (`TREE_MARK`, up its trunk);
   Fishing's day's schools - where the fish are - and never the cast, which is the look itself (`SCHOOL_MARK`, wide and
   low on the water); a body while its hide is untaken and the pack holds the knife (`BODY_MARK`). A kind that names no
@@ -4163,12 +4163,13 @@ already yields Cut Stone (section 23), so the Stonebreaker gave only the unclean
 **DECIDED (the record's, from the thread; Mac handed it over).** Each choice keeps its id - a track's `spec50`,
 `spec100` and `respec_to` hold them, so no row moves and nobody who chose one loses it:
 
-- **The Prospector** (Mining 50): veins on the compass from **500 m** (`PROSPECT_M`; the marks' walk, `MARK_WALK_M`, 512
-  where it was 256) and - the thread's own ask - **each vein its own mark on the Overworld**, named by its ore ("Silver
-  Vein", `mineNodeName`), where everyone's are Mining's group. A kind may name a node the Overworld marks alone
-  (`GatherKind.overworldOne`, `scenes/gatherHost.js`); the nearest `OW_ONE_MAX` (24) of them stand after the groups and
-  outside their count, so a Prospector's veins never crowd another profession's group off. A boulder and a Motherlode
-  ride the group. The gem's x1.1 stands.
+- **The Prospector** (Mining 50): surface veins on the compass from **500 m** (`PROSPECT_M`; a dungeon's keep PROF2's
+  200, `PROSPECT_DEEP_M` - AUDIT, 43.1; the marks' walk and count widened for a Prospector alone, `PROSPECT_REACH`) and -
+  the thread's own ask - **each vein its own mark on the Overworld**, named by its ore ("Silver Vein", `mineNodeName`),
+  where everyone's are Mining's group. A kind may name a node the Overworld marks alone (`GatherKind.overworldOne`,
+  `scenes/gatherHost.js`); the nearest `OW_ONE_MAX` (24) of them stand after the groups and outside their count, so a
+  Prospector's veins never crowd another profession's group off, and every vein past them still counts in its pixel's
+  group (43.1). A boulder and a Motherlode ride the group. The gem's x1.1 stands.
 - **The Deep Delver** (Mining 50): a dungeon vein **x2** (`DEEP_DELVER_MULT` - "even 100% more" is taken, and is not the
   answer alone) and **every vein of the dungeon on the compass**, wherever the miner stands in it (`DEEP_DELVER_M`,
   2,000 m, past any dungeon's reach - "actually finding one in the labyrinths"). And for everyone - the thread's "halfway
@@ -4181,15 +4182,18 @@ already yields Cut Stone (section 23), so the Stonebreaker gave only the unclean
   is still to rise, the hour it rises on the reader's own clock; gone once spent or past its two hours, and none after
   the account's find today (`net/motherlodeBook.js` sensedAll). Read by the bounty's reader and painted by its painter,
   as RVN7c's lairs are; the held map's legend names it. A "waypoint" is the circle - the maps' own way of saying where;
-  WAYPOINTS' shared marks are the players' own. The warning's thirty minutes stand. Everyone else's Motherlode is the
-  compass's, from its warning, as LODE-MARK left it.
+  WAYPOINTS' shared marks are the players' own - and, since 43.1, a mark on the Overworld held at the edge with its
+  distance, as a bounty is. The warning's thirty minutes stand. Everyone else's Motherlode is the compass's, from its
+  warning, as LODE-MARK left it. It is a courtesy of the client's, not a secret kept: the service hands every client the
+  day's three, pixels and hours, from the day's start (PROF2b, section 38), so a modified client draws them anyway.
 - **The Surveyor** (Mining 100, `SURVEYOR` - the Stonebreaker's id): **their own word witnesses the ground, for their
   own veins**. On a pixel the witnesses have not confirmed, a Surveyor's surface vein is drawn over its climate's whole
   table - the confirmed draw, slot for slot (`net/nodeLaw.js` vein's `surveyed`) - and finds its gem as on witnessed
   ground; the service decides it (`server-account/src/professions.js`: `surveyed` = a vein, not confirmed, the
   character's `spec100`), and the client stands the same vein (`scenes/mineHost.js` standMineNodes, and the gathering
   host stands the pixels again when Mining's choice at 100 changes - SEASONAL-EYE's key, widened). The held map's ore
-  card says so in its own words (`ui/oreMapTip.js`: "No vein here waits on witnesses", or only the crown's ore).
+  card says so in its own words (`ui/oreMapTip.js`: "No vein here waits on witnesses", or only the region's own ore),
+  and the Mining page under its witnesses' line (43.1).
   WHAT IT IS NOT, by intent: never a **signature** (a region's own ore, which waits on the witnesses still - the region
   is the claim a lie is worth most on, and `veinSlots` counts no signature slot on the Surveyor's word); never the
   **March's** or a **Tide's** (named by the region, on confirmed ground alone); never a **dungeon's** vein (a dungeon's
@@ -4199,16 +4203,79 @@ already yields Cut Stone (section 23), so the Stonebreaker gave only the unclean
   table - Gold, Platinum, Mithril, the Desert's Ebony - on any pixel, as it already could on every pixel three accounts
   confirmed; each node once a character a day and the hour's writes still bound it. Its Cut Stone at the rock stands.
 
-THE FOUR HOSTS (MINE-PERKS): `scenes/world.js` - WIRED (the maps' `lodes`, the ore card's `surveyed`, and the
-gathering host it builds carries the rest); `scenes/dungeonContext.js` - WIRED (the vein's wall foot; the Deep Delver's
+THE SERVICE: `ACCOUNT_VERSION` acct126 (43.1 - the Surveyor's veins and gem and the Deep Delver's x2 are the service's
+to roll, and the site's deploy waits on the version it names); no migration.
+
+THE FOUR HOSTS (MINE-PERKS): `scenes/world.js` - WIRED (the maps' `lodes`, the Overworld's Motherlodes, the ore card's
+`surveyed`, and the gathering host it builds carries the rest); `scenes/dungeonContext.js` - WIRED (the vein's wall foot; the Deep Delver's
 marks ride the dungeon's own `nodeMarks`); `scenes/worldModes.js` - no node stands in a building, nothing to wire;
 `scenes/exterior.js` - FLAGGED by name, as PROF2's: the fixed city has no gathering host.
 
-Pinned: `test/mineperks.test.js` (12). `tools/mutants/mineperks.json` (28, all dead). PINS MOVED: `prof2_law` (the
+Pinned: `test/mineperks.test.js` (12; 18 since 43.1). `tools/mutants/mineperks.json` (28, all dead; 41 since 43.1). PINS MOVED: `prof2_law` (the
 Deep Delver's x2), `prof2_service` (its six), `prof2_client` (`PROSPECT_M`), `fb1009e_unwitnessedore` (the vein's cap
 read `confirmed || surveyed`), `fb1011_oremap` (the card's `surveyed`), `fb1004e_overworld` (the legend's `_lodes`).
 Re-aimed by content: `tools/mutants/fb1001_boulders.json` GATHER-OW-the-cap-unasked, `fb1009e_unwitnessedore.json`
 UNWITNESSED-ORE-the-vein-held-to-two, `prof2.json` PROF2-6-unconfirmed-any-tier. Ledger A (MINE-PERKS).
+
+### 43.1 AUDIT MINE-PERKS (2026-10-13, Mac: "Audit and ensure this is as perfect as it can be")
+
+Two cold passes read the merged commit (`41051130e`, main's ETHER-OW and FIELD BUGS 2026-10-13b in): the law, the
+service and the Overworld, and the maps and the record. No HIGH. FOUND, each fixed and pinned (`test/mineperks.test.js`,
+`tools/mutants/mineperks.json`):
+
+- **A Prospector's Overworld lost most veins** (MEDIUM). A vein its kind marks alone left its pixel's group, and only the
+  nearest 24 were kept: over 5 x 5 Mountain pixels everyone read twelve groups of "Mining ×17" and a Prospector 24 veins
+  within 0.63 km and twelve "Mining ×5" - the boulders alone, the far mountains seemingly bare. FIXED: every single past
+  `OW_ONE_MAX` (or past `GROUP_M`) rides its pixel's group again.
+- **No account version for a service that rolls differently** (MEDIUM). `deploy.yml` holds the site until the service
+  answers the version the build names; unbumped, a new client could go live over the old service - a Surveyor shown Gold
+  and given Silver, a Deep Delver's card saying x2 and paid x1.5. FIXED: acct126 (service.js, wrangler.toml, the
+  nineteen suites' history line).
+- **The Prospector took the Deep Delver's dungeon** (MEDIUM, a design overlap). `PROSPECT_M` 500 reached a dungeon's
+  veins too, and a dungeon is blocks of 51.2 m: nearly every vein of nearly every dungeon, the other choice's whole perk.
+  FIXED: a dungeon's vein keeps PROF2's 200 m (`PROSPECT_DEEP_M`); the card says so.
+- **The marks' walk was raised for everyone** (LOW, the frame's cost). `MARK_WALK_M` 512 walked nine stood pixels a
+  frame from a pixel's middle, for a reach nobody but a Prospector has. FIXED: 256 again, and a kind names a wider
+  walk for its player (`GatherKind.markReach` - a Prospector's 500).
+- **Sixteen marks under-counted 500 m** (LOW). The compass kept the nearest `NODE_MARK_MAX`; a Mountain's worst
+  standpoint stood twenty veins within 500 m and marked fifteen. FIXED: a Prospector's count is 32 (`PROSPECT_REACH`);
+  the glow keeps its own sixteen (`NODE_GLOW_MAX`).
+- **A change of mind come due stood the old table** (LOW). The service stands a track under its paid change once the
+  week is out (`specsAt`); the book kept the choice it last heard until its next read, so a respec to or from the
+  Surveyor (or Herbalism's Seasonal Eye, the same gap before) stood one table and the service rolled the other. FIXED:
+  `net/profBook.js` track applies a due change once, on the shared clock; the host's SEASONAL-EYE key stands the pixels
+  again.
+- **A vein could still stand against its wall** (LOW). A wall nearer the foe marker than 0.75 m stood the vein on the
+  marker - as near the wall, a foe on it. FIXED: that bearing is passed over, its foot kept only where no bearing of the
+  four markers stands one clear (no vein lost to the rule).
+- **The hour said bare** (MEDIUM). The Sense marks the UTC day's three from its start, up to a day ahead, and "13:00"
+  read as already past in Los Angeles for a Motherlode rising tomorrow; and it read the relay's clock where TIME1 shows
+  this machine's. FIXED: the timers' own words (`systems/eventTimers.js` localWhenText - "Tue 13:00" where it is not
+  today), on this machine's clock.
+- **The label was unreadable** (MEDIUM-LOW, computed). The circle's words ride the parchment's halo in the ring's ink,
+  and the compass's aqua stood 1.21 : 1 on it (the bounty's black 14.8, the lair's red 8.4), and near the serpent's
+  sea-green ring. FIXED: the held map's ink a deep teal, `#0e6b5e`, 4.8 : 1 and its own hue; the classic page (no words)
+  and the Overworld keep the aqua.
+- **Not on the Overworld** (LOW) - the thread asked for a "waypoint on the travel map" and used the Overworld for the
+  Prospector. FIXED: a Sense's Motherlodes there too, Mining's glyph in the aqua, held at the edge with its distance as a
+  bounty is (`scenes/world.js` travelViewMarks), under the Gathering switch.
+- **The Mining page told a Surveyor "Silver at most"** (LOW). FIXED: a line under it for a Surveyor alone
+  (`ui/profPages.js` MINING_SURVEYOR_LINE), the choice named by its card.
+- **The words were English alone** (LOW). ROUTE-BRIEF routes one-word labels too. FIXED: `prof.lode.legend`,
+  `prof.lode.name`, `prof.lode.rises` and `prof.page.how.miningSurveyor` through the text core, drafted in-session into
+  the thirteen whole languages (glossary "Motherlode" added for de, id and nb).
+- **The record and its comments** (LOW): the Testing.md row of `prof2_service` (half again, the Stonebreaker), section
+  23's and 31's and Ledger A's PROF2 200 m, the comments in `scenes/world.js`, `ui/hud.js` and `net/nodeLaw.js`, an import
+  comment the change moved in `ui/travelMapWindow.js` - each brought to what stands.
+
+CHECKED, SOUND (the passes'): the Surveyor's self-witness is bounded as 43 says - surface veins on unconfirmed ground,
+`specsAt`, slots bounded by `veinSlots(confirmed)` on both sides, no signature, March, Tide or dungeon; a surveyed vein is
+the confirmed draw slot for slot; "disputed" is confirmed on both sides; the Overworld singles' keys, placement, filters
+and cache; the Deep Delver's marks gone-first and the glow depth-tested; the vein on the floor at its flats' base; the
+Sense's list at the day's turn, a find, an account or character change; the maps' parity with RVN7c in every place
+lairs are read; the label within the reader's forty characters. NOT CHANGED, named: the Deep Delver's veins are not on
+the dungeon's automap (DFU's own window, the NATIVE-WINDOW RULE - a departure of its own); the ore names are
+`materialLabel`'s, "Ore" cut in English as the ore card already cuts it.
 
 ## Appendix A - a day of a gatherer
 

@@ -10,15 +10,6 @@
     ]
   },
   {
-    "name": "MINE-PERKS-mark-walk-short",
-    "file": "src/scenes/gatherHost.js",
-    "old": "export const MARK_WALK_M = 512;",
-    "new": "export const MARK_WALK_M = 256;",
-    "tests": [
-      "test/mineperks.test.js"
-    ]
-  },
-  {
     "name": "MINE-PERKS-ow-singles-for-anyone",
     "file": "src/scenes/mineHost.js",
     "old": "overworldOne: (n, { specs }) => (n.what === 'vein' && specs('mining')[50] === 'prospector' ? mineNodeName(n) : null),",
@@ -41,15 +32,6 @@
     "file": "src/scenes/gatherHost.js",
     "old": "const one = k.overworldOne?.(n, markCtx) ?? null;",
     "new": "const one = null;",
-    "tests": [
-      "test/mineperks.test.js"
-    ]
-  },
-  {
-    "name": "MINE-PERKS-ow-singles-uncapped",
-    "file": "src/scenes/gatherHost.js",
-    "old": "...ones.slice(0, OW_ONE_MAX)];",
-    "new": "...ones];",
     "tests": [
       "test/mineperks.test.js"
     ]
@@ -210,15 +192,6 @@
     ]
   },
   {
-    "name": "MINE-PERKS-maps-without-the-sense",
-    "file": "src/scenes/world.js",
-    "old": " || profBook.track('mining').specs?.[100] !== 'motherlode-sense') return [];",
-    "new": ") return [];",
-    "tests": [
-      "test/mineperks.test.js"
-    ]
-  },
-  {
     "name": "MINE-PERKS-held-map-unread",
     "file": "src/ui/heldMap.js",
     "old": "const lodes = readBountyMarks(this.deps.lodes, this._size, LODE_LEGEND_TEXT);",
@@ -250,6 +223,151 @@
     "file": "src/net/professionLaw.js",
     "old": "export const SURVEYOR = 'stonebreaker';",
     "new": "export const SURVEYOR = 'surveyor';",
+    "tests": [
+      "test/mineperks.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-MINE-PERKS-walk-unread",
+    "file": "src/scenes/gatherHost.js",
+    "old": "        for (const s of nearPixels(pos, walk)) {",
+    "new": "        for (const s of nearPixels(pos, MARK_WALK_M)) {",
+    "tests": [
+      "test/mineperks.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-MINE-PERKS-count-unread",
+    "file": "src/scenes/gatherHost.js",
+    "old": "      if (out.length > max) out.length = max;",
+    "new": "      if (out.length > NODE_MARK_MAX) out.length = NODE_MARK_MAX;",
+    "tests": [
+      "test/mineperks.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-MINE-PERKS-reach-for-anyone",
+    "file": "src/scenes/mineHost.js",
+    "old": "    markReach: ({ specs }) => (specs('mining')[50] === 'prospector' ? PROSPECT_REACH : null),",
+    "new": "    markReach: () => PROSPECT_REACH,",
+    "tests": [
+      "test/mineperks.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-MINE-PERKS-prospector-deep-500",
+    "file": "src/scenes/mineHost.js",
+    "old": "dvein: Object.freeze({ ...MINE_MARKS.dvein, reach: PROSPECT_DEEP_M }) });",
+    "new": "dvein: Object.freeze({ ...MINE_MARKS.dvein, reach: PROSPECT_M }) });",
+    "tests": [
+      "test/mineperks.test.js",
+      "test/nodemarks.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-MINE-PERKS-ow-overflow-dropped",
+    "file": "src/scenes/gatherHost.js",
+    "old": "          for (const o of ones.splice(kept)) join(o.s, o.n, o.profession);",
+    "new": "          ones.splice(kept);",
+    "tests": [
+      "test/mineperks.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-MINE-PERKS-ow-cap-unread",
+    "file": "src/scenes/gatherHost.js",
+    "old": "while (kept < ones.length && kept < OW_ONE_MAX && ones[kept].d <= GROUP_M) kept++;",
+    "new": "while (kept < ones.length && ones[kept].d <= GROUP_M) kept++;",
+    "tests": [
+      "test/mineperks.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-MINE-PERKS-respec-never",
+    "file": "src/net/profBook.js",
+    "old": "      if (r && (r.rank === 50 || r.rank === 100) && Number.isFinite(r.at) && now() >= r.at * 1000) {",
+    "new": "      if (false) {",
+    "tests": [
+      "test/mineperks.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-MINE-PERKS-respec-early",
+    "file": "src/net/profBook.js",
+    "old": "Number.isFinite(r.at) && now() >= r.at * 1000) {",
+    "new": "Number.isFinite(r.at) && now() + 1 >= r.at * 1000) {",
+    "tests": [
+      "test/mineperks.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-MINE-PERKS-vein-on-the-marker",
+    "file": "src/scenes/dungeonContext.js",
+    "old": "        if (hit.dist < PROF_VEIN_OFF_M) { close ??= foot; continue; }\n",
+    "new": "",
+    "tests": [
+      "test/mineperks.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-MINE-PERKS-service-surveyed-underground",
+    "file": "server-account/src/professions.js",
+    "old": "    const surveyed = n.kind === 'vein' && !confirmed && specs[100] === SURVEYOR;",
+    "new": "    const surveyed = !confirmed && specs[100] === SURVEYOR;",
+    "tests": [
+      "test/mineperks.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-MINE-PERKS-page-line-for-anyone",
+    "file": "src/ui/profPages.js",
+    "old": "    if (_sel === 'mining' && tr.specs?.[100] === SURVEYOR) pane.append",
+    "new": "    if (_sel === 'mining') pane.append",
+    "tests": [
+      "test/mineperks.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-MINE-PERKS-aqua-on-parchment",
+    "file": "src/ui/lodeMapMark.js",
+    "old": "export const LODE_RING_CSS = '#0e6b5e';",
+    "new": "export const LODE_RING_CSS = MOTHERLODE_MARK_CSS;",
+    "tests": [
+      "test/mineperks.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-MINE-PERKS-relay-clock",
+    "file": "src/scenes/world.js",
+    "old": "clock: (s) => localWhenText(s * 1000 - _sharedOffsetMs, Date.now()) };",
+    "new": "clock: (s) => localWhenText(s * 1000, Date.now()) };",
+    "tests": [
+      "test/mineperks.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-MINE-PERKS-maps-without-the-sense",
+    "file": "src/scenes/world.js",
+    "old": "const lodeSense = () => !!motherlodeBook && profBook?.state.open === true && profBook.track('mining').specs?.[100] === 'motherlode-sense';",
+    "new": "const lodeSense = () => !!motherlodeBook && profBook?.state.open === true;",
+    "tests": [
+      "test/mineperks.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-MINE-PERKS-overworld-unwired",
+    "file": "src/scenes/world.js",
+    "old": "          marks.push({ key: `lode:${l.key}`, at: tvSceneKept(h, x, z, TV_PLACE_LIFT), label: lodeLabel(l, nowS, lodeWords), sub: farDistanceText(km), kind: 'gather mining', color: LODE_COMPASS_CSS, edge: true });\n",
+    "new": "",
+    "tests": [
+      "test/mineperks.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-MINE-PERKS-legend-unrouted",
+    "file": "src/ui/heldMap.js",
+    "old": "      leg.append(dot, el('span', 'hmlegtext', lodeLegendText()));",
+    "new": "      leg.append(dot, el('span', 'hmlegtext', LODE_LEGEND_TEXT));",
     "tests": [
       "test/mineperks.test.js"
     ]

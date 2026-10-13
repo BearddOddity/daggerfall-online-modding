@@ -103,6 +103,13 @@ export const VEIN_STONE_REACH = 24;
  *  the players' "Mining perks need buff" thread: "its only a 50m difference"): 500, where it was 200 beside everyone's
  *  150 (NODE_MARK_M). */
 export const PROSPECT_M = 500;
+/** AUDIT MINE-PERKS (the cold pass, 3): a Prospector's dungeon veins keep PROF2's 200 m - at 500 the Prospector marked
+ *  nearly every dungeon's every vein (a dungeon is blocks of 51.2 m), the Deep Delver's own perk, the choice beside it. */
+export const PROSPECT_DEEP_M = 200;
+/** AUDIT MINE-PERKS (the cold pass, 5 and 6): what a Prospector's marks need of the gathering host - the stood pixels
+ *  within PROSPECT_M walked, and room on the compass for the veins within it (a Mountain stands twelve a pixel; at
+ *  NODE_MARK_MAX's sixteen a worst standpoint marked fifteen of twenty). */
+export const PROSPECT_REACH = Object.freeze({ walk: PROSPECT_M, max: 32 });
 /** MINE-PERKS: a Deep Delver's compass marks every vein of the dungeon it stands in - this far is past any dungeon's
  *  reach ("actually finding one in the labyrinths"). */
 export const DEEP_DELVER_M = 2000;
@@ -111,7 +118,7 @@ export const DEEP_DELVER_M = 2000;
 export const MINE_MARKS = Object.freeze({
   vein: Object.freeze({ w: 1.6, h: 1.3 }), boulder: Object.freeze({ w: 2.1, h: 1.5 }), dvein: Object.freeze({ w: 1.4, h: 1.2 }),
 });
-const PROSPECTOR_MARKS = Object.freeze({ vein: Object.freeze({ ...MINE_MARKS.vein, reach: PROSPECT_M }), dvein: Object.freeze({ ...MINE_MARKS.dvein, reach: PROSPECT_M }) });
+const PROSPECTOR_MARKS = Object.freeze({ vein: Object.freeze({ ...MINE_MARKS.vein, reach: PROSPECT_M }), dvein: Object.freeze({ ...MINE_MARKS.dvein, reach: PROSPECT_DEEP_M }) });
 const DEEP_DELVER_MARK = Object.freeze({ ...MINE_MARKS.dvein, reach: DEEP_DELVER_M });
 /** PROF2b: a Motherlode's heap - this many of its ore's flats at this size, spread this far (m) - and its glow, marked
  *  on the compass from `reach` off (the compass marks it from anywhere while it stands - scenes/world.js). */
@@ -446,6 +453,8 @@ export function mineKind({ book, lodes = null, marks = null }) {
      *  where everyone's are Mining's group and its count (GATHER-OW) - "on the overhead travel it shows all the individual
      *  veins in the area". A boulder and a Motherlode ride the group. */
     overworldOne: (n, { specs }) => (n.what === 'vein' && specs('mining')[50] === 'prospector' ? mineNodeName(n) : null),
+    /** AUDIT MINE-PERKS: a Prospector's marks walk PROSPECT_M and keep room for its veins (PROSPECT_REACH) */
+    markReach: ({ specs }) => (specs('mining')[50] === 'prospector' ? PROSPECT_REACH : null),
     tools: Object.freeze([FT.PickAxe]),   // TOOL-USE: the Pick-Axe's Use at a vein or a boulder is E there
     where: (n) => (n.what === 'dvein' ? null : actChecksRefusal(GROUND_WHERE, GROUND_WHERE_WORDS)),   // SETTLE-SAID: a dungeon's vein asks no settlement (DUNGEON_SKIP)
     /** PROF-MENU: the menu's title - the boulder, or the vein's ore. */

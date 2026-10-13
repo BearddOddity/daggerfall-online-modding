@@ -105,9 +105,10 @@ export const ACT_POINTER = Object.freeze({ basket: 'cursor', mine: 'look', trace
  *  needs nothing; the net's gentle throw still lands where the look sends it (its state carries no `gentle`, and is
  *  named here so it never will by accident). */
 export const actPointer = (st) => (st?.gentle === true && st.kind !== 'fish' ? null : ACT_POINTER[st?.kind] ?? null);
-/** NODE-MARKS: the stood pixels walked for the marks - those within this many metres, past any kind's reach (MINE-PERKS:
- *  a Prospector's veins' 500 m, scenes/mineHost.js PROSPECT_M; it was 256, past their 200). */
-export const MARK_WALK_M = 512;
+/** NODE-MARKS: the stood pixels walked for the marks - those within this many metres, past every kind's reach but a
+ *  wider one a kind names for the player (`markReach` - AUDIT MINE-PERKS: a Prospector's 500 m alone walks further; a
+ *  512 m walk for everyone was nine stood pixels' nodes asked a frame from a pixel's middle, where 256 is one). */
+export const MARK_WALK_M = 256;
 /** MINE-PERKS (Professions-Arc 43): the Overworld marks the nearest this many nodes a kind names on their own
  *  (`overworldOne` - a Prospector's veins), beside the GROUP_MAX groups and never in their count. */
 export const OW_ONE_MAX = 24;
@@ -241,6 +242,9 @@ export function aimAt(eyePos, at, view) {
  * @property {(node: any, ctx: { specs: (profession: string) => any }) => (string|null)} [overworldOne] MINE-PERKS: a node
  *   the Overworld marks on its own, named by the words this answers (a Prospector's vein, "Silver Vein"), not in its
  *   profession's group; null where it rides the group
+ * @property {(ctx: { specs: (profession: string) => any }) => ({ walk: number, max: number }|null)} [markReach] AUDIT
+ *   MINE-PERKS: a wider reach this kind's marks need for the player - the stood pixels walked (`walk`, past MARK_WALK_M)
+ *   and the compass's count (`max`, past NODE_MARK_MAX) - a Prospector's; null for none
  */
 
 /**
@@ -1046,7 +1050,11 @@ export function createGatherHost(deps) {
       const out = _marks;
       out.length = 0;
       if (book.state.open !== true || !isVec3(pos)) return out;
-      let used = 0;
+      let used = 0, walk = MARK_WALK_M, max = NODE_MARK_MAX;
+      for (const k of kinds) {   // AUDIT MINE-PERKS: a kind's wider reach for this player (a Prospector's)
+        const r = k.markReach?.(markCtx);
+        if (r) { walk = Math.max(walk, r.walk); max = Math.max(max, r.max); }
+      }
       const add = (k, n, x, y, z) => {
         const m = k.mark ? k.mark(n, markCtx) : (k.gone(n) ? null : NODE_MARK_SIZE);
         if (!m) return;
@@ -1062,7 +1070,7 @@ export function createGatherHost(deps) {
       if (under) {
         for (const n of dungeon.nodes) { const k = kindOf(n); if (k) add(k, n, n.local[0], n.local[1], n.local[2]); }
       } else {
-        for (const s of nearPixels(pos, MARK_WALK_M)) {
+        for (const s of nearPixels(pos, walk)) {
           const tr = deps.pixelTranslation(s.entry.px, s.entry.py, _t);
           const tx = tr[0], ty = tr[1], tz = tr[2];
           for (const n of s.nodes) { const k = kindOf(n); if (k) add(k, n, n.local[0] + tx, n.local[1] + ty, n.local[2] + tz); }
@@ -1076,7 +1084,7 @@ export function createGatherHost(deps) {
         }
       }
       out.sort((a, b) => a.d - b.d);
-      if (out.length > NODE_MARK_MAX) out.length = NODE_MARK_MAX;
+      if (out.length > max) out.length = max;
       return out;
     },
     /**
@@ -1097,6 +1105,12 @@ export function createGatherHost(deps) {
         if (book.state.open === true && isVec3(pos) && !dungeon) {
           /** `${pixel}:${profession}` -> { s, profession, nodes, x, z } (x, z the sum of the nodes' pixel-local places) */
           const byKey = new Map();
+          const join = (s, n, profession) => {
+            const key = `${pixelKey(s.entry.px, s.entry.py)}:${profession}`;
+            let g = byKey.get(key);
+            if (!g) byKey.set(key, g = { s, profession, nodes: [], x: 0, z: 0 });
+            g.nodes.push(n); g.x += n.local[0]; g.z += n.local[2];
+          };
           const ones = [];   // MINE-PERKS: the nodes their kind marks on their own (a Prospector's veins)
           for (const s of nearPixels(pos, GROUP_M)) {
             for (const n of s.nodes) {
@@ -1107,15 +1121,19 @@ export function createGatherHost(deps) {
               if (one) {
                 const tr = deps.pixelTranslation(s.entry.px, s.entry.py, _t);
                 const d = Math.hypot(n.local[0] + tr[0] - pos[0], n.local[2] + tr[2] - pos[2]);
-                if (d <= GROUP_M) ones.push({ d, s, local: n.local, mark: { key: `gather:one:${n.key}`, at: [0, 0, 0], label: one, kind: `gather ${profession}`, color: nodeMarkCss(profession), dist: d / 1000 } });
+                ones.push({ d, s, n, profession, mark: { key: `gather:one:${n.key}`, at: [0, 0, 0], label: one, kind: `gather ${profession}`, color: nodeMarkCss(profession), dist: d / 1000 } });
                 continue;
               }
-              const key = `${pixelKey(s.entry.px, s.entry.py)}:${profession}`;
-              let g = byKey.get(key);
-              if (!g) byKey.set(key, g = { s, profession, nodes: [], x: 0, z: 0 });
-              g.nodes.push(n); g.x += n.local[0]; g.z += n.local[2];
+              join(s, n, profession);
             }
           }
+          // AUDIT MINE-PERKS (the cold pass, 1): the nearest OW_ONE_MAX within GROUP_M stand alone; every other rides its
+          // pixel's group again - they left it and were counted nowhere, and a Prospector's far mountains read as
+          // boulders alone ("Mining ×5" where everyone else's read "Mining ×17")
+          ones.sort((a, b) => a.d - b.d || (a.mark.key < b.mark.key ? -1 : 1));
+          let kept = 0;
+          while (kept < ones.length && kept < OW_ONE_MAX && ones[kept].d <= GROUP_M) kept++;
+          for (const o of ones.splice(kept)) join(o.s, o.n, o.profession);
           const all = [];
           for (const [key, g] of byKey) {
             // AUDIT GATHER-OW: at the node nearest their middle, never the middle itself - two schools' middle was dry land,
@@ -1129,8 +1147,7 @@ export function createGatherHost(deps) {
             all.push({ d, s: g.s, local: at.local, mark: { key: `gather:${key}`, at: [0, 0, 0], label: groupLabel(g.profession, g.nodes.length), kind: `gather ${g.profession}`, color: nodeMarkCss(g.profession), dist: d / 1000 } });   // OW-NODE-KM: how far off, km - the Overworld's node reach reads it
           }
           all.sort((a, b) => a.d - b.d || (a.mark.key < b.mark.key ? -1 : 1));
-          ones.sort((a, b) => a.d - b.d || (a.mark.key < b.mark.key ? -1 : 1));
-          groupsKept = [...all.slice(0, GROUP_MAX), ...ones.slice(0, OW_ONE_MAX)];   // MINE-PERKS: the groups, then the singles
+          groupsKept = [...all.slice(0, GROUP_MAX), ...ones.map((o) => ({ d: o.d, s: o.s, local: o.n.local, mark: o.mark }))];   // MINE-PERKS: the groups, then the singles
         }
       }
       // AUDIT GATHER-OW: placed on every call from its pixel's translation NOW - the floating origin moves the scene under

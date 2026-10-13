@@ -148,7 +148,7 @@ const OWN_CHOICES = Object.freeze({
     // MINE-PERKS (Professions-Arc 43, the players' "Mining perks need buff" thread): the four made worth a choice - the
     // Prospector's compass 500 m and its veins one by one on the Overworld, the Deep Delver's x2 and every vein of the
     // dungeon on the compass, the day's Motherlodes on a Sense's map, and the Stonebreaker made the Surveyor (SURVEYOR)
-    50: pair(spec('prospector', 'Prospector', 'Veins within 500 m are marked on the compass, and each vein on the Overworld by its ore; gems come a tenth more often.'),
+    50: pair(spec('prospector', 'Prospector', "Surface veins within 500 m are marked on the compass (a dungeon's within 200 m), and each vein on the Overworld by its ore; gems come a tenth more often."),
       spec('deep-delver', 'Deep Delver', 'Dungeon veins yield double, and every vein in the dungeon is marked on the compass.')),
     100: pair(spec('motherlode-sense', 'Motherlode Sense', "The day's Motherlodes are marked on your map from the day's start; warnings come 30 minutes ahead, not 10."),   // PROF2b: its Motherlodes built - chosen as any
       spec(SURVEYOR, 'Surveyor', "Your own word witnesses the ground: unwitnessed veins can be any of their land's ores for you (a region's own ore still waits on witnesses). Quarrying yields Cut Stone directly.")),

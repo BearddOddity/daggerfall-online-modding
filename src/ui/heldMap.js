@@ -105,7 +105,7 @@ import { checkLocationDiscovered, flipTravelMapFilter, travelMapDotColors } from
 import { readGateMark, gateMarkKey, GATE_RING_CSS, GATE_LEGEND_TEXT } from './gateMapMark.js';   // WB1: the Oblivion Gate's ring, read as the party is (SERPENT1: and the serpent's, by the same reader)
 import { SERPENT_RING_MAP_CSS, SERPENT_LEGEND_TEXT } from './serpentMapMark.js';   // SERPENT1: the sea serpent's ring, in the sea's colours
 import { SD_RING_MAP_CSS, SD_LEGEND_TEXT } from './sdMapMark.js';   // SD2c: the Super dungeon's ring once it is found, in its omen's brass
-import { LODE_RING_CSS, LODE_LEGEND_TEXT } from './lodeMapMark.js';   // MINE-PERKS: a Motherlode Sense's day's Motherlodes, read by the bounty's reader
+import { LODE_RING_CSS, LODE_LEGEND_TEXT, lodeLegendText } from './lodeMapMark.js';   // MINE-PERKS: a Motherlode Sense's day's Motherlodes, read by the bounty's reader
 import { readBountyMarks, bountyMarksKey, BOUNTY_RING_CSS, BOUNTY_LEGEND_TEXT, BOUNTY_LEGEND_RIM_CSS, REVENANT_RING_CSS, REVENANT_LEGEND_TEXT } from './bountyMapMark.js';   // BOUNTY1: held bounties' black circles, read as the gate's ring is
 import { readRaidMarks, raidMarksKey, placeTip, tipKey, readTip, RAID_MARK_CSS, RAID_LEGEND_TEXT, RAID_HIT_PX, SEAT_TIP_TEXT_MAX } from './eventMapMarks.js';   // EVENT-TIP: the raided towns, and the card a world event answers a hover with
 import { readVendorMark, vendorMarkKey, VENDOR_MARK_CSS, VENDOR_RIM_CSS, VENDOR_LEGEND_TEXT } from './vendorMapMark.js';   // HOME-VENDOR: the trader's waypoint
@@ -2107,10 +2107,10 @@ export class HeldMapWindow {
       dot.style.boxShadow = `0 0 0 1px ${BOUNTY_LEGEND_RIM_CSS}`;
       leg.append(dot, el('span', 'hmlegtext', REVENANT_LEGEND_TEXT));
     }
-    if (this._lodes.length) {   // MINE-PERKS: and a Motherlode's aqua circle
+    if (this._lodes.length) {   // MINE-PERKS: and a Motherlode's teal circle
       const dot = el('span', 'hmlegdot');
       dot.style.background = LODE_RING_CSS;
-      leg.append(dot, el('span', 'hmlegtext', LODE_LEGEND_TEXT));
+      leg.append(dot, el('span', 'hmlegtext', lodeLegendText()));
     }
     if (this._raids.length) {   // EVENT-TIP: and a raided town
       const dot = el('span', 'hmlegdot');

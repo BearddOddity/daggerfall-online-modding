@@ -569,7 +569,7 @@ export function veinYield({ roll, deep = false, deepDelver = false, march = fals
 }
 /**
  * A BOULDER'S YIELD: `{ material, qty }` - the base roll and a march's +25% of Rough Stone; a clean finish (or a
- * Stonebreaker, always) cuts it at the rock, two to one, into Cut Stone (at least one). One chance, the service's, for
+ * Surveyor - the Stonebreaker until MINE-PERKS - always) cuts it at the rock, two to one, into Cut Stone (at least one). One chance, the service's, for
  * whichever fraction is left last.
  */
 export function boulderYield({ roll, march = false, cut = false, tideMult = 1 }, chance) {

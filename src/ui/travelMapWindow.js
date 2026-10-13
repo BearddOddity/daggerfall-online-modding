@@ -112,8 +112,8 @@ import { readPartyMarks, partyMarksKey, PARTY_DOT_RGB, PARTY_OFFLINE_DOT_RGB } f
 import { WILD_REGION, WILD_RINGS, wildInside, wildRingAt, wildRingName, wildRingBonus, wildPictureZone } from '../systems/wildZone.js';   // WILD1: the open zone on the classic map too (WILD2: and its rings)
 import { RING_INK, RING_NUMERALS } from './wildZoneMap.js';   // WILD2: the rings' own tones, the zone map's
 import { readGateMark, gateRingKey, gateRingTexels, GATE_DOT_RGB } from './gateMapMark.js';   // WB1: the Oblivion Gate's ring, on the open province's page
-import { readBountyMarks, bountyMarksKey, bountyRingTexels, BOUNTY_DOT_RGB, REVENANT_DOT_RGB, REVENANT_LEGEND_TEXT } from './bountyMapMark.js';
-import { LODE_DOT_RGB, LODE_LEGEND_TEXT } from './lodeMapMark.js';   // MINE-PERKS: a Motherlode Sense's Motherlodes, the same circle in aqua   // BOUNTY1: held bounties' black circles on the region page
+import { readBountyMarks, bountyMarksKey, bountyRingTexels, BOUNTY_DOT_RGB, REVENANT_DOT_RGB, REVENANT_LEGEND_TEXT } from './bountyMapMark.js';   // BOUNTY1: held bounties' black circles on the region page
+import { LODE_DOT_RGB, LODE_LEGEND_TEXT } from './lodeMapMark.js';   // MINE-PERKS: a Motherlode Sense's Motherlodes, the same circle in aqua
 import { readVendorMark, vendorMarkKey, vendorRingTexels, VENDOR_DOT_RGB } from './vendorMapMark.js';   // HOME-VENDOR: the trader's waypoint's gold ring
 import { MAP_WIDTH, MAP_HEIGHT } from '../formats/woodsFile.js';
 import { layoutMessageBox, drawMessageBox, messageBoxHit, MB_BUTTONS, messageBoxArtLoaded, fitBoxRows } from './messageBox.js';

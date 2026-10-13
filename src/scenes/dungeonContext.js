@@ -1118,6 +1118,7 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
     const list = _layoutEnemies;
     if (!list?.length || !collider) return null;
     const first = Math.min(list.length - 1, Math.max(0, Math.floor(marker * list.length)));
+    let close = null;   // AUDIT MINE-PERKS: the first foot found nearer its wall than PROF_VEIN_OFF_M, where none stands clear
     for (let m = 0; m < Math.min(4, list.length); m++) {
       const mk = list[(first + m) % list.length];
       for (let k = 0; k < 8; k++) {
@@ -1132,10 +1133,15 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
         const at = [from[0] + dir[0] * d, from[1], from[2] + dir[2] * d];
         const down = collider.raycast(at, [0, -1, 0], 3, PROF_VEIN_ONLY);
         if (!Number.isFinite(down)) continue;   // AUDIT 29 C11: no floor under it (a pit, deep water) - the next bearing, never a vein in the air
-        return [at[0], at[1] - down + PROF_VEIN_UP_M, at[2]];
+        const foot = [at[0], at[1] - down + PROF_VEIN_UP_M, at[2]];
+        // AUDIT MINE-PERKS (the cold pass, 7): a wall nearer the marker than PROF_VEIN_OFF_M stood the vein on the marker
+        // itself, as near the wall as the marker is - its flats back in the wall, and a foe stood on it. The next bearing;
+        // that foot only where no bearing of the four markers stands one clear (a vein is never lost to the rule)
+        if (hit.dist < PROF_VEIN_OFF_M) { close ??= foot; continue; }
+        return foot;
       }
     }
-    return null;
+    return close;
   }
   // ELITE DUNGEONS: an elite spawned dungeon stands ELITE_FOE_MULTIPLIER foes at every marker.
   // The extras are pulled back from walls by a ray through this dungeon's own collider (every
